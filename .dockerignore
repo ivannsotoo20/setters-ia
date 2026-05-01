@@ -1,0 +1,23 @@
+# Dependencies y build artifacts (se regeneran dentro del container)
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/.next/cache
+**/coverage
+**/*.tsbuildinfo
+
+# Env (el runtime los lee desde env_file en docker-compose, no los queremos en la image)
+.env
+.env.local
+.env.*.local
+
+# VCS / editor / CI
+.git
+.github
+.vscode
+.idea
+
+# Docs y logs (no afectan la build del motor)
+*.log
+README.md

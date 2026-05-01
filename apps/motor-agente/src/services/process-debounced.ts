@@ -1,0 +1,207 @@
+import type Anthropic from '@anthropic-ai/sdk';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
+import {
+  computeScheduledTimes,
+  insertScheduledParts,
+  loadTypingConfig,
+} from './scheduler.js';
+
+export interface ProcessDebouncedDeps {
+  supabase: SupabaseClient;
+  anthropic: Anthropic;
+}
+
+export interface ProcessDebouncedResult {
+  conversationId: number;
+  scheduleIds: number[];
+  parts: string[];
+  totalCostUsd: number;
+  totalLatencyMs: number;
+  pipelineStatus: string;
+  phase: number;
+  /** True si nada que procesar (mensaje vacío o solo del bot). */
+  skipped?: boolean;
+  reason?: string;
+}
+
+/**
+ * Carga la conversación + historial + integration_account, ejecuta el pipeline
+ * 3-LLM y programa las partes resultantes en `message_schedules`.
+ *
+ * Diseño:
+ *  - El "userMessage" del pipeline es la concatenación de TODOS los mensajes
+ *    inbound del lead desde el último mensaje del bot (o desde el inicio si no
+ *    hay outbound previo). Los unimos por `\n` para preservar contexto.
+ *  - El historial son los mensajes anteriores a esos inbounds (lo que ya está
+ *    "consolidado" en la conversación).
+ */
+export async function processDebounced(
+  deps: ProcessDebouncedDeps,
+  conversationId: number,
+): Promise<ProcessDebouncedResult> {
+  const { supabase, anthropic } = deps;
+
+  // 1. Cargar conversación + tenant
+  const { data: conv, error: convErr } = await supabase
+    .from('conversations')
+    .select('id, tenant_id, lead_id, channel_id, phase_number, state')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (convErr) throw new Error(`processDebounced: ${convErr.message}`);
+  if (!conv) throw new Error(`processDebounced: conversation ${conversationId} not found`);
+  const tenantId = Number(conv.tenant_id);
+  const channelId = Number(conv.channel_id);
+  const currentPhase = Number(conv.phase_number) || 1;
+
+  // 2. Cargar lead (para subscriber_id externo, requerido por el outbound luego)
+  const { data: lead, error: leadErr } = await supabase
+    .from('leads')
+    .select('id, external_id, first_name')
+    .eq('id', Number(conv.lead_id))
+    .maybeSingle();
+  if (leadErr) throw new Error(`processDebounced: lead lookup ${leadErr.message}`);
+  if (!lead) throw new Error(`processDebounced: lead ${conv.lead_id} not found`);
+
+  // 3. Cargar integration_account ACTIVA del canal de esta conversación
+  const { data: ia, error: iaErr } = await supabase
+    .from('integration_accounts')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('channel_id', channelId)
+    .eq('is_active', true)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (iaErr) throw new Error(`processDebounced: integration_account ${iaErr.message}`);
+  if (!ia) {
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: 0,
+      totalLatencyMs: 0,
+      pipelineStatus: 'skipped',
+      phase: currentPhase,
+      skipped: true,
+      reason: 'no integration_account active for channel',
+    };
+  }
+
+  // 4. Cargar historial completo
+  const allHistory = await loadConversationHistory(supabase, conversationId, { limit: 60 });
+  if (allHistory.length === 0) {
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: 0,
+      totalLatencyMs: 0,
+      pipelineStatus: 'skipped',
+      phase: currentPhase,
+      skipped: true,
+      reason: 'no messages in conversation',
+    };
+  }
+
+  // 5. Separar: bloque inbound más reciente del lead vs historial previo.
+  //    Encontramos el último mensaje del bot; todo lo que viene después es
+  //    "el bloque del lead que dispara este turno".
+  let lastAssistantIdx = -1;
+  for (let i = allHistory.length - 1; i >= 0; i--) {
+    if (allHistory[i]!.role === 'assistant') {
+      lastAssistantIdx = i;
+      break;
+    }
+  }
+  const recentLeadMessages = allHistory.slice(lastAssistantIdx + 1).filter((m) => m.role === 'user');
+  if (recentLeadMessages.length === 0) {
+    // Solo hay mensajes del bot tras el último del lead → nada que procesar.
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: 0,
+      totalLatencyMs: 0,
+      pipelineStatus: 'skipped',
+      phase: currentPhase,
+      skipped: true,
+      reason: 'no new lead messages since last assistant turn',
+    };
+  }
+  const userMessage = recentLeadMessages.map((m) => m.content).join('\n');
+  const historyForPipeline = allHistory.slice(0, lastAssistantIdx + 1);
+
+  // 6. Ejecutar pipeline 3-LLM
+  const pipelineOut = await runPipeline(
+    { supabase, anthropic },
+    {
+      tenantId,
+      conversationId,
+      userMessage,
+      currentPhase,
+      history: historyForPipeline,
+      coachSummary:
+        'Pablo Montenegro / Montefit. Acento venezolano. Adultos 30-50 ocupados. Whitelist emojis: 💪 😂 😅 🔥. NUNCA precios antes F6. Una pregunta por turno.',
+      validationContext: {
+        channel: 'instagram',
+        emojisWhitelist: ['💪', '😂', '😅', '🔥'],
+        isFirstAssistantMessage: lastAssistantIdx < 0,
+      },
+    },
+  );
+
+  // 7. Calcular tiempos y programar las partes
+  const typingConfig = await loadTypingConfig(supabase, tenantId);
+  const scheduledAt = computeScheduledTimes(pipelineOut.parts.length, typingConfig);
+  const { ids } = await insertScheduledParts({
+    supabase,
+    tenantId,
+    conversationId,
+    integrationAccountId: Number(ia.id),
+    parts: pipelineOut.parts,
+    scheduledAt,
+  });
+
+  // 8. Actualizar fase de la conversación según el setter
+  const newPhase = pipelineOut.generator.setterOutput.phase_decision;
+  const newStatus = mapConversationStatus(pipelineOut.generator.setterOutput.conversation_status);
+  await supabase
+    .from('conversations')
+    .update({
+      phase_number: newPhase,
+      state: newStatus,
+      is_qualified:
+        pipelineOut.generator.setterOutput.conversation_status === 'qualified' ? true : null,
+      is_handoff_to_human:
+        pipelineOut.generator.setterOutput.conversation_status === 'handoff' ? true : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId);
+
+  return {
+    conversationId,
+    scheduleIds: ids,
+    parts: pipelineOut.parts,
+    totalCostUsd: pipelineOut.totals.costUsd,
+    totalLatencyMs: pipelineOut.totals.latencyMs,
+    pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
+    phase: newPhase,
+  };
+}
+
+function mapConversationStatus(
+  s: 'active' | 'qualified' | 'disqualified' | 'handoff' | 'paused',
+): 'active' | 'paused' | 'stopped' | 'closed' {
+  switch (s) {
+    case 'active':
+    case 'qualified':
+      return 'active';
+    case 'paused':
+      return 'paused';
+    case 'handoff':
+      return 'closed'; // tras handoff, conversación cerrada en el bot
+    case 'disqualified':
+      return 'stopped';
+  }
+}

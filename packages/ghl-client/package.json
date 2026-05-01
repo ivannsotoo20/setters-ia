@@ -1,0 +1,16 @@
+{
+  "name": "@fyzon/ghl-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Wrapper REST de GoHighLevel: contactos, conversations/messages, pipelines F1-F6+F11+F12",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint not configured yet'",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "devDependencies": { "typescript": "^5.7.2" }
+}

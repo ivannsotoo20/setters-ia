@@ -1,0 +1,67 @@
+/**
+ * Tipos del validador post-LLM (V0-V16).
+ *
+ * El validador es la RED DE SEGURIDAD final del pipeline. Corre tras Judge
+ * y antes del Splitter. Sus violaciones son determinísticas (regex/heurísticas)
+ * y no dependen de LLM — por tanto son baratas, predecibles y testeables.
+ *
+ * Diseño:
+ *  - Cada regla es una función pura `(text, ctx) => RuleViolation | null`.
+ *  - El runner devuelve el array completo de violaciones.
+ *  - Severidad `error` debe bloquear el envío del mensaje (fallback a humano).
+ *  - Severidad `warn` se loggea pero el mensaje sigue.
+ */
+
+export type Channel = 'whatsapp' | 'instagram' | 'facebook';
+
+export interface ValidationContext {
+  tenantId: number;
+  conversationId: number | null;
+  /** Fase activa 1..7 al evaluar este turno. */
+  currentPhase: number;
+  channel: Channel;
+  /** Whitelist de emojis del coach. Si está vacía o null, todos permitidos. */
+  emojisWhitelist?: string[] | null;
+  /** Es el primer mensaje del bot en la conversación (no permite saludo repetido). */
+  isFirstAssistantMessage?: boolean;
+  /** Últimos N mensajes del bot para detectar repetición. */
+  lastAssistantMessages?: string[];
+  /** Locale principal del coach (es-VE, es-ES, etc.). Informativo. */
+  locale?: string;
+}
+
+export interface RuleViolation {
+  ruleId: string;
+  description: string;
+  severity: 'warn' | 'error';
+  /** Fragmento del texto que dispara la regla (debug). */
+  match?: string;
+  /** Sugerencia de fix automático si aplica. */
+  suggestion?: string;
+}
+
+export type RuleCheck = (text: string, ctx: ValidationContext) => RuleViolation | null;
+
+export interface ValidationRule {
+  id: string;
+  description: string;
+  /** Si la regla todavía no tiene heurística real (solo placeholder). */
+  stub?: boolean;
+  check: RuleCheck;
+}
+
+export interface ValidationResult {
+  ok: boolean;
+  /** True si hay alguna violación con severity='error'. */
+  hasErrors: boolean;
+  violations: RuleViolation[];
+}
+
+export interface ValidateOptions {
+  /** Sustituye el set por defecto. */
+  rules?: ValidationRule[];
+  /** Solo correr reglas con estos ids (whitelist). */
+  only?: string[];
+  /** Saltar reglas con estos ids (blacklist). */
+  skip?: string[];
+}

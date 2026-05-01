@@ -1,0 +1,25 @@
+{
+  "name": "setters-ia",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fyzon Setters IA — SaaS multi-tenant para setters de WhatsApp/IG/FB",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "db:generate-types": "node scripts/generate-db-types.mjs",
+    "core:build-seed": "node scripts/build-core-v3-seed.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  }
+}

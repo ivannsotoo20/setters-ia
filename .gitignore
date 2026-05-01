@@ -1,0 +1,42 @@
+node_modules/
+.pnpm-store/
+
+dist/
+build/
+out/
+.next/
+.turbo/
+.vercel/
+.cache/
+
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Claude Code: settings.json se versiona (compartido), settings.local.json no (personal)
+.claude/settings.local.json
+
+coverage/
+*.tsbuildinfo
+
+# OS / temporales
+*.tmp
+.tmp/
+
+# Tunneling local (cloudflared / ngrok)
+*.cloudflared.log

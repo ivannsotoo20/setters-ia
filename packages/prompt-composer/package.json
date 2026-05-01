@@ -1,0 +1,24 @@
+{
+  "name": "@fyzon/prompt-composer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ensambla el system prompt desde prompt_blocks: core_v3 + fase + coach_v3 + nicho_v3, con cache breakpoints",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "echo 'lint not configured yet'",
+    "test": "vitest run",
+    "clean": "rm -rf dist .tsbuildinfo"
+  },
+  "dependencies": {
+    "@fyzon/db": "workspace:*",
+    "@supabase/supabase-js": "^2.47.12"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
+  }
+}
