@@ -18,3 +18,20 @@ export {
   type ManyChatChannel,
   type ManyChatInputType,
 } from './manychat/types.js';
+
+// ---------- YCloud (WhatsApp BSP oficial Meta) ----------
+export { YCloudWhatsAppAdapter } from './ycloud/whatsapp.js';
+export { parseYCloudInbound, type YCloudParsedResult } from './ycloud/parser.js';
+export {
+  ycloudSendText,
+  YCloudApiError,
+  type YCloudSendTextParams,
+  type YCloudSendTextResult,
+} from './ycloud/api-client.js';
+export {
+  ycloudInboundPayloadSchema,
+  type YCloudInboundPayload,
+  type YCloudMessage,
+  type YCloudContact,
+  type YCloudStatus,
+} from './ycloud/types.js';
