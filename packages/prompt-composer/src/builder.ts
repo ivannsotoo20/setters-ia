@@ -32,6 +32,7 @@ export function buildComposedPrompt(
     includeDescualificacion = true,
     includeOutputContract = true,
     cacheStrategy = 'two-point',
+    cacheTtl = '1h',
   } = options;
 
   if (currentPhase < 1 || currentPhase > 6) {
@@ -98,7 +99,12 @@ export function buildComposedPrompt(
 
   const systemContent: SystemContentBlock[] = blocks.map((b) => {
     const block: SystemContentBlock = { type: 'text', text: b.text };
-    if (b.cached) block.cache_control = { type: 'ephemeral' };
+    if (b.cached) {
+      // Si TTL es '5m', no lo emitimos (default histórico de Anthropic).
+      // Si es '1h', sí emitimos `ttl` para activar el cache extendido.
+      block.cache_control =
+        cacheTtl === '1h' ? { type: 'ephemeral', ttl: '1h' } : { type: 'ephemeral' };
+    }
     return block;
   });
 

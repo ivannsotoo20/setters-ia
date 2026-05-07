@@ -45,6 +45,16 @@ export interface ComposeOptions {
    * - `'none'`: sin cache (solo dev/debug).
    */
   cacheStrategy?: 'two-point' | 'single-point' | 'none';
+  /**
+   * TTL del cache de Anthropic para los breakpoints emitidos.
+   * - `'5m'`: TTL corto (default histórico, antes de 2026-05). Cache write barato pero
+   *   conversaciones donde el lead tarda > 5 min entre turnos pagan cold cada vez.
+   * - `'1h'` (default actual): TTL extendido. Cache write ~2× más caro pero amortiza
+   *   en cuanto la conversación dura más de 5 min, que es el caso real con humanos.
+   *
+   * Más detalle del trade-off económico en plan playful-petting-pine.md sección 3.5.
+   */
+  cacheTtl?: '5m' | '1h';
 }
 
 /** Una fila de `prompt_blocks` que el builder necesita para componer. */
@@ -73,7 +83,12 @@ export interface ComposedBlock {
 export interface SystemContentBlock {
   type: 'text';
   text: string;
-  cache_control?: { type: 'ephemeral' };
+  /**
+   * Cache control de Anthropic. `ttl` opcional ('5m' default si se omite, '1h' si
+   * se especifica). Aplica a Sonnet 4.5+ y Haiku 4.5+ (modelos que soportan
+   * extended cache TTL).
+   */
+  cache_control?: { type: 'ephemeral'; ttl?: '5m' | '1h' };
 }
 
 export interface ComposedPrompt {

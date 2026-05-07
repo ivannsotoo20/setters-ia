@@ -97,7 +97,7 @@ describe('buildComposedPrompt (v4)', () => {
     expect(out.metadata.blocksLoaded).not.toContain('output_contract_v4');
   });
 
-  it('applies two-point cache strategy by default (core_v4_base + last block cached)', () => {
+  it('applies two-point cache strategy by default (core_v4_base + last block cached) with TTL 1h', () => {
     const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
@@ -107,12 +107,26 @@ describe('buildComposedPrompt (v4)', () => {
     expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
     expect(out.metadata.cacheBreakpoints).toBe(2);
 
-    // systemContent debe reflejar el cache_control
+    // Default cacheTtl = '1h' desde 2026-05-07 (ver plan playful-petting-pine.md §3.5).
+    expect(out.systemContent[0]!.cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
+    expect(out.systemContent[out.systemContent.length - 1]!.cache_control).toEqual({
+      type: 'ephemeral',
+      ttl: '1h',
+    });
+    expect(out.systemContent[1]!.cache_control).toBeUndefined(); // coach_v3 no cacheado en two-point
+  });
+
+  it('emits cache_control without ttl when cacheTtl is "5m"', () => {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+      tenantId: TENANT_ID,
+      currentPhase: 2,
+      cacheTtl: '5m',
+    });
+
     expect(out.systemContent[0]!.cache_control).toEqual({ type: 'ephemeral' });
     expect(out.systemContent[out.systemContent.length - 1]!.cache_control).toEqual({
       type: 'ephemeral',
     });
-    expect(out.systemContent[1]!.cache_control).toBeUndefined(); // coach_v3 no cacheado en two-point
   });
 
   it('single-point strategy caches only the last block', () => {
