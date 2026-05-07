@@ -88,6 +88,16 @@ export async function processDebounced(
     };
   }
 
+  // 3.5. Cargar canal para conocer channel_type (whatsapp / instagram / facebook).
+  // Lo necesita el Validator V0-V16 para reglas dependientes de canal.
+  const { data: channel, error: channelErr } = await supabase
+    .from('channels')
+    .select('channel_type')
+    .eq('id', channelId)
+    .maybeSingle();
+  if (channelErr) throw new Error(`processDebounced: channel lookup ${channelErr.message}`);
+  const channelType = (channel?.channel_type as 'whatsapp' | 'instagram' | 'facebook' | undefined) ?? 'whatsapp';
+
   // 4. Cargar historial completo
   const allHistory = await loadConversationHistory(supabase, conversationId, { limit: 60 });
   if (allHistory.length === 0) {
@@ -133,6 +143,10 @@ export async function processDebounced(
   const historyForPipeline = allHistory.slice(0, lastAssistantIdx + 1);
 
   // 6. Ejecutar pipeline 3-LLM
+  // NOTA: coachSummary y emojisWhitelist se dejan a undefined/null para que
+  // sean derivados del coach del tenant cuando exista la pieza que los extrae
+  // del prompt_blocks (TODO post-Hito 9). Hoy el Judge funciona con sus
+  // guardrails universales y el Validator usa defaults seguros sin whitelist.
   const pipelineOut = await runPipeline(
     { supabase, anthropic },
     {
@@ -141,11 +155,9 @@ export async function processDebounced(
       userMessage,
       currentPhase,
       history: historyForPipeline,
-      coachSummary:
-        'Pablo Montenegro / Montefit. Acento venezolano. Adultos 30-50 ocupados. Whitelist emojis: 💪 😂 😅 🔥. NUNCA precios antes F6. Una pregunta por turno.',
       validationContext: {
-        channel: 'instagram',
-        emojisWhitelist: ['💪', '😂', '😅', '🔥'],
+        channel: channelType,
+        emojisWhitelist: null,
         isFirstAssistantMessage: lastAssistantIdx < 0,
       },
     },
