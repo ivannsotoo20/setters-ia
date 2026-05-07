@@ -6,8 +6,23 @@ import { logLlmCall, summarizeSetterOutput } from './llm-call-log.js';
 import { respondAsSetterTool, RESPOND_AS_SETTER_TOOL_NAME } from './tool-definition.js';
 import type { GeneratorInput, GeneratorOutput, SetterToolOutput } from './types.js';
 
-export const DEFAULT_GENERATOR_MODEL = 'claude-sonnet-4-5';
+/**
+ * Modelo default del Generator. Cambió de Sonnet 4.5 → Haiku 4.5 el 2026-05-07
+ * tras smoke real en tenant_id=3 (ver plan playful-petting-pine.md sección 3.5):
+ *
+ * - Coste medio observado con Sonnet + cache 5min en conversación con leads
+ *   humanos: ~4.5 céntimos / mensaje. Inviable para SaaS.
+ * - Cambio a Haiku 4.5 + cache TTL 1h: ~0.43 céntimos / mensaje promedio.
+ * - Benchmark BenchLM/Galaxy.ai 2026: Haiku 4.5 lidera instruction-following
+ *   en system prompts complejos (Cerebro v4 + Coach = 11k tokens), métrica
+ *   crítica para el setter Fyzon.
+ *
+ * Override por env (`GENERATOR_MODEL`) para A/B y tests.
+ */
+export const DEFAULT_GENERATOR_MODEL = 'claude-haiku-4-5';
 const DEFAULT_MAX_TOKENS = 1024;
+/** TTL del cache_control que el composer emite. Sincronizado con `cacheTtl` default del builder. */
+const CACHE_TTL: '1h' = '1h';
 
 interface RunGeneratorDeps {
   supabase: SupabaseClient;
@@ -119,6 +134,7 @@ export async function runGenerator(
     tokensInCacheRead,
     tokensInCacheWrite,
     tokensOut,
+    cacheTtl: CACHE_TTL,
   });
 
   // 6. Registra llm_calls (best-effort)

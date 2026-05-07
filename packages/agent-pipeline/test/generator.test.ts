@@ -107,7 +107,8 @@ describe('runGenerator', () => {
     // Anthropic fue llamado con tool_choice forzado y system con cache
     expect(create).toHaveBeenCalledTimes(1);
     const callArg = create.mock.calls[0]![0];
-    expect(callArg.model).toBe('claude-sonnet-4-5');
+    // Default cambió a Haiku 4.5 el 2026-05-07 (ver plan playful-petting-pine.md §3.5).
+    expect(callArg.model).toBe('claude-haiku-4-5');
     expect(callArg.tool_choice).toEqual({ type: 'tool', name: 'respond_as_setter' });
     expect(Array.isArray(callArg.system)).toBe(true);
     expect(callArg.system.length).toBeGreaterThan(0);
@@ -124,8 +125,8 @@ describe('runGenerator', () => {
     expect(out.usage.tokensInUncached).toBe(50);
     expect(out.usage.tokensInCacheRead).toBe(14_000);
     expect(out.usage.tokensOut).toBe(80);
-    // 50*3 + 14000*0.3 + 80*15 = 150 + 4200 + 1200 = 5550 micro-USD = 0.00555
-    expect(out.usage.costUsd).toBeCloseTo(0.00555, 5);
+    // Haiku 4.5: 50*1 + 14000*0.1 + 80*5 = 50 + 1400 + 400 = 1850 micro-USD = 0.00185
+    expect(out.usage.costUsd).toBeCloseTo(0.00185, 5);
     expect(out.llmCallId).toBe(42);
   });
 

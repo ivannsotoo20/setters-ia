@@ -7,6 +7,8 @@ import type { AnthropicTool, GeneratorUsage } from './types.js';
 export const DEFAULT_JUDGE_MODEL = 'claude-haiku-4-5';
 export const JUDGE_TOOL_NAME = 'judge_message';
 const JUDGE_MAX_TOKENS = 800;
+/** TTL del cache_control aplicado al system prompt del Judge. Alineado con el composer (1h). */
+const JUDGE_CACHE_TTL: '1h' = '1h';
 
 export interface JudgeInput {
   /** Texto del setter post-Generator. */
@@ -139,7 +141,7 @@ export async function runJudge(
         {
           type: 'text',
           text: JUDGE_SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
+          cache_control: { type: 'ephemeral', ttl: JUDGE_CACHE_TTL },
         },
       ] as unknown as Anthropic.Messages.TextBlockParam[],
       messages: [{ role: 'user', content: userParts.join('\n\n') }],
@@ -214,6 +216,7 @@ export async function runJudge(
     tokensInCacheRead,
     tokensInCacheWrite,
     tokensOut,
+    cacheTtl: JUDGE_CACHE_TTL,
   });
 
   const usageOut: GeneratorUsage = {

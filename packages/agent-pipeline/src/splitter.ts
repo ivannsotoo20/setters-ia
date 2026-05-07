@@ -99,7 +99,8 @@ export async function runSplitter(
         {
           type: 'text',
           text: SPLITTER_SYSTEM_PROMPT,
-          cache_control: { type: 'ephemeral' },
+          // TTL 1h alineado con composer y Judge (ver plan playful-petting-pine.md §3.5).
+          cache_control: { type: 'ephemeral', ttl: '1h' },
         },
       ] as unknown as Anthropic.Messages.TextBlockParam[],
       messages: [
@@ -174,6 +175,7 @@ export async function runSplitter(
     tokensInCacheRead,
     tokensInCacheWrite,
     tokensOut,
+    cacheTtl: '1h',
   });
 
   const usageOut: GeneratorUsage = {
