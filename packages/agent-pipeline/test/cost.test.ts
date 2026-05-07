@@ -87,4 +87,68 @@ describe('calculateCostUsd', () => {
     expect(DEFAULT_PRICE_TABLE['claude-sonnet-4-5']?.cacheRead).toBe(0.3);
     expect(DEFAULT_PRICE_TABLE['claude-sonnet-4-5']?.output).toBe(15);
   });
+
+  it('uses cacheWrite1h tariff when cacheTtl="1h" (Sonnet)', () => {
+    // Sonnet 4.5: cacheWrite 5m = 3.75, cacheWrite 1h = 7.50 (~2x)
+    const cost = calculateCostUsd({
+      model: 'claude-sonnet-4-5',
+      tokensInUncached: 0,
+      tokensInCacheRead: 0,
+      tokensInCacheWrite: 10_000,
+      tokensOut: 0,
+      cacheTtl: '1h',
+    });
+    // 10k * 7.50 / 1M = 0.075
+    expect(cost).toBeCloseTo(0.075, 5);
+  });
+
+  it('uses cacheWrite1h tariff when cacheTtl="1h" (Haiku)', () => {
+    // Haiku 4.5: cacheWrite 5m = 1.25, cacheWrite 1h = 2.50 (~2x)
+    const cost = calculateCostUsd({
+      model: 'claude-haiku-4-5',
+      tokensInUncached: 0,
+      tokensInCacheRead: 0,
+      tokensInCacheWrite: 10_000,
+      tokensOut: 0,
+      cacheTtl: '1h',
+    });
+    // 10k * 2.50 / 1M = 0.025
+    expect(cost).toBeCloseTo(0.025, 5);
+  });
+
+  it('falls back to 2× cacheWrite when cacheWrite1h is missing in custom table', () => {
+    const customTable = {
+      'claude-sonnet-4-5': {
+        inputUncached: 1,
+        cacheRead: 0.1,
+        cacheWrite: 1, // sin cacheWrite1h explicit
+        output: 1,
+      },
+    };
+    const cost = calculateCostUsd({
+      model: 'claude-sonnet-4-5',
+      tokensInUncached: 0,
+      tokensInCacheRead: 0,
+      tokensInCacheWrite: 1_000_000,
+      tokensOut: 0,
+      cacheTtl: '1h',
+      priceTable: customTable,
+    });
+    // 1M * (2 * 1) / 1M = 2
+    expect(cost).toBe(2);
+  });
+
+  it('Haiku 4.5 cost on warm turn matches expected value (~0.43c per message scale)', () => {
+    // Turno warm: 11k cache_read, 0 write, 50 fresh input, 250 output
+    const cost = calculateCostUsd({
+      model: 'claude-haiku-4-5',
+      tokensInUncached: 50,
+      tokensInCacheRead: 11_000,
+      tokensInCacheWrite: 0,
+      tokensOut: 250,
+      cacheTtl: '1h',
+    });
+    // 50*1 + 11000*0.1 + 250*5 = 50 + 1100 + 1250 = 2400 micro-USD = 0.0024
+    expect(cost).toBeCloseTo(0.0024, 5);
+  });
 });
