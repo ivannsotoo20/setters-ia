@@ -19,7 +19,7 @@ apps/
 packages/
   db/                  tipos TS generados de Supabase + helpers de queries
   shared-validator/    V0-V16 post-LLM (red de seguridad)
-  channel-adapters/    ManyChat WA/IG/FB (MVP) + Meta Cloud (Fase 6)
+  channel-adapters/    ManyChat WA/IG/FB + YCloud WA + Meta Cloud (Fase 6)
   agent-pipeline/      Generator (Sonnet) + Judge (Haiku) + Splitter (Haiku)
   prompt-composer/     ensambla system prompt desde prompt_blocks con cache breakpoints
   ghl-client/          wrapper REST GoHighLevel
@@ -47,8 +47,40 @@ scripts/                  build-core-v3-seed.mjs, generate-db-types.mjs
 | DB client motor | `@supabase/supabase-js` con service_role. NO Prisma. |
 | Panel build | Next.js 16 + Turbopack |
 | Orquestación jobs | Trigger.dev (se incorpora en Fase 1) |
-| Canal WA | Meta Cloud API vía ManyChat (MVP). Directo Meta Cloud en Fase 6. |
-| CRM backbone | GHL Agency Unlimited ($297) con sub-cuenta por trainer |
+| Canal WA primario | **YCloud** (BSP oficial Meta) para tenants nuevos. ManyChat sigue activo para tenants legacy hasta migración a GHL. Meta Cloud directo cuando Ivan sea BSP (Fase 6). |
+| Canal IG/FB | ManyChat (sin alternativa hoy). Pausados temporalmente hasta tener adapter GHL o Meta Cloud directo. |
+| CRM backbone | GHL Agency Unlimited ($297) con sub-cuenta por trainer. Plan medio plazo: GHL pasa a ser **pasarela de canales** (no solo CRM), reemplazando ManyChat. |
+
+## Multi-provider routing (canales)
+
+El motor soporta **varios proveedores BSP** en paralelo, decididos por `integration_accounts.provider`. Cuando el cron `outbound-tick` lee un `message_schedules` pending, `outbound-sender.ts:loadSendContext` carga el provider y `buildAdapter(ctx)` construye el adapter correcto:
+
+| Provider | Canales | Adapter | Endpoint envío | Auth |
+|---|---|---|---|---|
+| `manychat` | whatsapp, instagram, facebook | `ManyChat{WhatsApp,Instagram}Adapter` | `/fb/sending/sendContent` | Bearer `<api_key>` |
+| `ycloud` | whatsapp (solo) | `YCloudWhatsAppAdapter` | `/v2/whatsapp/messages/sendDirectly` | Header `X-API-Key: <api_key>` |
+| `meta_cloud` | (futuro, cuando BSP) | — | — | — |
+| `ghl` | (futuro, sustituirá ManyChat) | — | — | — |
+
+### Cómo añadir un nuevo proveedor
+
+1. Crear `packages/channel-adapters/src/<provider>/{api-client,types,parser,<channel>}.ts` (sigue el patrón de `manychat/` y `ycloud/`).
+2. Re-exportar en `packages/channel-adapters/src/index.ts`.
+3. Añadir el valor al enum `channel_provider` con migration en `schema/v1/migrations/NNN-<provider>-provider-enum.sql`.
+4. Crear ruta webhook nueva `apps/motor-agente/src/routes/webhook-<provider>.ts` filtrando por `tenant_tokens.purpose='<provider>_webhook'`.
+5. Registrar la ruta en `apps/motor-agente/src/server.ts`.
+6. Añadir `case '<provider>'` en `apps/motor-agente/src/services/outbound-sender.ts:buildAdapter()` y en `normalizeProvider()`.
+7. Ampliar el tipo de `viaProvider` en `apps/motor-agente/src/services/lead-ingest.ts:GetOrCreateChannelParams` (mientras no se regeneren tipos DB).
+8. Añadir `<PROVIDER>_API_BASE` en `apps/motor-agente/src/config/env.ts` y `.env.example` si aplica.
+9. Tests: `packages/channel-adapters/test/<provider>-api.test.ts` (mock fetch) + `apps/motor-agente/test/parser-<provider>.test.ts` (fixtures payload).
+10. Tras aplicar migration → `pnpm db:generate-types` para tipos DB actualizados.
+
+### Convenciones
+
+- **Token webhook**: `tenant_tokens.purpose = '<provider>_webhook'` (snake_case). Cada ruta filtra por su purpose.
+- **Credenciales sensibles**: `integration_accounts.credentials.api_key` (encriptado app-side AES-256-GCM — pendiente de implementar).
+- **Datos no sensibles**: `integration_accounts.connection_config` (JSON, plain). Para YCloud incluye `business_phone` (E.164).
+- **Dedup Redis**: prefijo `<provider>:{tenantId}:{external_id_estable}`. YCloud usa el `wamid` del mensaje; ManyChat usa `subscriber_id:timestamp`.
 
 ## Comandos frecuentes
 
@@ -58,9 +90,11 @@ pnpm dev                          # turbo run dev en todos los workspaces (motor
 pnpm --filter @fyzon/motor-agente dev   # solo el motor
 pnpm --filter @fyzon/panel dev          # solo el panel
 pnpm typecheck                    # tsc --noEmit en todo
+pnpm -r test                      # corre todos los tests (vitest) en todos los packages
 pnpm build                        # turbo run build
 pnpm db:generate-types            # regenera packages/db/src/types.generated.ts
 pnpm core:build-seed              # regenera schema/v1/seeds/002-core-v3-blocks.sql
+node scripts/build-coach-seed.mjs --trainer <slug> --tenant-slug <slug> --seed-number <NNN>
 docker compose up --build         # motor + redis locales
 curl localhost:3001/health        # smoke test del motor
 ```
