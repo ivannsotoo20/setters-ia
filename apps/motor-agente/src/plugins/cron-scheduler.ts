@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { dropDebounce, getExpiredDebounces } from '../lib/debounce-buffer.js';
+import { dropDebounce, enqueueDebounce, getExpiredDebounces } from '../lib/debounce-buffer.js';
 import { getRedis } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { getAnthropic } from '../lib/anthropic.js';
@@ -8,6 +8,12 @@ import { sendNextBatch } from '../services/outbound-sender.js';
 
 const DEBOUNCE_TICK_MS = 5_000;
 const OUTBOUND_TICK_MS = 5_000;
+/**
+ * Si processDebounced lanza, re-encolamos la conversacion con este delay.
+ * Suficientemente corto para reintentar pronto, suficientemente largo para
+ * no martillar bajo errores transitorios.
+ */
+const DEBOUNCE_RETRY_DELAY_S = 30;
 
 export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let debounceTimer: NodeJS.Timeout | null = null;
@@ -23,6 +29,11 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
       const supabase = getSupabase();
       const anthropic = getAnthropic();
       for (const entry of expired) {
+        // Drop ANTES de procesar para que el proximo tick no recoja la misma
+        // conversacion mientras esta corriendo el pipeline (race condition que
+        // duplicaba la respuesta del setter). Si processDebounced falla,
+        // re-encolamos con un delay corto para reintentar.
+        await dropDebounce(redis, entry.conversationId);
         try {
           const out = await processDebounced(
             { supabase, anthropic: anthropic as unknown as import('@anthropic-ai/sdk').default },
@@ -33,9 +44,11 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
             'debounce processed',
           );
         } catch (err) {
-          app.log.error({ err, conversationId: entry.conversationId }, 'processDebounced failed');
-        } finally {
-          await dropDebounce(redis, entry.conversationId);
+          app.log.error(
+            { err, conversationId: entry.conversationId, retryDelayS: DEBOUNCE_RETRY_DELAY_S },
+            'processDebounced failed; re-queueing with delay',
+          );
+          await enqueueDebounce(redis, entry.conversationId, DEBOUNCE_RETRY_DELAY_S);
         }
       }
     } catch (err) {
