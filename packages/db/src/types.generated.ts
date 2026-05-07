@@ -1,4 +1,4 @@
-// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-05).
+// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-07).
 // Do not edit manually. Regenerate with: pnpm db:generate-types
 // Or from Claude Code with MCP: mcp__supabase-fyzon__generate_typescript_types.
 
@@ -407,6 +407,7 @@ export type Database = {
           connection_config: Json
           created_at: string
           credentials: Json
+          credentials_encrypted: Json | null
           id: number
           is_active: boolean
           provider: Database["public"]["Enums"]["channel_provider"]
@@ -419,6 +420,7 @@ export type Database = {
           connection_config?: Json
           created_at?: string
           credentials?: Json
+          credentials_encrypted?: Json | null
           id?: number
           is_active?: boolean
           provider: Database["public"]["Enums"]["channel_provider"]
@@ -431,6 +433,7 @@ export type Database = {
           connection_config?: Json
           created_at?: string
           credentials?: Json
+          credentials_encrypted?: Json | null
           id?: number
           is_active?: boolean
           provider?: Database["public"]["Enums"]["channel_provider"]
@@ -561,7 +564,7 @@ export type Database = {
             foreignKeyName: "leads_channel_id_fkey"
             columns: ["channel_id"]
             isOneToOne: false
-            referencedRelation: "leads"
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {
