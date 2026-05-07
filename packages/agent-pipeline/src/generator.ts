@@ -35,13 +35,15 @@ export async function runGenerator(
   const maxTokens = input.maxTokens ?? DEFAULT_MAX_TOKENS;
 
   // 1. Compose system prompt (cargado desde Supabase, con cache_control)
+  // v4: handoff opcional (default false). objeciones / descualificacion / output_contract
+  // se cargan por defecto (universales en el Cerebro v4).
   const composed = await composePrompt(supabase, {
     tenantId: input.tenantId,
     currentPhase: input.currentPhase,
-    isQualification: input.composeOverrides?.isQualification ?? false,
     isHandoff: input.composeOverrides?.isHandoff ?? false,
-    includePipeline: input.composeOverrides?.includePipeline ?? false,
-    includeObjections: true,
+    includeObjections: input.composeOverrides?.includeObjections ?? true,
+    includeDescualificacion: input.composeOverrides?.includeDescualificacion ?? true,
+    includeOutputContract: input.composeOverrides?.includeOutputContract ?? true,
   });
 
   // 2. Construye messages[] para la API (history + último mensaje del lead)

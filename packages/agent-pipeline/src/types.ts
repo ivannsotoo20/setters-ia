@@ -61,11 +61,15 @@ export interface GeneratorInput {
   model?: string;
   /** Max tokens del response. Default 1024. */
   maxTokens?: number;
-  /** Permite incluir cualificación / handoff / pipeline en el composer. */
+  /**
+   * Permite ajustar inclusión de bloques opcionales del Cerebro v4 en el composer.
+   * Por defecto: handoff=false, objeciones=true, descualificacion=true, output_contract=true.
+   */
   composeOverrides?: {
-    isQualification?: boolean;
     isHandoff?: boolean;
-    includePipeline?: boolean;
+    includeObjections?: boolean;
+    includeDescualificacion?: boolean;
+    includeOutputContract?: boolean;
   };
 }
 

@@ -48,15 +48,18 @@ function makeFakeSupabase(opts: { promptBlocks: any[]; llmCallId?: number }) {
 }
 
 const FAKE_PROMPT_BLOCKS = [
-  { block_key: 'core_v3_base', sort_order: 0, tenant_id: null, content: '[CORE]' },
+  { block_key: 'core_v4_base', sort_order: 0, tenant_id: null, content: '[CORE V4]' },
   { block_key: 'coach_v3', sort_order: 5, tenant_id: 2, content: '[COACH PABLO]' },
-  { block_key: 'fase_1_v3', sort_order: 10, tenant_id: null, content: '[FASE 1]' },
-  { block_key: 'fase_2_v3', sort_order: 20, tenant_id: null, content: '[FASE 2]' },
-  { block_key: 'fase_3_v3', sort_order: 30, tenant_id: null, content: '[FASE 3]' },
-  { block_key: 'fase_4_v3', sort_order: 40, tenant_id: null, content: '[FASE 4]' },
-  { block_key: 'fase_5_v3', sort_order: 50, tenant_id: null, content: '[FASE 5]' },
-  { block_key: 'fase_6_v3', sort_order: 60, tenant_id: null, content: '[FASE 6]' },
-  { block_key: 'objeciones_v3', sort_order: 100, tenant_id: null, content: '[OBJECIONES]' },
+  { block_key: 'fase_1_v4', sort_order: 10, tenant_id: null, content: '[FASE 1]' },
+  { block_key: 'fase_2_v4', sort_order: 20, tenant_id: null, content: '[FASE 2]' },
+  { block_key: 'fase_3_v4', sort_order: 30, tenant_id: null, content: '[FASE 3]' },
+  { block_key: 'fase_4_v4', sort_order: 40, tenant_id: null, content: '[FASE 4]' },
+  { block_key: 'fase_5_v4', sort_order: 50, tenant_id: null, content: '[FASE 5]' },
+  { block_key: 'fase_6_v4', sort_order: 60, tenant_id: null, content: '[FASE 6]' },
+  { block_key: 'objeciones_v4', sort_order: 70, tenant_id: null, content: '[OBJECIONES]' },
+  { block_key: 'descualificacion_v4', sort_order: 80, tenant_id: null, content: '[DESCUALIFICACION]' },
+  { block_key: 'handoff_v4', sort_order: 90, tenant_id: null, content: '[HANDOFF]' },
+  { block_key: 'output_contract_v4', sort_order: 100, tenant_id: null, content: '[OUTPUT CONTRACT]' },
 ];
 
 describe('runGenerator', () => {
