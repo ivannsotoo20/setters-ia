@@ -37,6 +37,10 @@ const envSchema = z.object({
   //   warn     → se verifica si el header llega; si falla, log warn y continúa (default transición).
   //   enforce  → si la firma falta o es inválida → 401.
   YCLOUD_WEBHOOK_VERIFY_MODE: z.enum(['disabled', 'warn', 'enforce']).default('warn'),
+  // Hardening 1.3 — bearer token para GET /internal/stats. Opcional en dev,
+  // pero el endpoint devuelve 503 si no está configurado. Generar con
+  // openssl rand -hex 32.
+  INTERNAL_STATS_TOKEN: z.string().min(16).optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

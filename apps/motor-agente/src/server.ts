@@ -5,6 +5,7 @@ import { env } from './config/env.js';
 import { healthRoutes } from './routes/health.js';
 import { webhookManyChatRoutes } from './routes/webhook-manychat.js';
 import { webhookYCloudRoutes } from './routes/webhook-ycloud.js';
+import { internalStatsRoutes } from './routes/internal-stats.js';
 import { cronSchedulerPlugin } from './plugins/cron-scheduler.js';
 
 declare module 'fastify' {
@@ -51,6 +52,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(healthRoutes);
   await app.register(webhookManyChatRoutes);
   await app.register(webhookYCloudRoutes);
+  await app.register(internalStatsRoutes);
   await app.register(cronSchedulerPlugin);
 
   return app;
