@@ -40,7 +40,13 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
             entry.conversationId,
           );
           app.log.info(
-            { conversationId: entry.conversationId, scheduleIds: out.scheduleIds, parts: out.parts.length, costUsd: out.totalCostUsd },
+            {
+              conversationId: entry.conversationId,
+              correlationId: out.correlationId,
+              scheduleIds: out.scheduleIds,
+              parts: out.parts.length,
+              costUsd: out.totalCostUsd,
+            },
             'debounce processed',
           );
         } catch (err) {

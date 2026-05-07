@@ -6,6 +6,12 @@ import {
   insertScheduledParts,
   loadTypingConfig,
 } from './scheduler.js';
+import {
+  classifyPipelineError,
+  completePipelineRun,
+  failPipelineRun,
+  startPipelineRun,
+} from './pipeline-runs.js';
 
 export interface ProcessDebouncedDeps {
   supabase: SupabaseClient;
@@ -20,6 +26,8 @@ export interface ProcessDebouncedResult {
   totalLatencyMs: number;
   pipelineStatus: string;
   phase: number;
+  /** UUID del pipeline_run row asociado (Hardening 1.3). */
+  correlationId?: string;
   /** True si nada que procesar (mensaje vacío o solo del bot). */
   skipped?: boolean;
   reason?: string;
@@ -142,28 +150,45 @@ export async function processDebounced(
   const userMessage = recentLeadMessages.map((m) => m.content).join('\n');
   const historyForPipeline = allHistory.slice(0, lastAssistantIdx + 1);
 
-  // 6. Ejecutar pipeline 3-LLM
+  // 6. Abrir pipeline_run (Hardening 1.3 — observabilidad).
+  //    INSERT inicial con outcome='in_progress'; UPDATE al final con métricas.
+  //    Si Supabase falla aquí, run.id=0 y los UPDATE/fail siguientes son no-ops.
+  const startedAtMs = Date.now();
+  const run = await startPipelineRun(supabase, { tenantId, conversationId });
+
+  // 7. Ejecutar pipeline 3-LLM
   // NOTA: coachSummary y emojisWhitelist se dejan a undefined/null para que
   // sean derivados del coach del tenant cuando exista la pieza que los extrae
   // del prompt_blocks (TODO post-Hito 9). Hoy el Judge funciona con sus
   // guardrails universales y el Validator usa defaults seguros sin whitelist.
-  const pipelineOut = await runPipeline(
-    { supabase, anthropic },
-    {
-      tenantId,
-      conversationId,
-      userMessage,
-      currentPhase,
-      history: historyForPipeline,
-      validationContext: {
-        channel: channelType,
-        emojisWhitelist: null,
-        isFirstAssistantMessage: lastAssistantIdx < 0,
+  let pipelineOut;
+  try {
+    pipelineOut = await runPipeline(
+      { supabase, anthropic },
+      {
+        tenantId,
+        conversationId,
+        userMessage,
+        currentPhase,
+        history: historyForPipeline,
+        validationContext: {
+          channel: channelType,
+          emojisWhitelist: null,
+          isFirstAssistantMessage: lastAssistantIdx < 0,
+        },
       },
-    },
-  );
+    );
+  } catch (err) {
+    await failPipelineRun(supabase, {
+      id: run.id,
+      startedAtMs,
+      outcome: classifyPipelineError(err),
+      error: err,
+    });
+    throw err;
+  }
 
-  // 7. Calcular tiempos y programar las partes
+  // 8. Calcular tiempos y programar las partes
   const typingConfig = await loadTypingConfig(supabase, tenantId);
   const scheduledAt = computeScheduledTimes(pipelineOut.parts.length, typingConfig);
   const { ids } = await insertScheduledParts({
@@ -175,7 +200,7 @@ export async function processDebounced(
     scheduledAt,
   });
 
-  // 8. Actualizar fase de la conversación según el setter
+  // 9. Actualizar fase de la conversación según el setter
   const newPhase = pipelineOut.generator.setterOutput.phase_decision;
   const newStatus = mapConversationStatus(pipelineOut.generator.setterOutput.conversation_status);
   await supabase
@@ -191,6 +216,9 @@ export async function processDebounced(
     })
     .eq('id', conversationId);
 
+  // 10. Cerrar pipeline_run con éxito + métricas
+  await completePipelineRun(supabase, { id: run.id, output: pipelineOut, startedAtMs });
+
   return {
     conversationId,
     scheduleIds: ids,
@@ -199,6 +227,7 @@ export async function processDebounced(
     totalLatencyMs: pipelineOut.totals.latencyMs,
     pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
     phase: newPhase,
+    correlationId: run.correlationId,
   };
 }
 
