@@ -808,6 +808,114 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_runs: {
+        Row: {
+          conversation_id: number | null
+          correlation_id: string
+          created_at: string
+          duration_ms: number | null
+          ended_at: string | null
+          error_message: string | null
+          generator_cost_usd: number | null
+          generator_model: string | null
+          generator_tokens_in: number | null
+          generator_tokens_out: number | null
+          id: number
+          judge_cost_usd: number | null
+          judge_decision: string | null
+          judge_model: string | null
+          judge_tokens_in: number | null
+          judge_tokens_out: number | null
+          outcome: string
+          splitter_cost_usd: number | null
+          splitter_model: string | null
+          splitter_parts: number | null
+          splitter_tokens_in: number | null
+          splitter_tokens_out: number | null
+          started_at: string
+          tenant_id: number
+          total_cost_usd: number | null
+          total_tokens_in: number | null
+          total_tokens_out: number | null
+          validator_violations: Json | null
+        }
+        Insert: {
+          conversation_id?: number | null
+          correlation_id: string
+          created_at?: string
+          duration_ms?: number | null
+          ended_at?: string | null
+          error_message?: string | null
+          generator_cost_usd?: number | null
+          generator_model?: string | null
+          generator_tokens_in?: number | null
+          generator_tokens_out?: number | null
+          id?: number
+          judge_cost_usd?: number | null
+          judge_decision?: string | null
+          judge_model?: string | null
+          judge_tokens_in?: number | null
+          judge_tokens_out?: number | null
+          outcome?: string
+          splitter_cost_usd?: number | null
+          splitter_model?: string | null
+          splitter_parts?: number | null
+          splitter_tokens_in?: number | null
+          splitter_tokens_out?: number | null
+          started_at?: string
+          tenant_id: number
+          total_cost_usd?: number | null
+          total_tokens_in?: number | null
+          total_tokens_out?: number | null
+          validator_violations?: Json | null
+        }
+        Update: {
+          conversation_id?: number | null
+          correlation_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          ended_at?: string | null
+          error_message?: string | null
+          generator_cost_usd?: number | null
+          generator_model?: string | null
+          generator_tokens_in?: number | null
+          generator_tokens_out?: number | null
+          id?: number
+          judge_cost_usd?: number | null
+          judge_decision?: string | null
+          judge_model?: string | null
+          judge_tokens_in?: number | null
+          judge_tokens_out?: number | null
+          outcome?: string
+          splitter_cost_usd?: number | null
+          splitter_model?: string | null
+          splitter_parts?: number | null
+          splitter_tokens_in?: number | null
+          splitter_tokens_out?: number | null
+          started_at?: string
+          tenant_id?: number
+          total_cost_usd?: number | null
+          total_tokens_in?: number | null
+          total_tokens_out?: number | null
+          validator_violations?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_runs_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
