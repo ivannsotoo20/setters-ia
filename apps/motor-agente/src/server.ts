@@ -7,6 +7,13 @@ import { webhookManyChatRoutes } from './routes/webhook-manychat.js';
 import { webhookYCloudRoutes } from './routes/webhook-ycloud.js';
 import { cronSchedulerPlugin } from './plugins/cron-scheduler.js';
 
+declare module 'fastify' {
+  interface FastifyRequest {
+    /** Raw request body (Buffer) — preservado para HMAC verification. */
+    rawBody?: Buffer;
+  }
+}
+
 export async function buildServer(): Promise<FastifyInstance> {
   const app = Fastify({
     logger: {
@@ -22,6 +29,24 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(helmet, { global: true });
   await app.register(cors, { origin: true });
+
+  // Preservar raw body para HMAC verification (Hardening 1.2).
+  // Sustituye el JSON parser default: parsea como Buffer, lo guarda en
+  // request.rawBody, y devuelve el JSON parseado como body para el handler.
+  app.addContentTypeParser(
+    'application/json',
+    { parseAs: 'buffer' },
+    (req, body, done) => {
+      const buf = body as Buffer;
+      req.rawBody = buf;
+      try {
+        const json = buf.length === 0 ? {} : JSON.parse(buf.toString('utf8'));
+        done(null, json);
+      } catch (err) {
+        done(err as Error, undefined);
+      }
+    },
+  );
 
   await app.register(healthRoutes);
   await app.register(webhookManyChatRoutes);

@@ -78,9 +78,16 @@ El motor soporta **varios proveedores BSP** en paralelo, decididos por `integrat
 ### Convenciones
 
 - **Token webhook**: `tenant_tokens.purpose = '<provider>_webhook'` (snake_case). Cada ruta filtra por su purpose.
-- **Credenciales sensibles**: `integration_accounts.credentials.api_key` (encriptado app-side AES-256-GCM — pendiente de implementar).
+- **Credenciales sensibles**: `integration_accounts.credentials_encrypted` (JSONB shape `{"blob":"v1:iv:ct:tag"}`, AES-256-GCM via `apps/motor-agente/src/lib/crypto.ts`). La columna legacy `credentials` (plain) se conserva durante la transición — el helper `decodeCredentialsRow` (`apps/motor-agente/src/lib/integration-credentials.ts`) prefiere `credentials_encrypted` y hace fallback a `credentials` plain. Backfill: `node scripts/encrypt-credentials.mjs`. Requiere env `CREDENTIALS_ENCRYPTION_KEY` (32 bytes hex, generar con `openssl rand -hex 32`).
 - **Datos no sensibles**: `integration_accounts.connection_config` (JSON, plain). Para YCloud incluye `business_phone` (E.164).
 - **Dedup Redis**: prefijo `<provider>:{tenantId}:{external_id_estable}`. YCloud usa el `wamid` del mensaje; ManyChat usa `subscriber_id:timestamp`.
+
+### Verificación HMAC de webhooks (Hardening 1.2)
+
+| Proveedor | Firma | Mecanismo |
+|---|---|---|
+| **YCloud** | ✅ Sí | Header `YCloud-Signature: t=<unix_seconds>,s=<hmac_sha256_hex>`. Signed payload `{ts}.{rawBody}`. Secret se obtiene del panel YCloud (Retrieve a webhook endpoint API) y se guarda en `integration_accounts.webhook_secret`. Implementación: `apps/motor-agente/src/lib/webhook-verify.ts`. Modo configurable vía `YCLOUD_WEBHOOK_VERIFY_MODE=disabled\|warn\|enforce` (default `warn`). En `enforce`, requests sin firma o con firma inválida → 401. Tolerance default 300s anti-replay. |
+| **ManyChat** | ❌ No | ManyChat NO firma webhooks (verificado 2026-04-21). Protección única: token aleatorio en URL `/webhook/manychat/<tenant_token>`. Deuda asumida hasta que Pablo migre a YCloud / Meta Cloud / GHL (Fase 6). |
 
 ## Comandos frecuentes
 

@@ -28,6 +28,15 @@ const envSchema = z.object({
   REDIS_URL: z.string().default('redis://localhost:6379'),
   MANYCHAT_API_BASE: z.string().url().default('https://api.manychat.com'),
   YCLOUD_API_BASE: z.string().url().default('https://api.ycloud.com'),
+  CREDENTIALS_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, 'must be 32 bytes hex (64 chars)')
+    .optional(),
+  // Hardening 1.2 — modo de verificación HMAC del webhook YCloud.
+  //   disabled → no se verifica firma (compat).
+  //   warn     → se verifica si el header llega; si falla, log warn y continúa (default transición).
+  //   enforce  → si la firma falta o es inválida → 401.
+  YCLOUD_WEBHOOK_VERIFY_MODE: z.enum(['disabled', 'warn', 'enforce']).default('warn'),
 });
 
 const parsed = envSchema.safeParse(process.env);

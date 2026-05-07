@@ -4,6 +4,8 @@ import { parseYCloudInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { verifyYCloudSignature } from '../lib/webhook-verify.js';
+import { env } from '../config/env.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
@@ -61,6 +63,51 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(404).send({ error: 'tenant_token invalid or inactive' });
       }
       const { tenantId } = resolved;
+
+      // 1.5. Verificar firma HMAC YCloud (Hardening 1.2)
+      const verifyMode = env.YCLOUD_WEBHOOK_VERIFY_MODE;
+      if (verifyMode !== 'disabled') {
+        const sigHeader = pickHeader(request, 'ycloud-signature');
+        const { data: ia } = await supabase
+          .from('integration_accounts')
+          .select('webhook_secret')
+          .eq('tenant_id', tenantId)
+          .eq('provider', 'ycloud')
+          .eq('is_active', true)
+          .maybeSingle();
+        const webhookSecret = typeof ia?.webhook_secret === 'string' ? ia.webhook_secret : '';
+
+        if (!webhookSecret) {
+          request.log.warn(
+            { tenantId, verifyMode },
+            'webhook-ycloud: no webhook_secret configurado en integration_accounts',
+          );
+          if (verifyMode === 'enforce') {
+            return reply.code(401).send({ error: 'webhook_secret not configured' });
+          }
+        } else {
+          const rawBody =
+            request.rawBody ??
+            Buffer.from(typeof request.body === 'string' ? request.body : JSON.stringify(request.body ?? {}), 'utf8');
+          const verifyResult = verifyYCloudSignature({
+            rawBody,
+            signatureHeader: sigHeader,
+            secret: webhookSecret,
+          });
+          if (!verifyResult.ok) {
+            const reason = verifyResult.reason;
+            request.log.warn(
+              { tenantId, verifyMode, reason, hasSignature: Boolean(sigHeader) },
+              `webhook-ycloud: signature verification failed (${reason})`,
+            );
+            if (verifyMode === 'enforce') {
+              return reply.code(401).send({ error: 'invalid signature', reason });
+            }
+          } else {
+            request.log.debug({ tenantId }, 'webhook-ycloud: signature OK');
+          }
+        }
+      }
 
       // 2. Parsear payload con Zod (Meta-style o native)
       let parseResult;
@@ -151,4 +198,11 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
       });
     },
   );
+}
+
+function pickHeader(req: FastifyRequest, name: string): string | undefined {
+  const v = req.headers[name.toLowerCase()];
+  if (typeof v === 'string') return v;
+  if (Array.isArray(v) && v.length > 0 && typeof v[0] === 'string') return v[0];
+  return undefined;
 }
