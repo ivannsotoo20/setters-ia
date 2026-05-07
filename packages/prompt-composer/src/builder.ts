@@ -7,15 +7,18 @@ import type {
 } from './types.js';
 
 /**
- * Lista de block_keys que se requieren siempre para una composicion valida.
- * Si falta uno de estos, la composicion falla.
+ * Lista de block_keys que se requieren siempre para una composición válida.
+ * Si falta uno de estos, la composición falla.
+ *
+ * Nota v4: el Cerebro es `core_v4_base`. El Coach sigue como `coach_v3` por compat
+ * (los Coaches concretos no se han migrado a v4 todavía).
  */
-const REQUIRED_BLOCK_KEYS = ['core_v3_base', 'coach_v3'] as const;
+const REQUIRED_BLOCK_KEYS = ['core_v4_base', 'coach_v3'] as const;
 
 /**
  * Construye el system prompt a partir de un array de filas de prompt_blocks.
  *
- * Funcion pura: no toca DB, facil de testear.
+ * Función pura: no toca DB, fácil de testear.
  */
 export function buildComposedPrompt(
   rows: PromptBlockRow[],
@@ -24,10 +27,10 @@ export function buildComposedPrompt(
   const {
     tenantId,
     currentPhase,
-    isQualification = false,
     isHandoff = false,
-    includePipeline = false,
     includeObjections = true,
+    includeDescualificacion = true,
+    includeOutputContract = true,
     cacheStrategy = 'two-point',
   } = options;
 
@@ -35,7 +38,7 @@ export function buildComposedPrompt(
     throw new Error(`composePrompt: currentPhase must be 1..6, got ${currentPhase}`);
   }
 
-  // Indice por block_key. Si hay duplicados (p.ej. core compartido y coach por tenant),
+  // Índice por block_key. Si hay duplicados (p.ej. core compartido y coach por tenant),
   // preferimos el que matchea tenant (scope tenant) sobre el compartido.
   const byKey = new Map<string, PromptBlockRow>();
   for (const r of rows) {
@@ -52,16 +55,16 @@ export function buildComposedPrompt(
     }
   }
 
-  // Orden de inclusion (el orden en que aparecen en el system prompt final).
+  // Orden de inclusión (el orden en que aparecen en el system prompt final).
   const wantedKeys: string[] = [
-    'core_v3_base',
+    'core_v4_base',
     'coach_v3',
-    `fase_${currentPhase}_v3`,
+    `fase_${currentPhase}_v4`,
   ];
-  if (isQualification) wantedKeys.push('cualificacion_v3');
-  if (isHandoff) wantedKeys.push('handoff_v3');
-  if (includePipeline) wantedKeys.push('pipeline_v3');
-  if (includeObjections) wantedKeys.push('objeciones_v3');
+  if (isHandoff) wantedKeys.push('handoff_v4');
+  if (includeObjections) wantedKeys.push('objeciones_v4');
+  if (includeDescualificacion) wantedKeys.push('descualificacion_v4');
+  if (includeOutputContract) wantedKeys.push('output_contract_v4');
 
   // Validar requeridos
   const missingRequired = REQUIRED_BLOCK_KEYS.filter((k) => !byKey.has(k));
@@ -122,13 +125,13 @@ function applyCacheStrategy(
   if (blocks.length === 0 || strategy === 'none') return;
 
   if (strategy === 'single-point') {
-    // Solo cachea al final del prefix (todo el system menos el ultimo turno).
+    // Solo cachea al final del prefix (todo el system menos el último turno).
     blocks[blocks.length - 1]!.cached = true;
     return;
   }
 
-  // two-point (default): breakpoint tras core_v3_base + breakpoint al final.
-  const coreIdx = blocks.findIndex((b) => b.key === 'core_v3_base');
+  // two-point (default): breakpoint tras core_v4_base + breakpoint al final.
+  const coreIdx = blocks.findIndex((b) => b.key === 'core_v4_base');
   if (coreIdx >= 0) {
     blocks[coreIdx]!.cached = true;
   }

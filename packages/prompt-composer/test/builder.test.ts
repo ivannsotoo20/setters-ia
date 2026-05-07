@@ -13,78 +13,98 @@ function makeRow(
   return { block_key, sort_order, tenant_id, content };
 }
 
-const sharedRows: PromptBlockRow[] = [
-  makeRow('core_v3_base', 0, null),
-  makeRow('fase_1_v3', 10, null),
-  makeRow('fase_2_v3', 20, null),
-  makeRow('fase_3_v3', 30, null),
-  makeRow('fase_4_v3', 40, null),
-  makeRow('fase_5_v3', 50, null),
-  makeRow('fase_6_v3', 60, null),
-  makeRow('cualificacion_v3', 70, null),
-  makeRow('handoff_v3', 80, null),
-  makeRow('pipeline_v3', 90, null),
-  makeRow('objeciones_v3', 100, null),
+const sharedRowsV4: PromptBlockRow[] = [
+  makeRow('core_v4_base', 0, null),
+  makeRow('fase_1_v4', 10, null),
+  makeRow('fase_2_v4', 20, null),
+  makeRow('fase_3_v4', 30, null),
+  makeRow('fase_4_v4', 40, null),
+  makeRow('fase_5_v4', 50, null),
+  makeRow('fase_6_v4', 60, null),
+  makeRow('objeciones_v4', 70, null),
+  makeRow('descualificacion_v4', 80, null),
+  makeRow('handoff_v4', 90, null),
+  makeRow('output_contract_v4', 100, null),
 ];
 
 const coachRow: PromptBlockRow = makeRow('coach_v3', 5, TENANT_ID);
 
-describe('buildComposedPrompt', () => {
-  it('composes default prompt (phase 1) with core + coach + fase_1 + objeciones', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+describe('buildComposedPrompt (v4)', () => {
+  it('composes default prompt (phase 1) with core + coach + fase_1 + objeciones + descualificacion + output_contract', () => {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
 
     expect(out.metadata.blocksLoaded).toEqual([
-      'core_v3_base',
+      'core_v4_base',
       'coach_v3',
-      'fase_1_v3',
-      'objeciones_v3',
+      'fase_1_v4',
+      'objeciones_v4',
+      'descualificacion_v4',
+      'output_contract_v4',
     ]);
-    expect(out.blocks).toHaveLength(4);
+    expect(out.blocks).toHaveLength(6);
     expect(out.blocks[1]!.scope).toBe('tenant'); // coach
     expect(out.blocks[0]!.scope).toBe('shared'); // core
   });
 
-  it('includes qualification + handoff + pipeline when flags are set', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+  it('includes handoff when isHandoff=true', () => {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 4,
-      isQualification: true,
       isHandoff: true,
-      includePipeline: true,
     });
 
     expect(out.metadata.blocksLoaded).toEqual([
-      'core_v3_base',
+      'core_v4_base',
       'coach_v3',
-      'fase_4_v3',
-      'cualificacion_v3',
-      'handoff_v3',
-      'pipeline_v3',
-      'objeciones_v3',
+      'fase_4_v4',
+      'handoff_v4',
+      'objeciones_v4',
+      'descualificacion_v4',
+      'output_contract_v4',
     ]);
   });
 
   it('excludes objeciones when includeObjections is false', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       includeObjections: false,
     });
 
-    expect(out.metadata.blocksLoaded).not.toContain('objeciones_v3');
+    expect(out.metadata.blocksLoaded).not.toContain('objeciones_v4');
   });
 
-  it('applies two-point cache strategy by default', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+  it('excludes descualificacion when includeDescualificacion is false', () => {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+      tenantId: TENANT_ID,
+      currentPhase: 2,
+      includeDescualificacion: false,
+    });
+
+    expect(out.metadata.blocksLoaded).not.toContain('descualificacion_v4');
+  });
+
+  it('excludes output_contract when includeOutputContract is false', () => {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+      tenantId: TENANT_ID,
+      currentPhase: 2,
+      includeOutputContract: false,
+    });
+
+    expect(out.metadata.blocksLoaded).not.toContain('output_contract_v4');
+  });
+
+  it('applies two-point cache strategy by default (core_v4_base + last block cached)', () => {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
 
     const cached = out.blocks.filter((b) => b.cached);
-    expect(cached.map((b) => b.key)).toEqual(['core_v3_base', 'objeciones_v3']);
+    expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
     expect(out.metadata.cacheBreakpoints).toBe(2);
 
     // systemContent debe reflejar el cache_control
@@ -96,7 +116,7 @@ describe('buildComposedPrompt', () => {
   });
 
   it('single-point strategy caches only the last block', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       cacheStrategy: 'single-point',
@@ -104,11 +124,11 @@ describe('buildComposedPrompt', () => {
 
     const cached = out.blocks.filter((b) => b.cached);
     expect(cached).toHaveLength(1);
-    expect(cached[0]!.key).toBe('objeciones_v3');
+    expect(cached[0]!.key).toBe('output_contract_v4');
   });
 
   it('none strategy emits zero cache_control markers', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       cacheStrategy: 'none',
@@ -122,42 +142,42 @@ describe('buildComposedPrompt', () => {
 
   it('throws when coach_v3 is missing', () => {
     expect(() =>
-      buildComposedPrompt(sharedRows, {
+      buildComposedPrompt(sharedRowsV4, {
         tenantId: TENANT_ID,
         currentPhase: 1,
       }),
     ).toThrow(/missing required blocks: coach_v3/);
   });
 
-  it('throws when core_v3_base is missing', () => {
-    const rowsNoCore = sharedRows.filter((r) => r.block_key !== 'core_v3_base');
+  it('throws when core_v4_base is missing', () => {
+    const rowsNoCore = sharedRowsV4.filter((r) => r.block_key !== 'core_v4_base');
     expect(() =>
       buildComposedPrompt([...rowsNoCore, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 1,
       }),
-    ).toThrow(/missing required blocks: core_v3_base/);
+    ).toThrow(/missing required blocks: core_v4_base/);
   });
 
   it('throws when the requested phase block is missing', () => {
-    const rowsNoFase3 = sharedRows.filter((r) => r.block_key !== 'fase_3_v3');
+    const rowsNoFase3 = sharedRowsV4.filter((r) => r.block_key !== 'fase_3_v4');
     expect(() =>
       buildComposedPrompt([...rowsNoFase3, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 3,
       }),
-    ).toThrow(/missing blocks for current options: fase_3_v3/);
+    ).toThrow(/missing blocks for current options: fase_3_v4/);
   });
 
   it('rejects out-of-range currentPhase', () => {
     expect(() =>
-      buildComposedPrompt([...sharedRows, coachRow], {
+      buildComposedPrompt([...sharedRowsV4, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 7,
       }),
     ).toThrow(/currentPhase must be 1..6/);
     expect(() =>
-      buildComposedPrompt([...sharedRows, coachRow], {
+      buildComposedPrompt([...sharedRowsV4, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 0,
       }),
@@ -167,8 +187,8 @@ describe('buildComposedPrompt', () => {
   it('picks tenant coach over a hypothetical shared coach with same key', () => {
     const sharedCoach = makeRow('coach_v3', 5, null, '[shared fallback coach]');
     const tenantCoach = makeRow('coach_v3', 5, TENANT_ID, '[tenant coach]');
-    // Orden adverso a proposito: shared primero
-    const out = buildComposedPrompt([...sharedRows, sharedCoach, tenantCoach], {
+    // Orden adverso a propósito: shared primero
+    const out = buildComposedPrompt([...sharedRowsV4, sharedCoach, tenantCoach], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
@@ -178,7 +198,7 @@ describe('buildComposedPrompt', () => {
   });
 
   it('metadata.totalChars matches concatenated content length', () => {
-    const out = buildComposedPrompt([...sharedRows, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
