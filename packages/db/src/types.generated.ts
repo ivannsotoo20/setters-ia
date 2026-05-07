@@ -1,4 +1,4 @@
-// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-04-20).
+// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-05).
 // Do not edit manually. Regenerate with: pnpm db:generate-types
 // Or from Claude Code with MCP: mcp__supabase-fyzon__generate_typescript_types.
 
@@ -8,457 +8,1302 @@ export type Json =
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: '14.5';
-  };
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
       channels: {
         Row: {
-          channel_type: Database['public']['Enums']['channel_type'];
-          created_at: string;
-          id: number;
-          is_active: boolean;
-          label: string | null;
-          tenant_id: number;
-          via_provider: Database['public']['Enums']['channel_provider'];
-        };
+          channel_type: Database["public"]["Enums"]["channel_type"]
+          created_at: string
+          id: number
+          is_active: boolean
+          label: string | null
+          tenant_id: number
+          via_provider: Database["public"]["Enums"]["channel_provider"]
+        }
         Insert: {
-          channel_type: Database['public']['Enums']['channel_type'];
-          created_at?: string;
-          id?: number;
-          is_active?: boolean;
-          label?: string | null;
-          tenant_id: number;
-          via_provider?: Database['public']['Enums']['channel_provider'];
-        };
+          channel_type: Database["public"]["Enums"]["channel_type"]
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          label?: string | null
+          tenant_id: number
+          via_provider?: Database["public"]["Enums"]["channel_provider"]
+        }
         Update: {
-          channel_type?: Database['public']['Enums']['channel_type'];
-          created_at?: string;
-          id?: number;
-          is_active?: boolean;
-          label?: string | null;
-          tenant_id?: number;
-          via_provider?: Database['public']['Enums']['channel_provider'];
-        };
-      };
+          channel_type?: Database["public"]["Enums"]["channel_type"]
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          label?: string | null
+          tenant_id?: number
+          via_provider?: Database["public"]["Enums"]["channel_provider"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coach_ai_knowledge: {
         Row: {
-          content: string;
-          created_at: string;
-          embedding: string | null;
-          id: number;
-          is_active: boolean;
-          metadata: Json;
-          tenant_id: number;
-          title: string | null;
-          updated_at: string;
-        };
+          content: string
+          created_at: string
+          embedding: string | null
+          id: number
+          is_active: boolean
+          metadata: Json
+          tenant_id: number
+          title: string | null
+          updated_at: string
+        }
         Insert: {
-          content: string;
-          created_at?: string;
-          embedding?: string | null;
-          id?: number;
-          is_active?: boolean;
-          metadata?: Json;
-          tenant_id: number;
-          title?: string | null;
-          updated_at?: string;
-        };
+          content: string
+          created_at?: string
+          embedding?: string | null
+          id?: number
+          is_active?: boolean
+          metadata?: Json
+          tenant_id: number
+          title?: string | null
+          updated_at?: string
+        }
         Update: {
-          content?: string;
-          created_at?: string;
-          embedding?: string | null;
-          id?: number;
-          is_active?: boolean;
-          metadata?: Json;
-          tenant_id?: number;
-          title?: string | null;
-          updated_at?: string;
-        };
-      };
+          content?: string
+          created_at?: string
+          embedding?: string | null
+          id?: number
+          is_active?: boolean
+          metadata?: Json
+          tenant_id?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coach_ai_knowledge_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_events: {
         Row: {
-          conversation_id: number;
-          created_at: string;
-          event_data: Json;
-          event_type: string;
-          id: number;
-          tenant_id: number;
-        };
+          conversation_id: number
+          created_at: string
+          event_data: Json
+          event_type: string
+          id: number
+          tenant_id: number
+        }
         Insert: {
-          conversation_id: number;
-          created_at?: string;
-          event_data?: Json;
-          event_type: string;
-          id?: number;
-          tenant_id: number;
-        };
+          conversation_id: number
+          created_at?: string
+          event_data?: Json
+          event_type: string
+          id?: number
+          tenant_id: number
+        }
         Update: {
-          conversation_id?: number;
-          created_at?: string;
-          event_data?: Json;
-          event_type?: string;
-          id?: number;
-          tenant_id?: number;
-        };
-      };
+          conversation_id?: number
+          created_at?: string
+          event_data?: Json
+          event_type?: string
+          id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_events_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_messages: {
         Row: {
-          content: string | null;
-          content_type: Database['public']['Enums']['message_content_type'];
-          conversation_id: number;
-          id: number;
-          media_mime: string | null;
-          media_url: string | null;
-          sent_at: string;
-          source: Database['public']['Enums']['message_source'];
-          tenant_id: number;
-          transcription: string | null;
-        };
+          content: string | null
+          content_type: Database["public"]["Enums"]["message_content_type"]
+          conversation_id: number
+          id: number
+          media_mime: string | null
+          media_url: string | null
+          sent_at: string
+          source: Database["public"]["Enums"]["message_source"]
+          tenant_id: number
+          transcription: string | null
+        }
         Insert: {
-          content?: string | null;
-          content_type?: Database['public']['Enums']['message_content_type'];
-          conversation_id: number;
-          id?: number;
-          media_mime?: string | null;
-          media_url?: string | null;
-          sent_at?: string;
-          source: Database['public']['Enums']['message_source'];
-          tenant_id: number;
-          transcription?: string | null;
-        };
+          content?: string | null
+          content_type?: Database["public"]["Enums"]["message_content_type"]
+          conversation_id: number
+          id?: number
+          media_mime?: string | null
+          media_url?: string | null
+          sent_at?: string
+          source: Database["public"]["Enums"]["message_source"]
+          tenant_id: number
+          transcription?: string | null
+        }
         Update: {
-          content?: string | null;
-          content_type?: Database['public']['Enums']['message_content_type'];
-          conversation_id?: number;
-          id?: number;
-          media_mime?: string | null;
-          media_url?: string | null;
-          sent_at?: string;
-          source?: Database['public']['Enums']['message_source'];
-          tenant_id?: number;
-          transcription?: string | null;
-        };
-      };
+          content?: string | null
+          content_type?: Database["public"]["Enums"]["message_content_type"]
+          conversation_id?: number
+          id?: number
+          media_mime?: string | null
+          media_url?: string | null
+          sent_at?: string
+          source?: Database["public"]["Enums"]["message_source"]
+          tenant_id?: number
+          transcription?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
-          call_scheduled_at: string | null;
-          channel_id: number;
-          created_at: string;
-          current_context: string | null;
-          custom_fields: Json;
-          direction: Database['public']['Enums']['conversation_direction'];
-          emotion: string | null;
-          general_context: string | null;
-          general_motivation: string | null;
-          goal: string | null;
-          handoff_at: string | null;
-          handoff_cause: Database['public']['Enums']['handoff_cause'] | null;
-          handoff_reason: string | null;
-          id: number;
-          is_call_scheduling_link_sent: boolean;
-          is_handoff_to_human: boolean;
-          is_qualified: boolean | null;
-          last_message_at: string | null;
-          lead_id: number;
-          next_action: string | null;
-          phase_message_count: number;
-          phase_number: number;
-          priority: Database['public']['Enums']['conversation_priority'] | null;
-          problem: string | null;
-          state: Database['public']['Enums']['conversation_state'];
-          tenant_id: number;
-          updated_at: string;
-          urgency: string | null;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          call_scheduled_at: string | null
+          channel_id: number
+          created_at: string
+          current_context: string | null
+          custom_fields: Json
+          direction: Database["public"]["Enums"]["conversation_direction"]
+          emotion: string | null
+          general_context: string | null
+          general_motivation: string | null
+          goal: string | null
+          handoff_at: string | null
+          handoff_cause: Database["public"]["Enums"]["handoff_cause"] | null
+          handoff_reason: string | null
+          id: number
+          is_call_scheduling_link_sent: boolean
+          is_handoff_to_human: boolean
+          is_qualified: boolean | null
+          last_message_at: string | null
+          lead_id: number
+          next_action: string | null
+          phase_message_count: number
+          phase_number: number
+          priority: Database["public"]["Enums"]["conversation_priority"] | null
+          problem: string | null
+          state: Database["public"]["Enums"]["conversation_state"]
+          tenant_id: number
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          call_scheduled_at?: string | null
+          channel_id: number
+          created_at?: string
+          current_context?: string | null
+          custom_fields?: Json
+          direction?: Database["public"]["Enums"]["conversation_direction"]
+          emotion?: string | null
+          general_context?: string | null
+          general_motivation?: string | null
+          goal?: string | null
+          handoff_at?: string | null
+          handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
+          handoff_reason?: string | null
+          id?: number
+          is_call_scheduling_link_sent?: boolean
+          is_handoff_to_human?: boolean
+          is_qualified?: boolean | null
+          last_message_at?: string | null
+          lead_id: number
+          next_action?: string | null
+          phase_message_count?: number
+          phase_number?: number
+          priority?: Database["public"]["Enums"]["conversation_priority"] | null
+          problem?: string | null
+          state?: Database["public"]["Enums"]["conversation_state"]
+          tenant_id: number
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          call_scheduled_at?: string | null
+          channel_id?: number
+          created_at?: string
+          current_context?: string | null
+          custom_fields?: Json
+          direction?: Database["public"]["Enums"]["conversation_direction"]
+          emotion?: string | null
+          general_context?: string | null
+          general_motivation?: string | null
+          goal?: string | null
+          handoff_at?: string | null
+          handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
+          handoff_reason?: string | null
+          id?: number
+          is_call_scheduling_link_sent?: boolean
+          is_handoff_to_human?: boolean
+          is_qualified?: boolean | null
+          last_message_at?: string | null
+          lead_id?: number
+          next_action?: string | null
+          phase_message_count?: number
+          phase_number?: number
+          priority?: Database["public"]["Enums"]["conversation_priority"] | null
+          problem?: string | null
+          state?: Database["public"]["Enums"]["conversation_state"]
+          tenant_id?: number
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_ups: {
         Row: {
-          attachment_resource_id: number | null;
-          created_at: string;
-          follow_up_delay: string;
-          id: number;
-          is_active: boolean;
-          message_template: string;
-          name: string;
-          tenant_id: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          attachment_resource_id: number | null
+          created_at: string
+          follow_up_delay: string
+          id: number
+          is_active: boolean
+          message_template: string
+          name: string
+          tenant_id: number
+        }
+        Insert: {
+          attachment_resource_id?: number | null
+          created_at?: string
+          follow_up_delay: string
+          id?: number
+          is_active?: boolean
+          message_template: string
+          name: string
+          tenant_id: number
+        }
+        Update: {
+          attachment_resource_id?: number | null
+          created_at?: string
+          follow_up_delay?: string
+          id?: number
+          is_active?: boolean
+          message_template?: string
+          name?: string
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_ups_attachment_resource_id_fkey"
+            columns: ["attachment_resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ignored_users: {
         Row: {
-          channel_id: number | null;
-          created_at: string;
-          external_user_id: string;
-          id: number;
-          reason: string | null;
-          tenant_id: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          channel_id: number | null
+          created_at: string
+          external_user_id: string
+          id: number
+          reason: string | null
+          tenant_id: number
+        }
+        Insert: {
+          channel_id?: number | null
+          created_at?: string
+          external_user_id: string
+          id?: number
+          reason?: string | null
+          tenant_id: number
+        }
+        Update: {
+          channel_id?: number | null
+          created_at?: string
+          external_user_id?: string
+          id?: number
+          reason?: string | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ignored_users_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ignored_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_accounts: {
         Row: {
-          channel_id: number;
-          connection_config: Json;
-          created_at: string;
-          credentials: Json;
-          id: number;
-          is_active: boolean;
-          provider: Database['public']['Enums']['channel_provider'];
-          tenant_id: number;
-          updated_at: string;
-          webhook_secret: string;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          channel_id: number
+          connection_config: Json
+          created_at: string
+          credentials: Json
+          id: number
+          is_active: boolean
+          provider: Database["public"]["Enums"]["channel_provider"]
+          tenant_id: number
+          updated_at: string
+          webhook_secret: string
+        }
+        Insert: {
+          channel_id: number
+          connection_config?: Json
+          created_at?: string
+          credentials?: Json
+          id?: number
+          is_active?: boolean
+          provider: Database["public"]["Enums"]["channel_provider"]
+          tenant_id: number
+          updated_at?: string
+          webhook_secret?: string
+        }
+        Update: {
+          channel_id?: number
+          connection_config?: Json
+          created_at?: string
+          credentials?: Json
+          id?: number
+          is_active?: boolean
+          provider?: Database["public"]["Enums"]["channel_provider"]
+          tenant_id?: number
+          updated_at?: string
+          webhook_secret?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_accounts_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integration_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lead_external_ids: {
         Row: {
-          created_at: string;
-          external_user_id: string;
-          id: number;
-          integration_account_id: number;
-          lead_id: number;
-          tenant_id: number;
-          updated_at: string;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          created_at: string
+          external_user_id: string
+          id: number
+          integration_account_id: number
+          lead_id: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          external_user_id: string
+          id?: number
+          integration_account_id: number
+          lead_id: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          external_user_id?: string
+          id?: number
+          integration_account_id?: number
+          lead_id?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_external_ids_integration_account_id_fkey"
+            columns: ["integration_account_id"]
+            isOneToOne: false
+            referencedRelation: "integration_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_external_ids_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_external_ids_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
-          channel_id: number;
-          created_at: string;
-          email: string | null;
-          external_id: string;
-          first_name: string | null;
-          id: number;
-          last_name: string | null;
-          location: string | null;
-          notes: string | null;
-          phone: string | null;
-          source_channel: string | null;
-          tenant_id: number;
-          updated_at: string;
-          username: string | null;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          channel_id: number
+          created_at: string
+          email: string | null
+          external_id: string
+          first_name: string | null
+          id: number
+          last_name: string | null
+          location: string | null
+          notes: string | null
+          phone: string | null
+          source_channel: string | null
+          tenant_id: number
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          channel_id: number
+          created_at?: string
+          email?: string | null
+          external_id: string
+          first_name?: string | null
+          id?: number
+          last_name?: string | null
+          location?: string | null
+          notes?: string | null
+          phone?: string | null
+          source_channel?: string | null
+          tenant_id: number
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          channel_id?: number
+          created_at?: string
+          email?: string | null
+          external_id?: string
+          first_name?: string | null
+          id?: number
+          last_name?: string | null
+          location?: string | null
+          notes?: string | null
+          phone?: string | null
+          source_channel?: string | null
+          tenant_id?: number
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       llm_calls: {
         Row: {
-          conversation_id: number | null;
-          cost: number | null;
-          created_at: string;
-          error_message: string | null;
-          id: number;
-          latency_ms: number | null;
-          model: string;
-          provider: Database['public']['Enums']['llm_provider'];
-          request_payload: Json | null;
-          response_payload: Json | null;
-          role: Database['public']['Enums']['llm_role'];
-          status: Database['public']['Enums']['llm_call_status'];
-          tenant_id: number;
-          tokens_in: number | null;
-          tokens_in_cached: number | null;
-          tokens_out: number | null;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          conversation_id: number | null
+          cost: number | null
+          created_at: string
+          error_message: string | null
+          id: number
+          latency_ms: number | null
+          model: string
+          provider: Database["public"]["Enums"]["llm_provider"]
+          request_payload: Json | null
+          response_payload: Json | null
+          role: Database["public"]["Enums"]["llm_role"]
+          status: Database["public"]["Enums"]["llm_call_status"]
+          tenant_id: number
+          tokens_in: number | null
+          tokens_in_cached: number | null
+          tokens_out: number | null
+        }
+        Insert: {
+          conversation_id?: number | null
+          cost?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          latency_ms?: number | null
+          model: string
+          provider: Database["public"]["Enums"]["llm_provider"]
+          request_payload?: Json | null
+          response_payload?: Json | null
+          role: Database["public"]["Enums"]["llm_role"]
+          status: Database["public"]["Enums"]["llm_call_status"]
+          tenant_id: number
+          tokens_in?: number | null
+          tokens_in_cached?: number | null
+          tokens_out?: number | null
+        }
+        Update: {
+          conversation_id?: number | null
+          cost?: number | null
+          created_at?: string
+          error_message?: string | null
+          id?: number
+          latency_ms?: number | null
+          model?: string
+          provider?: Database["public"]["Enums"]["llm_provider"]
+          request_payload?: Json | null
+          response_payload?: Json | null
+          role?: Database["public"]["Enums"]["llm_role"]
+          status?: Database["public"]["Enums"]["llm_call_status"]
+          tenant_id?: number
+          tokens_in?: number | null
+          tokens_in_cached?: number | null
+          tokens_out?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_calls_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_calls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       llm_configs: {
         Row: {
-          api_key_encrypted: string;
-          created_at: string;
-          id: number;
-          is_active: boolean;
-          model: string;
-          price_cached_input_per_1m: number | null;
-          price_input_per_1m: number | null;
-          price_output_per_1m: number | null;
-          provider: Database['public']['Enums']['llm_provider'];
-          role: Database['public']['Enums']['llm_role'];
-          tenant_id: number;
-          updated_at: string;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          api_key_encrypted: string
+          created_at: string
+          id: number
+          is_active: boolean
+          model: string
+          price_cached_input_per_1m: number | null
+          price_input_per_1m: number | null
+          price_output_per_1m: number | null
+          provider: Database["public"]["Enums"]["llm_provider"]
+          role: Database["public"]["Enums"]["llm_role"]
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          api_key_encrypted: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          model: string
+          price_cached_input_per_1m?: number | null
+          price_input_per_1m?: number | null
+          price_output_per_1m?: number | null
+          provider?: Database["public"]["Enums"]["llm_provider"]
+          role?: Database["public"]["Enums"]["llm_role"]
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          api_key_encrypted?: string
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          model?: string
+          price_cached_input_per_1m?: number | null
+          price_input_per_1m?: number | null
+          price_output_per_1m?: number | null
+          provider?: Database["public"]["Enums"]["llm_provider"]
+          role?: Database["public"]["Enums"]["llm_role"]
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "llm_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_schedules: {
         Row: {
-          attachment_url: string | null;
-          attempts: number;
-          conversation_id: number;
-          created_at: string;
-          has_attachment: boolean;
-          id: number;
-          integration_account_id: number;
-          last_error: string | null;
-          message: string | null;
-          message_type: Database['public']['Enums']['schedule_message_kind'];
-          resource_id: number | null;
-          resource_type: Database['public']['Enums']['resource_type'] | null;
-          scheduled_at: string;
-          sent_at: string | null;
-          status: Database['public']['Enums']['schedule_status'];
-          tenant_id: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          attachment_url: string | null
+          attempts: number
+          conversation_id: number
+          created_at: string
+          has_attachment: boolean
+          id: number
+          integration_account_id: number
+          last_error: string | null
+          message: string | null
+          message_type: Database["public"]["Enums"]["schedule_message_kind"]
+          resource_id: number | null
+          resource_type: Database["public"]["Enums"]["resource_type"] | null
+          scheduled_at: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["schedule_status"]
+          tenant_id: number
+        }
+        Insert: {
+          attachment_url?: string | null
+          attempts?: number
+          conversation_id: number
+          created_at?: string
+          has_attachment?: boolean
+          id?: number
+          integration_account_id: number
+          last_error?: string | null
+          message?: string | null
+          message_type?: Database["public"]["Enums"]["schedule_message_kind"]
+          resource_id?: number | null
+          resource_type?: Database["public"]["Enums"]["resource_type"] | null
+          scheduled_at: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["schedule_status"]
+          tenant_id: number
+        }
+        Update: {
+          attachment_url?: string | null
+          attempts?: number
+          conversation_id?: number
+          created_at?: string
+          has_attachment?: boolean
+          id?: number
+          integration_account_id?: number
+          last_error?: string | null
+          message?: string | null
+          message_type?: Database["public"]["Enums"]["schedule_message_kind"]
+          resource_id?: number | null
+          resource_type?: Database["public"]["Enums"]["resource_type"] | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["schedule_status"]
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_schedules_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_schedules_integration_account_id_fkey"
+            columns: ["integration_account_id"]
+            isOneToOne: false
+            referencedRelation: "integration_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_schedules_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phases: {
         Row: {
-          description: string | null;
-          max_messages: number;
-          name: string;
-          number: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          description: string | null
+          max_messages: number
+          name: string
+          number: number
+        }
+        Insert: {
+          description?: string | null
+          max_messages?: number
+          name: string
+          number: number
+        }
+        Update: {
+          description?: string | null
+          max_messages?: number
+          name?: string
+          number?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
-          created_at: string;
-          email: string;
-          full_name: string | null;
-          id: string;
-          role: Database['public']['Enums']['profile_role'];
-          tenant_id: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["profile_role"]
+          tenant_id: number
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          role?: Database["public"]["Enums"]["profile_role"]
+          tenant_id: number
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["profile_role"]
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompt_blocks: {
         Row: {
-          block_key: string;
-          channel_override: Database['public']['Enums']['channel_type'] | null;
-          content: string;
-          created_at: string;
-          created_by: string | null;
-          id: number;
-          is_active: boolean;
-          sort_order: number;
-          tenant_id: number | null;
-          updated_at: string;
-          version: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          block_key: string
+          channel_override: Database["public"]["Enums"]["channel_type"] | null
+          content: string
+          created_at: string
+          created_by: string | null
+          id: number
+          is_active: boolean
+          sort_order: number
+          tenant_id: number | null
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          block_key: string
+          channel_override?: Database["public"]["Enums"]["channel_type"] | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          is_active?: boolean
+          sort_order?: number
+          tenant_id?: number | null
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          block_key?: string
+          channel_override?: Database["public"]["Enums"]["channel_type"] | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          is_active?: boolean
+          sort_order?: number
+          tenant_id?: number | null
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_blocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       resources: {
         Row: {
-          created_at: string;
-          description: string | null;
-          id: number;
-          is_active: boolean;
-          mime_type: string | null;
-          name: string;
-          resource_type: Database['public']['Enums']['resource_type'];
-          storage_path: string | null;
-          tenant_id: number;
-          url: string | null;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          created_at: string
+          description: string | null
+          id: number
+          is_active: boolean
+          mime_type: string | null
+          name: string
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          storage_path: string | null
+          tenant_id: number
+          url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          mime_type?: string | null
+          name: string
+          resource_type: Database["public"]["Enums"]["resource_type"]
+          storage_path?: string | null
+          tenant_id: number
+          url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          is_active?: boolean
+          mime_type?: string | null
+          name?: string
+          resource_type?: Database["public"]["Enums"]["resource_type"]
+          storage_path?: string | null
+          tenant_id?: number
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "resources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_configs: {
         Row: {
-          active_conversation_delay: string;
-          created_at: string;
-          debounce_window_seconds: number;
-          idle_conversation_delay: string;
-          max_messages_per_conversation: number;
-          tenant_id: number;
-          timezone: string;
-          updated_at: string;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          active_conversation_delay: string
+          created_at: string
+          debounce_window_seconds: number
+          idle_conversation_delay: string
+          max_messages_per_conversation: number
+          tenant_id: number
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          active_conversation_delay?: string
+          created_at?: string
+          debounce_window_seconds?: number
+          idle_conversation_delay?: string
+          max_messages_per_conversation?: number
+          tenant_id: number
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          active_conversation_delay?: string
+          created_at?: string
+          debounce_window_seconds?: number
+          idle_conversation_delay?: string
+          max_messages_per_conversation?: number
+          tenant_id?: number
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_schedules: {
         Row: {
-          created_at: string;
-          day_of_week: number;
-          end_time: string;
-          id: number;
-          is_active: boolean;
-          schedule_type: string;
-          start_time: string;
-          tenant_id: number;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: number
+          is_active: boolean
+          schedule_type: string
+          start_time: string
+          tenant_id: number
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: number
+          is_active?: boolean
+          schedule_type?: string
+          start_time: string
+          tenant_id: number
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: number
+          is_active?: boolean
+          schedule_type?: string
+          start_time?: string
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_tokens: {
         Row: {
-          created_at: string;
-          id: number;
-          is_active: boolean;
-          purpose: string;
-          revoked_at: string | null;
-          tenant_id: number;
-          token: string;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
+          created_at: string
+          id: number
+          is_active: boolean
+          purpose: string
+          revoked_at: string | null
+          tenant_id: number
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          purpose?: string
+          revoked_at?: string | null
+          tenant_id: number
+          token?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          purpose?: string
+          revoked_at?: string | null
+          tenant_id?: number
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
-          created_at: string;
-          id: number;
-          is_active: boolean;
-          name: string;
-          onboarded_at: string | null;
-          settings: Json;
-          slug: string;
-          updated_at: string;
-        };
-        Insert: Record<string, unknown>;
-        Update: Record<string, unknown>;
-      };
-    };
-    Views: Record<string, never>;
+          created_at: string
+          id: number
+          is_active: boolean
+          name: string
+          onboarded_at: string | null
+          settings: Json
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name: string
+          onboarded_at?: string | null
+          settings?: Json
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          name?: string
+          onboarded_at?: string | null
+          settings?: Json
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
-      tenant_id_for_user: { Args: never; Returns: number };
-    };
+      tenant_id_for_user: { Args: never; Returns: number }
+    }
     Enums: {
-      channel_provider: 'manychat' | 'meta_cloud' | 'ghl' | 'other';
-      channel_type: 'whatsapp' | 'instagram_dm' | 'facebook_messenger';
-      conversation_direction: 'inbound' | 'outbound' | 'untagged';
-      conversation_priority: 'alta' | 'media' | 'baja';
-      conversation_state: 'active' | 'paused' | 'stopped' | 'closed';
+      channel_provider: "manychat" | "meta_cloud" | "ghl" | "other" | "ycloud"
+      channel_type: "whatsapp" | "instagram_dm" | "facebook_messenger"
+      conversation_direction: "inbound" | "outbound" | "untagged"
+      conversation_priority: "alta" | "media" | "baja"
+      conversation_state: "active" | "paused" | "stopped" | "closed"
       handoff_cause:
-        | 'A_agenda'
-        | 'B_derivacion'
-        | 'C_descualificado'
-        | 'D_espera'
-        | 'E_error';
-      llm_call_status: 'success' | 'error' | 'fallback';
-      llm_provider: 'anthropic' | 'openai' | 'google' | 'azure_openai' | 'custom';
-      llm_role: 'generator' | 'judge' | 'splitter' | 'transcriber' | 'embedder';
-      message_content_type: 'text' | 'audio' | 'image' | 'video' | 'file' | 'mixed';
-      message_source: 'lead' | 'ai' | 'system';
-      profile_role: 'owner' | 'admin' | 'viewer';
+        | "A_agenda"
+        | "B_derivacion"
+        | "C_descualificado"
+        | "D_espera"
+        | "E_error"
+      llm_call_status: "success" | "error" | "fallback"
+      llm_provider:
+        | "anthropic"
+        | "openai"
+        | "google"
+        | "azure_openai"
+        | "custom"
+      llm_role: "generator" | "judge" | "splitter" | "transcriber" | "embedder"
+      message_content_type:
+        | "text"
+        | "audio"
+        | "image"
+        | "video"
+        | "file"
+        | "mixed"
+      message_source: "lead" | "ai" | "system"
+      profile_role: "owner" | "admin" | "viewer"
       resource_type:
-        | 'pdf'
-        | 'video'
-        | 'image'
-        | 'audio'
-        | 'link'
-        | 'document'
-        | 'other';
-      schedule_message_kind: 'message' | 'follow_up' | 'resource';
-      schedule_status: 'pending' | 'processing' | 'sent' | 'failed' | 'cancelled';
-    };
-    CompositeTypes: Record<string, never>;
-  };
-};
+        | "pdf"
+        | "video"
+        | "image"
+        | "audio"
+        | "link"
+        | "document"
+        | "other"
+      schedule_message_kind: "message" | "follow_up" | "resource"
+      schedule_status:
+        | "pending"
+        | "processing"
+        | "sent"
+        | "failed"
+        | "cancelled"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+}
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      channel_provider: ["manychat", "meta_cloud", "ghl", "other", "ycloud"],
+      channel_type: ["whatsapp", "instagram_dm", "facebook_messenger"],
+      conversation_direction: ["inbound", "outbound", "untagged"],
+      conversation_priority: ["alta", "media", "baja"],
+      conversation_state: ["active", "paused", "stopped", "closed"],
+      handoff_cause: [
+        "A_agenda",
+        "B_derivacion",
+        "C_descualificado",
+        "D_espera",
+        "E_error",
+      ],
+      llm_call_status: ["success", "error", "fallback"],
+      llm_provider: ["anthropic", "openai", "google", "azure_openai", "custom"],
+      llm_role: ["generator", "judge", "splitter", "transcriber", "embedder"],
+      message_content_type: [
+        "text",
+        "audio",
+        "image",
+        "video",
+        "file",
+        "mixed",
+      ],
+      message_source: ["lead", "ai", "system"],
+      profile_role: ["owner", "admin", "viewer"],
+      resource_type: [
+        "pdf",
+        "video",
+        "image",
+        "audio",
+        "link",
+        "document",
+        "other",
+      ],
+      schedule_message_kind: ["message", "follow_up", "resource"],
+      schedule_status: ["pending", "processing", "sent", "failed", "cancelled"],
+    },
+  },
+} as const
