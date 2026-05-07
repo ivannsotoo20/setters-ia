@@ -13,6 +13,7 @@ import {
   rescheduleForRetry,
 } from './scheduler.js';
 import { env } from '../config/env.js';
+import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 
 type SupportedProvider = 'manychat' | 'ycloud';
 
@@ -166,16 +167,21 @@ async function loadSendContext(
   supabase: SupabaseClient,
   params: { integrationAccountId: number; conversationId: number },
 ): Promise<SendContext> {
-  // integration_accounts → credentials + provider + connection_config + channel_type via channels FK
+  // integration_accounts → (credentials | credentials_encrypted) + provider +
+  // connection_config + channel_type via channels FK.
+  // `decodeCredentialsRow` prefiere `credentials_encrypted` (Hardening 1.1) y
+  // hace fallback a `credentials` plain mientras dura la transición.
   const { data: ia, error: iaErr } = await supabase
     .from('integration_accounts')
-    .select('id, provider, credentials, connection_config, channel_id, channels(channel_type)')
+    .select(
+      'id, provider, credentials, credentials_encrypted, connection_config, channel_id, channels(channel_type)',
+    )
     .eq('id', params.integrationAccountId)
     .maybeSingle();
   if (iaErr || !ia) {
     throw new Error(`integration_account ${params.integrationAccountId} no encontrado`);
   }
-  const credentials = (ia.credentials ?? {}) as Record<string, unknown>;
+  const credentials = decodeCredentialsRow(ia, params.integrationAccountId);
   const apiKey = typeof credentials.api_key === 'string' ? credentials.api_key : '';
   if (!apiKey) {
     throw new Error(`integration_account ${params.integrationAccountId} sin api_key`);
