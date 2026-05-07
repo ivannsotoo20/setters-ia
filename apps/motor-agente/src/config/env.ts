@@ -27,6 +27,7 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
   REDIS_URL: z.string().default('redis://localhost:6379'),
   MANYCHAT_API_BASE: z.string().url().default('https://api.manychat.com'),
+  YCLOUD_API_BASE: z.string().url().default('https://api.ycloud.com'),
 });
 
 const parsed = envSchema.safeParse(process.env);

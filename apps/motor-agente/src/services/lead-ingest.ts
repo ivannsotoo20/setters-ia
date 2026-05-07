@@ -6,18 +6,30 @@ export interface ResolveTenantResult {
   tokenId: number;
 }
 
+/**
+ * Resuelve un tenant_token a su tenant_id.
+ *
+ * @param expectedPurpose Si se pasa, filtra por `tenant_tokens.purpose = expectedPurpose`.
+ *   Si se omite, acepta cualquier purpose (útil cuando se introducen nuevos providers).
+ *   Cada ruta webhook debería pasar el suyo: `'manychat_webhook'`, `'ycloud_webhook'`, etc.
+ */
 export async function resolveTenantByToken(
   supabase: SupabaseClient,
   token: string,
+  expectedPurpose?: string,
 ): Promise<ResolveTenantResult | null> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('tenant_tokens')
     .select('id, tenant_id, is_active, purpose, revoked_at')
     .eq('token', token)
-    .eq('purpose', 'manychat_webhook')
     .eq('is_active', true)
-    .is('revoked_at', null)
-    .maybeSingle();
+    .is('revoked_at', null);
+
+  if (expectedPurpose) {
+    query = query.eq('purpose', expectedPurpose);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) {
     throw new Error(`resolveTenantByToken failed: ${error.message}`);
@@ -31,7 +43,11 @@ interface GetOrCreateChannelParams {
   supabase: SupabaseClient;
   tenantId: number;
   channelType: 'whatsapp' | 'instagram' | 'facebook';
-  viaProvider: 'manychat' | 'meta_cloud' | 'ghl' | 'other';
+  /**
+   * 'ycloud' está disponible tras aplicar `schema/v1/migrations/005-ycloud-provider-enum.sql`.
+   * Los tipos DB generados se actualizan tras `pnpm db:generate-types`.
+   */
+  viaProvider: 'manychat' | 'meta_cloud' | 'ghl' | 'ycloud' | 'other';
 }
 
 export async function getOrCreateChannel({

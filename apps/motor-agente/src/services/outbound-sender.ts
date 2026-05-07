@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   ManyChatInstagramAdapter,
   ManyChatWhatsAppAdapter,
+  YCloudWhatsAppAdapter,
   type ChannelAdapter,
 } from '@fyzon/channel-adapters';
 import {
@@ -12,6 +13,8 @@ import {
   rescheduleForRetry,
 } from './scheduler.js';
 import { env } from '../config/env.js';
+
+type SupportedProvider = 'manychat' | 'ycloud';
 
 export interface SendBatchDeps {
   supabase: SupabaseClient;
@@ -90,12 +93,12 @@ export async function sendNextBatch(
     }
 
     try {
-      // Cargar credenciales + canal + lead
+      // Cargar credenciales + canal + provider + lead
       const sendCtx = await loadSendContext(supabase, {
         integrationAccountId: Number(row.integration_account_id),
         conversationId: Number(row.conversation_id),
       });
-      const adapter = buildAdapterForChannel(sendCtx.channelType, sendCtx.apiKey);
+      const adapter = buildAdapter(sendCtx);
       const sendResult = await adapter.send({
         tenantId: String(row.tenant_id),
         externalUserId: sendCtx.externalUserId,
@@ -154,16 +157,19 @@ interface SendContext {
   apiKey: string;
   channelType: 'whatsapp' | 'instagram' | 'facebook';
   externalUserId: string;
+  provider: SupportedProvider;
+  /** Para YCloud: número del business en E.164 (de connection_config.business_phone). */
+  businessPhone?: string;
 }
 
 async function loadSendContext(
   supabase: SupabaseClient,
   params: { integrationAccountId: number; conversationId: number },
 ): Promise<SendContext> {
-  // integration_accounts → credentials + channel_type via channels FK
+  // integration_accounts → credentials + provider + connection_config + channel_type via channels FK
   const { data: ia, error: iaErr } = await supabase
     .from('integration_accounts')
-    .select('id, credentials, channel_id, channels(channel_type)')
+    .select('id, provider, credentials, connection_config, channel_id, channels(channel_type)')
     .eq('id', params.integrationAccountId)
     .maybeSingle();
   if (iaErr || !ia) {
@@ -175,10 +181,19 @@ async function loadSendContext(
     throw new Error(`integration_account ${params.integrationAccountId} sin api_key`);
   }
 
+  const provider = normalizeProvider(typeof ia.provider === 'string' ? ia.provider : 'manychat');
+
+  // connection_config (no encriptado): para YCloud trae business_phone
+  const connectionConfig = (ia.connection_config ?? {}) as Record<string, unknown>;
+  const businessPhone =
+    typeof connectionConfig.business_phone === 'string'
+      ? connectionConfig.business_phone
+      : undefined;
+
   // channel_type embedded
   const channelType = mapChannelTypeFromDb(extractChannelType(ia));
 
-  // lead.external_id (el subscriber_id de ManyChat)
+  // lead.external_id (subscriber_id ManyChat o wa_id YCloud)
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
     .select('id, lead_id')
@@ -196,7 +211,16 @@ async function loadSendContext(
     apiKey,
     channelType,
     externalUserId: String(lead.external_id),
+    provider,
+    businessPhone,
   };
+}
+
+function normalizeProvider(value: string): SupportedProvider {
+  if (value === 'manychat' || value === 'ycloud') return value;
+  // 'meta_cloud', 'ghl', 'other' → no soportados todavía en outbound. Default a manychat
+  // como comportamiento histórico hasta tener adapters dedicados.
+  throw new Error(`provider '${value}' no soportado por outbound-sender (use manychat o ycloud)`);
 }
 
 function extractChannelType(row: Record<string, unknown>): string {
@@ -223,25 +247,47 @@ function mapChannelTypeFromDb(dbType: string): 'whatsapp' | 'instagram' | 'faceb
   }
 }
 
-function buildAdapterForChannel(
-  channelType: 'whatsapp' | 'instagram' | 'facebook',
-  apiKey: string,
-): ChannelAdapter {
-  const baseUrl = env.MANYCHAT_API_BASE;
-  switch (channelType) {
-    case 'instagram':
-      return new ManyChatInstagramAdapter({ apiKey, baseUrl });
-    case 'whatsapp':
-      return new ManyChatWhatsAppAdapter({ apiKey, baseUrl });
-    case 'facebook':
-      // Para FB usamos también el adapter de Instagram porque ManyChat usa el mismo endpoint
-      // y el `channel` solo afecta el routing interno. Cuando dividamos FB con tag distinto, lo separamos.
-      return new ManyChatInstagramAdapter({ apiKey, baseUrl });
+/**
+ * Construye el adapter outbound correcto según el provider del integration_account.
+ *
+ * - `manychat`: usa adapter ManyChat por canal (WA / IG / FB todos vía sendContent).
+ * - `ycloud`: usa YCloudWhatsAppAdapter — solo WhatsApp. Si el canal no es WA, error.
+ */
+function buildAdapter(ctx: SendContext): ChannelAdapter {
+  switch (ctx.provider) {
+    case 'manychat': {
+      const baseUrl = env.MANYCHAT_API_BASE;
+      switch (ctx.channelType) {
+        case 'instagram':
+          return new ManyChatInstagramAdapter({ apiKey: ctx.apiKey, baseUrl });
+        case 'whatsapp':
+          return new ManyChatWhatsAppAdapter({ apiKey: ctx.apiKey, baseUrl });
+        case 'facebook':
+          // ManyChat usa el mismo endpoint para FB; reutilizamos el adapter de IG.
+          return new ManyChatInstagramAdapter({ apiKey: ctx.apiKey, baseUrl });
+      }
+      break;
+    }
+    case 'ycloud': {
+      if (ctx.channelType !== 'whatsapp') {
+        throw new Error(`YCloud solo soporta WhatsApp, channel='${ctx.channelType}' no válido`);
+      }
+      if (!ctx.businessPhone) {
+        throw new Error('YCloud adapter requiere business_phone en integration_accounts.connection_config');
+      }
+      return new YCloudWhatsAppAdapter({
+        apiKey: ctx.apiKey,
+        businessPhone: ctx.businessPhone,
+        baseUrl: env.YCLOUD_API_BASE,
+      });
+    }
   }
+  // Exhaustiveness — TS debería detectar si añadimos nuevo provider sin caso aquí.
+  throw new Error(`provider '${ctx.provider}' sin adapter implementado`);
 }
 
 export const _internal = {
-  buildAdapterForChannel,
+  buildAdapter,
   loadSendContext,
   MAX_RETRY_ATTEMPTS,
 };

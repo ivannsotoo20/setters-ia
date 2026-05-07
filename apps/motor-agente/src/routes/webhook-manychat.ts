@@ -36,8 +36,8 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
       const { tenant_token } = request.params;
       const supabase = getSupabase();
 
-      // 1. Resolver tenant por token
-      const resolved = await resolveTenantByToken(supabase, tenant_token);
+      // 1. Resolver tenant por token (filtrado por purpose='manychat_webhook')
+      const resolved = await resolveTenantByToken(supabase, tenant_token, 'manychat_webhook');
       if (!resolved) {
         return reply.code(404).send({ error: 'tenant_token invalid or inactive' });
       }

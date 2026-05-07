@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import { env } from './config/env.js';
 import { healthRoutes } from './routes/health.js';
 import { webhookManyChatRoutes } from './routes/webhook-manychat.js';
+import { webhookYCloudRoutes } from './routes/webhook-ycloud.js';
 import { cronSchedulerPlugin } from './plugins/cron-scheduler.js';
 
 export async function buildServer(): Promise<FastifyInstance> {
@@ -24,6 +25,7 @@ export async function buildServer(): Promise<FastifyInstance> {
 
   await app.register(healthRoutes);
   await app.register(webhookManyChatRoutes);
+  await app.register(webhookYCloudRoutes);
   await app.register(cronSchedulerPlugin);
 
   return app;
