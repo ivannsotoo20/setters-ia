@@ -54,6 +54,12 @@ export interface GhlParsedInbound {
   attachments: string[];
   ghlMessageId: string | null;
   timestamp: string | null;
+  /** Datos opcionales del contacto si vinieron en el payload (Workflow webhook). */
+  contactInfo?: {
+    firstName?: string | null;
+    lastName?: string | null;
+    fullName?: string | null;
+  };
 }
 
 export interface GhlParsedOutbound {

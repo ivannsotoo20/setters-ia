@@ -1,23 +1,50 @@
 /**
- * Parser de webhooks GHL Marketplace (InboundMessage + OutboundMessage).
+ * Parser de webhooks GHL — soporta DOS formatos distintos:
  *
- * Esquema mínimo necesario para alimentar el motor Fyzon:
- *   - InboundMessage IG/FB/WhatsApp/Email → procesar con pipeline IA.
- *   - OutboundMessage cualquiera → clasificar como IA propia (ZWSP), bienvenida
- *     manual, lead-magnet auto, inbound auto-response, o humano genuino.
+ * 1. **Workflow Webhook action** (lo que GHL envía cuando configuras un step
+ *    "Webhook" dentro de un Workflow custom). Este es el formato real que GHL
+ *    envía al motor cuando el trainer configura sus automations en panel.
+ *    Body típico:
+ *      { contact_id, location: { id }, message: { type: <int>, body },
+ *        first_name, last_name, customData, ... }
+ *    Direction se infiere del trigger del Workflow:
+ *      - 'Customer Replied' → inbound
+ *      - 'Outbound Message' → outbound
+ *
+ * 2. **Marketplace App webhook** (formato API público para apps registradas en
+ *    Marketplace, con firma RSA `x-wh-signature`). Body:
+ *      { type: 'InboundMessage'|'OutboundMessage', locationId, contactId,
+ *        body, messageType: 'IG'|'FB Messenger'|..., direction, ... }
+ *
+ * El parser detecta cuál es y lo normaliza al mismo `GhlWebhookPayload` interno.
  */
 
 import { z } from 'zod';
 import type {
   GhlParsedInbound,
   GhlParsedOutbound,
+  GhlWebhookMessageType,
   GhlWebhookPayload,
+  GhlWebhookType,
 } from './types.js';
 
 /** Caracter ZERO WIDTH SPACE que el motor IA apendea a cada salida. */
 export const ZWSP = '​';
 
-const ghlWebhookSchema = z.object({
+export class GhlParseError extends Error {
+  readonly issues?: unknown;
+  constructor(message: string, issues?: unknown) {
+    super(message);
+    this.name = 'GhlParseError';
+    this.issues = issues;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Schema 1 — Marketplace App webhook (con firma RSA)
+// ---------------------------------------------------------------------------
+
+const marketplaceSchema = z.object({
   type: z.enum(['InboundMessage', 'OutboundMessage']),
   locationId: z.string().min(1),
   contactId: z.string().min(1),
@@ -30,33 +57,176 @@ const ghlWebhookSchema = z.object({
   attachments: z.array(z.string()).optional(),
 });
 
-export class GhlParseError extends Error {
-  readonly issues?: unknown;
-  constructor(message: string, issues?: unknown) {
-    super(message);
-    this.name = 'GhlParseError';
-    this.issues = issues;
+// ---------------------------------------------------------------------------
+// Schema 2 — Workflow Webhook action (formato interno GHL Workflows)
+// ---------------------------------------------------------------------------
+
+const workflowMessageSchema = z.object({
+  type: z.union([z.number(), z.string()]).optional(),
+  body: z.string().optional(),
+});
+
+const workflowLocationSchema = z.object({
+  id: z.string().min(1),
+});
+
+const workflowContactInnerSchema = z
+  .object({
+    attributionSource: z
+      .object({ medium: z.string().optional() })
+      .partial()
+      .optional(),
+    lastAttributionSource: z
+      .object({ medium: z.string().optional() })
+      .partial()
+      .optional(),
+  })
+  .partial();
+
+const workflowSchema = z.object({
+  contact_id: z.string().min(1),
+  location: workflowLocationSchema,
+  message: workflowMessageSchema.optional(),
+  first_name: z.string().optional(),
+  last_name: z.string().optional(),
+  full_name: z.string().optional(),
+  contact: workflowContactInnerSchema.optional(),
+  customData: z.record(z.unknown()).optional(),
+  /** Iván puede pasar 'direction' como customData {direction: 'outbound'} para
+   *  diferenciar inbound vs outbound desde el Workflow. */
+  direction: z.enum(['inbound', 'outbound']).optional(),
+  /** Y opcionalmente conversation_source para clasificar (bienvenida/lm/inbound). */
+  conversation_source: z.string().optional(),
+});
+
+// ---------------------------------------------------------------------------
+// Mapping GHL message.type integer → messageType string
+// (verified from GHL Marketplace docs + flow legacy n8n pinData)
+// ---------------------------------------------------------------------------
+
+const MESSAGE_TYPE_INT_TO_STRING: Record<number, GhlWebhookMessageType> = {
+  1: 'SMS',
+  2: 'Email',
+  5: 'FB Messenger',
+  7: 'WhatsApp',
+  18: 'IG',
+};
+
+function resolveMessageType(
+  raw: number | string | undefined,
+  attributionMedium: string | undefined,
+): GhlWebhookMessageType {
+  if (typeof raw === 'string') {
+    // Si ya viene como string, validar contra enum
+    if (
+      raw === 'IG' ||
+      raw === 'FB Messenger' ||
+      raw === 'WhatsApp' ||
+      raw === 'SMS' ||
+      raw === 'Email' ||
+      raw === 'Custom'
+    ) {
+      return raw;
+    }
   }
+  if (typeof raw === 'number' && MESSAGE_TYPE_INT_TO_STRING[raw]) {
+    return MESSAGE_TYPE_INT_TO_STRING[raw]!;
+  }
+  // Fallback: usar attribution medium del contacto (instagram/facebook/whatsapp)
+  if (attributionMedium) {
+    const m = attributionMedium.toLowerCase();
+    if (m === 'instagram') return 'IG';
+    if (m === 'facebook') return 'FB Messenger';
+    if (m === 'whatsapp') return 'WhatsApp';
+    if (m === 'sms') return 'SMS';
+    if (m === 'email') return 'Email';
+  }
+  // Último recurso: IG (default razonable porque es el primary channel del setup)
+  return 'IG';
 }
 
+// ---------------------------------------------------------------------------
+// Top-level parser: detecta formato y normaliza
+// ---------------------------------------------------------------------------
+
 export function parseGhlWebhookPayload(payload: unknown): GhlWebhookPayload {
-  const result = ghlWebhookSchema.safeParse(payload);
-  if (!result.success) {
-    throw new GhlParseError(
-      `GHL webhook payload inválido: ${result.error.issues.map((i) => i.path.join('.') + ' ' + i.message).join('; ')}`,
-      result.error.issues,
-    );
+  if (!payload || typeof payload !== 'object') {
+    throw new GhlParseError('GHL webhook payload no es un objeto JSON');
   }
-  return result.data as GhlWebhookPayload;
+  const obj = payload as Record<string, unknown>;
+
+  // Detectar formato Marketplace por presencia de `type: InboundMessage|OutboundMessage`
+  if (obj.type === 'InboundMessage' || obj.type === 'OutboundMessage') {
+    const result = marketplaceSchema.safeParse(payload);
+    if (!result.success) {
+      throw new GhlParseError(
+        `GHL Marketplace webhook payload inválido: ${result.error.issues
+          .map((i) => i.path.join('.') + ' ' + i.message)
+          .join('; ')}`,
+        result.error.issues,
+      );
+    }
+    return result.data as GhlWebhookPayload;
+  }
+
+  // Detectar formato Workflow por presencia de `contact_id` (snake_case) +
+  // `location.id` o `location_id`.
+  if ('contact_id' in obj && (obj.location || obj.location_id)) {
+    const result = workflowSchema.safeParse(payload);
+    if (!result.success) {
+      throw new GhlParseError(
+        `GHL Workflow webhook payload inválido: ${result.error.issues
+          .map((i) => i.path.join('.') + ' ' + i.message)
+          .join('; ')}`,
+        result.error.issues,
+      );
+    }
+    return normalizeWorkflowToInternal(result.data);
+  }
+
+  // Ningún formato reconocido
+  throw new GhlParseError(
+    'GHL webhook payload no coincide con ningún formato conocido (Marketplace o Workflow)',
+    { receivedKeys: Object.keys(obj) },
+  );
 }
+
+function normalizeWorkflowToInternal(
+  data: z.infer<typeof workflowSchema>,
+): GhlWebhookPayload {
+  const attributionMedium =
+    data.contact?.attributionSource?.medium ??
+    data.contact?.lastAttributionSource?.medium;
+  const messageType = resolveMessageType(data.message?.type, attributionMedium);
+  const direction = data.direction ?? 'inbound'; // default Customer Replied trigger
+  const type: GhlWebhookType = direction === 'outbound' ? 'OutboundMessage' : 'InboundMessage';
+
+  return {
+    type,
+    locationId: data.location.id,
+    contactId: data.contact_id,
+    body: data.message?.body ?? '',
+    messageType,
+    direction,
+    // Workflow webhook no expone conversationId / messageId / timestamp en body estándar
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Parsers específicos (mantener API anterior)
+// ---------------------------------------------------------------------------
 
 export function parseGhlInboundMessage(
   payload: GhlWebhookPayload,
   tenantId: number,
+  rawPayload?: unknown,
 ): GhlParsedInbound {
   if (payload.type !== 'InboundMessage') {
-    throw new GhlParseError(`parseGhlInboundMessage: type es '${payload.type}', esperado 'InboundMessage'`);
+    throw new GhlParseError(
+      `parseGhlInboundMessage: type es '${payload.type}', esperado 'InboundMessage'`,
+    );
   }
+  const contactInfo = extractContactInfoFromRaw(rawPayload);
   return {
     tenantId,
     ghlLocationId: payload.locationId,
@@ -67,6 +237,7 @@ export function parseGhlInboundMessage(
     attachments: payload.attachments ?? [],
     ghlMessageId: payload.messageId ?? null,
     timestamp: payload.timestamp ?? null,
+    contactInfo: contactInfo ?? undefined,
   };
 }
 
@@ -75,7 +246,9 @@ export function parseGhlOutboundMessage(
   tenantId: number,
 ): GhlParsedOutbound {
   if (payload.type !== 'OutboundMessage') {
-    throw new GhlParseError(`parseGhlOutboundMessage: type es '${payload.type}', esperado 'OutboundMessage'`);
+    throw new GhlParseError(
+      `parseGhlOutboundMessage: type es '${payload.type}', esperado 'OutboundMessage'`,
+    );
   }
   return {
     tenantId,
@@ -90,15 +263,10 @@ export function parseGhlOutboundMessage(
   };
 }
 
-/** True si el cuerpo del mensaje contiene ZWSP (nuestro tag de mensaje IA). */
 export function containsZwsp(text: string): boolean {
   return typeof text === 'string' && text.includes(ZWSP);
 }
 
-/**
- * Mapping del messageType GHL al canal interno del motor Fyzon.
- * GHL usa 'IG' para Instagram DM, 'FB Messenger' para Facebook Messenger.
- */
 function mapMessageTypeToChannel(
   messageType: GhlWebhookPayload['messageType'],
 ): GhlParsedInbound['channel'] {
@@ -114,7 +282,19 @@ function mapMessageTypeToChannel(
     case 'SMS':
       return 'sms';
     case 'Custom':
-      // Default plausible — el caller debería validar antes si Custom no es esperable.
       return 'whatsapp';
   }
+}
+
+/** Extrae first_name/last_name/full_name del raw payload Workflow (si existe). */
+function extractContactInfoFromRaw(
+  raw: unknown,
+): { firstName?: string | null; lastName?: string | null; fullName?: string | null } | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const firstName = typeof obj.first_name === 'string' ? obj.first_name : null;
+  const lastName = typeof obj.last_name === 'string' ? obj.last_name : null;
+  const fullName = typeof obj.full_name === 'string' ? obj.full_name : null;
+  if (!firstName && !lastName && !fullName) return null;
+  return { firstName, lastName, fullName };
 }

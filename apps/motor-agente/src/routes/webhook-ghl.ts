@@ -122,15 +122,34 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
       //    credenciales, seguimos sin enriquecer contacto desde GHL).
       const ghlClient = await loadGhlClient(supabase, tenantId);
 
+      // 3.5. Log del body crudo recibido (Bloque C.7 debug — nos ayuda a ver el
+      //      formato real del Workflow webhook step de GHL para iterar el parser).
+      request.log.info(
+        {
+          tenantId,
+          bodyKeys: Object.keys((request.body ?? {}) as Record<string, unknown>),
+          body: request.body,
+        },
+        'webhook-ghl: payload received (raw)',
+      );
+
       // 4. Parsear payload + validar locationId
       let payload;
       try {
         payload = parseGhlWebhookPayload(request.body);
       } catch (err) {
         if (err instanceof GhlParseError) {
+          request.log.warn(
+            { tenantId, issues: err.issues, body: request.body },
+            'webhook-ghl: payload rejected by Zod parser',
+          );
           return reply.code(400).send({ error: 'invalid payload', issues: err.issues });
         }
         if (err instanceof ZodError) {
+          request.log.warn(
+            { tenantId, issues: err.flatten(), body: request.body },
+            'webhook-ghl: payload rejected by Zod parser',
+          );
           return reply.code(400).send({ error: 'invalid payload', issues: err.flatten() });
         }
         throw err;
@@ -157,7 +176,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           }
 
           const debounceWindow = await loadDebounceWindow(supabase, tenantId);
-          const inbound = parseGhlInboundMessage(payload, tenantId);
+          const inbound = parseGhlInboundMessage(payload, tenantId, request.body);
           const result = await routeGhlInbound({
             supabase,
             redis: getRedis(),

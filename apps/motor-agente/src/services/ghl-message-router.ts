@@ -172,8 +172,13 @@ export async function routeGhlInbound(
     viaProvider: 'ghl',
   });
 
-  // 2) Enriquecer con info GHL del contacto si tenemos cliente disponible
-  const contactInfo = ghlClient ? await tryGetContact(ghlClient, inbound.ghlContactId) : null;
+  // 2) Enriquecer con info GHL del contacto. Preferencia:
+  //    a) Si el payload del webhook ya trae first_name/last_name (Workflow
+  //       webhook format), usar esos directos — gratis.
+  //    b) Si no, fetch GET /contacts/{id} via GhlClient (best-effort).
+  const fromPayload = inbound.contactInfo;
+  const fromApi =
+    !fromPayload && ghlClient ? await tryGetContact(ghlClient, inbound.ghlContactId) : null;
 
   // 3) Upsert lead
   const { leadId } = await upsertLead({
@@ -181,10 +186,10 @@ export async function routeGhlInbound(
     tenantId: inbound.tenantId,
     channelId,
     externalId: inbound.ghlContactId,
-    firstName: contactInfo?.firstName ?? null,
-    lastName: contactInfo?.lastName ?? null,
-    phone: contactInfo?.phone ?? null,
-    email: contactInfo?.email ?? null,
+    firstName: fromPayload?.firstName ?? fromApi?.firstName ?? null,
+    lastName: fromPayload?.lastName ?? fromApi?.lastName ?? null,
+    phone: fromApi?.phone ?? null,
+    email: fromApi?.email ?? null,
   });
 
   // 4) Get/create conversation
