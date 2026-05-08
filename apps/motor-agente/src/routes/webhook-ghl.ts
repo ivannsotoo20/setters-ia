@@ -12,6 +12,7 @@ import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { verifyGhlSignature } from '../lib/webhook-verify-ghl.js';
+import { verifyMarketplaceWebhook } from '../lib/webhook-verify-marketplace.js';
 import {
   routeGhlInbound,
   routeGhlOutbound,
@@ -224,6 +225,157 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
       }
     },
   );
+
+  // POST /integrations/webhook/oauth — receiver de los webhooks de la App
+  // Marketplace GHL propia (Sub-Account OAuth, Bloque C.E). A diferencia del
+  // handler `:tenant_token` (Workflow webhook step), aquí:
+  //   - NO hay token en URL: el tenant se resuelve por `payload.locationId`
+  //     (lookup en integration_accounts con auth_type='oauth').
+  //   - La firma es HMAC con shared_secret o RSA con public key universal —
+  //     verifyMarketplaceWebhook detecta cuál por header y valida.
+  //   - Mismo router (routeGhlInbound / routeGhlOutbound) reutilizado.
+  app.post<{ Body: unknown }>(
+    '/integrations/webhook/oauth',
+    async (
+      request: FastifyRequest<{ Body: unknown }>,
+      reply: FastifyReply,
+    ) => {
+      const supabase = getSupabase();
+
+      // 1. Verificación firma (HMAC + RSA fallback) con verify_mode
+      const verifyMode = env.GHL_WEBHOOK_VERIFY_MODE;
+      if (verifyMode !== 'disabled') {
+        const rawBody =
+          request.rawBody ??
+          Buffer.from(
+            typeof request.body === 'string' ? request.body : JSON.stringify(request.body ?? {}),
+            'utf8',
+          );
+        const result = verifyMarketplaceWebhook({
+          rawBody,
+          rsaSignatureHeader: pickHeader(request, 'x-wh-signature'),
+          hmacSignatureHeader: pickHeader(request, 'x-ghl-signature'),
+          rsaPublicKeyPem: env.GHL_WEBHOOK_PUBLIC_KEY_PEM,
+          hmacSharedSecret: env.GHL_OAUTH_SHARED_SECRET,
+        });
+        if (!result.ok) {
+          request.log.warn(
+            { verifyMode, reason: result.reason },
+            `webhook-ghl(oauth): signature verification failed (${result.reason})`,
+          );
+          if (verifyMode === 'enforce') {
+            return reply.code(401).send({ error: 'invalid signature', reason: result.reason });
+          }
+        } else {
+          request.log.debug({ method: result.method }, 'webhook-ghl(oauth): signature OK');
+        }
+      }
+
+      // 2. Log payload raw para debug del primer evento de la app.
+      request.log.info(
+        {
+          bodyKeys: Object.keys((request.body ?? {}) as Record<string, unknown>),
+          body: request.body,
+          headers: {
+            'x-wh-signature': pickHeader(request, 'x-wh-signature'),
+            'x-ghl-signature': pickHeader(request, 'x-ghl-signature'),
+          },
+        },
+        'webhook-ghl(oauth): payload received (raw)',
+      );
+
+      // 3. Parse payload
+      let payload;
+      try {
+        payload = parseGhlWebhookPayload(request.body);
+      } catch (err) {
+        if (err instanceof GhlParseError) {
+          request.log.warn(
+            { issues: err.issues, body: request.body },
+            'webhook-ghl(oauth): payload rejected by Zod parser',
+          );
+          return reply.code(400).send({ error: 'invalid payload', issues: err.issues });
+        }
+        if (err instanceof ZodError) {
+          request.log.warn(
+            { issues: err.flatten(), body: request.body },
+            'webhook-ghl(oauth): payload rejected by Zod parser',
+          );
+          return reply.code(400).send({ error: 'invalid payload', issues: err.flatten() });
+        }
+        throw err;
+      }
+
+      // 4. Resolver tenant por locationId del payload + auth_type='oauth'
+      const tenantId = await resolveTenantByOauthLocation(supabase, payload.locationId);
+      if (tenantId == null) {
+        // Webhook de una sub-cuenta que no tenemos registrada (otra agencia).
+        // Ack 200 ignored para no romper retry GHL ni revelar info.
+        request.log.info(
+          { locationId: payload.locationId, type: payload.type },
+          'webhook-ghl(oauth): unknown locationId — ignoring',
+        );
+        return reply.code(200).send({ ack: true, ignored: true, reason: 'unknown_location' });
+      }
+
+      // 5. Routing
+      try {
+        if (payload.type === 'InboundMessage') {
+          const dedupKey =
+            payload.messageId ?? `${payload.contactId}:${payload.timestamp ?? Date.now()}`;
+          const fullDedupKey = `ghl_oauth:${tenantId}:${dedupKey}`;
+          const claimed = await tryClaimDedupKey(fullDedupKey, 60);
+          if (!claimed) {
+            return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId });
+          }
+
+          const ghlClient = await loadGhlClient(supabase, tenantId);
+          const debounceWindow = await loadDebounceWindow(supabase, tenantId);
+          const inbound = parseGhlInboundMessage(payload, tenantId, request.body);
+          const result = await routeGhlInbound({
+            supabase,
+            redis: getRedis(),
+            ghlClient,
+            inbound,
+            debounceWindowSeconds: debounceWindow,
+          });
+          return reply.code(200).send({
+            ack: true,
+            type: 'InboundMessage',
+            tenant_id: tenantId,
+            ...result,
+          });
+        }
+
+        if (payload.type === 'OutboundMessage') {
+          const ghlClient = await loadGhlClient(supabase, tenantId);
+          const outbound = parseGhlOutboundMessage(payload, tenantId);
+          const result = await routeGhlOutbound({ supabase, ghlClient, outbound });
+          return reply.code(200).send({
+            ack: true,
+            type: 'OutboundMessage',
+            tenant_id: tenantId,
+            classification: result.classification,
+            conversation_id: result.conversationId,
+            paused: result.isPaused,
+          });
+        }
+
+        request.log.warn(
+          { tenantId, type: (payload as { type: string }).type },
+          'webhook-ghl(oauth): unknown type',
+        );
+        return reply.code(200).send({ ack: true, ignored: true, tenant_id: tenantId });
+      } catch (err) {
+        request.log.error({ err, tenantId }, 'webhook-ghl(oauth): handler error');
+        return reply.code(200).send({
+          ack: true,
+          tenant_id: tenantId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    },
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -269,6 +421,34 @@ async function loadExpectedLocationId(
   if (!ia) return null;
   const cfg = (ia.connection_config ?? {}) as Record<string, unknown>;
   return typeof cfg.locationId === 'string' ? cfg.locationId : null;
+}
+
+/**
+ * Resolver tenant_id buscando un `integration_accounts` activo con
+ * `provider='ghl'` + `connection_config.auth_type='oauth'` + `connection_config.locationId=<X>`.
+ *
+ * Usado por el handler `/integrations/webhook/oauth` (Bloque C.E) — los
+ * webhooks de la App Marketplace no llevan token en URL, vienen identificados
+ * por locationId del payload.
+ */
+async function resolveTenantByOauthLocation(
+  supabase: ReturnType<typeof getSupabase>,
+  locationId: string,
+): Promise<number | null> {
+  if (!locationId) return null;
+  const { data, error } = await supabase
+    .from('integration_accounts')
+    .select('tenant_id, connection_config')
+    .eq('provider', 'ghl')
+    .eq('is_active', true);
+  if (error || !data) return null;
+  for (const row of data) {
+    const cc = (row.connection_config ?? {}) as { auth_type?: string; locationId?: string };
+    if (cc.auth_type === 'oauth' && cc.locationId === locationId) {
+      return Number(row.tenant_id);
+    }
+  }
+  return null;
 }
 
 async function loadDebounceWindow(

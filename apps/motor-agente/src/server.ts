@@ -6,6 +6,7 @@ import { healthRoutes } from './routes/health.js';
 import { webhookManyChatRoutes } from './routes/webhook-manychat.js';
 import { webhookYCloudRoutes } from './routes/webhook-ycloud.js';
 import { webhookGhlRoutes } from './routes/webhook-ghl.js';
+import { oauthGhlRoutes } from './routes/oauth-ghl.js';
 import { internalStatsRoutes } from './routes/internal-stats.js';
 import { cronSchedulerPlugin } from './plugins/cron-scheduler.js';
 
@@ -54,6 +55,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(webhookManyChatRoutes);
   await app.register(webhookYCloudRoutes);
   await app.register(webhookGhlRoutes);
+  await app.register(oauthGhlRoutes);
   await app.register(internalStatsRoutes);
   await app.register(cronSchedulerPlugin);
 

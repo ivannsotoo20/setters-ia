@@ -51,6 +51,29 @@ const envSchema = z.object({
   // → toda firma se trata como signature_mismatch. En dev local se puede dejar
   // vacía con verify_mode=disabled.
   GHL_WEBHOOK_PUBLIC_KEY_PEM: z.string().optional(),
+  // Bloque C.E — App Marketplace GHL propia con OAuth + webhooks firmados.
+  // Sub-Account distribution: cada trainer instala la app en su sub-cuenta.
+  // El motor mapea install → tenant_id via state param (Redis TTL 600s).
+  GHL_OAUTH_CLIENT_ID: z.string().optional(),
+  GHL_OAUTH_CLIENT_SECRET: z.string().optional(),
+  /** Shared secret de la app — para HMAC verification de webhooks app emite. */
+  GHL_OAUTH_SHARED_SECRET: z.string().optional(),
+  /** URL pública del OAuth callback. Debe coincidir con la registrada en
+   *  developer portal de la app. */
+  GHL_OAUTH_REDIRECT_URI: z
+    .string()
+    .url()
+    .default('https://setter-dev.fyzon.es/integrations/oauth/callback'),
+  /** Scopes solicitados al instalar — separados por espacio. */
+  GHL_OAUTH_SCOPES: z
+    .string()
+    .default(
+      'contacts.write contacts.readonly conversations.readonly conversations.write conversations/message.readonly conversations/message.write locations.readonly',
+    ),
+  /** Base URL de GHL services API v2 — leadconnectorhq.com. */
+  GHL_API_BASE: z.string().url().default('https://services.leadconnectorhq.com'),
+  /** Base URL de Marketplace OAuth — para chooselocation redirect. */
+  GHL_MARKETPLACE_BASE: z.string().url().default('https://marketplace.gohighlevel.com'),
 });
 
 const parsed = envSchema.safeParse(process.env);
