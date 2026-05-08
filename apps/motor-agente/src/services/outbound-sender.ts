@@ -14,6 +14,7 @@ import {
 } from './scheduler.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
+import { loadGhlContext, syncOutboundToGhl } from './ghl-sync.js';
 
 type SupportedProvider = 'manychat' | 'ycloud';
 
@@ -121,6 +122,24 @@ export async function sendNextBatch(
         content: messageText,
         sent_at: new Date().toISOString(),
       });
+
+      // GHL sync outbound (best-effort, Hito 10) — replica el mensaje enviado.
+      // No-op si tenant sin GHL o conversación sin ghl_contact_id.
+      const ghlCtx = await loadGhlContext(supabase, Number(row.tenant_id));
+      if (ghlCtx) {
+        const { data: convInfo } = await supabase
+          .from('conversations')
+          .select('ghl_contact_id')
+          .eq('id', Number(row.conversation_id))
+          .maybeSingle();
+        if (convInfo?.ghl_contact_id) {
+          await syncOutboundToGhl(supabase, ghlCtx, {
+            conversationId: Number(row.conversation_id),
+            ghlContactId: convInfo.ghl_contact_id,
+            message: messageText,
+          });
+        }
+      }
 
       result.sent++;
       result.details.push({ scheduleId, status: 'sent' });

@@ -12,6 +12,12 @@ import {
   failPipelineRun,
   startPipelineRun,
 } from './pipeline-runs.js';
+import {
+  ensureGhlContactAndOpportunity,
+  loadGhlContext,
+  moveStageForPhase,
+  syncInboundToGhl,
+} from './ghl-sync.js';
 
 export interface ProcessDebouncedDeps {
   supabase: SupabaseClient;
@@ -65,11 +71,34 @@ export async function processDebounced(
   // 2. Cargar lead (para subscriber_id externo, requerido por el outbound luego)
   const { data: lead, error: leadErr } = await supabase
     .from('leads')
-    .select('id, external_id, first_name')
+    .select('id, external_id, first_name, last_name, phone, email')
     .eq('id', Number(conv.lead_id))
     .maybeSingle();
   if (leadErr) throw new Error(`processDebounced: lead lookup ${leadErr.message}`);
   if (!lead) throw new Error(`processDebounced: lead ${conv.lead_id} not found`);
+
+  // 2.5. GHL sync (best-effort): cargar contexto + asegurar contact+opportunity
+  //      Se hace ANTES del pipeline para tener ghl_contact_id disponible al
+  //      replicar el inbound. Si tenant no tiene GHL, ghlCtx=null y todo se salta.
+  const ghlCtx = await loadGhlContext(supabase, tenantId);
+  let ghlContactId: string | null = null;
+  let ghlOpportunityId: string | null = null;
+  if (ghlCtx) {
+    const ensured = await ensureGhlContactAndOpportunity(supabase, ghlCtx, {
+      conversationId,
+      currentPhase,
+      lead: {
+        id: Number(lead.id),
+        externalId: String(lead.external_id),
+        phone: lead.phone ?? null,
+        email: lead.email ?? null,
+        firstName: lead.first_name ?? null,
+        lastName: lead.last_name ?? null,
+      },
+    });
+    ghlContactId = ensured.ghlContactId;
+    ghlOpportunityId = ensured.ghlOpportunityId;
+  }
 
   // 3. Cargar integration_account ACTIVA del canal de esta conversación
   const { data: ia, error: iaErr } = await supabase
@@ -150,6 +179,16 @@ export async function processDebounced(
   const userMessage = recentLeadMessages.map((m) => m.content).join('\n');
   const historyForPipeline = allHistory.slice(0, lastAssistantIdx + 1);
 
+  // 5.5. GHL sync inbound (best-effort): replica los mensajes del lead al CRM.
+  //      Hito 10. No-op si tenant sin GHL configurado.
+  if (ghlCtx && ghlContactId) {
+    await syncInboundToGhl(supabase, ghlCtx, {
+      conversationId,
+      ghlContactId,
+      message: userMessage,
+    });
+  }
+
   // 6. Abrir pipeline_run (Hardening 1.3 — observabilidad).
   //    INSERT inicial con outcome='in_progress'; UPDATE al final con métricas.
   //    Si Supabase falla aquí, run.id=0 y los UPDATE/fail siguientes son no-ops.
@@ -215,6 +254,15 @@ export async function processDebounced(
       updated_at: new Date().toISOString(),
     })
     .eq('id', conversationId);
+
+  // 9.5. GHL stage move (best-effort): si phase cambió → mueve opportunity.
+  //      Hito 10. No-op si tenant sin GHL o stageMap[F<n>] sin mapear.
+  if (ghlCtx && ghlOpportunityId && newPhase !== currentPhase) {
+    await moveStageForPhase(ghlCtx, {
+      ghlOpportunityId,
+      newPhaseNumber: newPhase,
+    });
+  }
 
   // 10. Cerrar pipeline_run con éxito + métricas
   await completePipelineRun(supabase, { id: run.id, output: pipelineOut, startedAtMs });
