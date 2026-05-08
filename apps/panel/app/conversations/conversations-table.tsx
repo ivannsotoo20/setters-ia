@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { togglePauseConversation } from '@/lib/actions/conversations';
 
@@ -69,13 +70,17 @@ function ConversationRowItem({ row }: { row: ConversationRow }) {
   return (
     <tr>
       <td>
-        <span className="conv-id">#{row.id}</span>
+        <Link href={`/conversations/${row.id}`} className="conv-id-link">
+          <span className="conv-id">#{row.id}</span>
+        </Link>
       </td>
       <td>
-        <div className="conv-lead">
-          <strong>{leadName}</strong>
-          {lead?.username ? <small>@{lead.username}</small> : null}
-        </div>
+        <Link href={`/conversations/${row.id}`} className="conv-lead-link">
+          <div className="conv-lead">
+            <strong>{leadName}</strong>
+            {lead?.username ? <small>@{lead.username}</small> : null}
+          </div>
+        </Link>
       </td>
       <td>
         <span className="conv-badge conv-badge-channel">
