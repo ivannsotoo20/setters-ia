@@ -103,6 +103,10 @@ const workflowSchema = z.object({
    *  workflow "Si keyword=clase → bienvenida, llama webhook con conv_source").
    *  Si vienen, sustituyen a contact_id / message.body / lo que corresponda. */
   lead: z.string().optional(),
+  /** Attachments inbound: el Workflow webhook step de GHL pasa
+   *  `attachments={{message.attachments}}`. La forma puede ser array, string
+   *  JSON, o string CSV — `parseAttachmentsRaw` lo normaliza. */
+  attachments: z.unknown().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -239,6 +243,11 @@ function normalizeWorkflowToInternal(
     attributionMedium,
   );
 
+  // Attachments: customData.attachments primero, top-level segundo. GHL Workflow
+  // pasa `{{message.attachments}}` que puede llegar como array, JSON string o
+  // CSV. parseAttachmentsRaw lo normaliza a string[].
+  const attachments = parseAttachmentsRaw(cd.attachments ?? data.attachments);
+
   return {
     type,
     locationId: data.location.id,
@@ -247,8 +256,63 @@ function normalizeWorkflowToInternal(
     messageType,
     direction,
     ...(conversationSource ? { conversationSource } : {}),
+    ...(attachments.length > 0 ? { attachments } : {}),
     // Workflow webhook no expone conversationId / messageId / timestamp en body estándar
   };
+}
+
+/**
+ * Normaliza el campo `attachments` de un Workflow webhook GHL a `string[]`.
+ *
+ * GHL renderiza `{{message.attachments}}` en el step Webhook de varias maneras
+ * dependiendo del tipo de mensaje y configuración:
+ *   - Array de URLs:               `["https://...", "https://..."]`
+ *   - String JSON:                 `'["https://...", "https://..."]'`
+ *   - String CSV (separado coma):  `"https://...,https://..."`
+ *   - Vacío/null/false:            `null`, `""`, `"[]"`, `false`
+ *
+ * Filtra valores no-string, vacíos, y duplicados. URLs sin protocolo se
+ * mantienen (GHL a veces emite paths relativos que el caller resuelve).
+ */
+export function parseAttachmentsRaw(raw: unknown): string[] {
+  if (raw == null) return [];
+  if (Array.isArray(raw)) {
+    return uniqueNonEmpty(raw.filter((v): v is string => typeof v === 'string'));
+  }
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (trimmed === '' || trimmed === '[]' || trimmed === 'null' || trimmed === 'false') {
+      return [];
+    }
+    // Try JSON first (handles `["url1", "url2"]`)
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          return uniqueNonEmpty(parsed.filter((v): v is string => typeof v === 'string'));
+        }
+      } catch {
+        // fall through to CSV
+      }
+    }
+    // CSV fallback: split por coma
+    return uniqueNonEmpty(trimmed.split(',').map((s) => s.trim()));
+  }
+  return [];
+}
+
+function uniqueNonEmpty(arr: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of arr) {
+    if (typeof s !== 'string') continue;
+    const t = s.trim();
+    if (t.length === 0) continue;
+    if (seen.has(t)) continue;
+    seen.add(t);
+    out.push(t);
+  }
+  return out;
 }
 
 function pickConversationSource(

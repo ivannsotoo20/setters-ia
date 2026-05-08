@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   containsZwsp,
   GhlParseError,
+  parseAttachmentsRaw,
   parseGhlInboundMessage,
   parseGhlOutboundMessage,
   parseGhlWebhookPayload,
@@ -247,6 +248,51 @@ describe('containsZwsp', () => {
   });
 });
 
+describe('parseAttachmentsRaw', () => {
+  it('returns empty array for null/undefined', () => {
+    expect(parseAttachmentsRaw(null)).toEqual([]);
+    expect(parseAttachmentsRaw(undefined)).toEqual([]);
+  });
+
+  it('returns empty array for empty/special string forms', () => {
+    expect(parseAttachmentsRaw('')).toEqual([]);
+    expect(parseAttachmentsRaw('  ')).toEqual([]);
+    expect(parseAttachmentsRaw('[]')).toEqual([]);
+    expect(parseAttachmentsRaw('null')).toEqual([]);
+    expect(parseAttachmentsRaw('false')).toEqual([]);
+  });
+
+  it('passes through array of strings deduping + trimming', () => {
+    expect(parseAttachmentsRaw(['  https://a/1 ', 'https://a/1', 'https://a/2'])).toEqual([
+      'https://a/1',
+      'https://a/2',
+    ]);
+  });
+
+  it('drops non-string elements from array', () => {
+    expect(parseAttachmentsRaw(['https://a/1', 123, null, false, 'https://a/2'])).toEqual([
+      'https://a/1',
+      'https://a/2',
+    ]);
+  });
+
+  it('parses JSON string array', () => {
+    expect(parseAttachmentsRaw('["https://a/1","https://a/2"]')).toEqual([
+      'https://a/1',
+      'https://a/2',
+    ]);
+  });
+
+  it('falls back to CSV when JSON parse fails', () => {
+    expect(parseAttachmentsRaw('https://a/1, https://a/2')).toEqual(['https://a/1', 'https://a/2']);
+  });
+
+  it('returns empty for non-string non-array (numbers, objects)', () => {
+    expect(parseAttachmentsRaw(42)).toEqual([]);
+    expect(parseAttachmentsRaw({ url: 'x' })).toEqual([]);
+  });
+});
+
 describe('parseGhlWebhookPayload — customData passthrough (legacy "clase" Workflow)', () => {
   it('uses customData.lead as contactId when present', () => {
     const parsed = parseGhlWebhookPayload({
@@ -327,6 +373,51 @@ describe('parseGhlWebhookPayload — customData passthrough (legacy "clase" Work
       customData: { conversation_source: '  Bienvenida  ' },
     });
     expect(parsed.conversationSource).toBe('bienvenida');
+  });
+
+  it('extracts customData.attachments as array of URLs', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'mira esta foto' },
+      customData: { attachments: ['https://media.gohighlevel.com/a.jpg', 'https://media.gohighlevel.com/b.mp3'] },
+    });
+    expect(parsed.attachments).toEqual([
+      'https://media.gohighlevel.com/a.jpg',
+      'https://media.gohighlevel.com/b.mp3',
+    ]);
+  });
+
+  it('extracts customData.attachments from JSON string', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'audio' },
+      customData: { attachments: '["https://media.gohighlevel.com/a.mp3"]' },
+    });
+    expect(parsed.attachments).toEqual(['https://media.gohighlevel.com/a.mp3']);
+  });
+
+  it('extracts customData.attachments from CSV string', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'fotos' },
+      customData: { attachments: 'https://x.com/1.jpg,https://x.com/2.jpg' },
+    });
+    expect(parsed.attachments).toEqual(['https://x.com/1.jpg', 'https://x.com/2.jpg']);
+  });
+
+  it('treats empty/null/false attachments as no attachments', () => {
+    for (const empty of [null, '', '[]', 'null', 'false', false]) {
+      const parsed = parseGhlWebhookPayload({
+        contact_id: 'c',
+        location: { id: 'L' },
+        message: { type: 18, body: 'hola' },
+        customData: { attachments: empty },
+      });
+      expect(parsed.attachments).toBeUndefined();
+    }
   });
 
   it('parses real legacy "clase" workflow payload (customData lead+message+conv_source)', () => {

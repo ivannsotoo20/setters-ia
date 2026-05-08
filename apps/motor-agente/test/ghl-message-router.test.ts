@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { classifyByKeywords } from '../src/services/ghl-message-router.js';
+import {
+  classifyByKeywords,
+  inferContentTypeFromUrl,
+} from '../src/services/ghl-message-router.js';
 
 describe('classifyByKeywords', () => {
   const keywords = [
@@ -58,5 +61,41 @@ describe('classifyByKeywords', () => {
     ];
     const result = classifyByKeywords('aquí va el magnet', withEmpty);
     expect(result).toBe('lm');
+  });
+});
+
+describe('inferContentTypeFromUrl', () => {
+  it('detects audio extensions', () => {
+    for (const ext of ['mp3', 'ogg', 'wav', 'm4a', 'aac', 'opus']) {
+      expect(inferContentTypeFromUrl(`https://media.gohighlevel.com/foo.${ext}`)).toBe('audio');
+    }
+  });
+
+  it('detects image extensions', () => {
+    for (const ext of ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif']) {
+      expect(inferContentTypeFromUrl(`https://x/y.${ext}`)).toBe('image');
+    }
+  });
+
+  it('detects video extensions', () => {
+    for (const ext of ['mp4', 'mov', 'webm', 'mkv', 'avi']) {
+      expect(inferContentTypeFromUrl(`https://x/y.${ext}`)).toBe('video');
+    }
+  });
+
+  it('falls back to file for unknown / no extension', () => {
+    expect(inferContentTypeFromUrl('https://x/y.pdf')).toBe('file');
+    expect(inferContentTypeFromUrl('https://x/y')).toBe('file');
+    expect(inferContentTypeFromUrl('')).toBe('file');
+  });
+
+  it('strips query string and fragment before checking extension', () => {
+    expect(inferContentTypeFromUrl('https://x/y.mp3?token=abc&v=2')).toBe('audio');
+    expect(inferContentTypeFromUrl('https://x/y.jpg#fragment')).toBe('image');
+  });
+
+  it('is case-insensitive', () => {
+    expect(inferContentTypeFromUrl('https://x/Y.MP3')).toBe('audio');
+    expect(inferContentTypeFromUrl('https://x/Y.JPG')).toBe('image');
   });
 });

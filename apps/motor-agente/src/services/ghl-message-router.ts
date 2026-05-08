@@ -216,22 +216,67 @@ export async function routeGhlInbound(
       .eq('id', conversationId);
   }
 
-  // 5) INSERT conversation_messages source='lead'
-  const { data: inserted, error: insertErr } = await supabase
-    .from('conversation_messages')
-    .insert({
+  // 5) INSERT conversation_messages source='lead'.
+  //    El Workflow webhook puede pasar texto + attachments a la vez. Insertamos
+  //    1 row por cada parte (1 text si no vacío, 1 por cada URL adjunta) para
+  //    que el archivo histórico refleje exactamente lo que llegó. La pipeline
+  //    multimodal vendrá en bloque dedicado — por ahora solo persistencia.
+  const sentAt = inbound.timestamp ?? new Date().toISOString();
+  const hasText = typeof inbound.message === 'string' && inbound.message.trim().length > 0;
+  const attachments = inbound.attachments ?? [];
+
+  const messageRows: Array<Record<string, unknown>> = [];
+  if (hasText) {
+    messageRows.push({
       tenant_id: inbound.tenantId,
       conversation_id: conversationId,
       source: 'lead',
       content_type: 'text',
       content: inbound.message,
-      sent_at: inbound.timestamp ?? new Date().toISOString(),
-    })
-    .select('id')
-    .single();
+      sent_at: sentAt,
+    });
+  }
+  for (const url of attachments) {
+    if (typeof url !== 'string' || url.trim().length === 0) continue;
+    messageRows.push({
+      tenant_id: inbound.tenantId,
+      conversation_id: conversationId,
+      source: 'lead',
+      content_type: inferContentTypeFromUrl(url),
+      content: null,
+      media_url: url,
+      sent_at: sentAt,
+    });
+  }
 
-  if (insertErr || !inserted) {
+  if (messageRows.length === 0) {
+    throw new Error(
+      `routeGhlInbound: no text and no attachments — nothing to insert (contactId=${inbound.ghlContactId})`,
+    );
+  }
+
+  const { data: insertedRows, error: insertErr } = await supabase
+    .from('conversation_messages')
+    .insert(messageRows)
+    .select('id');
+
+  if (insertErr || !insertedRows || insertedRows.length === 0) {
     throw new Error(`routeGhlInbound: insert message failed: ${insertErr?.message}`);
+  }
+  const inserted = insertedRows[0]!;
+
+  if (attachments.length > 0) {
+    logger.info(
+      {
+        tenantId: inbound.tenantId,
+        conversationId,
+        attachmentCount: attachments.length,
+        contentTypes: messageRows
+          .filter((r) => r.content_type !== 'text')
+          .map((r) => r.content_type),
+      },
+      'routeGhlInbound: attachments persisted',
+    );
   }
 
   // 6) Verificar si IA está pausada en esta conversación
@@ -507,4 +552,53 @@ async function createConversationFromOutbound(args: {
 function errMsg(err: unknown): string {
   if (err instanceof Error) return err.message;
   return String(err);
+}
+
+/**
+ * Infiere `conversation_messages.content_type` de la extensión de un URL.
+ *
+ * GHL nos pasa URLs CDN tipo `https://media.gohighlevel.com/.../file.mp3`. El
+ * sistema soporta los mismos buckets que YCloud: audio | image | video | file.
+ *
+ * Sin extensión clara → `file` (catch-all).
+ */
+export function inferContentTypeFromUrl(url: string): 'audio' | 'image' | 'video' | 'file' {
+  if (typeof url !== 'string' || url.length === 0) return 'file';
+  // Strip query string + fragment para ver la extensión real
+  const path = url.split(/[?#]/)[0] ?? url;
+  const lower = path.toLowerCase();
+  // Audio
+  if (
+    lower.endsWith('.mp3') ||
+    lower.endsWith('.ogg') ||
+    lower.endsWith('.wav') ||
+    lower.endsWith('.m4a') ||
+    lower.endsWith('.aac') ||
+    lower.endsWith('.opus')
+  ) {
+    return 'audio';
+  }
+  // Image
+  if (
+    lower.endsWith('.jpg') ||
+    lower.endsWith('.jpeg') ||
+    lower.endsWith('.png') ||
+    lower.endsWith('.webp') ||
+    lower.endsWith('.gif') ||
+    lower.endsWith('.heic') ||
+    lower.endsWith('.heif')
+  ) {
+    return 'image';
+  }
+  // Video
+  if (
+    lower.endsWith('.mp4') ||
+    lower.endsWith('.mov') ||
+    lower.endsWith('.webm') ||
+    lower.endsWith('.mkv') ||
+    lower.endsWith('.avi')
+  ) {
+    return 'video';
+  }
+  return 'file';
 }
