@@ -8,9 +8,15 @@ importers:
 
   .:
     devDependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.103.3
+        version: 2.103.3
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.17
+      dotenv:
+        specifier: ^16.6.1
+        version: 16.6.1
       prettier:
         specifier: ^3.4.2
         version: 3.8.3
@@ -178,6 +184,9 @@ importers:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@22.19.17)(lightningcss@1.32.0)
 
   packages/prompt-composer:
     dependencies:
