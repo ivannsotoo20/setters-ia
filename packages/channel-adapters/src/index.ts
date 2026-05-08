@@ -35,3 +35,22 @@ export {
   type YCloudContact,
   type YCloudStatus,
 } from './ycloud/types.js';
+
+// ---------- GHL (canal nativo IG/FB/Email via Marketplace webhooks) ----------
+export {
+  parseGhlWebhookPayload,
+  parseGhlInboundMessage,
+  parseGhlOutboundMessage,
+  containsZwsp,
+  ZWSP,
+  GhlParseError,
+} from './ghl/parser.js';
+export type {
+  GhlWebhookPayload,
+  GhlWebhookType,
+  GhlWebhookMessageType,
+  GhlWebhookDirection,
+  GhlParsedInbound,
+  GhlParsedOutbound,
+} from './ghl/types.js';
+export { GhlChannelAdapter, type GhlChannelAdapterParams } from './ghl/channel-adapter.js';
