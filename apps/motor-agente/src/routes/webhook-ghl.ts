@@ -25,7 +25,12 @@ interface WebhookParams {
 }
 
 /**
- * Webhook receiver GHL Marketplace (Bloque C.2).
+ * Webhook receiver para integraciones (Bloque C.2 — origen GHL).
+ *
+ * Path mounting: `/integrations/webhook/...` (path neutro, sin "ghl" en URL).
+ * Razón: el developer portal de GHL valida y RECHAZA cualquier redirect/webhook
+ * URL que contenga "ghl" / "highlevel" — error "The redirect uri contains a
+ * Highlevel reference. Please remove any Highlevel references to save."
  *
  * Recibe Inbound + Outbound de GHL Workflows. Para inbound: ingest + pipeline.
  * Para outbound: clasifica (ZWSP / keyword / humano) y opcionalmente pausa IA.
@@ -39,12 +44,12 @@ interface WebhookParams {
  *   6. 200 ack
  */
 export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
-  // GET /webhook/ghl/:tenant_token/ping — endpoint de prueba para "Test Webhook"
-  // en GHL Workflow setup. Resuelve tenant, devuelve 200 + tenant_id sin
-  // disparar pipeline. Útil para validar conectividad antes de enviar mensajes
-  // reales.
+  // GET /integrations/webhook/:tenant_token/ping — endpoint de prueba para
+  // "Test Webhook" en GHL Workflow setup. Resuelve tenant, devuelve 200 +
+  // tenant_id sin disparar pipeline. Útil para validar conectividad antes de
+  // enviar mensajes reales.
   app.get<{ Params: WebhookParams }>(
-    '/webhook/ghl/:tenant_token/ping',
+    '/integrations/webhook/:tenant_token/ping',
     async (request: FastifyRequest<{ Params: WebhookParams }>, reply: FastifyReply) => {
       const { tenant_token } = request.params;
       const supabase = getSupabase();
@@ -57,14 +62,14 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         tenant_id: resolved.tenantId,
         purpose: 'ghl_webhook',
         verify_mode: env.GHL_WEBHOOK_VERIFY_MODE,
-        message: 'Endpoint ready. POST aquí para procesar webhooks GHL.',
+        message: 'Endpoint ready. POST aquí para procesar webhooks.',
         timestamp: new Date().toISOString(),
       });
     },
   );
 
   app.post<{ Params: WebhookParams; Body: unknown }>(
-    '/webhook/ghl/:tenant_token',
+    '/integrations/webhook/:tenant_token',
     async (
       request: FastifyRequest<{ Params: WebhookParams; Body: unknown }>,
       reply: FastifyReply,
