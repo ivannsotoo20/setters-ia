@@ -1,6 +1,9 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { logout } from '@/lib/actions/auth';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * Dashboard placeholder protegido. El middleware ya redirige a /login
@@ -53,6 +56,15 @@ export default async function DashboardPage() {
           </button>
         </form>
       </header>
+
+      <nav className="dashboard-nav">
+        <Link href="/dashboard" className="dashboard-nav-link is-active">
+          Dashboard
+        </Link>
+        <Link href="/conversations" className="dashboard-nav-link">
+          Conversaciones
+        </Link>
+      </nav>
 
       <section className="dashboard-card">
         <h2>Identidad</h2>

@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Home / : si hay sesion → dashboard. Si no → login.
  * Pre-renderiza nada — solo redirect server-side.

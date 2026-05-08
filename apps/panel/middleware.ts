@@ -17,7 +17,7 @@ interface CookieToSet {
  * NO leer datos sensibles aqui (es codigo del Edge runtime). Solo gating.
  */
 
-const PROTECTED_PREFIXES = ['/dashboard'];
+const PROTECTED_PREFIXES = ['/dashboard', '/conversations'];
 const AUTH_ONLY_PATHS = ['/login', '/signup'];
 
 export async function middleware(request: NextRequest) {
