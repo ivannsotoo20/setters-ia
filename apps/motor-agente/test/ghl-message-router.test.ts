@@ -77,10 +77,17 @@ describe('inferContentTypeFromUrl', () => {
     }
   });
 
-  it('detects video extensions', () => {
-    for (const ext of ['mp4', 'mov', 'webm', 'mkv', 'avi']) {
+  it('detects video extensions (real video formats only, not mp4)', () => {
+    for (const ext of ['mov', 'webm', 'mkv', 'avi']) {
       expect(inferContentTypeFromUrl(`https://x/y.${ext}`)).toBe('video');
     }
+  });
+
+  it('treats .mp4 as audio (IG DM voice notes use mp4 container)', () => {
+    expect(inferContentTypeFromUrl('https://media/voice.mp4')).toBe('audio');
+    expect(inferContentTypeFromUrl(
+      'https://static-assets.internal.usercontent.site/conversations-assets/location/X/conversations/Y/abc.mp4',
+    )).toBe('audio');
   });
 
   it('falls back to file for unknown / no extension', () => {

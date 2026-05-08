@@ -560,6 +560,15 @@ function errMsg(err: unknown): string {
  * GHL nos pasa URLs CDN tipo `https://media.gohighlevel.com/.../file.mp3`. El
  * sistema soporta los mismos buckets que YCloud: audio | image | video | file.
  *
+ * Notas importantes:
+ *   - IG DM voice notes vienen como `.mp4` (contenedor MPEG-4 con codec audio
+ *     AAC). NO son videos. Por eso `.mp4` se mapea a `audio` por defecto:
+ *     Whisper procesa el track de audio igual aunque sea un video real (caso
+ *     <5%). Si Iván empieza a recibir muchos videos genuinos, añadiremos
+ *     detección por mime-type del Content-Type del download.
+ *   - `.mov` / `.webm` / `.mkv` / `.avi` quedan como `video` real porque IG no
+ *     los usa para voice notes.
+ *
  * Sin extensión clara → `file` (catch-all).
  */
 export function inferContentTypeFromUrl(url: string): 'audio' | 'image' | 'video' | 'file' {
@@ -567,14 +576,15 @@ export function inferContentTypeFromUrl(url: string): 'audio' | 'image' | 'video
   // Strip query string + fragment para ver la extensión real
   const path = url.split(/[?#]/)[0] ?? url;
   const lower = path.toLowerCase();
-  // Audio
+  // Audio (incluye .mp4 — IG manda voice notes en MPEG-4 contenedor)
   if (
     lower.endsWith('.mp3') ||
     lower.endsWith('.ogg') ||
     lower.endsWith('.wav') ||
     lower.endsWith('.m4a') ||
     lower.endsWith('.aac') ||
-    lower.endsWith('.opus')
+    lower.endsWith('.opus') ||
+    lower.endsWith('.mp4')
   ) {
     return 'audio';
   }
@@ -590,9 +600,8 @@ export function inferContentTypeFromUrl(url: string): 'audio' | 'image' | 'video
   ) {
     return 'image';
   }
-  // Video
+  // Video real (no contenedores ambiguos como mp4)
   if (
-    lower.endsWith('.mp4') ||
     lower.endsWith('.mov') ||
     lower.endsWith('.webm') ||
     lower.endsWith('.mkv') ||
