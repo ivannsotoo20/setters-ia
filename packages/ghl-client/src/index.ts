@@ -11,8 +11,13 @@
  * (a) tipar de un golpe lo expuesto a callers, (b) inyectar `fetchImpl` para tests.
  */
 
-import { upsertContact, updateContactCustomFields } from './contacts.js';
-import { registerInboundMessage, registerOutboundMessage } from './messages.js';
+import { getContactInfo, upsertContact, updateContactCustomFields } from './contacts.js';
+import {
+  registerInboundMessage,
+  registerOutboundMessage,
+  sendMessageViaChannel,
+  type GhlSendMessageInput,
+} from './messages.js';
 import {
   createOpportunity,
   listPipelines,
@@ -51,6 +56,8 @@ export type {
   GhlStageMap,
 } from './types.js';
 export { GhlApiError } from './api-client.js';
+export { AI_ZWSP_TAG, appendZwspIfMissing, sendMessageViaChannel } from './messages.js';
+export type { GhlSendMessageInput } from './messages.js';
 
 export interface GhlClientOptions extends GhlCredentials {
   /** Override fetch (para tests). */
@@ -80,6 +87,10 @@ export class GhlClient {
     );
   }
 
+  getContactInfo(contactId: string): Promise<GhlContact | null> {
+    return getContactInfo(this.apiToken, contactId, this.fetchImpl);
+  }
+
   updateContactCustomFields(
     contactId: string,
     customFields: GhlCustomField[],
@@ -93,6 +104,10 @@ export class GhlClient {
 
   registerOutbound(input: GhlRegisterMessageInput): Promise<GhlRegisterMessageResult> {
     return registerOutboundMessage(this.apiToken, input, this.fetchImpl);
+  }
+
+  sendMessageViaChannel(input: GhlSendMessageInput): Promise<GhlRegisterMessageResult> {
+    return sendMessageViaChannel(this.apiToken, input, this.fetchImpl);
   }
 
   listPipelines(): Promise<GhlPipeline[]> {

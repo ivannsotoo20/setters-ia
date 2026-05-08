@@ -54,6 +54,32 @@ export async function upsertContact(
 }
 
 /**
+ * Carga info de un contacto por ID (read-only).
+ *
+ * Endpoint: GET /contacts/{id} (GHL API v2).
+ * Usado por el router de webhooks para enriquecer un lead nuevo cuando llega
+ * un InboundMessage o un OutboundMessage GHL — el payload del webhook trae el
+ * `contactId` pero no nombre/teléfono/email del contacto, así que este lookup
+ * es necesario antes del upsertLead local.
+ */
+export async function getContactInfo(
+  apiToken: string,
+  contactId: string,
+  fetchImpl?: typeof fetch,
+): Promise<GhlContact | null> {
+  if (!contactId) throw new Error('getContactInfo: contactId requerido');
+
+  const response = await ghlRequest<{ contact?: GhlContact }>({
+    apiToken,
+    method: 'GET',
+    path: `/contacts/${encodeURIComponent(contactId)}`,
+    fetchImpl,
+  });
+
+  return response.contact ?? null;
+}
+
+/**
  * Actualiza solo custom fields (merge) sin tocar phone/email/name.
  *
  * Endpoint: PUT /contacts/{id} (GHL API v2). Body parcial.
