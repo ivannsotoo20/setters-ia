@@ -74,6 +74,21 @@ const envSchema = z.object({
   GHL_API_BASE: z.string().url().default('https://services.leadconnectorhq.com'),
   /** Base URL de Marketplace OAuth — para chooselocation redirect. */
   GHL_MARKETPLACE_BASE: z.string().url().default('https://marketplace.gohighlevel.com'),
+  /**
+   * `version_id` de la app GHL Marketplace. GHL exige este parámetro en la
+   * URL de chooselocation; sin él devuelve `error.noAppVersionIdFound`. Se
+   * encuentra en developer portal → tu app → "Install link" (botón Show)
+   * — la URL incluye `&version_id=<X>`. También aparece en la sección de
+   * Versions de la app.
+   */
+  GHL_OAUTH_VERSION_ID: z.string().optional(),
+  // Bloque D — Multimodal IA. Groq Whisper para transcripción de audios
+  // inbound; Claude Sonnet (vision) ya integrada via ANTHROPIC_API_KEY para
+  // descripción de imágenes. Sin GROQ_API_KEY el motor saltea audio (con
+  // fallback log + content placeholder).
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_API_BASE: z.string().url().default('https://api.groq.com/openai/v1'),
+  GROQ_AUDIO_MODEL: z.string().default('whisper-large-v3-turbo'),
 });
 
 const parsed = envSchema.safeParse(process.env);

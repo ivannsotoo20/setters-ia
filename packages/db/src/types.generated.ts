@@ -345,7 +345,7 @@ export type Database = {
             foreignKeyName: "conversations_channel_id_fkey"
             columns: ["channel_id"]
             isOneToOne: false
-            referencedRelation: "conversations"
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {
@@ -879,6 +879,9 @@ export type Database = {
           judge_model: string | null
           judge_tokens_in: number | null
           judge_tokens_out: number | null
+          multimodal_audio_seconds: number | null
+          multimodal_cost_usd: number | null
+          multimodal_image_count: number
           outcome: string
           splitter_cost_usd: number | null
           splitter_model: string | null
@@ -909,6 +912,9 @@ export type Database = {
           judge_model?: string | null
           judge_tokens_in?: number | null
           judge_tokens_out?: number | null
+          multimodal_audio_seconds?: number | null
+          multimodal_cost_usd?: number | null
+          multimodal_image_count?: number
           outcome?: string
           splitter_cost_usd?: number | null
           splitter_model?: string | null
@@ -939,6 +945,9 @@ export type Database = {
           judge_model?: string | null
           judge_tokens_in?: number | null
           judge_tokens_out?: number | null
+          multimodal_audio_seconds?: number | null
+          multimodal_cost_usd?: number | null
+          multimodal_image_count?: number
           outcome?: string
           splitter_cost_usd?: number | null
           splitter_model?: string | null
@@ -1106,6 +1115,7 @@ export type Database = {
           active_conversation_delay: string
           created_at: string
           debounce_window_seconds: number
+          default_audio_language: string
           idle_conversation_delay: string
           max_messages_per_conversation: number
           tenant_id: number
@@ -1116,6 +1126,7 @@ export type Database = {
           active_conversation_delay?: string
           created_at?: string
           debounce_window_seconds?: number
+          default_audio_language?: string
           idle_conversation_delay?: string
           max_messages_per_conversation?: number
           tenant_id: number
@@ -1126,6 +1137,7 @@ export type Database = {
           active_conversation_delay?: string
           created_at?: string
           debounce_window_seconds?: number
+          default_audio_language?: string
           idle_conversation_delay?: string
           max_messages_per_conversation?: number
           tenant_id?: number
@@ -1467,13 +1479,7 @@ export const Constants = {
         "other",
       ],
       schedule_message_kind: ["message", "follow_up", "resource"],
-      schedule_status: [
-        "pending",
-        "processing",
-        "sent",
-        "failed",
-        "cancelled",
-      ],
+      schedule_status: ["pending", "processing", "sent", "failed", "cancelled"],
     },
   },
 } as const

@@ -71,14 +71,23 @@ export async function oauthGhlRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(503).send({ error: 'redis_unavailable' });
       }
 
+      const versionId = env.GHL_OAUTH_VERSION_ID;
+      if (!versionId) {
+        request.log.error('oauth-ghl: GHL_OAUTH_VERSION_ID not configured');
+        return reply.code(503).send({ error: 'oauth_version_id_not_configured' });
+      }
+
       const params = new URLSearchParams({
         response_type: 'code',
         redirect_uri: env.GHL_OAUTH_REDIRECT_URI,
         client_id: clientId,
         scope: env.GHL_OAUTH_SCOPES,
         state,
+        version_id: versionId,
       });
-      const target = `${env.GHL_MARKETPLACE_BASE}/oauth/chooselocation?${params.toString()}`;
+      // GHL exige el path `/v2/oauth/chooselocation` (no `/oauth/chooselocation`).
+      // Sin `version_id` el endpoint devuelve `error.noAppVersionIdFound`.
+      const target = `${env.GHL_MARKETPLACE_BASE}/v2/oauth/chooselocation?${params.toString()}`;
 
       request.log.info(
         { tenantId: resolved.tenantId, state, redirect: env.GHL_OAUTH_REDIRECT_URI },

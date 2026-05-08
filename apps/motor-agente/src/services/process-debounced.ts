@@ -1,6 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
+import { env } from '../config/env.js';
+import { enrichMediaMessages, type EnrichMediaResult } from './enrich-media-messages.js';
 import {
   computeScheduledTimes,
   insertScheduledParts,
@@ -12,6 +14,8 @@ import {
   failPipelineRun,
   startPipelineRun,
 } from './pipeline-runs.js';
+
+type AudioLanguage = 'es' | 'en' | 'auto';
 
 export interface ProcessDebouncedDeps {
   supabase: SupabaseClient;
@@ -133,6 +137,23 @@ export async function processDebounced(
   if (channelErr) throw new Error(`processDebounced: channel lookup ${channelErr.message}`);
   const channelType = (channel?.channel_type as 'whatsapp' | 'instagram' | 'facebook' | undefined) ?? 'whatsapp';
 
+  // 3.7. Bloque D — enriquecimiento multimodal: si hay rows del lead con
+  //      `media_url` pero `content=NULL`, transcribir audios (Groq Whisper) y
+  //      describir imágenes (Claude vision) ANTES de cargar historial. Tras
+  //      esto, los rows quedan con `content` poblado y entran al pipeline
+  //      como texto normal. Best-effort: si falla, persiste placeholder y
+  //      el pipeline sigue.
+  const audioLanguage = await loadAudioLanguage(supabase, tenantId);
+  const mediaResult = await enrichMediaMessages({
+    supabase,
+    anthropic,
+    conversationId,
+    audioLanguage,
+    groqApiKey: env.GROQ_API_KEY,
+    groqApiBase: env.GROQ_API_BASE,
+    groqAudioModel: env.GROQ_AUDIO_MODEL,
+  });
+
   // 4. Cargar historial completo
   const allHistory = await loadConversationHistory(supabase, conversationId, { limit: 60 });
   if (allHistory.length === 0) {
@@ -243,19 +264,37 @@ export async function processDebounced(
     })
     .eq('id', conversationId);
 
-  // 10. Cerrar pipeline_run con éxito + métricas
-  await completePipelineRun(supabase, { id: run.id, output: pipelineOut, startedAtMs });
+  // 10. Cerrar pipeline_run con éxito + métricas (incluye multimodal si hubo)
+  await completePipelineRun(supabase, {
+    id: run.id,
+    output: pipelineOut,
+    startedAtMs,
+    multimodal: mediaResult,
+  });
 
   return {
     conversationId,
     scheduleIds: ids,
     parts: pipelineOut.parts,
-    totalCostUsd: pipelineOut.totals.costUsd,
+    totalCostUsd: pipelineOut.totals.costUsd + mediaResult.costUsd,
     totalLatencyMs: pipelineOut.totals.latencyMs,
     pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
     phase: newPhase,
     correlationId: run.correlationId,
   };
+}
+
+async function loadAudioLanguage(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<AudioLanguage> {
+  const { data } = await supabase
+    .from('tenant_configs')
+    .select('default_audio_language')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const v = (data?.default_audio_language as string | undefined) ?? 'es';
+  return v === 'en' || v === 'auto' ? v : 'es';
 }
 
 function mapConversationStatus(
