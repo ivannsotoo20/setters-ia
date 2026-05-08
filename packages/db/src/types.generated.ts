@@ -18,6 +18,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_keywords: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          pattern: string
+          tenant_id: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          pattern: string
+          tenant_id: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          pattern?: string
+          tenant_id?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_keywords_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           channel_type: Database["public"]["Enums"]["channel_type"]
@@ -198,8 +236,10 @@ export type Database = {
       }
       conversations: {
         Row: {
+          ai_paused_until: string | null
           call_scheduled_at: string | null
           channel_id: number
+          conversation_source: string | null
           created_at: string
           current_context: string | null
           custom_fields: Json
@@ -231,8 +271,10 @@ export type Database = {
           urgency: string | null
         }
         Insert: {
+          ai_paused_until?: string | null
           call_scheduled_at?: string | null
           channel_id: number
+          conversation_source?: string | null
           created_at?: string
           current_context?: string | null
           custom_fields?: Json
@@ -264,8 +306,10 @@ export type Database = {
           urgency?: string | null
         }
         Update: {
+          ai_paused_until?: string | null
           call_scheduled_at?: string | null
           channel_id?: number
+          conversation_source?: string | null
           created_at?: string
           current_context?: string | null
           custom_fields?: Json
@@ -1244,7 +1288,7 @@ export type Database = {
         | "video"
         | "file"
         | "mixed"
-      message_source: "lead" | "ai" | "system"
+      message_source: "lead" | "ai" | "system" | "human"
       profile_role: "owner" | "admin" | "viewer"
       resource_type:
         | "pdf"
@@ -1411,7 +1455,7 @@ export const Constants = {
         "file",
         "mixed",
       ],
-      message_source: ["lead", "ai", "system"],
+      message_source: ["lead", "ai", "system", "human"],
       profile_role: ["owner", "admin", "viewer"],
       resource_type: [
         "pdf",
