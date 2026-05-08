@@ -39,6 +39,30 @@ interface WebhookParams {
  *   6. 200 ack
  */
 export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
+  // GET /webhook/ghl/:tenant_token/ping — endpoint de prueba para "Test Webhook"
+  // en GHL Workflow setup. Resuelve tenant, devuelve 200 + tenant_id sin
+  // disparar pipeline. Útil para validar conectividad antes de enviar mensajes
+  // reales.
+  app.get<{ Params: WebhookParams }>(
+    '/webhook/ghl/:tenant_token/ping',
+    async (request: FastifyRequest<{ Params: WebhookParams }>, reply: FastifyReply) => {
+      const { tenant_token } = request.params;
+      const supabase = getSupabase();
+      const resolved = await resolveTenantByToken(supabase, tenant_token, 'ghl_webhook');
+      if (!resolved) {
+        return reply.code(404).send({ ok: false, error: 'tenant_token invalid or inactive' });
+      }
+      return reply.code(200).send({
+        ok: true,
+        tenant_id: resolved.tenantId,
+        purpose: 'ghl_webhook',
+        verify_mode: env.GHL_WEBHOOK_VERIFY_MODE,
+        message: 'Endpoint ready. POST aquí para procesar webhooks GHL.',
+        timestamp: new Date().toISOString(),
+      });
+    },
+  );
+
   app.post<{ Params: WebhookParams; Body: unknown }>(
     '/webhook/ghl/:tenant_token',
     async (
