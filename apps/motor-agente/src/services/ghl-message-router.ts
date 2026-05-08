@@ -203,6 +203,19 @@ export async function routeGhlInbound(
   // 4.5) Persistir ghl_contact_id + ghl_conversation_id si no están
   await maybeUpdateGhlIds(supabase, conversationId, inbound.ghlContactId, inbound.ghlConversationId);
 
+  // 4.6) Si el Workflow GHL pasó `conversation_source` en customData, lo
+  //      respetamos (override). Útil cuando el trainer arma una automation que
+  //      ya clasificó el mensaje (ej: keyword "clase" → bienvenida).
+  if (inbound.conversationSource) {
+    await supabase
+      .from('conversations')
+      .update({
+        conversation_source: inbound.conversationSource,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', conversationId);
+  }
+
   // 5) INSERT conversation_messages source='lead'
   const { data: inserted, error: insertErr } = await supabase
     .from('conversation_messages')

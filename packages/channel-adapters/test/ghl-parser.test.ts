@@ -246,3 +246,109 @@ describe('containsZwsp', () => {
     expect(containsZwsp('')).toBe(false);
   });
 });
+
+describe('parseGhlWebhookPayload — customData passthrough (legacy "clase" Workflow)', () => {
+  it('uses customData.lead as contactId when present', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'fallback_contact',
+      location: { id: 'L' },
+      message: { type: 18, body: 'hola' },
+      customData: { lead: 'cd_contact_id' },
+    });
+    expect(parsed.contactId).toBe('cd_contact_id');
+  });
+
+  it('uses customData.message as body when present (overrides message.body)', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'unused' },
+      customData: { message: 'Quiero clase' },
+    });
+    expect(parsed.body).toBe('Quiero clase');
+  });
+
+  it('extracts customData.conversation_source as conversationSource (bienvenida)', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'Hola amigo' },
+      customData: { conversation_source: 'bienvenida' },
+    });
+    expect(parsed.conversationSource).toBe('bienvenida');
+  });
+
+  it('extracts conversation_source top-level when customData missing', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'Aqui va el lead magnet' },
+      conversation_source: 'lm',
+    });
+    expect(parsed.conversationSource).toBe('lm');
+  });
+
+  it('respects customData.direction = outbound', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'msg' },
+      customData: { direction: 'outbound' },
+    });
+    expect(parsed.type).toBe('OutboundMessage');
+    expect(parsed.direction).toBe('outbound');
+  });
+
+  it('uses customData.messageType when message.type missing', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { body: 'hi' },
+      customData: { messageType: 'FB Messenger' },
+    });
+    expect(parsed.messageType).toBe('FB Messenger');
+  });
+
+  it('ignores invalid conversation_source values (typos / unknown)', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'hi' },
+      customData: { conversation_source: 'unknown_value' },
+    });
+    expect(parsed.conversationSource).toBeUndefined();
+  });
+
+  it('normalizes conversation_source case + whitespace', () => {
+    const parsed = parseGhlWebhookPayload({
+      contact_id: 'c',
+      location: { id: 'L' },
+      message: { type: 18, body: 'hi' },
+      customData: { conversation_source: '  Bienvenida  ' },
+    });
+    expect(parsed.conversationSource).toBe('bienvenida');
+  });
+
+  it('parses real legacy "clase" workflow payload (customData lead+message+conv_source)', () => {
+    const payload = parseGhlWebhookPayload({
+      contact_id: 'fallback_contact',
+      location: { id: 'FOxJtkxqNKJjGSuYMEk0' },
+      message: { type: 18, body: 'unused' },
+      first_name: 'Ivan',
+      customData: {
+        lead: 'oCFmoWfCEUv6SbeGk8TE',
+        message: 'Quiero entrar en una clase',
+        conversation_source: 'bienvenida',
+      },
+    });
+    expect(payload.contactId).toBe('oCFmoWfCEUv6SbeGk8TE');
+    expect(payload.body).toBe('Quiero entrar en una clase');
+    expect(payload.conversationSource).toBe('bienvenida');
+
+    const inbound = parseGhlInboundMessage(payload, 3);
+    expect(inbound.ghlContactId).toBe('oCFmoWfCEUv6SbeGk8TE');
+    expect(inbound.message).toBe('Quiero entrar en una clase');
+    expect(inbound.conversationSource).toBe('bienvenida');
+    expect(inbound.channel).toBe('instagram');
+  });
+});

@@ -97,6 +97,12 @@ const workflowSchema = z.object({
   direction: z.enum(['inbound', 'outbound']).optional(),
   /** Y opcionalmente conversation_source para clasificar (bienvenida/lm/inbound). */
   conversation_source: z.string().optional(),
+  /** Replica del flow legacy n8n: el Workflow webhook step puede pasar
+   *  `lead`, `message`, `conversation_source` como customData keys top-level
+   *  cuando el trainer arma una automation que ya clasifica el mensaje (ej.
+   *  workflow "Si keyword=clase → bienvenida, llama webhook con conv_source").
+   *  Si vienen, sustituyen a contact_id / message.body / lo que corresponda. */
+  lead: z.string().optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -197,19 +203,65 @@ function normalizeWorkflowToInternal(
   const attributionMedium =
     data.contact?.attributionSource?.medium ??
     data.contact?.lastAttributionSource?.medium;
-  const messageType = resolveMessageType(data.message?.type, attributionMedium);
-  const direction = data.direction ?? 'inbound'; // default Customer Replied trigger
+  const cd = (data.customData ?? {}) as Record<string, unknown>;
+
+  // Direction puede venir top-level o en customData
+  const directionRaw =
+    data.direction ??
+    (typeof cd.direction === 'string' ? (cd.direction as string) : undefined);
+  const direction: 'inbound' | 'outbound' =
+    directionRaw === 'outbound' ? 'outbound' : 'inbound';
   const type: GhlWebhookType = direction === 'outbound' ? 'OutboundMessage' : 'InboundMessage';
+
+  // contactId puede venir como customData.lead (flow legacy) o lead top-level
+  const contactId =
+    (typeof cd.lead === 'string' && cd.lead.length > 0 && (cd.lead as string)) ||
+    (typeof data.lead === 'string' && data.lead.length > 0 && data.lead) ||
+    data.contact_id;
+
+  // Body: customData.message > top-level message.body > ''
+  const body =
+    (typeof cd.message === 'string' && (cd.message as string)) ||
+    data.message?.body ||
+    '';
+
+  // conversation_source: customData first, top-level second
+  const conversationSource = pickConversationSource(
+    typeof cd.conversation_source === 'string' ? (cd.conversation_source as string) : undefined,
+    data.conversation_source,
+  );
+
+  // messageType: customData puede pasarlo como string ('IG' / 'FB Messenger' / etc)
+  const cdMessageType =
+    typeof cd.messageType === 'string' ? (cd.messageType as string) : undefined;
+  const messageType = resolveMessageType(
+    cdMessageType ?? data.message?.type,
+    attributionMedium,
+  );
 
   return {
     type,
     locationId: data.location.id,
-    contactId: data.contact_id,
-    body: data.message?.body ?? '',
+    contactId,
+    body,
     messageType,
     direction,
+    ...(conversationSource ? { conversationSource } : {}),
     // Workflow webhook no expone conversationId / messageId / timestamp en body estándar
   };
+}
+
+function pickConversationSource(
+  ...candidates: Array<string | undefined>
+): GhlWebhookPayload['conversationSource'] | undefined {
+  for (const c of candidates) {
+    if (typeof c !== 'string') continue;
+    const v = c.trim().toLowerCase();
+    if (v === 'bienvenida' || v === 'lm' || v === 'inbound' || v === 'manual') {
+      return v;
+    }
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,6 +290,7 @@ export function parseGhlInboundMessage(
     ghlMessageId: payload.messageId ?? null,
     timestamp: payload.timestamp ?? null,
     contactInfo: contactInfo ?? undefined,
+    ...(payload.conversationSource ? { conversationSource: payload.conversationSource } : {}),
   };
 }
 

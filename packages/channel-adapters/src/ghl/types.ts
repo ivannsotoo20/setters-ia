@@ -39,6 +39,13 @@ export interface GhlWebhookPayload {
   timestamp?: string;
   /** Lista de URLs de adjuntos (imágenes, audios, etc). */
   attachments?: string[];
+  /**
+   * Override opcional de `conversation_source` que viene desde un Workflow GHL
+   * configurado para clasificar antes de llamar al motor (custom data del step
+   * Webhook). Valores aceptados: 'bienvenida' | 'lm' | 'inbound' | 'manual'.
+   * Si no viene, el router clasifica con `automation_keywords`.
+   */
+  conversationSource?: 'bienvenida' | 'lm' | 'inbound' | 'manual';
 }
 
 /**
@@ -60,6 +67,8 @@ export interface GhlParsedInbound {
     lastName?: string | null;
     fullName?: string | null;
   };
+  /** Override de `conversation_source` desde customData del Workflow (opcional). */
+  conversationSource?: 'bienvenida' | 'lm' | 'inbound' | 'manual';
 }
 
 export interface GhlParsedOutbound {
