@@ -41,6 +41,16 @@ const envSchema = z.object({
   // pero el endpoint devuelve 503 si no está configurado. Generar con
   // openssl rand -hex 32.
   INTERNAL_STATS_TOKEN: z.string().min(16).optional(),
+  // Bloque C.2 — modo de verificación firma GHL Marketplace webhook.
+  //   disabled → skip verificación (dev sin pubkey).
+  //   warn     → verifica si hay header + pubkey; si falla, log warn y continúa.
+  //   enforce  → falta firma o falla → 401.
+  GHL_WEBHOOK_VERIFY_MODE: z.enum(['disabled', 'warn', 'enforce']).default('warn'),
+  // Clave pública RSA distribuida por GHL Marketplace (formato PEM completo
+  // con BEGIN/END PUBLIC KEY). Si no está configurada y verify_mode != disabled
+  // → toda firma se trata como signature_mismatch. En dev local se puede dejar
+  // vacía con verify_mode=disabled.
+  GHL_WEBHOOK_PUBLIC_KEY_PEM: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
