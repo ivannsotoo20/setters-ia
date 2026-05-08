@@ -1,4 +1,4 @@
-// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-07).
+// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-08).
 // Do not edit manually. Regenerate with: pnpm db:generate-types
 // Or from Claude Code with MCP: mcp__supabase-fyzon__generate_typescript_types.
 
@@ -207,6 +207,9 @@ export type Database = {
           emotion: string | null
           general_context: string | null
           general_motivation: string | null
+          ghl_contact_id: string | null
+          ghl_conversation_id: string | null
+          ghl_opportunity_id: string | null
           goal: string | null
           handoff_at: string | null
           handoff_cause: Database["public"]["Enums"]["handoff_cause"] | null
@@ -237,6 +240,9 @@ export type Database = {
           emotion?: string | null
           general_context?: string | null
           general_motivation?: string | null
+          ghl_contact_id?: string | null
+          ghl_conversation_id?: string | null
+          ghl_opportunity_id?: string | null
           goal?: string | null
           handoff_at?: string | null
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
@@ -267,6 +273,9 @@ export type Database = {
           emotion?: string | null
           general_context?: string | null
           general_motivation?: string | null
+          ghl_contact_id?: string | null
+          ghl_conversation_id?: string | null
+          ghl_opportunity_id?: string | null
           goal?: string | null
           handoff_at?: string | null
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
@@ -292,7 +301,7 @@ export type Database = {
             foreignKeyName: "conversations_channel_id_fkey"
             columns: ["channel_id"]
             isOneToOne: false
-            referencedRelation: "channels"
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
           {
@@ -1414,7 +1423,13 @@ export const Constants = {
         "other",
       ],
       schedule_message_kind: ["message", "follow_up", "resource"],
-      schedule_status: ["pending", "processing", "sent", "failed", "cancelled"],
+      schedule_status: [
+        "pending",
+        "processing",
+        "sent",
+        "failed",
+        "cancelled",
+      ],
     },
   },
 } as const
