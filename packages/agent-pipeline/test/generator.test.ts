@@ -25,6 +25,23 @@ function makeFakeSupabase(opts: { promptBlocks: any[]; llmCallId?: number }) {
         };
         return builder;
       }
+      if (table === 'trainer_preferences') {
+        // Sprint Gamma 2.6 — composePrompt ahora consulta trainer_preferences
+        // para extraer trainerPhone e interpolarlo en handoff_v4. Mock devuelve
+        // null (sin row) → ctx.phone=null → fallback en placeholders.
+        const builder: any = {
+          select() {
+            return builder;
+          },
+          eq() {
+            return builder;
+          },
+          maybeSingle() {
+            return Promise.resolve({ data: opts.trainerPrefs ?? null, error: null });
+          },
+        };
+        return builder;
+      }
       if (table === 'llm_calls') {
         const builder: any = {
           insert() {

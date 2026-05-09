@@ -51,12 +51,25 @@ export async function startPipelineRun(
   }
 }
 
+export interface MultimodalRunMetrics {
+  audioSecondsTotal: number;
+  imageCount: number;
+  costUsd: number;
+}
+
 export async function completePipelineRun(
   supabase: SupabaseClient,
-  params: { id: number; output: PipelineOutput; startedAtMs: number; outcome?: PipelineRunOutcome },
+  params: {
+    id: number;
+    output: PipelineOutput;
+    startedAtMs: number;
+    outcome?: PipelineRunOutcome;
+    /** Métricas Bloque D (transcripción audio + descripción imagen). */
+    multimodal?: MultimodalRunMetrics;
+  },
 ): Promise<void> {
   if (params.id === 0) return; // INSERT inicial falló; nada que actualizar.
-  const { id, output, startedAtMs } = params;
+  const { id, output, startedAtMs, multimodal } = params;
   const outcome = params.outcome ?? 'success';
   const durationMs = Date.now() - startedAtMs;
 
@@ -89,10 +102,13 @@ export async function completePipelineRun(
           output.validator.violations.length > 0
             ? (output.validator.violations as unknown as Record<string, unknown>[])
             : null,
-        total_cost_usd: output.totals.costUsd,
+        total_cost_usd: (output.totals.costUsd ?? 0) + (multimodal?.costUsd ?? 0),
         total_tokens_in: output.totals.tokensInTotal,
         total_tokens_out: output.totals.tokensOutTotal,
         outcome,
+        multimodal_audio_seconds: multimodal && multimodal.audioSecondsTotal > 0 ? multimodal.audioSecondsTotal : null,
+        multimodal_image_count: multimodal?.imageCount ?? 0,
+        multimodal_cost_usd: multimodal && multimodal.costUsd > 0 ? multimodal.costUsd : null,
       })
       .eq('id', id);
     if (error) {

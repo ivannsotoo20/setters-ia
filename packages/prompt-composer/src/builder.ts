@@ -5,6 +5,15 @@ import type {
   PromptBlockRow,
   SystemContentBlock,
 } from './types.js';
+import { interpolateTrainerPlaceholders } from './interpolate.js';
+
+/**
+ * Sprint Gamma 2.6 — Bloques en los que el composer aplica interpolación de
+ * `{{trainer_phone|fallback}}`. Whitelist explícita para evitar replacements
+ * no intencionados en otros bloques (p.ej. coach_v3 podría tener `{{` literal
+ * por accidente del trainer).
+ */
+const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['handoff_v4']);
 
 /**
  * Lista de block_keys que se requieren siempre para una composición válida.
@@ -33,6 +42,7 @@ export function buildComposedPrompt(
     includeOutputContract = true,
     cacheStrategy = 'two-point',
     cacheTtl = '1h',
+    trainerContext,
   } = options;
 
   if (currentPhase < 1 || currentPhase > 6) {
@@ -57,6 +67,7 @@ export function buildComposedPrompt(
   }
 
   // Orden de inclusión (el orden en que aparecen en el system prompt final).
+  // Bloques REQUERIDOS o ESTRUCTURALES (su ausencia rompe la composición o el flujo de fases).
   const wantedKeys: string[] = [
     'core_v4_base',
     'coach_v3',
@@ -66,6 +77,13 @@ export function buildComposedPrompt(
   if (includeObjections) wantedKeys.push('objeciones_v4');
   if (includeDescualificacion) wantedKeys.push('descualificacion_v4');
   if (includeOutputContract) wantedKeys.push('output_contract_v4');
+
+  // Bloques OPCIONALES (Sprint Alpha): si existen en BD para este tenant se incluyen,
+  // si no, se omiten silenciosamente. NO son error.
+  //   - admin_overrides_v1 va inmediatamente después del coach (sort=6 implícito).
+  //   - trainer_prefs_v1   va al final, después de output_contract_v4 (sort=110 implícito).
+  const OPTIONAL_AFTER_COACH = 'admin_overrides_v1';
+  const OPTIONAL_AT_END = 'trainer_prefs_v1';
 
   // Validar requeridos
   const missingRequired = REQUIRED_BLOCK_KEYS.filter((k) => !byKey.has(k));
@@ -83,16 +101,47 @@ export function buildComposedPrompt(
       missing.push(key);
       continue;
     }
+    // Sprint Gamma 2.6 — interpolación selectiva de placeholders del trainer
+    // (whitelist en INTERPOLATABLE_BLOCK_KEYS). Si trainerContext no se pasa,
+    // la función igualmente reemplaza por fallbacks (nunca deja `{{...}}` literal).
+    const text = INTERPOLATABLE_BLOCK_KEYS.has(key)
+      ? interpolateTrainerPlaceholders(row.content, trainerContext)
+      : row.content;
     blocks.push({
       key,
-      text: row.content,
+      text,
       cached: false,
       scope: row.tenant_id === null ? 'shared' : 'tenant',
     });
+
+    // Tras insertar 'coach_v3', si existe admin_overrides_v1 para este tenant, lo añadimos.
+    if (key === 'coach_v3') {
+      const overridesRow = byKey.get(OPTIONAL_AFTER_COACH);
+      if (overridesRow && overridesRow.tenant_id === tenantId) {
+        blocks.push({
+          key: OPTIONAL_AFTER_COACH,
+          text: overridesRow.content,
+          cached: false,
+          scope: 'tenant',
+        });
+      }
+    }
   }
 
   if (missing.length > 0) {
     throw new Error(`composePrompt: missing blocks for current options: ${missing.join(', ')}`);
+  }
+
+  // Al final de todo, si existe trainer_prefs_v1 para este tenant, lo añadimos.
+  // OJO: queda fuera del cache (ver applyCacheStrategy).
+  const prefsRow = byKey.get(OPTIONAL_AT_END);
+  if (prefsRow && prefsRow.tenant_id === tenantId) {
+    blocks.push({
+      key: OPTIONAL_AT_END,
+      text: prefsRow.content,
+      cached: false,
+      scope: 'tenant',
+    });
   }
 
   applyCacheStrategy(blocks, cacheStrategy);
@@ -130,19 +179,26 @@ function applyCacheStrategy(
 ): void {
   if (blocks.length === 0 || strategy === 'none') return;
 
+  // trainer_prefs_v1 NUNCA se cachea: cambia con cada toggle del trainer y pesa poco.
+  // El breakpoint final se aplica al último bloque que NO sea trainer_prefs_v1.
+  let lastCacheableIdx = blocks.length - 1;
+  while (lastCacheableIdx >= 0 && blocks[lastCacheableIdx]!.key === 'trainer_prefs_v1') {
+    lastCacheableIdx--;
+  }
+
   if (strategy === 'single-point') {
-    // Solo cachea al final del prefix (todo el system menos el último turno).
-    blocks[blocks.length - 1]!.cached = true;
+    if (lastCacheableIdx >= 0) {
+      blocks[lastCacheableIdx]!.cached = true;
+    }
     return;
   }
 
-  // two-point (default): breakpoint tras core_v4_base + breakpoint al final.
+  // two-point (default): breakpoint tras core_v4_base + breakpoint al final cacheable.
   const coreIdx = blocks.findIndex((b) => b.key === 'core_v4_base');
   if (coreIdx >= 0) {
     blocks[coreIdx]!.cached = true;
   }
-  const lastIdx = blocks.length - 1;
-  if (lastIdx > coreIdx) {
-    blocks[lastIdx]!.cached = true;
+  if (lastCacheableIdx > coreIdx) {
+    blocks[lastCacheableIdx]!.cached = true;
   }
 }

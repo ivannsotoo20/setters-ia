@@ -5,9 +5,11 @@ import { getSupabase } from '../lib/supabase.js';
 import { getAnthropic } from '../lib/anthropic.js';
 import { processDebounced } from '../services/process-debounced.js';
 import { sendNextBatch } from '../services/outbound-sender.js';
+import { processNotificationQueue } from '../services/notify-trainer.js';
 
 const DEBOUNCE_TICK_MS = 5_000;
 const OUTBOUND_TICK_MS = 5_000;
+const NOTIFY_TICK_MS = 10_000;
 /**
  * Si processDebounced lanza, re-encolamos la conversacion con este delay.
  * Suficientemente corto para reintentar pronto, suficientemente largo para
@@ -18,6 +20,7 @@ const DEBOUNCE_RETRY_DELAY_S = 30;
 export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let debounceTimer: NodeJS.Timeout | null = null;
   let outboundTimer: NodeJS.Timeout | null = null;
+  let notifyTimer: NodeJS.Timeout | null = null;
   let stopping = false;
 
   const tickDebounce = async () => {
@@ -78,16 +81,50 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  const tickNotify = async () => {
+    if (stopping) return;
+    try {
+      const supabase = getSupabase();
+      const result = await processNotificationQueue({
+        supabase,
+        log: app.log as unknown as {
+          info: (obj: unknown, msg?: string) => void;
+          warn: (obj: unknown, msg?: string) => void;
+          error: (obj: unknown, msg?: string) => void;
+        },
+      });
+      if (result.picked > 0) {
+        app.log.info(
+          {
+            picked: result.picked,
+            sent: result.sent,
+            skipped: result.skipped,
+            retried: result.retried,
+            failed: result.failed,
+          },
+          'notify batch processed',
+        );
+      }
+    } catch (err) {
+      app.log.error({ err }, 'tickNotify error');
+    }
+  };
+
   app.addHook('onReady', async () => {
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
     outboundTimer = setInterval(tickOutbound, OUTBOUND_TICK_MS);
-    app.log.info({ debounceMs: DEBOUNCE_TICK_MS, outboundMs: OUTBOUND_TICK_MS }, 'cron-scheduler started');
+    notifyTimer = setInterval(tickNotify, NOTIFY_TICK_MS);
+    app.log.info(
+      { debounceMs: DEBOUNCE_TICK_MS, outboundMs: OUTBOUND_TICK_MS, notifyMs: NOTIFY_TICK_MS },
+      'cron-scheduler started',
+    );
   });
 
   app.addHook('onClose', async () => {
     stopping = true;
     if (debounceTimer) clearInterval(debounceTimer);
     if (outboundTimer) clearInterval(outboundTimer);
+    if (notifyTimer) clearInterval(notifyTimer);
     app.log.info('cron-scheduler stopped');
   });
 }

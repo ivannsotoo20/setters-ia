@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  GhlChannelAdapter,
   ManyChatInstagramAdapter,
   ManyChatWhatsAppAdapter,
   YCloudWhatsAppAdapter,
@@ -14,9 +15,8 @@ import {
 } from './scheduler.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
-import { loadGhlContext, syncOutboundToGhl } from './ghl-sync.js';
 
-type SupportedProvider = 'manychat' | 'ycloud';
+type SupportedProvider = 'manychat' | 'ycloud' | 'ghl';
 
 export interface SendBatchDeps {
   supabase: SupabaseClient;
@@ -123,24 +123,6 @@ export async function sendNextBatch(
         sent_at: new Date().toISOString(),
       });
 
-      // GHL sync outbound (best-effort, Hito 10) — replica el mensaje enviado.
-      // No-op si tenant sin GHL o conversación sin ghl_contact_id.
-      const ghlCtx = await loadGhlContext(supabase, Number(row.tenant_id));
-      if (ghlCtx) {
-        const { data: convInfo } = await supabase
-          .from('conversations')
-          .select('ghl_contact_id')
-          .eq('id', Number(row.conversation_id))
-          .maybeSingle();
-        if (convInfo?.ghl_contact_id) {
-          await syncOutboundToGhl(supabase, ghlCtx, {
-            conversationId: Number(row.conversation_id),
-            ghlContactId: convInfo.ghl_contact_id,
-            message: messageText,
-          });
-        }
-      }
-
       result.sent++;
       result.details.push({ scheduleId, status: 'sent' });
     } catch (err) {
@@ -201,12 +183,22 @@ async function loadSendContext(
     throw new Error(`integration_account ${params.integrationAccountId} no encontrado`);
   }
   const credentials = decodeCredentialsRow(ia, params.integrationAccountId);
-  const apiKey = typeof credentials.api_key === 'string' ? credentials.api_key : '';
-  if (!apiKey) {
-    throw new Error(`integration_account ${params.integrationAccountId} sin api_key`);
-  }
-
   const provider = normalizeProvider(typeof ia.provider === 'string' ? ia.provider : 'manychat');
+  // GHL usa `apiToken` (PIT), ManyChat/YCloud usan `api_key`. Ambos se mapean
+  // al mismo campo SendContext.apiKey para uniformidad del adapter switch.
+  const apiKey =
+    provider === 'ghl'
+      ? typeof credentials.apiToken === 'string'
+        ? credentials.apiToken
+        : ''
+      : typeof credentials.api_key === 'string'
+        ? credentials.api_key
+        : '';
+  if (!apiKey) {
+    throw new Error(
+      `integration_account ${params.integrationAccountId} (${provider}) sin token (api_key/apiToken)`,
+    );
+  }
 
   // connection_config (no encriptado): para YCloud trae business_phone
   const connectionConfig = (ia.connection_config ?? {}) as Record<string, unknown>;
@@ -242,10 +234,10 @@ async function loadSendContext(
 }
 
 function normalizeProvider(value: string): SupportedProvider {
-  if (value === 'manychat' || value === 'ycloud') return value;
-  // 'meta_cloud', 'ghl', 'other' → no soportados todavía en outbound. Default a manychat
-  // como comportamiento histórico hasta tener adapters dedicados.
-  throw new Error(`provider '${value}' no soportado por outbound-sender (use manychat o ycloud)`);
+  if (value === 'manychat' || value === 'ycloud' || value === 'ghl') return value;
+  throw new Error(
+    `provider '${value}' no soportado por outbound-sender (use manychat, ycloud o ghl)`,
+  );
 }
 
 function extractChannelType(row: Record<string, unknown>): string {
@@ -304,6 +296,14 @@ function buildAdapter(ctx: SendContext): ChannelAdapter {
         apiKey: ctx.apiKey,
         businessPhone: ctx.businessPhone,
         baseUrl: env.YCLOUD_API_BASE,
+      });
+    }
+    case 'ghl': {
+      // GHL envía via canal nativo IG/FB Messenger/WhatsApp. apiKey aquí es el
+      // PIT de la sub-cuenta. ZWSP se apendea automáticamente en sendMessageViaChannel.
+      return new GhlChannelAdapter({
+        apiToken: ctx.apiKey,
+        channel: ctx.channelType,
       });
     }
   }

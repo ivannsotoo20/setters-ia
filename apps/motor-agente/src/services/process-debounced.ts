@@ -1,6 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
+import { env } from '../config/env.js';
+import { enrichMediaMessages, type EnrichMediaResult } from './enrich-media-messages.js';
 import {
   computeScheduledTimes,
   insertScheduledParts,
@@ -12,12 +14,10 @@ import {
   failPipelineRun,
   startPipelineRun,
 } from './pipeline-runs.js';
-import {
-  ensureGhlContactAndOpportunity,
-  loadGhlContext,
-  moveStageForPhase,
-  syncInboundToGhl,
-} from './ghl-sync.js';
+import { enqueueNotification } from './notify-trainer.js';
+import type { NotificationEventType } from '../lib/email-templates.js';
+
+type AudioLanguage = 'es' | 'en' | 'auto';
 
 export interface ProcessDebouncedDeps {
   supabase: SupabaseClient;
@@ -59,7 +59,7 @@ export async function processDebounced(
   // 1. Cargar conversación + tenant
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
-    .select('id, tenant_id, lead_id, channel_id, phase_number, state')
+    .select('id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until')
     .eq('id', conversationId)
     .maybeSingle();
   if (convErr) throw new Error(`processDebounced: ${convErr.message}`);
@@ -67,6 +67,26 @@ export async function processDebounced(
   const tenantId = Number(conv.tenant_id);
   const channelId = Number(conv.channel_id);
   const currentPhase = Number(conv.phase_number) || 1;
+
+  // 1.5. Gate: si IA está pausada (humano se hizo cargo via OutboundMessage GHL
+  // sin ZWSP, o pausa manual desde el panel), no ejecutar pipeline.
+  // ai_paused_until = NULL → IA activa. Fecha futura o 'infinity' → pausada.
+  if (conv.ai_paused_until) {
+    const pausedUntil = new Date(conv.ai_paused_until);
+    if (Number.isFinite(pausedUntil.getTime()) && pausedUntil.getTime() > Date.now()) {
+      return {
+        conversationId,
+        scheduleIds: [],
+        parts: [],
+        totalCostUsd: 0,
+        totalLatencyMs: 0,
+        pipelineStatus: 'skipped',
+        phase: currentPhase,
+        skipped: true,
+        reason: `IA pausada hasta ${pausedUntil.toISOString()} (humano se hizo cargo)`,
+      };
+    }
+  }
 
   // 2. Cargar lead (para subscriber_id externo, requerido por el outbound luego)
   const { data: lead, error: leadErr } = await supabase
@@ -77,28 +97,12 @@ export async function processDebounced(
   if (leadErr) throw new Error(`processDebounced: lead lookup ${leadErr.message}`);
   if (!lead) throw new Error(`processDebounced: lead ${conv.lead_id} not found`);
 
-  // 2.5. GHL sync (best-effort): cargar contexto + asegurar contact+opportunity
-  //      Se hace ANTES del pipeline para tener ghl_contact_id disponible al
-  //      replicar el inbound. Si tenant no tiene GHL, ghlCtx=null y todo se salta.
-  const ghlCtx = await loadGhlContext(supabase, tenantId);
-  let ghlContactId: string | null = null;
-  let ghlOpportunityId: string | null = null;
-  if (ghlCtx) {
-    const ensured = await ensureGhlContactAndOpportunity(supabase, ghlCtx, {
-      conversationId,
-      currentPhase,
-      lead: {
-        id: Number(lead.id),
-        externalId: String(lead.external_id),
-        phone: lead.phone ?? null,
-        email: lead.email ?? null,
-        firstName: lead.first_name ?? null,
-        lastName: lead.last_name ?? null,
-      },
-    });
-    ghlContactId = ensured.ghlContactId;
-    ghlOpportunityId = ensured.ghlOpportunityId;
-  }
+  // 2.5. (Bloque C.5: removido) — el sync con GHL ya no se hace desde aquí.
+  //      Cuando el lead viene via /webhook/ghl, los IDs (ghl_contact_id,
+  //      ghl_conversation_id) se persisten directamente en routeGhlInbound.
+  //      Cuando el motor envía una respuesta, GhlChannelAdapter publica via
+  //      API GHL — no hay replicación posterior. Las columnas ghl_* en
+  //      conversations se siguen poblando por el webhook receiver.
 
   // 3. Cargar integration_account ACTIVA del canal de esta conversación
   const { data: ia, error: iaErr } = await supabase
@@ -134,6 +138,23 @@ export async function processDebounced(
     .maybeSingle();
   if (channelErr) throw new Error(`processDebounced: channel lookup ${channelErr.message}`);
   const channelType = (channel?.channel_type as 'whatsapp' | 'instagram' | 'facebook' | undefined) ?? 'whatsapp';
+
+  // 3.7. Bloque D — enriquecimiento multimodal: si hay rows del lead con
+  //      `media_url` pero `content=NULL`, transcribir audios (Groq Whisper) y
+  //      describir imágenes (Claude vision) ANTES de cargar historial. Tras
+  //      esto, los rows quedan con `content` poblado y entran al pipeline
+  //      como texto normal. Best-effort: si falla, persiste placeholder y
+  //      el pipeline sigue.
+  const audioLanguage = await loadAudioLanguage(supabase, tenantId);
+  const mediaResult = await enrichMediaMessages({
+    supabase,
+    anthropic,
+    conversationId,
+    audioLanguage,
+    groqApiKey: env.GROQ_API_KEY,
+    groqApiBase: env.GROQ_API_BASE,
+    groqAudioModel: env.GROQ_AUDIO_MODEL,
+  });
 
   // 4. Cargar historial completo
   const allHistory = await loadConversationHistory(supabase, conversationId, { limit: 60 });
@@ -178,16 +199,6 @@ export async function processDebounced(
   }
   const userMessage = recentLeadMessages.map((m) => m.content).join('\n');
   const historyForPipeline = allHistory.slice(0, lastAssistantIdx + 1);
-
-  // 5.5. GHL sync inbound (best-effort): replica los mensajes del lead al CRM.
-  //      Hito 10. No-op si tenant sin GHL configurado.
-  if (ghlCtx && ghlContactId) {
-    await syncInboundToGhl(supabase, ghlCtx, {
-      conversationId,
-      ghlContactId,
-      message: userMessage,
-    });
-  }
 
   // 6. Abrir pipeline_run (Hardening 1.3 — observabilidad).
   //    INSERT inicial con outcome='in_progress'; UPDATE al final con métricas.
@@ -255,28 +266,67 @@ export async function processDebounced(
     })
     .eq('id', conversationId);
 
-  // 9.5. GHL stage move (best-effort): si phase cambió → mueve opportunity.
-  //      Hito 10. No-op si tenant sin GHL o stageMap[F<n>] sin mapear.
-  if (ghlCtx && ghlOpportunityId && newPhase !== currentPhase) {
-    await moveStageForPhase(ghlCtx, {
-      ghlOpportunityId,
-      newPhaseNumber: newPhase,
+  // 9.5. Sprint Gamma 2.5 — encolar notificación al trainer si el evento es
+  //      relevante (handoff/qualified/disqualified). El cron `notify-tick`
+  //      cada 10s leerá la cola, comprobará si el trainer está suscrito,
+  //      renderizará la plantilla y enviará via Resend. Best-effort: si
+  //      enqueueNotification falla, log y seguimos (no rompemos el pipeline).
+  const generatorStatus = pipelineOut.generator.setterOutput.conversation_status;
+  const eventType = mapStatusToEventType(generatorStatus);
+  if (eventType) {
+    const enqueueRes = await enqueueNotification({
+      supabase,
+      tenantId,
+      eventType,
+      payload: {
+        lead_id: Number(lead.id),
+        first_name: lead.first_name ?? null,
+        phone: lead.phone ?? null,
+        conversation_id: conversationId,
+        channel_type: channelType,
+        correlation_id: run.correlationId,
+      },
     });
+    if (!enqueueRes.ok) {
+      // No tirar — la notificación es best-effort. Siguiente turno podrá reintentar
+      // si el trainer dispara otro evento.
+      console.warn(
+        `[notify] enqueueNotification failed for tenant=${tenantId} conv=${conversationId} event=${eventType}: ${enqueueRes.error}`,
+      );
+    }
   }
 
-  // 10. Cerrar pipeline_run con éxito + métricas
-  await completePipelineRun(supabase, { id: run.id, output: pipelineOut, startedAtMs });
+  // 10. Cerrar pipeline_run con éxito + métricas (incluye multimodal si hubo)
+  await completePipelineRun(supabase, {
+    id: run.id,
+    output: pipelineOut,
+    startedAtMs,
+    multimodal: mediaResult,
+  });
 
   return {
     conversationId,
     scheduleIds: ids,
     parts: pipelineOut.parts,
-    totalCostUsd: pipelineOut.totals.costUsd,
+    totalCostUsd: pipelineOut.totals.costUsd + mediaResult.costUsd,
     totalLatencyMs: pipelineOut.totals.latencyMs,
     pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
     phase: newPhase,
     correlationId: run.correlationId,
   };
+}
+
+async function loadAudioLanguage(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<AudioLanguage> {
+  const { data } = await supabase
+    .from('tenant_configs')
+    .select('default_audio_language')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const v = (data?.default_audio_language as string | undefined) ?? 'es';
+  return v === 'en' || v === 'auto' ? v : 'es';
 }
 
 function mapConversationStatus(
@@ -292,5 +342,29 @@ function mapConversationStatus(
       return 'closed'; // tras handoff, conversación cerrada en el bot
     case 'disqualified':
       return 'stopped';
+  }
+}
+
+/**
+ * Mapea el `conversation_status` del Generator al `event_type` de notificación
+ * para email. Devuelve null si el status no merece email (active/paused son
+ * estados de tránsito, no eventos accionables para el trainer).
+ *
+ * Nota: 'appointment_booked' no se dispara aquí — vendrá de un hook más
+ * adelante cuando exista integración con el calendar booking del Generator.
+ */
+function mapStatusToEventType(
+  s: 'active' | 'qualified' | 'disqualified' | 'handoff' | 'paused',
+): NotificationEventType | null {
+  switch (s) {
+    case 'qualified':
+      return 'qualified';
+    case 'handoff':
+      return 'handoff';
+    case 'disqualified':
+      return 'descalified';
+    case 'active':
+    case 'paused':
+      return null;
   }
 }

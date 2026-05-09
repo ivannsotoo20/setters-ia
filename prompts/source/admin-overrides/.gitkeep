@@ -1,0 +1,13 @@
+# Admin overrides per tenant
+
+Cada archivo `.md` de este directorio es la fuente versionable del bloque
+`prompt_blocks(block_key='admin_overrides_v1', tenant_id=X)` del tenant cuyo
+slug coincide con el nombre de archivo (ej: `ivan-dev.md`, `montefit.md`).
+
+Contenido escrito por el agency admin (Iván) desde la vista detalle de tenant
+en `/admin/tenants/[id]` — capa de instrucciones extra que se inyecta entre el
+Coach y la fase activa, sin que el trainer de la sub-cuenta lo vea ni pueda
+modificar.
+
+El panel reescribe estos archivos automáticamente al aplicar un cambio (BD es
+source-of-truth runtime, los .md mantienen la trazabilidad git).

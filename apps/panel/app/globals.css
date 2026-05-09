@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme {
   --color-background: #0a0a0a;
@@ -12,19 +16,112 @@
   --color-error-bg: #2a0e0e;
   --color-success: #10b981;
   --color-success-bg: #0e2a1e;
+
+  /* Tokens shadcn que faltaban — sin esto los componentes que usan
+     bg-popover/bg-card/bg-primary etc caen a transparente o blanco
+     (síntoma observado: dropdown de versiones translúcido). Todos opacos. */
+  --color-popover: #161616;
+  --color-popover-foreground: #fafafa;
+  --color-card: #141414;
+  --color-card-foreground: #fafafa;
+  --color-primary: #10b981;
+  --color-primary-foreground: #021810;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-accent-foreground: #021810;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #fafafa;
+  --color-input: #2d2d2d;
+  --color-ring: #10b981;
+  --color-sidebar: #0a0a0a;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-primary: #10b981;
+  --color-sidebar-primary-foreground: #021810;
+  --color-sidebar-accent: #1a1a1a;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #2d2d2d;
+  --color-sidebar-ring: #10b981;
+
+  --radius: 0.5rem;
+}
+
+/* ----------------------------------------------------------------------- */
+/* :root mirror — Tailwind 4 lee tokens de @theme pero algunos componentes
+   shadcn referencian las variables CSS directamente (bg-popover compila a
+   `background-color: var(--color-popover)`). Sin esto en :root, el browser
+   pintaba transparente. Repetir aquí garantiza que toda la app las vea.    */
+/* ----------------------------------------------------------------------- */
+:root {
+  --color-background: #0a0a0a;
+  --color-foreground: #fafafa;
+  --color-muted: #262626;
+  --color-muted-foreground: #a3a3a3;
+  --color-border: #2d2d2d;
+  --color-accent: #10b981;
+  --color-accent-hover: #059669;
+  --color-error: #f87171;
+  --color-error-bg: #2a0e0e;
+  --color-success: #10b981;
+  --color-success-bg: #0e2a1e;
+
+  --color-popover: #161616;
+  --color-popover-foreground: #fafafa;
+  --color-card: #141414;
+  --color-card-foreground: #fafafa;
+  --color-primary: #10b981;
+  --color-primary-foreground: #021810;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-accent-foreground: #021810;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #fafafa;
+  --color-input: #2d2d2d;
+  --color-ring: #10b981;
+  --color-sidebar: #0a0a0a;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-primary: #10b981;
+  --color-sidebar-primary-foreground: #021810;
+  --color-sidebar-accent: #1a1a1a;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #2d2d2d;
+  --color-sidebar-ring: #10b981;
+  --radius: 0.5rem;
+
+  color-scheme: dark;
+}
+
+/* ----------------------------------------------------------------------- */
+/* <select> nativo del navegador: las <option> en Chrome/Edge usan los
+   estilos del SO y no respetan dark mode → texto blanco sobre blanco hasta
+   que pasas el ratón por encima. Forzamos colores opacos del theme.        */
+/* ----------------------------------------------------------------------- */
+select {
+  color-scheme: dark;
+}
+select option {
+  background-color: #0a0a0a !important;
+  color: #fafafa !important;
+  padding: 0.4rem 0.6rem;
+}
+select option:checked {
+  background-color: #262626 !important;
+  color: #fafafa !important;
+}
+select option:hover,
+select option:focus {
+  background-color: #262626 !important;
 }
 
 html,
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
   line-height: 1.5;
 }
 
 /* ----------------------------------------------------------------------- */
-/* Auth (login / signup)                                                   */
+/* Auth (login / signup) — fuera del shell shadcn (no usa sidebar)         */
 /* ----------------------------------------------------------------------- */
 
 .auth-shell {
@@ -143,110 +240,4 @@ body {
   color: var(--color-accent);
   text-decoration: underline;
   text-underline-offset: 2px;
-}
-
-/* ----------------------------------------------------------------------- */
-/* Dashboard placeholder                                                   */
-/* ----------------------------------------------------------------------- */
-
-.dashboard-shell {
-  min-height: 100vh;
-  max-width: 64rem;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.dashboard-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.dashboard-eyebrow {
-  font-size: 0.78rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--color-muted-foreground);
-  margin: 0 0 0.35rem 0;
-}
-
-.dashboard-title {
-  font-size: 1.6rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin: 0;
-}
-
-.dashboard-logout {
-  background: transparent;
-  color: var(--color-muted-foreground);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  font-size: 0.85rem;
-  cursor: pointer;
-  transition: color 120ms ease, border-color 120ms ease;
-}
-
-.dashboard-logout:hover {
-  color: var(--color-foreground);
-  border-color: var(--color-muted-foreground);
-}
-
-.dashboard-card {
-  background: var(--color-muted);
-  border: 1px solid var(--color-border);
-  border-radius: 0.875rem;
-  padding: 1.5rem;
-}
-
-.dashboard-card h2 {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin: 0 0 1rem 0;
-}
-
-.dashboard-dl {
-  display: grid;
-  grid-template-columns: 8rem 1fr;
-  gap: 0.5rem 1rem;
-  margin: 0;
-}
-
-.dashboard-dl dt {
-  color: var(--color-muted-foreground);
-  font-size: 0.875rem;
-}
-
-.dashboard-dl dd {
-  margin: 0;
-  font-size: 0.95rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.dashboard-list {
-  margin: 0;
-  padding-left: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.dashboard-list li {
-  color: var(--color-muted-foreground);
-  font-size: 0.92rem;
-}
-
-.dashboard-meta {
-  margin: 1rem 0 0 0;
-  font-size: 0.85rem;
-  color: var(--color-accent);
-  border-top: 1px dashed var(--color-border);
-  padding-top: 1rem;
 }

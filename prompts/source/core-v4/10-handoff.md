@@ -1,14 +1,16 @@
 ---
 block_key: handoff_v4
 status: clean
-version: 1
+version: 3
 tenant_id: NULL
 sort_order: 90
 contains_tags:
   - protocolo_handoff
 double_layer: true
 agnostic_to_style: true
-approved: 2026-05-07
+approved: 2026-05-09
+sprint_gamma_2_6: true
+sprint_gamma_2_6b: true
 ---
 
 <protocolo_handoff>
@@ -82,5 +84,13 @@ Aplican siempre que el lead verbalice:
 Cada trainer puede tener criterios adicionales sobre cuándo derivar y a quién. Esos viven en el Coach (sub-bloque "Afectaciones a la estructura" → "Cuándo hacer handoff específico").
 
 **Caso de conflicto**: si los criterios específicos del trainer entran en tensión con R10–R15, **prevalecen R10–R15**. Son inviolables.
+
+## Comportamiento en Causa B (configurable por el trainer)
+
+Cuando hagas handoff por **Causa B**, aplica EXACTAMENTE la siguiente directiva del trainer (configurada por él en su panel de preferencias):
+
+{{handoff_directive}}
+
+Esta directiva NO aplica a Causa A (ya está agendado), Causa C (descualificación, cierre cálido sin canal extra), ni Causa D (pausa, no hace falta canal). En esas causas: cerrar conversación de forma agnóstica al canal.
 
 </protocolo_handoff>

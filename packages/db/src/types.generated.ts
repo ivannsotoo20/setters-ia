@@ -1,7 +1,3 @@
-// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-08).
-// Do not edit manually. Regenerate with: pnpm db:generate-types
-// Or from Claude Code with MCP: mcp__supabase-fyzon__generate_typescript_types.
-
 export type Json =
   | string
   | number
@@ -18,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      automation_keywords: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          pattern: string
+          tenant_id: number
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          pattern: string
+          tenant_id: number
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          pattern?: string
+          tenant_id?: number
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_keywords_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       channels: {
         Row: {
           channel_type: Database["public"]["Enums"]["channel_type"]
@@ -196,15 +230,65 @@ export type Database = {
           },
         ]
       }
+      conversation_notes: {
+        Row: {
+          author_email: string | null
+          author_user_id: string | null
+          content: string
+          conversation_id: number
+          created_at: string
+          id: number
+          tenant_id: number
+        }
+        Insert: {
+          author_email?: string | null
+          author_user_id?: string | null
+          content: string
+          conversation_id: number
+          created_at?: string
+          id?: number
+          tenant_id: number
+        }
+        Update: {
+          author_email?: string | null
+          author_user_id?: string | null
+          content?: string
+          conversation_id?: number
+          created_at?: string
+          id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
+          ai_paused_until: string | null
+          assigned_user_id: string | null
           call_scheduled_at: string | null
           channel_id: number
+          conversation_source: string | null
           created_at: string
           current_context: string | null
           custom_fields: Json
           direction: Database["public"]["Enums"]["conversation_direction"]
           emotion: string | null
+          first_ai_message_at: string | null
+          first_lead_response_at: string | null
           general_context: string | null
           general_motivation: string | null
           ghl_contact_id: string | null
@@ -215,9 +299,11 @@ export type Database = {
           handoff_cause: Database["public"]["Enums"]["handoff_cause"] | null
           handoff_reason: string | null
           id: number
+          is_blocked: boolean
           is_call_scheduling_link_sent: boolean
           is_handoff_to_human: boolean
           is_qualified: boolean | null
+          is_unread: boolean
           last_message_at: string | null
           lead_id: number
           next_action: string | null
@@ -231,13 +317,18 @@ export type Database = {
           urgency: string | null
         }
         Insert: {
+          ai_paused_until?: string | null
+          assigned_user_id?: string | null
           call_scheduled_at?: string | null
           channel_id: number
+          conversation_source?: string | null
           created_at?: string
           current_context?: string | null
           custom_fields?: Json
           direction?: Database["public"]["Enums"]["conversation_direction"]
           emotion?: string | null
+          first_ai_message_at?: string | null
+          first_lead_response_at?: string | null
           general_context?: string | null
           general_motivation?: string | null
           ghl_contact_id?: string | null
@@ -248,9 +339,11 @@ export type Database = {
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
           handoff_reason?: string | null
           id?: number
+          is_blocked?: boolean
           is_call_scheduling_link_sent?: boolean
           is_handoff_to_human?: boolean
           is_qualified?: boolean | null
+          is_unread?: boolean
           last_message_at?: string | null
           lead_id: number
           next_action?: string | null
@@ -264,13 +357,18 @@ export type Database = {
           urgency?: string | null
         }
         Update: {
+          ai_paused_until?: string | null
+          assigned_user_id?: string | null
           call_scheduled_at?: string | null
           channel_id?: number
+          conversation_source?: string | null
           created_at?: string
           current_context?: string | null
           custom_fields?: Json
           direction?: Database["public"]["Enums"]["conversation_direction"]
           emotion?: string | null
+          first_ai_message_at?: string | null
+          first_lead_response_at?: string | null
           general_context?: string | null
           general_motivation?: string | null
           ghl_contact_id?: string | null
@@ -281,9 +379,11 @@ export type Database = {
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
           handoff_reason?: string | null
           id?: number
+          is_blocked?: boolean
           is_call_scheduling_link_sent?: boolean
           is_handoff_to_human?: boolean
           is_qualified?: boolean | null
+          is_unread?: boolean
           last_message_at?: string | null
           lead_id?: number
           next_action?: string | null
@@ -301,7 +401,7 @@ export type Database = {
             foreignKeyName: "conversations_channel_id_fkey"
             columns: ["channel_id"]
             isOneToOne: false
-            referencedRelation: "conversations"
+            referencedRelation: "channels"
             referencedColumns: ["id"]
           },
           {
@@ -796,6 +896,59 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          attempts: number
+          created_at: string
+          event_type: string
+          id: number
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          event_type: string
+          id?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          event_type?: string
+          id?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phases: {
         Row: {
           description: string | null
@@ -835,6 +988,9 @@ export type Database = {
           judge_model: string | null
           judge_tokens_in: number | null
           judge_tokens_out: number | null
+          multimodal_audio_seconds: number | null
+          multimodal_cost_usd: number | null
+          multimodal_image_count: number
           outcome: string
           splitter_cost_usd: number | null
           splitter_model: string | null
@@ -865,6 +1021,9 @@ export type Database = {
           judge_model?: string | null
           judge_tokens_in?: number | null
           judge_tokens_out?: number | null
+          multimodal_audio_seconds?: number | null
+          multimodal_cost_usd?: number | null
+          multimodal_image_count?: number
           outcome?: string
           splitter_cost_usd?: number | null
           splitter_model?: string | null
@@ -895,6 +1054,9 @@ export type Database = {
           judge_model?: string | null
           judge_tokens_in?: number | null
           judge_tokens_out?: number | null
+          multimodal_audio_seconds?: number | null
+          multimodal_cost_usd?: number | null
+          multimodal_image_count?: number
           outcome?: string
           splitter_cost_usd?: number | null
           splitter_model?: string | null
@@ -931,6 +1093,10 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          invited_at: string | null
+          invited_by: string | null
+          is_active: boolean
+          is_agency_admin: boolean
           role: Database["public"]["Enums"]["profile_role"]
           tenant_id: number
         }
@@ -939,6 +1105,10 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean
+          is_agency_admin?: boolean
           role?: Database["public"]["Enums"]["profile_role"]
           tenant_id: number
         }
@@ -947,6 +1117,10 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean
+          is_agency_admin?: boolean
           role?: Database["public"]["Enums"]["profile_role"]
           tenant_id?: number
         }
@@ -956,6 +1130,132 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: number
+          metadata: Json
+          target_email: string | null
+          target_user_id: string | null
+          tenant_id: number
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: number
+          metadata?: Json
+          target_email?: string | null
+          target_user_id?: string | null
+          tenant_id: number
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: number
+          metadata?: Json
+          target_email?: string | null
+          target_user_id?: string | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_block_drafts: {
+        Row: {
+          base_version: number
+          block_key: string
+          content: string
+          created_at: string
+          id: number
+          owner_user_id: string
+          tenant_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          base_version: number
+          block_key: string
+          content: string
+          created_at?: string
+          id?: number
+          owner_user_id: string
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          base_version?: number
+          block_key?: string
+          content?: string
+          created_at?: string
+          id?: number
+          owner_user_id?: string
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_block_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_block_versions: {
+        Row: {
+          change_summary: string | null
+          changed_at: string
+          changed_by: string | null
+          content: string
+          id: number
+          prompt_block_id: number
+          version_number: number
+          was_applied: boolean
+        }
+        Insert: {
+          change_summary?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          content: string
+          id?: number
+          prompt_block_id: number
+          version_number: number
+          was_applied?: boolean
+        }
+        Update: {
+          change_summary?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          content?: string
+          id?: number
+          prompt_block_id?: number
+          version_number?: number
+          was_applied?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_block_versions_prompt_block_id_fkey"
+            columns: ["prompt_block_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_blocks"
             referencedColumns: ["id"]
           },
         ]
@@ -1062,6 +1362,7 @@ export type Database = {
           active_conversation_delay: string
           created_at: string
           debounce_window_seconds: number
+          default_audio_language: string
           idle_conversation_delay: string
           max_messages_per_conversation: number
           tenant_id: number
@@ -1072,6 +1373,7 @@ export type Database = {
           active_conversation_delay?: string
           created_at?: string
           debounce_window_seconds?: number
+          default_audio_language?: string
           idle_conversation_delay?: string
           max_messages_per_conversation?: number
           tenant_id: number
@@ -1082,6 +1384,7 @@ export type Database = {
           active_conversation_delay?: string
           created_at?: string
           debounce_window_seconds?: number
+          default_audio_language?: string
           idle_conversation_delay?: string
           max_messages_per_conversation?: number
           tenant_id?: number
@@ -1210,6 +1513,79 @@ export type Database = {
         }
         Relationships: []
       }
+      trainer_custom_instructions: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: number
+          is_active: boolean
+          sort_order: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          is_active?: boolean
+          sort_order?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          is_active?: boolean
+          sort_order?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_custom_instructions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trainer_preferences: {
+        Row: {
+          id: number
+          preferences: Json
+          tenant_id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          preferences?: Json
+          tenant_id: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          preferences?: Json
+          tenant_id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1244,7 +1620,7 @@ export type Database = {
         | "video"
         | "file"
         | "mixed"
-      message_source: "lead" | "ai" | "system"
+      message_source: "lead" | "ai" | "system" | "human"
       profile_role: "owner" | "admin" | "viewer"
       resource_type:
         | "pdf"
@@ -1411,7 +1787,7 @@ export const Constants = {
         "file",
         "mixed",
       ],
-      message_source: ["lead", "ai", "system"],
+      message_source: ["lead", "ai", "system", "human"],
       profile_role: ["owner", "admin", "viewer"],
       resource_type: [
         "pdf",
@@ -1423,13 +1799,7 @@ export const Constants = {
         "other",
       ],
       schedule_message_kind: ["message", "follow_up", "resource"],
-      schedule_status: [
-        "pending",
-        "processing",
-        "sent",
-        "failed",
-        "cancelled",
-      ],
+      schedule_status: ["pending", "processing", "sent", "failed", "cancelled"],
     },
   },
 } as const
