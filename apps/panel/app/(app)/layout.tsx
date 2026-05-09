@@ -87,7 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {impersonatingTenantName ? (
           <ImpersonateBanner tenantName={impersonatingTenantName} />
         ) : null}
-        <main className="flex-1 flex flex-col min-h-0 p-6 md:p-8">{children}</main>
+        <main className="flex-1 flex flex-col min-h-0 overflow-y-auto p-6 md:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );
