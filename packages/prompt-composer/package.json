@@ -3,11 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Ensambla el system prompt desde prompt_blocks: core_v3 + fase + coach_v3 + nicho_v3, con cache breakpoints",
-  "main": "src/index.ts",
-  "types": "src/index.ts",
-  "exports": { ".": "./src/index.ts" },
+  "description": "Ensambla el system prompt desde prompt_blocks: core_v4 + coach_v3 + admin_overrides + fase + ... + trainer_prefs, con cache breakpoints",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "src"],
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'lint not configured yet'",
     "test": "vitest run",

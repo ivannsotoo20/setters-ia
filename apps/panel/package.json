@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@fyzon/db": "workspace:*",
+    "@fyzon/prompt-composer": "workspace:*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.12",
     "class-variance-authority": "^0.7.1",

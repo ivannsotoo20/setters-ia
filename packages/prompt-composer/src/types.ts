@@ -1,20 +1,32 @@
 /**
  * Tipos del prompt-composer.
  *
- * Arquitectura del system prompt compuesto (Fyzon Setters IA — Cerebro v4):
+ * Arquitectura del system prompt compuesto (Fyzon Setters IA — Cerebro v4 + capas admin/trainer):
  *
- *   1. core_v4_base            (compartido, tenant_id IS NULL, sort=0) — Cerebro del Setter completo (6 sub-bloques)
- *   2. coach_v3                (por tenant, sort=5) — Información sobre la empresa para la que trabajas
- *   3. fase_<N>_v4             (compartido, sort=10·N) según la fase activa F1..F6
- *   4. handoff_v4              (compartido, sort=90) si isHandoff
- *   5. objeciones_v4           (compartido, sort=70) si includeObjections (default true)
- *   6. descualificacion_v4     (compartido, sort=80) si includeDescualificacion (default true)
- *   7. output_contract_v4      (compartido, sort=100) si includeOutputContract (default true)
+ *   1. core_v4_base            (compartido, tenant_id IS NULL, sort=0)   — Cerebro del Setter completo
+ *   2. coach_v3                (por tenant, sort=5)                       — Empresa/coach del trainer
+ *   3. admin_overrides_v1      (por tenant, sort=6, OPCIONAL)             — Capa que SOLO el agency admin (Iván)
+ *                                                                            mete por tenant. Instrucciones extra
+ *                                                                            que el trainer no ve. Si no existe, se omite.
+ *   4. fase_<N>_v4             (compartido, sort=10·N) según la fase activa F1..F6
+ *   5. handoff_v4              (compartido, sort=90) si isHandoff
+ *   6. objeciones_v4           (compartido, sort=70) si includeObjections (default true)
+ *   7. descualificacion_v4     (compartido, sort=80) si includeDescualificacion (default true)
+ *   8. output_contract_v4      (compartido, sort=100) si includeOutputContract (default true)
+ *   9. trainer_prefs_v1        (por tenant, sort=110, OPCIONAL)           — Ajustes de superficie del trainer
+ *                                                                            (toggles: doble interrogación, densidad
+ *                                                                            emojis, +N preguntas antes cita…). Generado
+ *                                                                            desde JSON cerrado. NO cacheado (cambia
+ *                                                                            frecuentemente).
  *
  * Cache breakpoints (Anthropic `cache_control: { type: 'ephemeral' }`):
  *   - Breakpoint 1 al final de `core_v4_base`: cacheable universal (compartido entre tenants).
- *   - Breakpoint 2 al final del último bloque incluido: cache completo del prefix
- *     (invariante durante la fase activa).
+ *   - Breakpoint 2 al final del último bloque cacheable (= último bloque que NO sea trainer_prefs_v1):
+ *     cache completo del prefix invariante durante la fase activa.
+ *   - `trainer_prefs_v1` queda EXPLÍCITAMENTE FUERA del cache: cambia con cada toggle del trainer
+ *     y pesa poco (~200-500 chars), no compensa cachearlo.
+ *   - `admin_overrides_v1` SÍ entra dentro del cache window (forma parte del prefix invariante).
+ *     Cambia solo cuando Iván lo edita, lo cual es raro.
  *
  * Historial y mensaje actual se pasan como `messages[]` y NUNCA van cacheados.
  *
@@ -24,6 +36,10 @@
  *   - Se añaden `descualificacion_v4` y `output_contract_v4` como bloques universales.
  *   - El Coach sigue como `coach_v3` por compat: el Coach es agnóstico a la versión
  *     del Cerebro y los Coaches concretos existentes (Pablo, ivan-dev) no se han migrado a v4.
+ *
+ * Notas Sprint Alpha (admin overrides + trainer prefs):
+ *   - admin_overrides_v1 y trainer_prefs_v1 son OPCIONALES — su ausencia NO es error.
+ *   - Solo se requieren `core_v4_base` + `coach_v3` (REQUIRED_BLOCK_KEYS).
  */
 
 export interface ComposeOptions {

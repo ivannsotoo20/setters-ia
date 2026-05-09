@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   Bot,
+  Brain,
   Users,
   ShieldCheck,
 } from 'lucide-react';
@@ -48,6 +49,7 @@ const NAV_CONFIG: NavItem[] = [
 const NAV_AGENCY: NavItem[] = [
   { href: '/admin/dashboard', label: 'Resumen agencia', icon: Building2 },
   { href: '/admin/tenants', label: 'Sub-cuentas', icon: Users },
+  { href: '/admin/cerebro', label: 'Cerebro (prompt)', icon: Brain },
 ];
 
 interface Props {

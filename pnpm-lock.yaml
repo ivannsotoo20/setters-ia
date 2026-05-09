@@ -99,6 +99,9 @@ importers:
       '@fyzon/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@fyzon/prompt-composer':
+        specifier: workspace:*
+        version: link:../../packages/prompt-composer
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.103.3)

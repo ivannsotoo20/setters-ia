@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@fyzon/db'],
+  transpilePackages: ['@fyzon/db', '@fyzon/prompt-composer'],
   experimental: {},
 };
 

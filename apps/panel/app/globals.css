@@ -16,6 +16,100 @@
   --color-error-bg: #2a0e0e;
   --color-success: #10b981;
   --color-success-bg: #0e2a1e;
+
+  /* Tokens shadcn que faltaban — sin esto los componentes que usan
+     bg-popover/bg-card/bg-primary etc caen a transparente o blanco
+     (síntoma observado: dropdown de versiones translúcido). Todos opacos. */
+  --color-popover: #161616;
+  --color-popover-foreground: #fafafa;
+  --color-card: #141414;
+  --color-card-foreground: #fafafa;
+  --color-primary: #10b981;
+  --color-primary-foreground: #021810;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-accent-foreground: #021810;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #fafafa;
+  --color-input: #2d2d2d;
+  --color-ring: #10b981;
+  --color-sidebar: #0a0a0a;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-primary: #10b981;
+  --color-sidebar-primary-foreground: #021810;
+  --color-sidebar-accent: #1a1a1a;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #2d2d2d;
+  --color-sidebar-ring: #10b981;
+
+  --radius: 0.5rem;
+}
+
+/* ----------------------------------------------------------------------- */
+/* :root mirror — Tailwind 4 lee tokens de @theme pero algunos componentes
+   shadcn referencian las variables CSS directamente (bg-popover compila a
+   `background-color: var(--color-popover)`). Sin esto en :root, el browser
+   pintaba transparente. Repetir aquí garantiza que toda la app las vea.    */
+/* ----------------------------------------------------------------------- */
+:root {
+  --color-background: #0a0a0a;
+  --color-foreground: #fafafa;
+  --color-muted: #262626;
+  --color-muted-foreground: #a3a3a3;
+  --color-border: #2d2d2d;
+  --color-accent: #10b981;
+  --color-accent-hover: #059669;
+  --color-error: #f87171;
+  --color-error-bg: #2a0e0e;
+  --color-success: #10b981;
+  --color-success-bg: #0e2a1e;
+
+  --color-popover: #161616;
+  --color-popover-foreground: #fafafa;
+  --color-card: #141414;
+  --color-card-foreground: #fafafa;
+  --color-primary: #10b981;
+  --color-primary-foreground: #021810;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-accent-foreground: #021810;
+  --color-destructive: #f87171;
+  --color-destructive-foreground: #fafafa;
+  --color-input: #2d2d2d;
+  --color-ring: #10b981;
+  --color-sidebar: #0a0a0a;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-primary: #10b981;
+  --color-sidebar-primary-foreground: #021810;
+  --color-sidebar-accent: #1a1a1a;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #2d2d2d;
+  --color-sidebar-ring: #10b981;
+  --radius: 0.5rem;
+
+  color-scheme: dark;
+}
+
+/* ----------------------------------------------------------------------- */
+/* <select> nativo del navegador: las <option> en Chrome/Edge usan los
+   estilos del SO y no respetan dark mode → texto blanco sobre blanco hasta
+   que pasas el ratón por encima. Forzamos colores opacos del theme.        */
+/* ----------------------------------------------------------------------- */
+select {
+  color-scheme: dark;
+}
+select option {
+  background-color: #0a0a0a !important;
+  color: #fafafa !important;
+  padding: 0.4rem 0.6rem;
+}
+select option:checked {
+  background-color: #262626 !important;
+  color: #fafafa !important;
+}
+select option:hover,
+select option:focus {
+  background-color: #262626 !important;
 }
 
 html,

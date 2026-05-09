@@ -1,7 +1,3 @@
-// Auto-generated via MCP supabase-fyzon.generate_typescript_types (2026-05-08).
-// Do not edit manually. Regenerate with: pnpm db:generate-types
-// Or from Claude Code with MCP: mcp__supabase-fyzon__generate_typescript_types.
-
 export type Json =
   | string
   | number
@@ -1016,6 +1012,88 @@ export type Database = {
           },
         ]
       }
+      prompt_block_drafts: {
+        Row: {
+          base_version: number
+          block_key: string
+          content: string
+          created_at: string
+          id: number
+          owner_user_id: string
+          tenant_id: number | null
+          updated_at: string
+        }
+        Insert: {
+          base_version: number
+          block_key: string
+          content: string
+          created_at?: string
+          id?: number
+          owner_user_id: string
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Update: {
+          base_version?: number
+          block_key?: string
+          content?: string
+          created_at?: string
+          id?: number
+          owner_user_id?: string
+          tenant_id?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_block_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_block_versions: {
+        Row: {
+          change_summary: string | null
+          changed_at: string
+          changed_by: string | null
+          content: string
+          id: number
+          prompt_block_id: number
+          version_number: number
+          was_applied: boolean
+        }
+        Insert: {
+          change_summary?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          content: string
+          id?: number
+          prompt_block_id: number
+          version_number: number
+          was_applied?: boolean
+        }
+        Update: {
+          change_summary?: string | null
+          changed_at?: string
+          changed_by?: string | null
+          content?: string
+          id?: number
+          prompt_block_id?: number
+          version_number?: number
+          was_applied?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompt_block_versions_prompt_block_id_fkey"
+            columns: ["prompt_block_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prompt_blocks: {
         Row: {
           block_key: string
@@ -1268,6 +1346,38 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      trainer_preferences: {
+        Row: {
+          id: number
+          preferences: Json
+          tenant_id: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          preferences?: Json
+          tenant_id: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          preferences?: Json
+          tenant_id?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
