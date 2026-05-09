@@ -254,10 +254,14 @@ describe('saveTrainerPreferences', () => {
     const newPrefs: import('@/lib/trainer-prefs-serializer').TrainerPreferences = {
       emojiDensity: 3,
       extraQuestionsBeforeCall: 2,
+      messageLengthDensity: 1,
+      toneRegister: 1,
       trainerName: null,
       trainerEmail: null,
       trainerPhone: null,
       notificationSubscriptions: ['handoff', 'qualified'],
+      calendarUrl: null,
+      calendarClosingMessage: null,
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });

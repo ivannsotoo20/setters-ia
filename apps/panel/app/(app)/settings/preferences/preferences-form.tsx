@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -40,12 +40,26 @@ const QUESTIONS_LABELS = [
   { value: 2, label: '+2 preguntas', desc: 'dos preguntas adicionales de matiz' },
 ];
 
+const MESSAGE_LENGTH_LABELS = [
+  { value: 0, label: 'Cortos', desc: '1 frase por turno, máximo 2. Ágil, sin párrafos.' },
+  { value: 1, label: 'Equilibrado', desc: '1-2 frases por mensaje. Si hace falta más, parte en 2 mensajes (default).' },
+  { value: 2, label: 'Amplios', desc: '2-3 frases en un mismo mensaje cuando hace falta contexto. Útil consultivo.' },
+];
+
+const TONE_LABELS = [
+  { value: 0, label: 'Cercano', desc: 'Coloquial como un amigo del sector. Tutea, expresiones cotidianas.' },
+  { value: 1, label: 'Equilibrado', desc: 'Profesional pero cercano. Tutea por defecto, sin jerga (default).' },
+  { value: 2, label: 'Profesional', desc: 'Elegante, evita coloquialismos. Considera el usted si el lead lo usa primero.' },
+];
+
 export function PreferencesForm({ tenantId, initial }: Props) {
   const router = useRouter();
   const [prefs, setPrefs] = useState<TrainerPreferences>(initial);
   const [emailRaw, setEmailRaw] = useState(initial.trainerEmail ?? '');
   const [phoneRaw, setPhoneRaw] = useState(initial.trainerPhone ?? '');
   const [nameRaw, setNameRaw] = useState(initial.trainerName ?? '');
+  const [calendarUrlRaw, setCalendarUrlRaw] = useState(initial.calendarUrl ?? '');
+  const [calendarClosingRaw, setCalendarClosingRaw] = useState(initial.calendarClosingMessage ?? '');
   const [saving, startSave] = useTransition();
 
   // Re-sync state cuando el server component pasa nueva `initial` tras router.refresh()
@@ -56,12 +70,25 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setEmailRaw(initial.trainerEmail ?? '');
     setPhoneRaw(initial.trainerPhone ?? '');
     setNameRaw(initial.trainerName ?? '');
+    setCalendarUrlRaw(initial.calendarUrl ?? '');
+    setCalendarClosingRaw(initial.calendarClosingMessage ?? '');
   }, [initial]);
 
   // Validaciones cliente
   const emailValid = emailRaw === '' || isValidEmail(emailRaw);
   const phoneNormalized = normalizePhoneE164(phoneRaw);
   const phoneValid = phoneRaw === '' || phoneNormalized !== null;
+  // Sprint 2.5b/B — validación URL calendario en cliente (espejo del sanitizeCalendarUrl backend)
+  const calendarUrlValid =
+    calendarUrlRaw === '' ||
+    (() => {
+      try {
+        const u = new URL(calendarUrlRaw.trim());
+        return u.protocol === 'https:' && calendarUrlRaw.length <= 200;
+      } catch {
+        return false;
+      }
+    })();
 
   // Building del objeto final desde inputs
   const finalPrefs: TrainerPreferences = {
@@ -69,11 +96,17 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     trainerEmail: emailRaw === '' ? null : (emailValid ? emailRaw.trim().toLowerCase() : prefs.trainerEmail),
     trainerPhone: phoneRaw === '' ? null : phoneNormalized,
     trainerName: nameRaw.trim() === '' ? null : nameRaw.trim(),
+    calendarUrl: calendarUrlRaw === '' ? null : (calendarUrlValid ? calendarUrlRaw.trim() : prefs.calendarUrl),
+    calendarClosingMessage: calendarClosingRaw.trim() === '' ? null : calendarClosingRaw.trim().slice(0, 200),
   };
 
   const isDirty = JSON.stringify(finalPrefs) !== JSON.stringify(initial);
   const isAllDefault = JSON.stringify(finalPrefs) === JSON.stringify(DEFAULT_TRAINER_PREFERENCES);
-  const canSave = isDirty && (emailRaw === '' || emailValid) && (phoneRaw === '' || phoneValid);
+  const canSave =
+    isDirty &&
+    (emailRaw === '' || emailValid) &&
+    (phoneRaw === '' || phoneValid) &&
+    (calendarUrlRaw === '' || calendarUrlValid);
 
   function update<K extends keyof TrainerPreferences>(key: K, value: TrainerPreferences[K]) {
     setPrefs((p) => ({ ...p, [key]: value }));
@@ -84,6 +117,8 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setEmailRaw('');
     setPhoneRaw('');
     setNameRaw('');
+    setCalendarUrlRaw('');
+    setCalendarClosingRaw('');
   }
 
   function handleSave() {
@@ -132,6 +167,62 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             </div>
             <p className="text-xs text-muted-foreground italic">
               {EMOJI_DENSITY_LABELS[prefs.emojiDensity]!.desc}
+            </p>
+          </div>
+
+          {/* Sprint 2.5b/B — Slider longitud de mensajes */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm">Longitud de mensajes</Label>
+              <Badge variant="outline" className="font-mono text-xs">
+                {MESSAGE_LENGTH_LABELS[prefs.messageLengthDensity]!.label}
+              </Badge>
+            </div>
+            <Slider
+              value={[prefs.messageLengthDensity]}
+              min={0}
+              max={2}
+              step={1}
+              onValueChange={(v) => {
+                const n = v[0];
+                if (n != null) update('messageLengthDensity', n as 0 | 1 | 2);
+              }}
+            />
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+              <span>Cortos</span>
+              <span>Equilibrado</span>
+              <span>Amplios</span>
+            </div>
+            <p className="text-xs text-muted-foreground italic">
+              {MESSAGE_LENGTH_LABELS[prefs.messageLengthDensity]!.desc}
+            </p>
+          </div>
+
+          {/* Sprint 2.5b/B — Slider tono */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm">Tono</Label>
+              <Badge variant="outline" className="font-mono text-xs">
+                {TONE_LABELS[prefs.toneRegister]!.label}
+              </Badge>
+            </div>
+            <Slider
+              value={[prefs.toneRegister]}
+              min={0}
+              max={2}
+              step={1}
+              onValueChange={(v) => {
+                const n = v[0];
+                if (n != null) update('toneRegister', n as 0 | 1 | 2);
+              }}
+            />
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+              <span>Cercano</span>
+              <span>Equilibrado</span>
+              <span>Profesional</span>
+            </div>
+            <p className="text-xs text-muted-foreground italic">
+              {TONE_LABELS[prefs.toneRegister]!.desc}
             </p>
           </div>
         </CardContent>
@@ -221,13 +312,18 @@ export function PreferencesForm({ tenantId, initial }: Props) {
 
       {/* CARD 3 — Instrucciones libres movido a componente separado (custom-instructions-list.tsx) */}
 
-      {/* CARD 4 — Cualificación */}
-      <Card>
+      {/* CARD 4 — Cualificación + propuesta de llamada (Sprint 2.5b/B) */}
+      <Card className="lg:col-span-2">
         <CardHeader>
-          <CardTitle className="text-base">Cualificación</CardTitle>
-          <CardDescription>Ajustes finos sobre cómo el setter cualifica antes de proponer la llamada.</CardDescription>
+          <CardTitle className="text-base flex items-center gap-2">
+            <CalendarClock className="size-4" />
+            Cualificación + propuesta de llamada
+          </CardTitle>
+          <CardDescription>
+            Cómo cualifica el setter y cómo introduce la llamada/sesión cuando propone tu calendario.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="flex flex-col gap-2">
             <Label className="text-sm">Preguntas extra antes de la cita</Label>
             <p className="text-xs text-muted-foreground">
@@ -251,6 +347,55 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             <p className="text-xs text-muted-foreground italic">
               {QUESTIONS_LABELS[prefs.extraQuestionsBeforeCall]!.desc}
             </p>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="calendarUrl" className="text-xs flex items-center gap-1.5">
+              <LinkIcon className="size-3" />
+              URL de tu calendario
+            </Label>
+            <Input
+              id="calendarUrl"
+              type="url"
+              value={calendarUrlRaw}
+              onChange={(e) => setCalendarUrlRaw(e.target.value)}
+              placeholder="https://cal.com/tu-slug  o  https://calendly.com/tu-slug"
+              className={!calendarUrlValid && calendarUrlRaw !== '' ? 'border-destructive' : ''}
+              maxLength={200}
+            />
+            {!calendarUrlValid && calendarUrlRaw !== '' ? (
+              <p className="text-xs text-destructive">
+                URL inválida. Debe empezar por <code>https://</code> y ser una URL real.
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                El setter compartirá EXACTAMENTE este enlace al proponer la llamada. Si vacío, dirá
+                &quot;te paso mi agenda&quot; sin link (peor experiencia para el lead).
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5 md:col-span-2">
+            <Label htmlFor="calendarClosing" className="text-xs">
+              Frase de cierre antes del calendario (opcional)
+            </Label>
+            <textarea
+              id="calendarClosing"
+              value={calendarClosingRaw}
+              onChange={(e) => setCalendarClosingRaw(e.target.value)}
+              placeholder="ej: Vamos a verlo en una llamada de 15 min, te paso mi agenda 👇"
+              rows={2}
+              maxLength={200}
+              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+            />
+            <div className="flex items-center justify-between text-xs">
+              <p className="text-muted-foreground">
+                Frase opcional que el setter dirá justo antes del enlace. Vacío = el setter decide.
+              </p>
+              <span className={`tabular-nums ${calendarClosingRaw.length > 180 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                {calendarClosingRaw.length}/200
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>

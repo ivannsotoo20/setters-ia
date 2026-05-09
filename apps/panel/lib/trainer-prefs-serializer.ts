@@ -41,6 +41,10 @@ export interface TrainerPreferences {
   emojiDensity: 0 | 1 | 2 | 3;
   /** Preguntas adicionales antes de proponer la llamada (0-2). */
   extraQuestionsBeforeCall: 0 | 1 | 2;
+  /** Sprint 2.5b/B — Longitud de mensajes: 0=cortos, 1=equilibrado (default), 2=amplios. */
+  messageLengthDensity: 0 | 1 | 2;
+  /** Sprint 2.5b/B — Registro tonal: 0=cercano-coloquial, 1=equilibrado (default), 2=profesional. */
+  toneRegister: 0 | 1 | 2;
 
   // ----- Sprint Gamma 2.1: datos de contacto -----
   /** Nombre que la IA usará al referirse al trainer en handoff. null = "el equipo". */
@@ -53,6 +57,12 @@ export interface TrainerPreferences {
   // ----- Sprint Gamma 2.5: notificaciones email -----
   /** Eventos del motor a los que el trainer está suscrito. Vacío = no recibe nada. */
   notificationSubscriptions: NotificationEventType[];
+
+  // ----- Sprint Gamma 2.5b/B: cualificación + propuesta llamada -----
+  /** URL HTTPS del calendario (cal.com, calendly, etc.) que el setter compartirá al proponer la llamada. null = el setter dice "te paso mi agenda" sin link. */
+  calendarUrl: string | null;
+  /** Frase opcional (max 200 chars) que el setter dirá justo antes de compartir el enlace del calendario. null = el setter decide. */
+  calendarClosingMessage: string | null;
 }
 
 /**
@@ -85,11 +95,57 @@ const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   emojiDensity: 2,
   extraQuestionsBeforeCall: 0,
+  messageLengthDensity: 1,
+  toneRegister: 1,
   trainerName: null,
   trainerEmail: null,
   trainerPhone: null,
   notificationSubscriptions: [...DEFAULT_SUBSCRIPTIONS],
+  calendarUrl: null,
+  calendarClosingMessage: null,
 };
+
+const MAX_CALENDAR_URL_CHARS = 200;
+const MAX_CALENDAR_CLOSING_CHARS = 200;
+
+/**
+ * Valida una URL de calendario:
+ *   - Debe ser HTTPS (rechaza http://, javascript:, file://, etc).
+ *   - Debe ser parseable con `new URL()`.
+ *   - Max 200 chars total.
+ * Devuelve la URL trimmed normalizada o null si inválida.
+ */
+function sanitizeCalendarUrl(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length > MAX_CALENDAR_URL_CHARS) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'https:') return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Sanitiza la frase de cierre antes del calendario: trim, max 200 chars,
+ * escape de tags reservados (igual estrategia que custom_instructions).
+ */
+function sanitizeCalendarClosingMessage(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length > MAX_CALENDAR_CLOSING_CHARS) trimmed = trimmed.slice(0, MAX_CALENDAR_CLOSING_CHARS);
+  trimmed = trimmed.replace(
+    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    '&lt;/$1&gt;',
+  );
+  return trimmed;
+}
 
 function parseNotificationSubscriptions(raw: unknown): NotificationEventType[] {
   if (!Array.isArray(raw)) return [...DEFAULT_SUBSCRIPTIONS];
@@ -187,6 +243,24 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
     }
   }
 
+  // Sprint Gamma 2.5b/B — sliders nuevos
+  if (typeof r.messageLengthDensity === 'number' && Number.isInteger(r.messageLengthDensity)) {
+    const n = r.messageLengthDensity;
+    if (n >= 0 && n <= 2) {
+      out.messageLengthDensity = n as 0 | 1 | 2;
+    }
+  }
+  if (typeof r.toneRegister === 'number' && Number.isInteger(r.toneRegister)) {
+    const n = r.toneRegister;
+    if (n >= 0 && n <= 2) {
+      out.toneRegister = n as 0 | 1 | 2;
+    }
+  }
+
+  // Sprint Gamma 2.5b/B — campos cualificación
+  out.calendarUrl = sanitizeCalendarUrl(r.calendarUrl);
+  out.calendarClosingMessage = sanitizeCalendarClosingMessage(r.calendarClosingMessage);
+
   // Sprint Gamma 2.1
   out.trainerName = sanitizeTrainerName(r.trainerName as string | null | undefined);
 
@@ -206,6 +280,18 @@ const EMOJI_DENSITY_DESCRIPTIONS = {
   1: 'algunos emojis (1 emoji por mensaje, contextual)',
   2: 'densidad moderada (1-2 emojis por mensaje, expresivos pero no saturados)',
   3: 'densidad alta (2-4 emojis por mensaje, muy expresivos)',
+} as const;
+
+const MESSAGE_LENGTH_DESCRIPTIONS = {
+  0: 'mensajes cortos y directos (1 frase por turno, máximo 2 si necesitas contexto). Evita párrafos.',
+  1: 'longitud equilibrada (1-2 frases por mensaje; si necesitas más contexto, parte en 2 mensajes consecutivos).',
+  2: 'mensajes algo más amplios cuando hace falta contexto (2-3 frases en un mismo mensaje, evitando parecer escueto).',
+} as const;
+
+const TONE_DESCRIPTIONS = {
+  0: 'cercano y coloquial, como un amigo del sector. Tutea, usa expresiones cotidianas. Sin exagerar (no insultos ni chistes).',
+  1: 'profesional pero cercano. Tutea por defecto. Evita jerga excesiva.',
+  2: 'profesional y elegante. Evita coloquialismos. Considera el usted si el lead lo usa primero.',
 } as const;
 
 /**
@@ -244,13 +330,15 @@ export function serializeTrainerPreferences(
       '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
   );
   lines.push(`- **Densidad de emojis**: ${EMOJI_DENSITY_DESCRIPTIONS[prefs.emojiDensity]}.`);
+  lines.push(`- **Longitud de mensajes**: ${MESSAGE_LENGTH_DESCRIPTIONS[prefs.messageLengthDensity]}`);
+  lines.push(`- **Tono**: ${TONE_DESCRIPTIONS[prefs.toneRegister]}`);
   lines.push(
     '- **Acknowledge audios**: si el lead envía un audio, menciónalo explícitamente al inicio ' +
       'de tu respuesta (p.ej. "escuché tu audio…", "acabo de oír lo que mandas…").',
   );
 
   lines.push('');
-  lines.push('### Cualificación');
+  lines.push('### Cualificación y propuesta de llamada');
   lines.push('');
 
   if (prefs.extraQuestionsBeforeCall > 0) {
@@ -264,6 +352,20 @@ export function serializeTrainerPreferences(
   } else {
     lines.push(
       '- **Cualificación estándar**: sigue el flujo de fases del Cerebro sin preguntas extra antes de la cita.',
+    );
+  }
+
+  // Sprint 2.5b/B — calendario propio del trainer
+  if (prefs.calendarUrl) {
+    lines.push(
+      `- **Enlace de calendario del trainer**: cuando llegue el momento de proponer la llamada/sesión, ` +
+        `comparte EXACTAMENTE este enlace: \`${prefs.calendarUrl}\`. NO inventes otro, NO modifiques el dominio.`,
+    );
+  }
+  if (prefs.calendarClosingMessage) {
+    lines.push(
+      `- **Frase de cierre del trainer**: cuando vayas a compartir el enlace del calendario, ` +
+        `di exactamente (o muy similar) esta frase: "${prefs.calendarClosingMessage}".`,
     );
   }
 
