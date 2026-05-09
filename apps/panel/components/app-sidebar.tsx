@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Sparkles,
   Settings,
+  Sliders,
   LogOut,
   Bot,
   Brain,
@@ -44,6 +45,7 @@ const NAV_MAIN: NavItem[] = [
 const NAV_CONFIG: NavItem[] = [
   { href: '/keywords', label: 'Keywords', icon: Sparkles },
   { href: '/settings/integrations', label: 'Integraciones', icon: Settings },
+  { href: '/settings/preferences', label: 'Preferencias', icon: Sliders },
 ];
 
 const NAV_AGENCY: NavItem[] = [
