@@ -836,6 +836,59 @@ export type Database = {
           },
         ]
       }
+      notification_events: {
+        Row: {
+          attempts: number
+          created_at: string
+          event_type: string
+          id: number
+          last_error: string | null
+          next_attempt_at: string
+          payload: Json
+          resend_message_id: string | null
+          sent_at: string | null
+          status: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          event_type: string
+          id?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          event_type?: string
+          id?: number
+          last_error?: string | null
+          next_attempt_at?: string
+          payload?: Json
+          resend_message_id?: string | null
+          sent_at?: string | null
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       phases: {
         Row: {
           description: string | null

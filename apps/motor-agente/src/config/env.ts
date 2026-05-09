@@ -89,6 +89,16 @@ const envSchema = z.object({
   GROQ_API_KEY: z.string().optional(),
   GROQ_API_BASE: z.string().url().default('https://api.groq.com/openai/v1'),
   GROQ_AUDIO_MODEL: z.string().default('whisper-large-v3-turbo'),
+  // Sprint Gamma 2.4 — Notificaciones email al trainer via Resend.
+  // Sin RESEND_API_KEY el motor saltea envíos (logs warn + status='failed').
+  // FROM debe ser email de un dominio verificado en panel Resend (ej fyzon.es
+  // con SPF/DKIM correctos).
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().email().default('alertas@fyzon.es'),
+  RESEND_FROM_NAME: z.string().default('Fyzon Setters'),
+  RESEND_API_BASE: z.string().url().default('https://api.resend.com'),
+  /** URL pública del panel para enlaces dentro de los emails (CTA "Ver conversación"). */
+  PANEL_PUBLIC_URL: z.string().url().default('https://panel.fyzon.es'),
 });
 
 const parsed = envSchema.safeParse(process.env);
