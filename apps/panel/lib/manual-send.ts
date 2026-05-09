@@ -9,10 +9,12 @@ import { decodeCredentialsRow } from './integration-credentials';
  * Hace fetch HTTP directo a las APIs públicas de cada provider:
  *   - ManyChat:  POST https://api.manychat.com/fb/sending/sendContent
  *   - YCloud:    POST https://api.ycloud.com/v2/whatsapp/messages/sendDirectly
- *   - GHL:       NO SOPORTADO en envío manual desde panel — requiere lookup
- *                de conversation GHL + ZWSP append (lógica más compleja
- *                que vive en `apps/motor-agente/src/services/...`). Si en el
- *                futuro hace falta, exponer endpoint REST en motor.
+ *   - GHL:       POST https://services.leadconnectorhq.com/conversations/messages
+ *                Apendea ZWSP (​) al mensaje para que cuando el motor
+ *                reciba el webhook outbound de GHL (Marketplace), lo
+ *                identifique como 'self echo' (ghl-message-router.ts:338)
+ *                y NO duplique el insert en BD. El panel ya inserta el
+ *                mensaje con source='human' antes de llamar a este helper.
  *
  * Trade-off conocido: si el motor cambia el shape de la request a estos
  * providers (poco probable — son APIs públicas de terceros), hay que
@@ -20,7 +22,7 @@ import { decodeCredentialsRow } from './integration-credentials';
  * de verdad sobre el contract.
  */
 
-type SupportedProvider = 'manychat' | 'ycloud';
+type SupportedProvider = 'manychat' | 'ycloud' | 'ghl';
 
 interface ChannelInfo {
   channelType: 'whatsapp' | 'instagram' | 'facebook';
@@ -42,6 +44,9 @@ export interface ManualSendResult {
 
 const MANYCHAT_BASE = process.env.MANYCHAT_API_BASE ?? 'https://api.manychat.com';
 const YCLOUD_BASE = process.env.YCLOUD_API_BASE ?? 'https://api.ycloud.com';
+const GHL_BASE = process.env.GHL_API_BASE ?? 'https://services.leadconnectorhq.com';
+const GHL_VERSION = '2021-07-28';
+const ZWSP_TAG = '​';
 
 export async function sendManualMessageDirect(
   params: ManualSendParams,
@@ -56,6 +61,9 @@ export async function sendManualMessageDirect(
   }
   if (ctx.provider === 'ycloud') {
     return sendViaYCloud(ctx, text);
+  }
+  if (ctx.provider === 'ghl') {
+    return sendViaGHL(ctx, text);
   }
   throw new Error(`provider '${ctx.provider}' no soportado en envío manual desde panel`);
 }
@@ -100,10 +108,19 @@ async function loadChannelContext(
 
   const credentials = decodeCredentialsRow(ia, integrationAccountId);
   const provider = normalizeProvider(typeof ia.provider === 'string' ? ia.provider : '');
-  const apiKey = typeof credentials.api_key === 'string' ? credentials.api_key : '';
+  // GHL guarda el PIT en `credentials.apiToken`. ManyChat/YCloud usan
+  // `credentials.api_key`. Mismo mapeo que el motor en outbound-sender.ts.
+  const apiKey =
+    provider === 'ghl'
+      ? typeof credentials.apiToken === 'string'
+        ? credentials.apiToken
+        : ''
+      : typeof credentials.api_key === 'string'
+        ? credentials.api_key
+        : '';
   if (!apiKey) {
     throw new Error(
-      `integration_account ${integrationAccountId} (${provider}) sin api_key configurado`,
+      `integration_account ${integrationAccountId} (${provider}) sin token configurado`,
     );
   }
 
@@ -135,9 +152,7 @@ async function loadChannelContext(
 function normalizeProvider(value: string): SupportedProvider {
   if (value === 'manychat') return 'manychat';
   if (value === 'ycloud') return 'ycloud';
-  if (value === 'ghl') {
-    throw new Error('envío manual GHL no soportado desde panel — usa la UI de GHL directamente');
-  }
+  if (value === 'ghl') return 'ghl';
   throw new Error(`provider '${value}' no soportado`);
 }
 
@@ -220,4 +235,48 @@ async function sendViaYCloud(ctx: ChannelInfo, text: string): Promise<ManualSend
 
 function normalizePhone(value: string): string {
   return value.startsWith('+') ? value : `+${value}`;
+}
+
+async function sendViaGHL(ctx: ChannelInfo, text: string): Promise<ManualSendResult> {
+  // Apendear ZWSP es CRÍTICO: el motor recibe el webhook outbound de GHL,
+  // detecta el ZWSP y lo trata como 'self_echo' (ghl-message-router.ts:338)
+  // — NO duplica insert en BD ni dispara handoff humano por outbound. El
+  // panel ya hizo el INSERT con source='human' + ai_paused_until antes de
+  // llamar aquí.
+  const taggedText = text.includes(ZWSP_TAG) ? text : text + ZWSP_TAG;
+  const url = `${GHL_BASE.replace(/\/$/, '')}/conversations/messages`;
+  const body = {
+    type: mapChannelToGhlType(ctx.channelType),
+    contactId: ctx.externalUserId,
+    message: taggedText,
+  };
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${ctx.apiKey}`,
+      Version: GHL_VERSION,
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => '');
+    throw new Error(`GHL API ${response.status}: ${errBody.slice(0, 200)}`);
+  }
+  const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+  const providerMessageId =
+    (typeof json.messageId === 'string' && json.messageId) ||
+    (typeof json.id === 'string' && json.id) ||
+    null;
+  return { providerMessageId };
+}
+
+function mapChannelToGhlType(
+  channelType: 'whatsapp' | 'instagram' | 'facebook',
+): 'WhatsApp' | 'IG' | 'FB Messenger' {
+  if (channelType === 'instagram') return 'IG';
+  if (channelType === 'facebook') return 'FB Messenger';
+  return 'WhatsApp';
 }
