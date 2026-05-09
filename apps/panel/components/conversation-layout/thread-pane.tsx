@@ -21,7 +21,7 @@ export function ThreadPane({ detail, messages, notes, viewer, members }: Props) 
   if (!detail) {
     return (
       <section
-        className="flex flex-col h-full items-center justify-center text-center gap-3 p-8 bg-background"
+        className="flex flex-col h-full min-h-0 items-center justify-center text-center gap-3 p-8 bg-background"
         aria-label="Conversación"
       >
         <MessageSquare className="size-10 text-muted-foreground/40" />
@@ -36,7 +36,7 @@ export function ThreadPane({ detail, messages, notes, viewer, members }: Props) 
   }
 
   return (
-    <section className="flex flex-col h-full bg-background min-w-0" aria-label="Conversación">
+    <section className="flex flex-col h-full min-h-0 bg-background min-w-0" aria-label="Conversación">
       <ThreadTopbar detail={detail} notes={notes} viewer={viewer} members={members} />
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {messages.length === 0 ? (

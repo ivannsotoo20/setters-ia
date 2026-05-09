@@ -30,7 +30,7 @@ export function ConversationListPane({
 
   return (
     <aside
-      className="flex flex-col h-full bg-card/40 border-r border-border min-w-0"
+      className="flex flex-col h-full min-h-0 bg-card/40 border-r border-border min-w-0"
       aria-label="Lista de conversaciones"
     >
       <header className="border-b border-border px-3 py-2.5 shrink-0">

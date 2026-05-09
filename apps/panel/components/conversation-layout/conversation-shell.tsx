@@ -39,15 +39,15 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
   return (
     <div
       className={cn(
-        'flex flex-col flex-1 min-h-0 h-full bg-background',
-        'md:grid md:grid-cols-[300px_1fr] md:grid-rows-[1fr] md:gap-0',
-        'lg:grid-cols-[320px_1fr_380px]',
+        'flex flex-col flex-1 min-h-0 bg-background',
+        'md:grid md:grid-cols-[300px_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)] md:gap-0',
+        'lg:grid-cols-[320px_minmax(0,1fr)_380px]',
       )}
     >
       {/* List pane */}
       <div
         className={cn(
-          'min-w-0 h-full',
+          'min-w-0 min-h-0 h-full overflow-hidden',
           'md:block',
           mobileView === 'list' ? 'block' : 'hidden md:block',
         )}
@@ -58,7 +58,7 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
       {/* Thread pane */}
       <div
         className={cn(
-          'min-w-0 h-full',
+          'min-w-0 min-h-0 h-full overflow-hidden',
           'md:block',
           mobileView === 'thread' ? 'block' : 'hidden md:block',
         )}
@@ -67,7 +67,7 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
       </div>
 
       {/* Panel pane (lg+ only) */}
-      <div className="hidden lg:block min-w-0 h-full">{panel}</div>
+      <div className="hidden lg:block min-w-0 min-h-0 h-full overflow-hidden">{panel}</div>
 
       {/* Tablet (md only): Sheet derecho disparado por botón flotante */}
       <div className="hidden md:flex lg:hidden fixed right-4 bottom-4 z-20">
@@ -118,7 +118,7 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
       {/* Mobile panel pane (renderizado solo cuando esa tab está activa) */}
       <div
         className={cn(
-          'md:hidden min-w-0 h-full',
+          'md:hidden min-w-0 min-h-0 h-full overflow-hidden',
           mobileView === 'panel' ? 'block' : 'hidden',
         )}
       >
