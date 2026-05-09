@@ -11,7 +11,7 @@ export function ControlPanel({ detail }: Props) {
   if (!detail) {
     return (
       <aside
-        className="hidden lg:flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto h-full items-center justify-center text-center text-sm text-muted-foreground"
+        className="hidden lg:flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto h-full min-h-0 items-center justify-center text-center text-sm text-muted-foreground"
         aria-label="Panel de control"
       >
         <p>Selecciona una conversación para ver el panel de control.</p>
@@ -21,7 +21,7 @@ export function ControlPanel({ detail }: Props) {
 
   return (
     <aside
-      className="flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto h-full"
+      className="flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto h-full min-h-0"
       aria-label="Panel de control"
     >
       <LeadInfoCard detail={detail} />

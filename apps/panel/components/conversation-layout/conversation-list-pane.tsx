@@ -39,14 +39,18 @@ export function ConversationListPane({
           {rows.length} totales · {visible.length} en vista
         </p>
       </header>
-      <ConversationListFilters
-        q={filters.q ?? ''}
-        channel={filters.channel ?? 'all'}
-        unread={filters.unread === true}
-        mine={filters.mine === true}
-      />
-      <ConversationListTabs active={activeTab} counts={counts} />
-      <div className="flex-1 overflow-y-auto">
+      <div className="shrink-0">
+        <ConversationListFilters
+          q={filters.q ?? ''}
+          channel={filters.channel ?? 'all'}
+          unread={filters.unread === true}
+          mine={filters.mine === true}
+        />
+      </div>
+      <div className="shrink-0">
+        <ConversationListTabs active={activeTab} counts={counts} />
+      </div>
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {visible.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 px-4 text-center text-sm text-muted-foreground">
             <Inbox className="size-7 opacity-40" />

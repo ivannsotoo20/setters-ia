@@ -38,7 +38,7 @@ export function ThreadPane({ detail, messages, notes, viewer, members }: Props) 
   return (
     <section className="flex flex-col h-full bg-background min-w-0" aria-label="Conversación">
       <ThreadTopbar detail={detail} notes={notes} viewer={viewer} members={members} />
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground italic text-center py-8">
             Sin mensajes todavía.
