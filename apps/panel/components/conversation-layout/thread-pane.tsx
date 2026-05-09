@@ -2,6 +2,7 @@ import { MessageSquare } from 'lucide-react';
 import { MessagesTimeline } from '@/app/(app)/conversations/[id]/messages-timeline';
 import { ThreadTopbar } from './thread-topbar';
 import { ThreadComposer } from './thread-composer';
+import { ThreadAutoRefresh } from './thread-auto-refresh';
 import type {
   ConversationViewer,
   TenantMember,
@@ -38,6 +39,7 @@ export function ThreadPane({ detail, messages, notes, viewer, members }: Props) 
 
   return (
     <section className="flex flex-col h-full min-h-0 bg-background min-w-0" aria-label="Conversación">
+      <ThreadAutoRefresh enabled={!detail.isBlocked} />
       <ThreadTopbar detail={detail} notes={notes} viewer={viewer} members={members} />
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {messages.length === 0 ? (
