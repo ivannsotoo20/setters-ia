@@ -3,15 +3,31 @@
  * como `prompt_blocks.block_key='trainer_prefs_v1'` (sort_order=110, al final
  * del prompt compuesto).
  *
- * Schema CERRADO: solo los toggles aquí definidos pueden persistirse. Cualquier
+ * Schema CERRADO: solo los campos aquí definidos pueden persistirse. Cualquier
  * otra clave en el JSON de entrada se ignora silenciosamente.
  *
  * Validación a mano (sin Zod) para no añadir dependencias nuevas al panel.
  *
  * Plan: ~/.claude/plans/admin-edita-cerebro-coach-prefs-2026-05-09.md
+ *
+ * Sprint Gamma 2.1 + 2.2 (NUEVOS campos):
+ *   - trainerEmail / trainerPhone / trainerName: datos de contacto. NO se
+ *     serializan al markdown del prompt — viven en BD para inyección dinámica
+ *     via placeholder en handoff_v4 (Sprint Gamma 2.6).
+ *   - customInstructions: textarea libre. SÍ se serializa al markdown como
+ *     sección "Instrucciones específicas del trainer".
  */
 
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+// Phone E.164: + obligatorio + 8-15 dígitos. Acepta espacios/guiones en input,
+// pero el normalizer los strippea.
+const PHONE_E164_REGEX = /^\+[1-9]\d{7,14}$/;
+
+const MAX_CUSTOM_INSTRUCTIONS_CHARS = 4000;
+const MAX_TRAINER_NAME_CHARS = 100;
+
 export interface TrainerPreferences {
+  // ----- Sprint Gamma 1: estilo (existentes) -----
   /** Termina las preguntas con `??` en lugar de `?`. */
   doubleQuestionMark: boolean;
   /** Densidad de emojis: 0=casi sin emojis, 1=algunos, 2=moderada (default), 3=abundante. */
@@ -20,6 +36,18 @@ export interface TrainerPreferences {
   extraQuestionsBeforeCall: 0 | 1 | 2;
   /** Si lead manda audio, mencionarlo explícitamente en la respuesta. */
   preferVoiceNotesAcknowledgment: boolean;
+
+  // ----- Sprint Gamma 2.1: datos de contacto -----
+  /** Nombre que la IA usará al referirse al trainer en handoff. null = "el equipo". */
+  trainerName: string | null;
+  /** Email del trainer para alertas (Resend). null = sin notificaciones. */
+  trainerEmail: string | null;
+  /** Teléfono E.164 (+34...) que la IA puede entregar al lead en handoff. null = no entregar. */
+  trainerPhone: string | null;
+
+  // ----- Sprint Gamma 2.2: instrucciones libres -----
+  /** Texto libre del trainer (max 4000 chars). Se inyecta al prompt como sección. */
+  customInstructions: string | null;
 }
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
@@ -27,7 +55,62 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   emojiDensity: 2,
   extraQuestionsBeforeCall: 0,
   preferVoiceNotesAcknowledgment: false,
+  trainerName: null,
+  trainerEmail: null,
+  trainerPhone: null,
+  customInstructions: null,
 };
+
+/**
+ * Normaliza un teléfono a E.164 si es razonable, o null si no es parseable.
+ * Acepta input con espacios, guiones, paréntesis. Ej: "+34 600 123 456" → "+34600123456".
+ * Si el input no empieza con +, no lo intentamos adivinar (sería ambiguo) → null.
+ */
+export function normalizePhoneE164(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  // Strip spaces, dashes, parens
+  const cleaned = trimmed.replace(/[\s\-()]/g, '');
+  if (!PHONE_E164_REGEX.test(cleaned)) return null;
+  return cleaned;
+}
+
+export function isValidEmail(value: string | null | undefined): boolean {
+  if (value == null) return false;
+  if (typeof value !== 'string') return false;
+  const trimmed = value.trim();
+  if (trimmed === '') return false;
+  return EMAIL_REGEX.test(trimmed);
+}
+
+/**
+ * Sanea custom instructions: trim, max length, escape de fragmentos peligrosos
+ * (cierres de tags XML que podrían romper el prompt compuesto).
+ */
+function sanitizeCustomInstructions(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length > MAX_CUSTOM_INSTRUCTIONS_CHARS) {
+    trimmed = trimmed.slice(0, MAX_CUSTOM_INSTRUCTIONS_CHARS);
+  }
+  // Escape de tags peligrosos del Cerebro/Anthropic (no permite cerrar prematuramente).
+  // Reemplazamos < > de cierres tipo </system>, </message>, </core_v4_base> con
+  // entidades para que el modelo lo vea como texto, no como tag.
+  trimmed = trimmed.replace(/<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi, '&lt;/$1&gt;');
+  return trimmed;
+}
+
+function sanitizeTrainerName(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed === '') return null;
+  return trimmed.slice(0, MAX_TRAINER_NAME_CHARS);
+}
 
 /**
  * Parsea un JSON arbitrario (typically de `trainer_preferences.preferences` JSONB)
@@ -64,6 +147,18 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
     out.preferVoiceNotesAcknowledgment = r.preferVoiceNotesAcknowledgment;
   }
 
+  // Sprint Gamma 2.1
+  out.trainerName = sanitizeTrainerName(r.trainerName as string | null | undefined);
+
+  if (typeof r.trainerEmail === 'string' && isValidEmail(r.trainerEmail)) {
+    out.trainerEmail = r.trainerEmail.trim().toLowerCase();
+  }
+
+  out.trainerPhone = normalizePhoneE164(r.trainerPhone as string | null | undefined);
+
+  // Sprint Gamma 2.2
+  out.customInstructions = sanitizeCustomInstructions(r.customInstructions as string | null | undefined);
+
   return out;
 }
 
@@ -77,6 +172,9 @@ const EMOJI_DENSITY_DESCRIPTIONS = {
 /**
  * Convierte preferencias estructuradas en markdown que se inyecta al final del
  * system prompt. Determinístico y testeable.
+ *
+ * NO incluye: trainerEmail, trainerPhone, trainerName (esos viven en BD para
+ * inyección dinámica via placeholder en handoff_v4, Sprint Gamma 2.6).
  */
 export function serializeTrainerPreferences(prefs: TrainerPreferences): string {
   const lines: string[] = [];
@@ -126,6 +224,20 @@ export function serializeTrainerPreferences(prefs: TrainerPreferences): string {
     lines.push(
       '- **Cualificación estándar**: sigue el flujo de fases del Cerebro sin preguntas extra antes de la cita.',
     );
+  }
+
+  // Sprint Gamma 2.2 — Instrucciones libres del trainer
+  if (prefs.customInstructions && prefs.customInstructions.length > 0) {
+    lines.push('');
+    lines.push('### Instrucciones específicas del trainer');
+    lines.push('');
+    lines.push(
+      'El trainer dueño de esta sub-cuenta ha indicado **instrucciones específicas** que debes ' +
+        'respetar siempre que no contradigan reglas críticas del Cerebro ni directivas del Coach. ' +
+        'Si hay conflicto entre estas instrucciones y el Cerebro/Coach, prevalece el Cerebro/Coach.',
+    );
+    lines.push('');
+    lines.push(prefs.customInstructions);
   }
 
   lines.push('');

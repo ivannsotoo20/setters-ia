@@ -245,6 +245,10 @@ describe('saveTrainerPreferences', () => {
       emojiDensity: 3 as const,
       extraQuestionsBeforeCall: 2 as const,
       preferVoiceNotesAcknowledgment: true,
+      trainerName: null,
+      trainerEmail: null,
+      trainerPhone: null,
+      customInstructions: null,
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });
