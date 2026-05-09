@@ -13,11 +13,13 @@ let mockEffectiveTenant: {
   tenantId: number;
   isAgencyAdmin: boolean;
   isImpersonating: boolean;
+  role: 'owner' | 'admin' | 'viewer';
 } | null = {
   userId: 'user-abc',
   tenantId: 3,
   isAgencyAdmin: false,
   isImpersonating: false,
+  role: 'owner',
 };
 
 vi.mock('next/cache', () => ({
@@ -62,6 +64,7 @@ describe('togglePauseConversation', () => {
       tenantId: 3,
       isAgencyAdmin: false,
       isImpersonating: false,
+      role: 'owner',
     };
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake-service-role-key';
@@ -121,6 +124,7 @@ describe('togglePauseConversation', () => {
       tenantId: 99,
       isAgencyAdmin: true,
       isImpersonating: true,
+      role: 'owner',
     };
     await togglePauseConversation(10, false);
     expect(updateCalls[0]?.filters).toContainEqual({ col: 'tenant_id', val: 99 });

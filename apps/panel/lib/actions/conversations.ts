@@ -4,6 +4,10 @@ import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 
+export type ConversationActionResult<T = void> =
+  | { ok: true; data?: T }
+  | { ok: false; error: string };
+
 /**
  * Pausa o reactiva la IA en una conversación. Operación idempotente:
  *   - Pausar  → `ai_paused_until = 'infinity'` (gate `process-debounced.ts:1.5`
@@ -58,5 +62,265 @@ export async function togglePauseConversation(
 
   revalidatePath('/conversations');
   revalidatePath(`/conversations/${conversationId}`);
+  return { ok: true };
+}
+
+// ===========================================================================
+// Sprint Zeta — acciones panel chat
+// ===========================================================================
+
+interface AuthorizedConvCtx {
+  userId: string;
+  email: string;
+  tenantId: number;
+  isAgencyAdmin: boolean;
+  role: 'owner' | 'admin' | 'viewer';
+}
+
+async function requireConvAccess(
+  conversationId: number,
+): Promise<{ ok: true; ctx: AuthorizedConvCtx } | { ok: false; error: string }> {
+  if (!Number.isFinite(conversationId) || conversationId <= 0) {
+    return { ok: false, error: 'invalid conversationId' };
+  }
+  const eff = await getEffectiveTenant();
+  if (!eff) return { ok: false, error: 'unauthenticated' };
+
+  const supabase = getServiceRoleClient();
+  const { data: conv } = await supabase
+    .from('conversations')
+    .select('tenant_id')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (!conv) return { ok: false, error: 'conversation not found' };
+  if (Number(conv.tenant_id) !== eff.tenantId && !eff.isAgencyAdmin) {
+    return { ok: false, error: 'forbidden — wrong tenant' };
+  }
+
+  // Email del actor para audit trail
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('id', eff.userId)
+    .maybeSingle();
+
+  return {
+    ok: true,
+    ctx: {
+      userId: eff.userId,
+      email: String(profile?.email ?? ''),
+      tenantId: Number(conv.tenant_id),
+      isAgencyAdmin: eff.isAgencyAdmin,
+      role: eff.role,
+    },
+  };
+}
+
+function revalidateConv(id: number) {
+  revalidatePath('/conversations');
+  revalidatePath(`/conversations/${id}`);
+}
+
+// ---- markUnread / markRead -----------------------------------------------
+
+export async function setConversationUnread(
+  conversationId: number,
+  unread: boolean,
+): Promise<ConversationActionResult> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from('conversations')
+    .update({ is_unread: unread, updated_at: new Date().toISOString() })
+    .eq('id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateConv(conversationId);
+  return { ok: true };
+}
+
+// ---- block / unblock ------------------------------------------------------
+
+export async function setConversationBlocked(
+  conversationId: number,
+  blocked: boolean,
+): Promise<ConversationActionResult> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+  if (!auth.ctx.isAgencyAdmin && auth.ctx.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede bloquear' };
+  }
+
+  const supabase = getServiceRoleClient();
+  const patch: { is_blocked: boolean; updated_at: string; ai_paused_until?: string | null } = {
+    is_blocked: blocked,
+    updated_at: new Date().toISOString(),
+  };
+  // Bloquear implica pausar IA defensivamente.
+  if (blocked) patch.ai_paused_until = 'infinity';
+
+  const { error } = await supabase
+    .from('conversations')
+    .update(patch)
+    .eq('id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateConv(conversationId);
+  return { ok: true };
+}
+
+// ---- assign --------------------------------------------------------------
+
+export async function assignConversation(
+  conversationId: number,
+  assigneeUserId: string | null,
+): Promise<ConversationActionResult> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+
+  // Validar que el assignee es miembro del tenant si no es null
+  if (assigneeUserId) {
+    const supabase = getServiceRoleClient();
+    const { data: target } = await supabase
+      .from('profiles')
+      .select('tenant_id, is_active')
+      .eq('id', assigneeUserId)
+      .maybeSingle();
+    if (!target || target.is_active === false) {
+      return { ok: false, error: 'usuario asignado no válido' };
+    }
+    if (Number(target.tenant_id) !== auth.ctx.tenantId) {
+      return { ok: false, error: 'usuario no pertenece a esta sub-cuenta' };
+    }
+  }
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from('conversations')
+    .update({
+      assigned_user_id: assigneeUserId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateConv(conversationId);
+  return { ok: true };
+}
+
+// ---- notes ---------------------------------------------------------------
+
+export interface ConversationNote {
+  id: number;
+  authorEmail: string | null;
+  content: string;
+  createdAt: string;
+}
+
+export async function addConversationNote(
+  conversationId: number,
+  content: string,
+): Promise<ConversationActionResult<{ id: number }>> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+
+  const trimmed = content?.trim() ?? '';
+  if (!trimmed) return { ok: false, error: 'nota vacía' };
+  if (trimmed.length > 4000) return { ok: false, error: 'nota >4000 chars' };
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from('conversation_notes')
+    .insert({
+      conversation_id: conversationId,
+      tenant_id: auth.ctx.tenantId,
+      author_user_id: auth.ctx.userId,
+      author_email: auth.ctx.email || null,
+      content: trimmed,
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) return { ok: false, error: error?.message ?? 'insert failed' };
+  revalidateConv(conversationId);
+  return { ok: true, data: { id: Number(data.id) } };
+}
+
+export async function deleteConversationNote(
+  conversationId: number,
+  noteId: number,
+): Promise<ConversationActionResult> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from('conversation_notes')
+    .delete()
+    .eq('id', noteId)
+    .eq('conversation_id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateConv(conversationId);
+  return { ok: true };
+}
+
+export async function listConversationNotes(
+  conversationId: number,
+): Promise<ConversationActionResult<ConversationNote[]>> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from('conversation_notes')
+    .select('id, author_email, content, created_at')
+    .eq('conversation_id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId)
+    .order('created_at', { ascending: false });
+
+  if (error) return { ok: false, error: error.message };
+  return {
+    ok: true,
+    data: (data ?? []).map((r) => ({
+      id: Number(r.id),
+      authorEmail: r.author_email as string | null,
+      content: String(r.content),
+      createdAt: String(r.created_at),
+    })),
+  };
+}
+
+// ---- delete (soft: state=closed + is_blocked) ----------------------------
+
+export async function deleteConversation(
+  conversationId: number,
+): Promise<ConversationActionResult> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+  if (!auth.ctx.isAgencyAdmin && auth.ctx.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede eliminar' };
+  }
+
+  const supabase = getServiceRoleClient();
+  const { error } = await supabase
+    .from('conversations')
+    .update({
+      state: 'closed',
+      is_blocked: true,
+      ai_paused_until: 'infinity',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId);
+
+  if (error) return { ok: false, error: error.message };
+  revalidateConv(conversationId);
   return { ok: true };
 }

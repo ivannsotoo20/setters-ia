@@ -230,9 +230,55 @@ export type Database = {
           },
         ]
       }
+      conversation_notes: {
+        Row: {
+          author_email: string | null
+          author_user_id: string | null
+          content: string
+          conversation_id: number
+          created_at: string
+          id: number
+          tenant_id: number
+        }
+        Insert: {
+          author_email?: string | null
+          author_user_id?: string | null
+          content: string
+          conversation_id: number
+          created_at?: string
+          id?: number
+          tenant_id: number
+        }
+        Update: {
+          author_email?: string | null
+          author_user_id?: string | null
+          content?: string
+          conversation_id?: number
+          created_at?: string
+          id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           ai_paused_until: string | null
+          assigned_user_id: string | null
           call_scheduled_at: string | null
           channel_id: number
           conversation_source: string | null
@@ -241,6 +287,8 @@ export type Database = {
           custom_fields: Json
           direction: Database["public"]["Enums"]["conversation_direction"]
           emotion: string | null
+          first_ai_message_at: string | null
+          first_lead_response_at: string | null
           general_context: string | null
           general_motivation: string | null
           ghl_contact_id: string | null
@@ -251,9 +299,11 @@ export type Database = {
           handoff_cause: Database["public"]["Enums"]["handoff_cause"] | null
           handoff_reason: string | null
           id: number
+          is_blocked: boolean
           is_call_scheduling_link_sent: boolean
           is_handoff_to_human: boolean
           is_qualified: boolean | null
+          is_unread: boolean
           last_message_at: string | null
           lead_id: number
           next_action: string | null
@@ -268,6 +318,7 @@ export type Database = {
         }
         Insert: {
           ai_paused_until?: string | null
+          assigned_user_id?: string | null
           call_scheduled_at?: string | null
           channel_id: number
           conversation_source?: string | null
@@ -276,6 +327,8 @@ export type Database = {
           custom_fields?: Json
           direction?: Database["public"]["Enums"]["conversation_direction"]
           emotion?: string | null
+          first_ai_message_at?: string | null
+          first_lead_response_at?: string | null
           general_context?: string | null
           general_motivation?: string | null
           ghl_contact_id?: string | null
@@ -286,9 +339,11 @@ export type Database = {
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
           handoff_reason?: string | null
           id?: number
+          is_blocked?: boolean
           is_call_scheduling_link_sent?: boolean
           is_handoff_to_human?: boolean
           is_qualified?: boolean | null
+          is_unread?: boolean
           last_message_at?: string | null
           lead_id: number
           next_action?: string | null
@@ -303,6 +358,7 @@ export type Database = {
         }
         Update: {
           ai_paused_until?: string | null
+          assigned_user_id?: string | null
           call_scheduled_at?: string | null
           channel_id?: number
           conversation_source?: string | null
@@ -311,6 +367,8 @@ export type Database = {
           custom_fields?: Json
           direction?: Database["public"]["Enums"]["conversation_direction"]
           emotion?: string | null
+          first_ai_message_at?: string | null
+          first_lead_response_at?: string | null
           general_context?: string | null
           general_motivation?: string | null
           ghl_contact_id?: string | null
@@ -321,9 +379,11 @@ export type Database = {
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
           handoff_reason?: string | null
           id?: number
+          is_blocked?: boolean
           is_call_scheduling_link_sent?: boolean
           is_handoff_to_human?: boolean
           is_qualified?: boolean | null
+          is_unread?: boolean
           last_message_at?: string | null
           lead_id?: number
           next_action?: string | null
