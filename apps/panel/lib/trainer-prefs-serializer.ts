@@ -10,12 +10,17 @@
  *
  * Plan: ~/.claude/plans/admin-edita-cerebro-coach-prefs-2026-05-09.md
  *
- * Sprint Gamma 2.1 + 2.2 (NUEVOS campos):
+ * Sprint Gamma 2.1: NUEVOS campos en JSONB
  *   - trainerEmail / trainerPhone / trainerName: datos de contacto. NO se
  *     serializan al markdown del prompt — viven en BD para inyección dinámica
  *     via placeholder en handoff_v4 (Sprint Gamma 2.6).
- *   - customInstructions: textarea libre. SÍ se serializa al markdown como
- *     sección "Instrucciones específicas del trainer".
+ *
+ * Sprint Gamma 2.3: instrucciones libres como entidad separada
+ *   - Las "instrucciones libres" del trainer ya NO viven en preferences (JSONB)
+ *     sino en la tabla `trainer_custom_instructions` (1 row por instrucción,
+ *     editable/borrable individual). Pasan a serializeTrainerPreferences como
+ *     argumento `customInstructions: string[]` para concatenarlas como bullets
+ *     en el markdown.
  */
 
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -23,7 +28,6 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 // pero el normalizer los strippea.
 const PHONE_E164_REGEX = /^\+[1-9]\d{7,14}$/;
 
-const MAX_CUSTOM_INSTRUCTIONS_CHARS = 4000;
 const MAX_TRAINER_NAME_CHARS = 100;
 
 export interface TrainerPreferences {
@@ -44,10 +48,6 @@ export interface TrainerPreferences {
   trainerEmail: string | null;
   /** Teléfono E.164 (+34...) que la IA puede entregar al lead en handoff. null = no entregar. */
   trainerPhone: string | null;
-
-  // ----- Sprint Gamma 2.2: instrucciones libres -----
-  /** Texto libre del trainer (max 4000 chars). Se inyecta al prompt como sección. */
-  customInstructions: string | null;
 }
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
@@ -58,8 +58,26 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   trainerName: null,
   trainerEmail: null,
   trainerPhone: null,
-  customInstructions: null,
 };
+
+/**
+ * Sanitiza el contenido de una instrucción libre antes de persistirla a BD o
+ * inyectarla al prompt. Trim, max 500 chars, escape de tags peligrosos
+ * (defensa anti prompt-injection del trainer).
+ */
+export function sanitizeCustomInstruction(raw: string | null | undefined): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length > 500) trimmed = trimmed.slice(0, 500);
+  // Escape de cierres de tags reservados del Cerebro/Anthropic
+  trimmed = trimmed.replace(
+    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    '&lt;/$1&gt;',
+  );
+  return trimmed;
+}
 
 /**
  * Normaliza un teléfono a E.164 si es razonable, o null si no es parseable.
@@ -89,21 +107,6 @@ export function isValidEmail(value: string | null | undefined): boolean {
  * Sanea custom instructions: trim, max length, escape de fragmentos peligrosos
  * (cierres de tags XML que podrían romper el prompt compuesto).
  */
-function sanitizeCustomInstructions(raw: string | null | undefined): string | null {
-  if (raw == null) return null;
-  if (typeof raw !== 'string') return null;
-  let trimmed = raw.trim();
-  if (trimmed === '') return null;
-  if (trimmed.length > MAX_CUSTOM_INSTRUCTIONS_CHARS) {
-    trimmed = trimmed.slice(0, MAX_CUSTOM_INSTRUCTIONS_CHARS);
-  }
-  // Escape de tags peligrosos del Cerebro/Anthropic (no permite cerrar prematuramente).
-  // Reemplazamos < > de cierres tipo </system>, </message>, </core_v4_base> con
-  // entidades para que el modelo lo vea como texto, no como tag.
-  trimmed = trimmed.replace(/<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi, '&lt;/$1&gt;');
-  return trimmed;
-}
-
 function sanitizeTrainerName(raw: string | null | undefined): string | null {
   if (raw == null) return null;
   if (typeof raw !== 'string') return null;
@@ -156,9 +159,6 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
 
   out.trainerPhone = normalizePhoneE164(r.trainerPhone as string | null | undefined);
 
-  // Sprint Gamma 2.2
-  out.customInstructions = sanitizeCustomInstructions(r.customInstructions as string | null | undefined);
-
   return out;
 }
 
@@ -170,13 +170,22 @@ const EMOJI_DENSITY_DESCRIPTIONS = {
 } as const;
 
 /**
- * Convierte preferencias estructuradas en markdown que se inyecta al final del
- * system prompt. Determinístico y testeable.
+ * Convierte preferencias estructuradas + lista de instrucciones custom del
+ * trainer en markdown que se inyecta al final del system prompt. Determinístico
+ * y testeable.
  *
  * NO incluye: trainerEmail, trainerPhone, trainerName (esos viven en BD para
  * inyección dinámica via placeholder en handoff_v4, Sprint Gamma 2.6).
+ *
+ * @param prefs Preferencias estructuradas (toggles + datos contacto).
+ * @param customInstructions Lista de instrucciones libres activas, ya sanitizadas
+ *   y ordenadas por sort_order. Cada string es 1 instrucción del trainer (de la
+ *   tabla trainer_custom_instructions). Si está vacío, no se emite la sección.
  */
-export function serializeTrainerPreferences(prefs: TrainerPreferences): string {
+export function serializeTrainerPreferences(
+  prefs: TrainerPreferences,
+  customInstructions: string[] = [],
+): string {
   const lines: string[] = [];
   lines.push('## Preferencias del trainer (ajustes de superficie)');
   lines.push('');
@@ -226,18 +235,21 @@ export function serializeTrainerPreferences(prefs: TrainerPreferences): string {
     );
   }
 
-  // Sprint Gamma 2.2 — Instrucciones libres del trainer
-  if (prefs.customInstructions && prefs.customInstructions.length > 0) {
+  // Sprint Gamma 2.3 — Instrucciones libres del trainer (lista, una por bullet)
+  const activeInstructions = customInstructions.filter((s) => s.trim().length > 0);
+  if (activeInstructions.length > 0) {
     lines.push('');
     lines.push('### Instrucciones específicas del trainer');
     lines.push('');
     lines.push(
-      'El trainer dueño de esta sub-cuenta ha indicado **instrucciones específicas** que debes ' +
-        'respetar siempre que no contradigan reglas críticas del Cerebro ni directivas del Coach. ' +
-        'Si hay conflicto entre estas instrucciones y el Cerebro/Coach, prevalece el Cerebro/Coach.',
+      'El trainer dueño de esta sub-cuenta ha indicado las siguientes **instrucciones específicas** ' +
+        'que debes respetar siempre que no contradigan reglas críticas del Cerebro ni directivas del ' +
+        'Coach. Si hay conflicto entre estas instrucciones y el Cerebro/Coach, prevalece el Cerebro/Coach.',
     );
     lines.push('');
-    lines.push(prefs.customInstructions);
+    for (const inst of activeInstructions) {
+      lines.push(`- ${inst}`);
+    }
   }
 
   lines.push('');

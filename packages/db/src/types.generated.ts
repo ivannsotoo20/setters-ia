@@ -1347,6 +1347,47 @@ export type Database = {
         }
         Relationships: []
       }
+      trainer_custom_instructions: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: number
+          is_active: boolean
+          sort_order: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          is_active?: boolean
+          sort_order?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: number
+          is_active?: boolean
+          sort_order?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trainer_custom_instructions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trainer_preferences: {
         Row: {
           id: number

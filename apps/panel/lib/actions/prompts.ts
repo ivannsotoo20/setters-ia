@@ -863,13 +863,63 @@ export async function saveTrainerPreferences(args: {
     );
   if (upsertErr) return { ok: false, error: upsertErr.message };
 
-  // 2. Regenerar trainer_prefs_v1 markdown + UPSERT en prompt_blocks
-  const markdown = serializeTrainerPreferences(safePrefs);
+  // 2. Regenera trainer_prefs_v1 markdown — incluye prefs + custom instructions activas
+  const regenResult = await regenerateTrainerPrefsBlock(args.tenantId, eff.userId);
+  if (!regenResult.ok) return regenResult;
+
+  revalidatePath('/settings/preferences');
+  if (eff.isAgencyAdmin) {
+    revalidatePath(`/admin/tenants/${args.tenantId}`);
+  }
+  return { ok: true };
+}
+
+/**
+ * Regenera el bloque prompt_blocks(block_key='trainer_prefs_v1', tenant_id=X)
+ * leyendo trainer_preferences + trainer_custom_instructions activas y
+ * serializándolos a markdown.
+ *
+ * Llamada por:
+ *   - saveTrainerPreferences cuando el trainer cambia toggles/datos contacto.
+ *   - createCustomInstruction / updateCustomInstruction / deleteCustomInstruction
+ *     cuando el trainer modifica su lista de instrucciones libres.
+ *
+ * NO chequea auth — el caller debe haber validado tenant access antes.
+ */
+export async function regenerateTrainerPrefsBlock(
+  tenantId: number,
+  userId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const supabase = getServiceRoleClient();
+
+  // Carga prefs estructuradas
+  const { data: prefsRow } = await supabase
+    .from('trainer_preferences')
+    .select('preferences')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const prefs = parseTrainerPreferences(prefsRow?.preferences ?? null);
+
+  // Carga custom instructions activas, ordenadas
+  const { data: instructionsRows } = await supabase
+    .from('trainer_custom_instructions')
+    .select('content')
+    .eq('tenant_id', tenantId)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+    .order('id', { ascending: true });
+
+  const customInstructions = (instructionsRows ?? []).map((r) => r.content as string);
+
+  // Serializa
+  const markdown = serializeTrainerPreferences(prefs, customInstructions);
+
+  // UPSERT prompt_blocks
   const { data: existing } = await supabase
     .from('prompt_blocks')
     .select('id')
     .eq('block_key', 'trainer_prefs_v1')
-    .eq('tenant_id', args.tenantId)
+    .eq('tenant_id', tenantId)
     .maybeSingle();
 
   if (existing) {
@@ -878,27 +928,23 @@ export async function saveTrainerPreferences(args: {
       .update({
         content: markdown,
         updated_at: new Date().toISOString(),
-        created_by: eff.userId,
+        created_by: userId,
       })
       .eq('id', existing.id);
     if (updErr) return { ok: false, error: updErr.message };
   } else {
     const { error: insErr } = await supabase.from('prompt_blocks').insert({
       block_key: 'trainer_prefs_v1',
-      tenant_id: args.tenantId,
+      tenant_id: tenantId,
       content: markdown,
       sort_order: 110,
       version: 1,
       is_active: true,
-      created_by: eff.userId,
+      created_by: userId,
     });
     if (insErr) return { ok: false, error: insErr.message };
   }
 
-  revalidatePath('/settings/preferences');
-  if (eff.isAgencyAdmin) {
-    revalidatePath(`/admin/tenants/${args.tenantId}`);
-  }
   return { ok: true };
 }
 

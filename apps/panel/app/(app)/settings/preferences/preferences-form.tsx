@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -37,36 +37,18 @@ const QUESTIONS_LABELS = [
   { value: 2, label: '+2 preguntas', desc: 'dos preguntas adicionales de matiz' },
 ];
 
-const MAX_INSTRUCTIONS = 4000;
-const WARN_INSTRUCTIONS = 3500;
-
-const CUSTOM_INSTRUCTIONS_PLACEHOLDER = `Ejemplos de buenas instrucciones (escribe en lenguaje natural):
-
-• "Si pregunta por la dirección de la academia, di que está en Calle Mayor 42, Madrid."
-
-• "Cuando hablen del libro de marketing digital, menciona que tengo 30% descuento esta semana."
-
-• "Usa siempre tono formal con leads del nicho corporativo."
-
-• "Menciona el caso de éxito de Juan cuando pregunten por resultados (perdió 12kg en 3 meses)."
-
-Estas instrucciones se aplican EN ADICIÓN al Cerebro y al Coach, sin contradecirlos.`;
-
 export function PreferencesForm({ tenantId, initial }: Props) {
   const router = useRouter();
   const [prefs, setPrefs] = useState<TrainerPreferences>(initial);
   const [emailRaw, setEmailRaw] = useState(initial.trainerEmail ?? '');
   const [phoneRaw, setPhoneRaw] = useState(initial.trainerPhone ?? '');
   const [nameRaw, setNameRaw] = useState(initial.trainerName ?? '');
-  const [instructionsRaw, setInstructionsRaw] = useState(initial.customInstructions ?? '');
   const [saving, startSave] = useTransition();
 
   // Validaciones cliente
   const emailValid = emailRaw === '' || isValidEmail(emailRaw);
   const phoneNormalized = normalizePhoneE164(phoneRaw);
   const phoneValid = phoneRaw === '' || phoneNormalized !== null;
-  const instructionsLength = instructionsRaw.length;
-  const instructionsTooLong = instructionsLength > MAX_INSTRUCTIONS;
 
   // Building del objeto final desde inputs
   const finalPrefs: TrainerPreferences = {
@@ -74,13 +56,11 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     trainerEmail: emailRaw === '' ? null : (emailValid ? emailRaw.trim().toLowerCase() : prefs.trainerEmail),
     trainerPhone: phoneRaw === '' ? null : phoneNormalized,
     trainerName: nameRaw.trim() === '' ? null : nameRaw.trim(),
-    customInstructions: instructionsRaw.trim() === '' ? null : instructionsRaw,
   };
 
   const isDirty = JSON.stringify(finalPrefs) !== JSON.stringify(initial);
   const isAllDefault = JSON.stringify(finalPrefs) === JSON.stringify(DEFAULT_TRAINER_PREFERENCES);
-  const canSave =
-    isDirty && !instructionsTooLong && (emailRaw === '' || emailValid) && (phoneRaw === '' || phoneValid);
+  const canSave = isDirty && (emailRaw === '' || emailValid) && (phoneRaw === '' || phoneValid);
 
   function update<K extends keyof TrainerPreferences>(key: K, value: TrainerPreferences[K]) {
     setPrefs((p) => ({ ...p, [key]: value }));
@@ -91,7 +71,6 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setEmailRaw('');
     setPhoneRaw('');
     setNameRaw('');
-    setInstructionsRaw('');
   }
 
   function handleSave() {
@@ -260,59 +239,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
         </CardContent>
       </Card>
 
-      {/* CARD 3 — Instrucciones libres (Sprint Gamma 2.2) */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="size-4" />
-            Instrucciones libres para el setter
-          </CardTitle>
-          <CardDescription>
-            Escribe en lenguaje natural lo que quieres que el setter haga o sepa de tu negocio. El
-            setter respeta estas instrucciones siempre que no contradigan al Cerebro o al Coach
-            (gestionados por la agencia).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          <textarea
-            value={instructionsRaw}
-            onChange={(e) => setInstructionsRaw(e.target.value)}
-            placeholder={CUSTOM_INSTRUCTIONS_PLACEHOLDER}
-            spellCheck
-            className={`min-h-[280px] font-sans text-sm leading-relaxed bg-muted/40 border rounded-md p-3 resize-y focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-              instructionsTooLong ? 'border-destructive' : ''
-            }`}
-          />
-          <div className="flex items-center justify-between text-xs">
-            <p className="text-muted-foreground italic">
-              Estas instrucciones se inyectan al final del prompt y aplican desde el siguiente
-              turno del motor.
-            </p>
-            <span
-              className={`font-mono tabular-nums ${
-                instructionsTooLong
-                  ? 'text-destructive'
-                  : instructionsLength > WARN_INSTRUCTIONS
-                    ? 'text-amber-400'
-                    : 'text-muted-foreground'
-              }`}
-            >
-              {instructionsLength.toLocaleString()} / {MAX_INSTRUCTIONS.toLocaleString()}
-            </span>
-          </div>
-          {instructionsTooLong ? (
-            <div className="flex items-center gap-2 text-xs text-destructive">
-              <AlertTriangle className="size-3.5" />
-              Excedes el máximo permitido. Recorta antes de guardar.
-            </div>
-          ) : instructionsLength > WARN_INSTRUCTIONS ? (
-            <div className="flex items-center gap-2 text-xs text-amber-400">
-              <AlertTriangle className="size-3.5" />
-              Cerca del límite. Considera simplificar para no inflar el prompt en cada turno.
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
+      {/* CARD 3 — Instrucciones libres movido a componente separado (custom-instructions-list.tsx) */}
 
       {/* CARD 4 — Cualificación */}
       <Card>

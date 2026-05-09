@@ -71,9 +71,18 @@ function makeQueryBuilder(table: string) {
       filters.push({ method: 'eq', col, val });
       return builder;
     },
+    order(_col: string, _opts?: { ascending?: boolean }) {
+      // chain no-op para el mock; el orden no afecta tests
+      return builder;
+    },
     maybeSingle: async <T,>(): Promise<{ data: T | null; error: null }> => {
       const rows = applyFilters(table, filters);
       return { data: (rows[0] as T) ?? null, error: null };
+    },
+    then<T>(resolve: (v: { data: Array<Record<string, unknown>>; error: null }) => T) {
+      // Multi-row query (sin maybeSingle) — devuelve array filtrado
+      const rows = applyFilters(table, filters);
+      return Promise.resolve({ data: rows, error: null }).then(resolve);
     },
     upsert(payload: Record<string, unknown>, _opts?: unknown) {
       state.upsertCalls.push({ table, payload });
