@@ -30,7 +30,10 @@ export function ConversationListTabs({ active, counts }: Props) {
   };
 
   return (
-    <div role="tablist" className="flex items-center gap-1 px-2 border-b border-border">
+    <div
+      role="tablist"
+      className="flex items-center gap-0 px-1 border-b border-border overflow-x-auto scrollbar-thin"
+    >
       {TABS.map((tab) => {
         const isActive = active === tab.key;
         const count = counts[tab.key];
@@ -42,7 +45,7 @@ export function ConversationListTabs({ active, counts }: Props) {
             aria-selected={isActive}
             onClick={() => onChange(tab.key)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
+              'shrink-0 whitespace-nowrap flex items-center gap-1 px-2 py-2 text-xs font-medium border-b-2 -mb-px transition-colors',
               isActive
                 ? 'border-primary text-foreground'
                 : 'border-transparent text-muted-foreground hover:text-foreground',
