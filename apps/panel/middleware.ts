@@ -19,6 +19,8 @@ interface CookieToSet {
 
 const PROTECTED_PREFIXES = ['/dashboard', '/conversations', '/settings', '/keywords', '/admin'];
 const AUTH_ONLY_PATHS = ['/login', '/signup'];
+/** Rutas accesibles SOLO para owner del tenant o agency admin. */
+const OWNER_ONLY_PREFIXES = ['/settings/integrations', '/settings/preferences'];
 
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -72,7 +74,7 @@ export async function middleware(request: NextRequest) {
   if (isProtected && user) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_agency_admin, is_active')
+      .select('is_agency_admin, is_active, role')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -90,6 +92,20 @@ export async function middleware(request: NextRequest) {
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = '/dashboard';
       redirectUrl.search = '';
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Bloqueo rutas owner-only para collaborators que intenten acceso por URL.
+    const isOwnerOnly = OWNER_ONLY_PREFIXES.some((p) => pathname.startsWith(p));
+    if (
+      isOwnerOnly &&
+      profile?.is_agency_admin !== true &&
+      profile?.role !== 'owner'
+    ) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/dashboard';
+      redirectUrl.search = '';
+      redirectUrl.searchParams.set('error', 'owner_only');
       return NextResponse.redirect(redirectUrl);
     }
   }

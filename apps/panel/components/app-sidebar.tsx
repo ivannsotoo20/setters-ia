@@ -49,12 +49,19 @@ const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/conversations', label: 'Conversaciones', icon: MessageSquare },
 ];
 
-const NAV_TRAINER_CONFIG: NavItem[] = [
-  { href: '/keywords', label: 'Keywords', icon: Sparkles },
-  { href: '/settings/integrations', label: 'Integraciones', icon: Settings },
-  { href: '/settings/preferences', label: 'Preferencias', icon: Sliders },
-  { href: '/settings/members', label: 'Miembros', icon: UserCog },
-];
+/** Entradas de configuración visibles según rol. */
+function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
+  const items: NavItem[] = [
+    { href: '/keywords', label: 'Keywords', icon: Sparkles },
+  ];
+  if (canManageTenant) {
+    items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
+    items.push({ href: '/settings/preferences', label: 'Preferencias', icon: Sliders });
+  }
+  // Miembros visible para todos: collaborator ve la lista en read-only.
+  items.push({ href: '/settings/members', label: 'Miembros', icon: UserCog });
+  return items;
+}
 
 const NAV_AGENCY: NavItem[] = [
   { href: '/admin/dashboard', label: 'Resumen agencia', icon: Building2 },
@@ -98,6 +105,10 @@ interface Props {
   tenantName?: string | null;
   userEmail?: string | null;
   isAgencyAdmin?: boolean;
+  /** Owner del tenant O agency admin → puede modificar config sensible. */
+  canManageTenant?: boolean;
+  /** Rol del profile en su tenant natural — usado para hints UX. */
+  memberRole?: 'owner' | 'admin' | 'viewer';
   impersonatingTenantName?: string | null;
 }
 
@@ -105,11 +116,14 @@ export function AppSidebar({
   tenantName,
   userEmail,
   isAgencyAdmin,
+  canManageTenant = true,
+  memberRole = 'owner',
   impersonatingTenantName,
 }: Props) {
   const pathname = usePathname();
   const mode = deriveMode(pathname, isAgencyAdmin === true);
   const tenantIdInUrl = extractTenantId(pathname);
+  const trainerConfigNav = buildTrainerConfigNav(canManageTenant);
 
   const homeHref =
     mode === 'agency' || mode === 'tenant-admin'
@@ -220,7 +234,7 @@ export function AppSidebar({
               <SidebarGroupLabel>Configuración</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {NAV_TRAINER_CONFIG.map((item) => (
+                  {trainerConfigNav.map((item) => (
                     <NavItemRow
                       key={item.href}
                       item={item}
@@ -230,6 +244,16 @@ export function AppSidebar({
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
+            {!canManageTenant && memberRole !== 'owner' ? (
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <div className="px-2 pt-2 text-[10px] text-muted-foreground leading-tight">
+                    Acceso de colaborador. Solo el owner puede editar prompts,
+                    integraciones y preferencias.
+                  </div>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ) : null}
           </>
         ) : null}
       </SidebarContent>

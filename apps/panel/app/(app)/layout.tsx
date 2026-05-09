@@ -26,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('email, tenant_id, is_agency_admin, tenants(slug, name)')
+    .select('email, tenant_id, is_agency_admin, role, tenants(slug, name)')
     .eq('id', user.id)
     .maybeSingle();
 
@@ -38,6 +38,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const tenantInfo = Array.isArray(tenantsRel) ? tenantsRel[0] ?? null : tenantsRel ?? null;
 
   const isAgencyAdmin = profile?.is_agency_admin === true;
+  const role = (profile?.role ?? 'owner') as 'owner' | 'admin' | 'viewer';
+  // canManageTenant = puede modificar config sensible (prefs, integraciones,
+  // miembros). Se aplica al sidebar trainer para no mostrar entradas que el
+  // collaborator no puede usar.
+  const canManageTenant = isAgencyAdmin || role === 'owner';
 
   // Si es agency admin y tiene cookie de impersonate, cargar el tenant
   // impersonado para mostrarlo en sidebar + banner.
@@ -64,6 +69,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         tenantName={tenantInfo?.name ?? tenantInfo?.slug ?? null}
         userEmail={profile?.email ?? user.email ?? null}
         isAgencyAdmin={isAgencyAdmin}
+        canManageTenant={canManageTenant}
+        memberRole={role}
         impersonatingTenantName={impersonatingTenantName}
       />
       <SidebarInset>
