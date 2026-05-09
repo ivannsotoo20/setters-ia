@@ -901,3 +901,191 @@ export async function saveTrainerPreferences(args: {
   }
   return { ok: true };
 }
+
+// ============================================================================
+// Sprint Beta — actions para el detalle de tenant
+// ============================================================================
+
+export interface TenantBlockSummary {
+  /** id de la fila prompt_blocks; null si no existe aún. */
+  blockId: number | null;
+  blockKey: string;
+  /** chars del active actual; 0 si no existe. */
+  contentChars: number;
+  /** version_number max actual; 0 si no existe ni baseline. */
+  activeVersionNumber: number;
+  /** ISO timestamp de la última edición; null si no existe. */
+  updatedAt: string | null;
+  /** true si el bloque NO existe aún (caso típico admin_overrides_v1 sin crear). */
+  isMissing: boolean;
+}
+
+export interface TenantPromptOverview {
+  ok: true;
+  tenant: { id: number; slug: string; name: string; isActive: boolean };
+  coach: TenantBlockSummary;
+  adminOverrides: TenantBlockSummary;
+  trainerPrefs: TenantBlockSummary;
+}
+
+/**
+ * Devuelve el resumen de los 3 bloques scoped a un tenant (coach, admin_overrides,
+ * trainer_prefs) + datos del tenant. Usado por la página /admin/tenants/[id]
+ * para renderizar tabs sin múltiples roundtrips.
+ */
+export async function loadTenantBlocks(args: {
+  tenantId: number;
+}): Promise<TenantPromptOverview | { ok: false; error: string }> {
+  const auth = await requireAgencyAdmin();
+  if (!auth.ok) return auth;
+  if (!Number.isFinite(args.tenantId) || args.tenantId <= 0) {
+    return { ok: false, error: 'invalid tenantId' };
+  }
+
+  const supabase = getServiceRoleClient();
+
+  const { data: tenant, error: tenantErr } = await supabase
+    .from('tenants')
+    .select('id, slug, name, is_active')
+    .eq('id', args.tenantId)
+    .maybeSingle();
+  if (tenantErr) return { ok: false, error: tenantErr.message };
+  if (!tenant) return { ok: false, error: 'tenant not found' };
+
+  const blockKeys = ['coach_v3', 'admin_overrides_v1', 'trainer_prefs_v1'] as const;
+
+  const summaries = await Promise.all(
+    blockKeys.map(async (key) => {
+      const { data: block } = await supabase
+        .from('prompt_blocks')
+        .select('id, content, updated_at')
+        .eq('block_key', key)
+        .eq('tenant_id', args.tenantId)
+        .eq('is_active', true)
+        .eq('version', 1)
+        .maybeSingle();
+
+      if (!block) {
+        return {
+          blockId: null,
+          blockKey: key,
+          contentChars: 0,
+          activeVersionNumber: 0,
+          updatedAt: null,
+          isMissing: true,
+        } satisfies TenantBlockSummary;
+      }
+
+      const { data: lastVer } = await supabase
+        .from('prompt_block_versions')
+        .select('version_number')
+        .eq('prompt_block_id', block.id)
+        .order('version_number', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      return {
+        blockId: block.id as number,
+        blockKey: key,
+        contentChars: (block.content as string).length,
+        activeVersionNumber: (lastVer?.version_number as number | undefined) ?? 0,
+        updatedAt: block.updated_at as string,
+        isMissing: false,
+      } satisfies TenantBlockSummary;
+    }),
+  );
+
+  return {
+    ok: true,
+    tenant: {
+      id: tenant.id as number,
+      slug: tenant.slug as string,
+      name: tenant.name as string,
+      isActive: (tenant.is_active as boolean | null) ?? true,
+    },
+    coach: summaries[0]!,
+    adminOverrides: summaries[1]!,
+    trainerPrefs: summaries[2]!,
+  };
+}
+
+/**
+ * Crea un bloque admin_overrides_v1 vacío para un tenant. Se llama desde el
+ * tab "Admin Overrides" cuando el bloque aún no existe.
+ *
+ * Plantilla mínima: comentario explicativo + 1 sección placeholder. Versión 1
+ * inicial se inserta en prompt_block_versions automáticamente.
+ */
+export async function createAdminOverridesBlock(args: {
+  tenantId: number;
+}): Promise<{ ok: true; blockId: number } | { ok: false; error: string }> {
+  const auth = await requireAgencyAdmin();
+  if (!auth.ok) return auth;
+
+  const supabase = getServiceRoleClient();
+
+  // Verifica que no exista ya
+  const { data: existing } = await supabase
+    .from('prompt_blocks')
+    .select('id')
+    .eq('block_key', 'admin_overrides_v1')
+    .eq('tenant_id', args.tenantId)
+    .maybeSingle();
+  if (existing) return { ok: false, error: 'admin_overrides_v1 ya existe para este tenant' };
+
+  // Plantilla
+  const tenantSlug = (await resolveTenantSlug(supabase, args.tenantId)) ?? `tenant_${args.tenantId}`;
+  const templateContent = `# Overrides admin para ${tenantSlug}
+
+<!--
+  Bloque admin_overrides_v1 — instrucciones extra que SOLO la agencia (Iván)
+  añade para este tenant. El trainer NO ve este contenido. Se inyecta en el
+  prompt entre el Coach y la fase activa (sort=6).
+
+  Ejemplos de uso:
+  - Notas operativas: "Este trainer paga 500€/mes y prefiere agenda en cal.com"
+  - Restricciones específicas: "Si lead menciona X, deriva inmediatamente"
+  - Contexto de la cuenta: "Hablamos de un nicho premium, evitar tono casual"
+-->
+
+## Notas para el agente
+
+(Sin contenido todavía. Edita y guarda para activar.)
+`;
+
+  const { data: insRow, error: insErr } = await supabase
+    .from('prompt_blocks')
+    .insert({
+      block_key: 'admin_overrides_v1',
+      tenant_id: args.tenantId,
+      content: templateContent,
+      sort_order: 6,
+      version: 1,
+      is_active: true,
+      created_by: auth.userId,
+    })
+    .select('id')
+    .maybeSingle();
+  if (insErr || !insRow) return { ok: false, error: insErr?.message ?? 'insert failed' };
+
+  const { error: insVerErr } = await supabase.from('prompt_block_versions').insert({
+    prompt_block_id: insRow.id,
+    version_number: 1,
+    content: templateContent,
+    changed_by: auth.userId,
+    change_summary: 'Plantilla inicial admin_overrides',
+    was_applied: true,
+  });
+  if (insVerErr) return { ok: false, error: `insert version failed: ${insVerErr.message}` };
+
+  // Reescribir .md fuente best-effort
+  await writeBlockToSource({
+    blockKey: 'admin_overrides_v1',
+    content: templateContent,
+    tenantId: args.tenantId,
+    tenantSlug,
+  });
+
+  revalidatePath(`/admin/tenants/${args.tenantId}`);
+  return { ok: true, blockId: insRow.id };
+}

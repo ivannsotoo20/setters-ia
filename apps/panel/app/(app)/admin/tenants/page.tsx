@@ -1,5 +1,6 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { LogIn } from 'lucide-react';
+import { LogIn, Settings2 } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   listAllTenants,
@@ -124,13 +125,21 @@ export default async function AdminTenantsPage() {
                         ${t.costLast24h.toFixed(4)}
                       </TableCell>
                       <TableCell className="text-right">
-                        <form action={startImpersonatingAndRedirect}>
-                          <input type="hidden" name="tenant_id" value={t.id} />
-                          <Button type="submit" size="sm" variant="outline">
-                            <LogIn className="size-3.5" />
-                            Entrar
+                        <div className="flex justify-end gap-1.5">
+                          <Button asChild size="sm" variant="outline">
+                            <Link href={`/admin/tenants/${t.id}`}>
+                              <Settings2 className="size-3.5" />
+                              Editar prompts
+                            </Link>
                           </Button>
-                        </form>
+                          <form action={startImpersonatingAndRedirect}>
+                            <input type="hidden" name="tenant_id" value={t.id} />
+                            <Button type="submit" size="sm" variant="outline">
+                              <LogIn className="size-3.5" />
+                              Entrar
+                            </Button>
+                          </form>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
