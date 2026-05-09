@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Receipt,
   UserCog,
+  Tag,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -53,6 +54,7 @@ const NAV_TRAINER_MAIN: NavItem[] = [
 function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
   const items: NavItem[] = [
     { href: '/keywords', label: 'Keywords', icon: Sparkles },
+    { href: '/labels', label: 'Etiquetas', icon: Tag },
   ];
   if (canManageTenant) {
     items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });

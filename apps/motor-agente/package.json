@@ -18,6 +18,7 @@
     "preview-prompt": "tsx scripts/preview-prompt.ts",
     "run-generator": "tsx scripts/run-generator.ts",
     "run-pipeline": "tsx scripts/run-pipeline.ts",
+    "backfill-labels": "tsx scripts/backfill-system-labels.ts",
     "clean": "rm -rf dist"
   },
   "dependencies": {

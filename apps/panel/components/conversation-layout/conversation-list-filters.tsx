@@ -2,18 +2,28 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Search, X } from 'lucide-react';
+import { Search, X, Tag, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import type { LabelRow } from '@/lib/actions/labels';
 
 interface Props {
   q: string;
   channel: 'all' | 'wa' | 'ig';
   unread: boolean;
   mine: boolean;
+  labelIds: number[];
+  allLabels: LabelRow[];
 }
 
-export function ConversationListFilters({ q, channel, unread, mine }: Props) {
+export function ConversationListFilters({
+  q,
+  channel,
+  unread,
+  mine,
+  labelIds,
+  allLabels,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const pathname = usePathname();
@@ -46,6 +56,28 @@ export function ConversationListFilters({ q, channel, unread, mine }: Props) {
 
   const toggleFlag = (key: 'unread' | 'mine', current: boolean) => {
     setParam(key, current ? null : '1');
+  };
+
+  const [labelsOpen, setLabelsOpen] = useState(false);
+  const labelsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!labelsOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (labelsRef.current && !labelsRef.current.contains(e.target as Node)) {
+        setLabelsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, [labelsOpen]);
+
+  const toggleLabel = (id: number) => {
+    const set = new Set(labelIds);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    const arr = Array.from(set).sort();
+    setParam('labels', arr.length > 0 ? arr.join(',') : null);
   };
 
   return (
@@ -89,6 +121,51 @@ export function ConversationListFilters({ q, channel, unread, mine }: Props) {
           active={mine}
           onClick={() => toggleFlag('mine', mine)}
         />
+        {allLabels.length > 0 ? (
+          <div className="relative" ref={labelsRef}>
+            <button
+              type="button"
+              onClick={() => setLabelsOpen((v) => !v)}
+              className={cn(
+                'h-6 rounded-full px-2.5 text-[11px] font-medium border transition-colors flex items-center gap-1',
+                labelIds.length > 0
+                  ? 'border-primary/60 bg-primary/15 text-primary'
+                  : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground/30',
+              )}
+            >
+              <Tag className="size-3" />
+              <span>
+                {labelIds.length === 0 ? 'Etiquetas' : `Etiquetas · ${labelIds.length}`}
+              </span>
+              <ChevronDown className="size-3" />
+            </button>
+            {labelsOpen ? (
+              <div className="absolute left-0 top-[calc(100%+4px)] z-30 w-56 rounded-md border border-border bg-popover shadow-lg p-1 max-h-64 overflow-y-auto">
+                {allLabels.map((l) => {
+                  const active = labelIds.includes(l.id);
+                  return (
+                    <button
+                      key={l.id}
+                      type="button"
+                      onClick={() => toggleLabel(l.id)}
+                      className={cn(
+                        'w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs text-left hover:bg-muted',
+                        active && 'bg-muted',
+                      )}
+                    >
+                      <span
+                        className="size-2.5 rounded-full shrink-0"
+                        style={{ backgroundColor: l.color }}
+                      />
+                      <span className="flex-1 truncate">{l.name}</span>
+                      {active ? <X className="size-3 text-primary shrink-0" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </div>
   );

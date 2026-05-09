@@ -3,8 +3,10 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 import { listMembers } from '@/lib/actions/members';
 import { listConversationNotes } from '@/lib/actions/conversations';
+import { listLabels, type LabelRow } from '@/lib/actions/labels';
 import {
   type ConversationListRow,
+  type ConversationListLabel,
   type FilterParams,
   type TabKey,
 } from '@/lib/conversation-list-query';
@@ -51,6 +53,9 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   // ---- Carga miembros tenant (siempre — para dropdown asignar + map) ------
   const membersPromise = listMembers({ tenantId: effective.tenantId });
 
+  // ---- Sprint Eta — carga labels del tenant (selector + filtro) -----------
+  const allLabelsPromise = listLabels();
+
   // ---- Carga detalle + mensajes + notas (solo si selectedId) --------------
   const detailPromise = selectedId
     ? supabase
@@ -90,15 +95,23 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     .eq('id', effective.userId)
     .maybeSingle();
 
-  const [listRes, membersRes, detailRes, messagesRes, notesRes, viewerEmailRes] =
-    await Promise.all([
-      listPromise,
-      membersPromise,
-      detailPromise,
-      messagesPromise,
-      notesPromise,
-      viewerEmailPromise,
-    ]);
+  const [
+    listRes,
+    membersRes,
+    detailRes,
+    messagesRes,
+    notesRes,
+    viewerEmailRes,
+    allLabelsRes,
+  ] = await Promise.all([
+    listPromise,
+    membersPromise,
+    detailPromise,
+    messagesPromise,
+    notesPromise,
+    viewerEmailPromise,
+    allLabelsPromise,
+  ]);
 
   if (listRes.error) {
     return (
@@ -108,7 +121,48 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     );
   }
 
-  const rows = (listRes.data ?? []) as unknown as ConversationListRow[];
+  const rawRows = (listRes.data ?? []) as Array<Record<string, unknown>>;
+
+  // Sprint Eta — fetch conversation_labels para los 100 rows + selectedId.
+  const allConvIds = new Set<number>(rawRows.map((r) => Number(r.id)));
+  if (selectedId) allConvIds.add(selectedId);
+  const labelsByConvId = new Map<number, ConversationListLabel[]>();
+  if (allConvIds.size > 0) {
+    const { data: convLabelRows } = await supabase
+      .from('conversation_labels')
+      .select('conversation_id, tenant_labels(id, name, color, destination_bucket)')
+      .in('conversation_id', Array.from(allConvIds))
+      .eq('tenant_id', effective.tenantId);
+    for (const r of (convLabelRows ?? []) as Array<Record<string, unknown>>) {
+      const cid = Number(r.conversation_id);
+      const labelRel = r.tenant_labels as
+        | { id: number; name: string; color: string; destination_bucket: string | null }
+        | { id: number; name: string; color: string; destination_bucket: string | null }[]
+        | null;
+      const labelObj = Array.isArray(labelRel) ? labelRel[0] ?? null : labelRel;
+      if (!labelObj) continue;
+      const arr = labelsByConvId.get(cid) ?? [];
+      arr.push({
+        id: Number(labelObj.id),
+        name: String(labelObj.name),
+        color: String(labelObj.color),
+        destinationBucket: (labelObj.destination_bucket ?? null) as
+          | 'chats'
+          | 'hot'
+          | 'done'
+          | 'bought'
+          | null,
+      });
+      labelsByConvId.set(cid, arr);
+    }
+  }
+
+  const rows = rawRows.map((r) => ({
+    ...r,
+    labels: labelsByConvId.get(Number(r.id)) ?? [],
+  })) as unknown as ConversationListRow[];
+
+  const allLabels: LabelRow[] = allLabelsRes.ok ? allLabelsRes.data ?? [] : [];
 
   const members: TenantMember[] = membersRes.ok
     ? membersRes.data!.map((m) => ({
@@ -141,6 +195,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   }
   if (selectedId && detailRes.data) {
     selectedDetail = mapDetail(detailRes.data);
+    selectedDetail.labels = labelsByConvId.get(selectedId) ?? [];
   }
 
   const messages =
@@ -158,6 +213,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
           activeTab={activeTab}
           filters={filters}
           assigneeMap={assigneeMap}
+          allLabels={allLabels}
         />
       }
       thread={
@@ -167,6 +223,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
           notes={notes}
           viewer={viewer}
           members={members}
+          allLabels={allLabels}
         />
       }
       panel={<ControlPanel detail={selectedDetail} />}
@@ -226,7 +283,7 @@ function pickFirst<T>(rel: T | T[] | null | undefined): T | null {
   return rel;
 }
 
-function mapDetail(raw: unknown): SelectedConversationDetail {
+function mapDetail(raw: unknown): SelectedConversationDetail & { labels: never[] } {
   const r = raw as RawDetail;
   const lead = pickFirst(r.leads);
   const channel = pickFirst(r.channels);
@@ -279,5 +336,6 @@ function mapDetail(raw: unknown): SelectedConversationDetail {
     channel: channel
       ? { channel_type: channel.channel_type, via_provider: channel.via_provider }
       : { channel_type: 'unknown', via_provider: 'unknown' },
+    labels: [],
   };
 }

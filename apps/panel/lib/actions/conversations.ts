@@ -419,6 +419,24 @@ export async function sendManualMessage(
     .eq('id', conversationId)
     .eq('tenant_id', auth.ctx.tenantId);
 
+  // Sprint Eta — evaluar reglas text_contains/text_exact con trigger_who in
+  // ('trainer','any'). Best-effort: si falla, log y seguimos.
+  try {
+    const { evaluateTextRulesPanel } = await import('../evaluate-text-rules-panel');
+    await evaluateTextRulesPanel({
+      supabase,
+      tenantId: auth.ctx.tenantId,
+      conversationId,
+      source: 'human',
+      body: trimmed,
+      actorUserId: auth.ctx.userId,
+    });
+  } catch (err) {
+    console.warn(
+      `[labels] evaluateTextRulesPanel failed conv=${conversationId}: ${(err as Error).message}`,
+    );
+  }
+
   revalidateConv(conversationId);
   return {
     ok: true,

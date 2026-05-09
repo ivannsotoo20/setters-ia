@@ -4,6 +4,7 @@ import {
   parseTab,
   parseChannel,
   parseBoolFlag,
+  parseLabelIds,
 } from '@/lib/conversation-list-query';
 
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,7 @@ interface PageProps {
     channel?: string;
     unread?: string;
     mine?: string;
+    labels?: string;
   }>;
 }
 
@@ -40,6 +42,7 @@ export default async function ConversationDetailPage({ params, searchParams }: P
         channel: parseChannel(sp.channel),
         unread: parseBoolFlag(sp.unread),
         mine: parseBoolFlag(sp.mine),
+        labelIds: parseLabelIds(sp.labels),
       }}
     />
   );

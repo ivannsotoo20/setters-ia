@@ -28,6 +28,13 @@ export interface TenantMember {
 }
 
 /** Detalle del conversation seleccionado (panel central + derecho). */
+export interface ConversationLabelRef {
+  id: number;
+  name: string;
+  color: string;
+  destinationBucket: 'chats' | 'hot' | 'done' | 'bought' | null;
+}
+
 export interface SelectedConversationDetail {
   id: number;
   tenantId: number;
@@ -58,6 +65,8 @@ export interface SelectedConversationDetail {
   generalContext: string | null;
   generalMotivation: string | null;
   priority: string | null;
+  // Sprint Eta — labels aplicadas
+  labels: ConversationLabelRef[];
   // Lead/channel embed
   lead: ConversationListLead & { phone: string | null; email: string | null };
   channel: ConversationListChannel;

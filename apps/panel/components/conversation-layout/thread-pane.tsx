@@ -10,6 +10,7 @@ import type {
   ConversationNote,
   TimelineMessage,
 } from './types';
+import type { LabelRow } from '@/lib/actions/labels';
 
 interface Props {
   detail: SelectedConversationDetail | null;
@@ -17,9 +18,17 @@ interface Props {
   notes: ConversationNote[];
   viewer: ConversationViewer;
   members: TenantMember[];
+  allLabels: LabelRow[];
 }
 
-export function ThreadPane({ detail, messages, notes, viewer, members }: Props) {
+export function ThreadPane({
+  detail,
+  messages,
+  notes,
+  viewer,
+  members,
+  allLabels,
+}: Props) {
   if (!detail) {
     return (
       <section
@@ -40,7 +49,13 @@ export function ThreadPane({ detail, messages, notes, viewer, members }: Props) 
   return (
     <section className="flex flex-col h-full min-h-0 bg-background min-w-0" aria-label="Conversación">
       <ThreadAutoRefresh enabled={!detail.isBlocked} />
-      <ThreadTopbar detail={detail} notes={notes} viewer={viewer} members={members} />
+      <ThreadTopbar
+        detail={detail}
+        notes={notes}
+        viewer={viewer}
+        members={members}
+        allLabels={allLabels}
+      />
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground italic text-center py-8">

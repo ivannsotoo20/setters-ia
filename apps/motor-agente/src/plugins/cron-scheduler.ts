@@ -6,10 +6,12 @@ import { getAnthropic } from '../lib/anthropic.js';
 import { processDebounced } from '../services/process-debounced.js';
 import { sendNextBatch } from '../services/outbound-sender.js';
 import { processNotificationQueue } from '../services/notify-trainer.js';
+import { evaluateInactivityRules } from '../services/labels/index.js';
 
 const DEBOUNCE_TICK_MS = 5_000;
 const OUTBOUND_TICK_MS = 5_000;
 const NOTIFY_TICK_MS = 10_000;
+const INACTIVITY_TICK_MS = 60 * 60 * 1_000; // 1h
 /**
  * Si processDebounced lanza, re-encolamos la conversacion con este delay.
  * Suficientemente corto para reintentar pronto, suficientemente largo para
@@ -21,6 +23,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let debounceTimer: NodeJS.Timeout | null = null;
   let outboundTimer: NodeJS.Timeout | null = null;
   let notifyTimer: NodeJS.Timeout | null = null;
+  let inactivityTimer: NodeJS.Timeout | null = null;
   let stopping = false;
 
   const tickDebounce = async () => {
@@ -110,12 +113,41 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  const tickInactivity = async () => {
+    if (stopping) return;
+    try {
+      const supabase = getSupabase();
+      const result = await evaluateInactivityRules(supabase);
+      if (result.rulesEvaluated > 0 || result.conversationsLabeled > 0) {
+        app.log.info(
+          {
+            rulesEvaluated: result.rulesEvaluated,
+            conversationsLabeled: result.conversationsLabeled,
+            errors: result.errors.length,
+          },
+          'inactivity rules evaluated',
+        );
+      }
+      if (result.errors.length > 0) {
+        app.log.warn({ errors: result.errors.slice(0, 5) }, 'inactivity rules: errors');
+      }
+    } catch (err) {
+      app.log.error({ err }, 'tickInactivity error');
+    }
+  };
+
   app.addHook('onReady', async () => {
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
     outboundTimer = setInterval(tickOutbound, OUTBOUND_TICK_MS);
     notifyTimer = setInterval(tickNotify, NOTIFY_TICK_MS);
+    inactivityTimer = setInterval(tickInactivity, INACTIVITY_TICK_MS);
     app.log.info(
-      { debounceMs: DEBOUNCE_TICK_MS, outboundMs: OUTBOUND_TICK_MS, notifyMs: NOTIFY_TICK_MS },
+      {
+        debounceMs: DEBOUNCE_TICK_MS,
+        outboundMs: OUTBOUND_TICK_MS,
+        notifyMs: NOTIFY_TICK_MS,
+        inactivityMs: INACTIVITY_TICK_MS,
+      },
       'cron-scheduler started',
     );
   });
@@ -125,6 +157,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     if (debounceTimer) clearInterval(debounceTimer);
     if (outboundTimer) clearInterval(outboundTimer);
     if (notifyTimer) clearInterval(notifyTimer);
+    if (inactivityTimer) clearInterval(inactivityTimer);
     app.log.info('cron-scheduler stopped');
   });
 }

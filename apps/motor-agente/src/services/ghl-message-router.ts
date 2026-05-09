@@ -279,6 +279,26 @@ export async function routeGhlInbound(
     );
   }
 
+  // 5b) Sprint Eta — evaluar reglas text_contains/text_exact post-INSERT.
+  //     Best-effort: si falla, log y seguimos.
+  if (hasText) {
+    try {
+      const { evaluateTextRules } = await import('./labels/index.js');
+      await evaluateTextRules({
+        supabase,
+        tenantId: Number(inbound.tenantId),
+        conversationId,
+        source: 'lead',
+        body: String(inbound.message),
+      });
+    } catch (err) {
+      logger.warn(
+        { err, conversationId, tenantId: inbound.tenantId },
+        'routeGhlInbound: evaluateTextRules failed (non-fatal)',
+      );
+    }
+  }
+
   // 6) Verificar si IA está pausada en esta conversación
   const { data: convCheck } = await supabase
     .from('conversations')
@@ -423,6 +443,25 @@ export async function routeGhlOutbound(
     content: outbound.message,
     sent_at: outbound.timestamp ?? new Date().toISOString(),
   });
+
+  // Sprint Eta — evaluar reglas trigger_who='trainer'/'any' post-INSERT human.
+  if (typeof outbound.message === 'string' && outbound.message.trim().length > 0) {
+    try {
+      const { evaluateTextRules } = await import('./labels/index.js');
+      await evaluateTextRules({
+        supabase,
+        tenantId: Number(outbound.tenantId),
+        conversationId: Number(existing!.conversationId),
+        source: 'human',
+        body: outbound.message,
+      });
+    } catch (err) {
+      logger.warn(
+        { err, conversationId: existing!.conversationId },
+        'routeGhlOutbound caso D: evaluateTextRules failed (non-fatal)',
+      );
+    }
+  }
 
   logger.info(
     { tenantId: outbound.tenantId, conversationId: existing!.conversationId },
