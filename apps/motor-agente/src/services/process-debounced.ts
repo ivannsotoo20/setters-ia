@@ -15,6 +15,7 @@ import {
   startPipelineRun,
 } from './pipeline-runs.js';
 import { enqueueNotification } from './notify-trainer.js';
+import { applySystemLabels } from './labels/index.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -265,6 +266,28 @@ export async function processDebounced(
       updated_at: new Date().toISOString(),
     })
     .eq('id', conversationId);
+
+  // 9.7. Sprint Eta — aplicar system labels (Hot Lead / Completado / Comprado)
+  //      según el output del Generator. Best-effort: si falla, log warn pero
+  //      no romper pipeline.
+  try {
+    const labelsRes = await applySystemLabels({
+      supabase,
+      tenantId,
+      conversationId,
+      generatorOutput: pipelineOut.generator.setterOutput,
+    });
+    if (labelsRes.errors.length > 0) {
+      console.warn(
+        `[labels] applySystemLabels conv=${conversationId} errors:`,
+        labelsRes.errors,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[labels] applySystemLabels conv=${conversationId} threw: ${(err as Error).message}`,
+    );
+  }
 
   // 9.5. Sprint Gamma 2.5 — encolar notificación al trainer si el evento es
   //      relevante (handoff/qualified/disqualified). El cron `notify-tick`
