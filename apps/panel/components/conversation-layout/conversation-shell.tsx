@@ -39,7 +39,7 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
   return (
     <div
       className={cn(
-        'flex flex-col h-[calc(100vh-3.5rem)] bg-background',
+        'flex flex-col flex-1 min-h-0 h-full bg-background',
         'md:grid md:grid-cols-[300px_1fr] md:gap-0',
         'lg:grid-cols-[320px_1fr_380px]',
       )}
