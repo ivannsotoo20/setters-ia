@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildComposedPrompt } from './builder.js';
-import type { ComposeOptions, ComposedPrompt, PromptBlockRow } from './types.js';
+import type { ComposeOptions, ComposedPrompt, PromptBlockRow, TrainerContext } from './types.js';
 
 export type {
   ComposeOptions,
@@ -8,8 +8,10 @@ export type {
   ComposedPrompt,
   PromptBlockRow,
   SystemContentBlock,
+  TrainerContext,
 } from './types.js';
 export { buildComposedPrompt } from './builder.js';
+export { interpolateTrainerPlaceholders } from './interpolate.js';
 
 /**
  * Carga los bloques relevantes desde `prompt_blocks` y compone el system prompt.
@@ -48,5 +50,21 @@ export async function composePrompt(
     tenant_id: r.tenant_id === null ? null : Number(r.tenant_id),
   }));
 
-  return buildComposedPrompt(rows, options);
+  // Sprint Gamma 2.6 — Si el caller no pasó trainerContext explícito, lo cargamos
+  // de trainer_preferences para interpolar `{{trainer_phone|fallback}}` en handoff_v4.
+  // Best-effort: si la query falla o no hay row, ctx.phone=null y los placeholders
+  // caen al fallback.
+  let trainerContext = options.trainerContext;
+  if (trainerContext === undefined) {
+    const { data: prefsRow } = await supabase
+      .from('trainer_preferences')
+      .select('preferences')
+      .eq('tenant_id', options.tenantId)
+      .maybeSingle();
+    const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
+    const phoneRaw = typeof prefs.trainerPhone === 'string' ? prefs.trainerPhone.trim() : '';
+    trainerContext = { phone: phoneRaw === '' ? null : phoneRaw };
+  }
+
+  return buildComposedPrompt(rows, { ...options, trainerContext });
 }

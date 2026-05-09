@@ -62,6 +62,15 @@ export interface ComposeOptions {
    */
   cacheStrategy?: 'two-point' | 'single-point' | 'none';
   /**
+   * Sprint Gamma 2.6 — Datos del trainer para interpolar placeholders en bloques
+   * shared del Cerebro (handoff_v4). Hoy solo `phone`. El composer reemplaza
+   * `{{trainer_phone|fallback}}` por `phone` (si está) o `fallback` (si null).
+   *
+   * Si se omite, los placeholders se reemplazan por sus fallbacks (no quedan
+   * `{{...}}` literales en el prompt — eso sería un bug que ensucia al modelo).
+   */
+  trainerContext?: TrainerContext;
+  /**
    * TTL del cache de Anthropic para los breakpoints emitidos.
    * - `'5m'`: TTL corto (default histórico, antes de 2026-05). Cache write barato pero
    *   conversaciones donde el lead tarda > 5 min entre turnos pagan cold cada vez.
@@ -71,6 +80,16 @@ export interface ComposeOptions {
    * Más detalle del trade-off económico en plan playful-petting-pine.md sección 3.5.
    */
   cacheTtl?: '5m' | '1h';
+}
+
+/**
+ * Datos del trainer disponibles para interpolar en placeholders de bloques shared.
+ * Se construye en `composePrompt` leyendo `trainer_preferences.preferences` JSONB
+ * y se pasa a `buildComposedPrompt` como parte de `ComposeOptions.trainerContext`.
+ */
+export interface TrainerContext {
+  /** E.164 (+34...). Reemplaza `{{trainer_phone|fallback}}`. */
+  phone: string | null;
 }
 
 /** Una fila de `prompt_blocks` que el builder necesita para componer. */

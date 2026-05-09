@@ -5,6 +5,15 @@ import type {
   PromptBlockRow,
   SystemContentBlock,
 } from './types.js';
+import { interpolateTrainerPlaceholders } from './interpolate.js';
+
+/**
+ * Sprint Gamma 2.6 — Bloques en los que el composer aplica interpolación de
+ * `{{trainer_phone|fallback}}`. Whitelist explícita para evitar replacements
+ * no intencionados en otros bloques (p.ej. coach_v3 podría tener `{{` literal
+ * por accidente del trainer).
+ */
+const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['handoff_v4']);
 
 /**
  * Lista de block_keys que se requieren siempre para una composición válida.
@@ -33,6 +42,7 @@ export function buildComposedPrompt(
     includeOutputContract = true,
     cacheStrategy = 'two-point',
     cacheTtl = '1h',
+    trainerContext,
   } = options;
 
   if (currentPhase < 1 || currentPhase > 6) {
@@ -91,9 +101,15 @@ export function buildComposedPrompt(
       missing.push(key);
       continue;
     }
+    // Sprint Gamma 2.6 — interpolación selectiva de placeholders del trainer
+    // (whitelist en INTERPOLATABLE_BLOCK_KEYS). Si trainerContext no se pasa,
+    // la función igualmente reemplaza por fallbacks (nunca deja `{{...}}` literal).
+    const text = INTERPOLATABLE_BLOCK_KEYS.has(key)
+      ? interpolateTrainerPlaceholders(row.content, trainerContext)
+      : row.content;
     blocks.push({
       key,
-      text: row.content,
+      text,
       cached: false,
       scope: row.tenant_id === null ? 'shared' : 'tenant',
     });

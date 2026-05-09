@@ -373,3 +373,112 @@ describe('buildComposedPrompt — trainer_prefs_v1 (Sprint Alpha)', () => {
     expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
   });
 });
+
+// =============================================================================
+// Sprint Gamma 2.6 — interpolación de placeholders del trainer en handoff_v4
+// =============================================================================
+
+describe('buildComposedPrompt — interpolación trainer_phone en handoff_v4 (Sprint Gamma 2.6)', () => {
+  const handoffWithPlaceholder: PromptBlockRow = {
+    block_key: 'handoff_v4',
+    sort_order: 90,
+    tenant_id: null,
+    content:
+      'Causa B: contacto del equipo: {{trainer_phone|(no configurado — frase genérica)}}',
+  };
+
+  const baseRows: PromptBlockRow[] = [
+    makeRow('core_v4_base', 0, null),
+    makeRow('fase_4_v4', 40, null),
+    handoffWithPlaceholder,
+    makeRow('objeciones_v4', 70, null),
+    makeRow('descualificacion_v4', 80, null),
+    makeRow('output_contract_v4', 100, null),
+    coachRow,
+  ];
+
+  it('interpola {{trainer_phone}} con phone real cuando trainerContext.phone está set', () => {
+    const out = buildComposedPrompt(baseRows, {
+      tenantId: TENANT_ID,
+      currentPhase: 4,
+      isHandoff: true,
+      trainerContext: { phone: '+34659487594' },
+    });
+    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
+    expect(handoffBlock).toBeDefined();
+    expect(handoffBlock!.text).toContain('+34659487594');
+    expect(handoffBlock!.text).not.toContain('{{trainer_phone');
+  });
+
+  it('cae al fallback cuando trainerContext.phone es null', () => {
+    const out = buildComposedPrompt(baseRows, {
+      tenantId: TENANT_ID,
+      currentPhase: 4,
+      isHandoff: true,
+      trainerContext: { phone: null },
+    });
+    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
+    expect(handoffBlock!.text).toContain('(no configurado — frase genérica)');
+    expect(handoffBlock!.text).not.toContain('{{trainer_phone');
+  });
+
+  it('cae al fallback cuando trainerContext NO se pasa (defensa por defecto)', () => {
+    const out = buildComposedPrompt(baseRows, {
+      tenantId: TENANT_ID,
+      currentPhase: 4,
+      isHandoff: true,
+      // trainerContext omitido a propósito
+    });
+    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
+    expect(handoffBlock!.text).toContain('(no configurado — frase genérica)');
+    expect(handoffBlock!.text).not.toContain('{{trainer_phone');
+  });
+
+  it('NO interpola en otros bloques (whitelist solo handoff_v4)', () => {
+    // Reemplazo del coach por uno con placeholder (NO duplicar — el builder
+    // resuelve byKey y solo se queda con el primero si hay tied tenant scope).
+    const coachWithPlaceholder: PromptBlockRow = {
+      block_key: 'coach_v3',
+      sort_order: 5,
+      tenant_id: TENANT_ID,
+      content: 'Coach: {{trainer_phone|x}}',
+    };
+    const rowsWithFakePhones: PromptBlockRow[] = [
+      ...baseRows.filter((r) => r.block_key !== 'coach_v3'),
+      coachWithPlaceholder,
+    ];
+    const out = buildComposedPrompt(rowsWithFakePhones, {
+      tenantId: TENANT_ID,
+      currentPhase: 4,
+      isHandoff: true,
+      trainerContext: { phone: '+34600' },
+    });
+    const coachBlock = out.blocks.find((b) => b.key === 'coach_v3');
+    // Coach NO se interpola — el `{{trainer_phone|x}}` queda literal
+    expect(coachBlock!.text).toContain('{{trainer_phone|x}}');
+    expect(coachBlock!.text).not.toContain('+34600');
+    // Pero handoff SÍ se interpola
+    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
+    expect(handoffBlock!.text).toContain('+34600');
+  });
+
+  it('handoff_v4 sin placeholder se queda intacto (no rompe bloques pre-Sprint-2.6)', () => {
+    const handoffSinPlaceholder: PromptBlockRow = {
+      block_key: 'handoff_v4',
+      sort_order: 90,
+      tenant_id: null,
+      content: 'Protocolo handoff sin placeholders',
+    };
+    const out = buildComposedPrompt(
+      [...baseRows.filter((r) => r.block_key !== 'handoff_v4'), handoffSinPlaceholder],
+      {
+        tenantId: TENANT_ID,
+        currentPhase: 4,
+        isHandoff: true,
+        trainerContext: { phone: '+34600' },
+      },
+    );
+    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
+    expect(handoffBlock!.text).toBe('Protocolo handoff sin placeholders');
+  });
+});
