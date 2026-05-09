@@ -9,9 +9,10 @@ export type {
   PromptBlockRow,
   SystemContentBlock,
   TrainerContext,
+  HandoffContext,
 } from './types.js';
 export { buildComposedPrompt } from './builder.js';
-export { interpolateTrainerPlaceholders } from './interpolate.js';
+export { interpolateTrainerPlaceholders, renderHandoffDirective } from './interpolate.js';
 
 /**
  * Carga los bloques relevantes desde `prompt_blocks` y compone el system prompt.
@@ -50,10 +51,10 @@ export async function composePrompt(
     tenant_id: r.tenant_id === null ? null : Number(r.tenant_id),
   }));
 
-  // Sprint Gamma 2.6 — Si el caller no pasó trainerContext explícito, lo cargamos
-  // de trainer_preferences para interpolar `{{trainer_phone|fallback}}` en handoff_v4.
-  // Best-effort: si la query falla o no hay row, ctx.phone=null y los placeholders
-  // caen al fallback.
+  // Sprint Gamma 2.6 + 2.6b — Si el caller no pasó trainerContext explícito, lo cargamos
+  // de trainer_preferences para interpolar `{{trainer_phone|fallback}}` y
+  // `{{handoff_directive}}` en handoff_v4. Best-effort: si la query falla o no hay
+  // row, ctx queda vacío y los placeholders caen al fallback legacy.
   let trainerContext = options.trainerContext;
   if (trainerContext === undefined) {
     const { data: prefsRow } = await supabase
@@ -63,7 +64,31 @@ export async function composePrompt(
       .maybeSingle();
     const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
     const phoneRaw = typeof prefs.trainerPhone === 'string' ? prefs.trainerPhone.trim() : '';
-    trainerContext = { phone: phoneRaw === '' ? null : phoneRaw };
+    const phone = phoneRaw === '' ? null : phoneRaw;
+
+    // Sprint 2.6b — extraer config handoff (4 fields)
+    const handoffEnabled = prefs.handoffPersonalizationEnabled === true;
+    const handoffMode = (typeof prefs.handoffMode === 'string' &&
+      ['share_phone', 'silent', 'custom_message'].includes(prefs.handoffMode))
+      ? (prefs.handoffMode as 'share_phone' | 'silent' | 'custom_message')
+      : 'share_phone';
+    const handoffTemplate = (typeof prefs.handoffCustomTemplate === 'string' &&
+      ['warm', 'professional', 'free'].includes(prefs.handoffCustomTemplate))
+      ? (prefs.handoffCustomTemplate as 'warm' | 'professional' | 'free')
+      : 'warm';
+    const handoffCustomMessage = typeof prefs.handoffCustomMessage === 'string'
+      ? prefs.handoffCustomMessage
+      : null;
+
+    trainerContext = {
+      phone,
+      handoff: {
+        enabled: handoffEnabled,
+        mode: handoffMode,
+        template: handoffTemplate,
+        customMessage: handoffCustomMessage,
+      },
+    };
   }
 
   return buildComposedPrompt(rows, { ...options, trainerContext });

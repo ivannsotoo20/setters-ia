@@ -90,6 +90,20 @@ export interface ComposeOptions {
 export interface TrainerContext {
   /** E.164 (+34...). Reemplaza `{{trainer_phone|fallback}}`. */
   phone: string | null;
+  /**
+   * Sprint 2.6b — Configuración de Comportamiento en handoff (Causa B).
+   * Si `enabled=false` (default), `{{handoff_directive}}` cae al render legacy
+   * (compat Sprint 2.6 v2: comparte phone si lo hay, sino frase genérica).
+   * Si `enabled=true`, se aplica `mode` + sub-config según modo.
+   */
+  handoff?: HandoffContext;
+}
+
+export interface HandoffContext {
+  enabled: boolean;
+  mode: 'share_phone' | 'silent' | 'custom_message';
+  template: 'warm' | 'professional' | 'free';
+  customMessage: string | null;
 }
 
 /** Una fila de `prompt_blocks` que el builder necesita para componer. */

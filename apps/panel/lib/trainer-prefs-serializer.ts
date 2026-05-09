@@ -83,6 +83,25 @@ export interface TrainerPreferences {
   /** Eventos del motor a los que el trainer está suscrito. Vacío = no recibe nada. */
   notificationSubscriptions: NotificationEventType[];
 
+  // ----- Sprint Gamma 2.6b: Comportamiento en handoff (Causa B) -----
+  /**
+   * Si false (default), el setter usa el comportamiento legacy (Sprint 2.6 v2):
+   * comparte trainerPhone si está configurado, sino frase genérica. NO se inyecta
+   * directiva personalizada al prompt — el placeholder `{{handoff_directive}}`
+   * en handoff_v4 v3 cae al render legacy.
+   *
+   * Si true, se aplica `handoffMode` + sub-config según modo elegido. El composer
+   * construye el TrainerContext.handoff con `enabled=true` y reendea la directiva
+   * concreta en handoff_v4.
+   */
+  handoffPersonalizationEnabled: boolean;
+  /** Modo de cierre cuando se hace handoff. Solo aplica si `handoffPersonalizationEnabled=true`. */
+  handoffMode: HandoffMode;
+  /** Plantilla de mensaje propio cuando `handoffMode='custom_message'`. */
+  handoffCustomTemplate: HandoffCustomTemplate;
+  /** Texto libre cuando `handoffCustomTemplate='free'` (max 250 chars, sanitizado). */
+  handoffCustomMessage: string | null;
+
   // ----- Sprint Gamma 2.5b/B + 2.5b/C: cualificación + propuesta llamada -----
   /**
    * Sprint 2.5b/C — modo de cierre de la cualificación:
@@ -103,6 +122,48 @@ export interface TrainerPreferences {
 
 export const CALL_PROPOSAL_MODES = ['calendar', 'form', 'human_handoff'] as const;
 export type CallProposalMode = (typeof CALL_PROPOSAL_MODES)[number];
+
+// ----- Sprint Gamma 2.6b: Comportamiento en handoff (Causa B) -----
+
+export const HANDOFF_MODES = ['share_phone', 'silent', 'custom_message'] as const;
+export type HandoffMode = (typeof HANDOFF_MODES)[number];
+
+export const HANDOFF_CUSTOM_TEMPLATES = ['warm', 'professional', 'free'] as const;
+export type HandoffCustomTemplate = (typeof HANDOFF_CUSTOM_TEMPLATES)[number];
+
+export const HANDOFF_MODE_LABELS: Record<HandoffMode, { label: string; desc: string }> = {
+  share_phone: {
+    label: 'Compartir mi teléfono',
+    desc: 'El setter da tu número al lead para que te escriba directamente. Requiere que tengas el teléfono configurado en Datos de contacto.',
+  },
+  silent: {
+    label: 'Cerrar bot sin compartir',
+    desc: 'El setter cierra la conversación sin entregar canal alguno. Tú recibirás email (si tienes el evento Handoff suscrito en Notificaciones) y atenderás manualmente.',
+  },
+  custom_message: {
+    label: 'Mensaje propio',
+    desc: 'Elige una plantilla preset (cálido o profesional) o escribe tu propio mensaje libre. El setter dirá esa frase al lead.',
+  },
+};
+
+export const HANDOFF_CUSTOM_TEMPLATE_LABELS: Record<HandoffCustomTemplate, { label: string; desc: string; preview?: string }> = {
+  warm: {
+    label: 'Cierre cálido',
+    desc: 'Tono cercano y agradecido — apto para nichos consultivos / coaching / bienestar.',
+    preview:
+      'Te paso con mi equipo personalmente — alguien te escribirá en cuanto pueda 🙏 gracias por tu paciencia.',
+  },
+  professional: {
+    label: 'Cierre profesional',
+    desc: 'Tono profesional y directo — apto para B2B, jurídico, premium, corporate.',
+    preview:
+      'Cierro la conversación aquí. Mi equipo recibirá tu mensaje y te responderá lo antes posible.',
+  },
+  free: {
+    label: 'Personalizar',
+    desc: 'Escribe tu propia frase (máximo 250 caracteres). El setter dirá exactamente esa frase al lead.',
+  },
+};
 
 export const CALL_PROPOSAL_MODE_LABELS: Record<CallProposalMode, { label: string; desc: string }> = {
   calendar: { label: 'Calendario', desc: 'El setter cierra proponiendo llamada con tu calendario (cal.com, calendly).' },
@@ -153,7 +214,49 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   callProposalMode: 'calendar',
   closingResourceUrl: null,
   calendarClosingMessage: null,
+  // Sprint 2.6b: defaults preservan comportamiento legacy (toggle off = compat 100%)
+  handoffPersonalizationEnabled: false,
+  handoffMode: 'share_phone',
+  handoffCustomTemplate: 'warm',
+  handoffCustomMessage: null,
 };
+
+const MAX_HANDOFF_CUSTOM_MESSAGE_CHARS = 250;
+
+/**
+ * Sprint 2.6b — Sanitiza el mensaje libre de handoff (`handoffCustomMessage`).
+ * - trim
+ * - max 250 chars
+ * - escape de tags reservados (igual estrategia que customInstructions / closingMessage).
+ */
+function sanitizeHandoffCustomMessage(raw: unknown): string | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length > MAX_HANDOFF_CUSTOM_MESSAGE_CHARS) {
+    trimmed = trimmed.slice(0, MAX_HANDOFF_CUSTOM_MESSAGE_CHARS);
+  }
+  trimmed = trimmed.replace(
+    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    '&lt;/$1&gt;',
+  );
+  return trimmed;
+}
+
+function parseHandoffMode(raw: unknown): HandoffMode {
+  if (typeof raw === 'string' && (HANDOFF_MODES as readonly string[]).includes(raw)) {
+    return raw as HandoffMode;
+  }
+  return 'share_phone';
+}
+
+function parseHandoffCustomTemplate(raw: unknown): HandoffCustomTemplate {
+  if (typeof raw === 'string' && (HANDOFF_CUSTOM_TEMPLATES as readonly string[]).includes(raw)) {
+    return raw as HandoffCustomTemplate;
+  }
+  return 'warm';
+}
 
 const MAX_CLOSING_RESOURCE_URL_CHARS = 200;
 const MAX_CALENDAR_CLOSING_CHARS = 200;
@@ -384,6 +487,14 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
       out.toneRegister = n as 0 | 1 | 2;
     }
   }
+
+  // Sprint Gamma 2.6b — Comportamiento en handoff
+  if (typeof r.handoffPersonalizationEnabled === 'boolean') {
+    out.handoffPersonalizationEnabled = r.handoffPersonalizationEnabled;
+  }
+  out.handoffMode = parseHandoffMode(r.handoffMode);
+  out.handoffCustomTemplate = parseHandoffCustomTemplate(r.handoffCustomTemplate);
+  out.handoffCustomMessage = sanitizeHandoffCustomMessage(r.handoffCustomMessage);
 
   // Sprint Gamma 2.5b/B + 2.5b/C — campos cualificación.
   // Sprint 2.5b/C renombró calendarUrl → closingResourceUrl. Aceptamos ambos

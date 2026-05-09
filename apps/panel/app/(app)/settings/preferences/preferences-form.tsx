@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -17,10 +17,16 @@ import {
   type NotificationEventType,
   type CallProposalMode,
   type EmojiCustomization,
+  type HandoffMode,
+  type HandoffCustomTemplate,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_EVENT_LABELS,
   CALL_PROPOSAL_MODES,
   CALL_PROPOSAL_MODE_LABELS,
+  HANDOFF_MODES,
+  HANDOFF_MODE_LABELS,
+  HANDOFF_CUSTOM_TEMPLATES,
+  HANDOFF_CUSTOM_TEMPLATE_LABELS,
   DEFAULT_TRAINER_PREFERENCES,
   isValidEmail,
   normalizePhoneE164,
@@ -80,6 +86,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
   const [nameRaw, setNameRaw] = useState(initial.trainerName ?? '');
   const [calendarUrlRaw, setCalendarUrlRaw] = useState(initial.closingResourceUrl ?? '');
   const [calendarClosingRaw, setCalendarClosingRaw] = useState(initial.calendarClosingMessage ?? '');
+  const [handoffCustomMsgRaw, setHandoffCustomMsgRaw] = useState(initial.handoffCustomMessage ?? '');
   const [saving, startSave] = useTransition();
 
   // Re-sync state cuando el server component pasa nueva `initial` tras router.refresh()
@@ -92,6 +99,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setNameRaw(initial.trainerName ?? '');
     setCalendarUrlRaw(initial.closingResourceUrl ?? '');
     setCalendarClosingRaw(initial.calendarClosingMessage ?? '');
+    setHandoffCustomMsgRaw(initial.handoffCustomMessage ?? '');
   }, [initial]);
 
   // Validaciones cliente
@@ -118,6 +126,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     trainerName: nameRaw.trim() === '' ? null : nameRaw.trim(),
     closingResourceUrl: calendarUrlRaw === '' ? null : (calendarUrlValid ? calendarUrlRaw.trim() : prefs.closingResourceUrl),
     calendarClosingMessage: calendarClosingRaw.trim() === '' ? null : calendarClosingRaw.trim().slice(0, 200),
+    handoffCustomMessage: handoffCustomMsgRaw.trim() === '' ? null : handoffCustomMsgRaw.trim().slice(0, 250),
   };
 
   const isDirty = JSON.stringify(finalPrefs) !== JSON.stringify(initial);
@@ -139,6 +148,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setNameRaw('');
     setCalendarUrlRaw('');
     setCalendarClosingRaw('');
+    setHandoffCustomMsgRaw('');
   }
 
   function handleSave() {
@@ -414,6 +424,186 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               </p>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* CARD HANDOFF (Sprint Gamma 2.6b) — full width */}
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <HandHeart className="size-4" />
+            Comportamiento en handoff
+          </CardTitle>
+          <CardDescription>
+            Qué hace el setter cuando el lead pide hablar con humano, detecta que es bot, o aparece
+            una situación delicada (Causa B). Distinto del cierre cualificado de la sección de
+            abajo — esto cubre las salidas REACTIVAS del flujo.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          {/* Toggle Card-level */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="handoffPersonalizationToggle" className="text-sm">
+                ¿Quieres personalizar qué hace el setter en handoff?
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Por defecto (apagado), el setter comparte tu teléfono si está configurado en
+                Datos de contacto, o usa una frase genérica si no. Esto cubre el 80% de los casos.
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                Activa esta opción <strong className="text-foreground/80">solo si quieres
+                control específico</strong>: no compartir tu teléfono nunca, escribir tu propia
+                frase de despedida, o usar una plantilla preset.
+              </p>
+            </div>
+            <Switch
+              id="handoffPersonalizationToggle"
+              checked={prefs.handoffPersonalizationEnabled}
+              onCheckedChange={(v) => update('handoffPersonalizationEnabled', v)}
+            />
+          </div>
+
+          {prefs.handoffPersonalizationEnabled && (
+            <div className="flex flex-col gap-6 p-4 rounded-md border border-border/40 bg-muted/20">
+              {/* Selector de modo (3 opciones) */}
+              <div className="flex flex-col gap-3">
+                <Label className="text-sm">Modo de handoff</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  {HANDOFF_MODES.map((mode) => {
+                    const meta = HANDOFF_MODE_LABELS[mode];
+                    const active = prefs.handoffMode === mode;
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => update('handoffMode', mode as HandoffMode)}
+                        className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                          active
+                            ? 'border-primary bg-primary/10 text-foreground'
+                            : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                        }`}
+                      >
+                        <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                        <span className="text-xs">{meta.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Branch share_phone */}
+              {prefs.handoffMode === 'share_phone' && (
+                <div className="rounded-md border border-border/40 p-3 bg-background/40">
+                  {finalPrefs.trainerPhone ? (
+                    <p className="text-xs text-muted-foreground">
+                      Preview: el setter dirá al lead{' '}
+                      <em className="not-italic text-foreground/80">
+                        &quot;puedes escribirles directamente al{' '}
+                        <code className="font-mono">{finalPrefs.trainerPhone}</code>&quot;
+                      </em>
+                      , una sola vez por conversación.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-amber-400">
+                      ⚠ Tienes este modo activo pero NO has configurado tu teléfono en
+                      &quot;Datos de contacto&quot; arriba. El setter degradará automáticamente a
+                      modo silencioso (no compartirá nada). Configura un teléfono o cambia de modo.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Branch silent */}
+              {prefs.handoffMode === 'silent' && (
+                <div className="rounded-md border border-border/40 p-3 bg-background/40">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    El setter cerrará la conversación con frase tipo{' '}
+                    <em className="not-italic text-foreground/80">
+                      &quot;el equipo te contactará en breve, no es necesario que hagas nada
+                      más&quot;
+                    </em>
+                    , sin entregar canal alguno. Tú recibirás email cuando ocurra (asegúrate de
+                    tener <strong>Handoff a humano</strong> activado abajo en{' '}
+                    <strong>Notificaciones por email</strong>) y atenderás manualmente.
+                  </p>
+                </div>
+              )}
+
+              {/* Branch custom_message */}
+              {prefs.handoffMode === 'custom_message' && (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3">
+                    <Label className="text-sm">Plantilla del mensaje</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      {HANDOFF_CUSTOM_TEMPLATES.map((tpl) => {
+                        const meta = HANDOFF_CUSTOM_TEMPLATE_LABELS[tpl];
+                        const active = prefs.handoffCustomTemplate === tpl;
+                        return (
+                          <button
+                            key={tpl}
+                            type="button"
+                            onClick={() =>
+                              update('handoffCustomTemplate', tpl as HandoffCustomTemplate)
+                            }
+                            className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                              active
+                                ? 'border-primary bg-primary/10 text-foreground'
+                                : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                            }`}
+                          >
+                            <span className="text-sm font-medium text-foreground">
+                              {meta.label}
+                            </span>
+                            <span className="text-xs">{meta.desc}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Preview o textarea según template */}
+                  {prefs.handoffCustomTemplate !== 'free' &&
+                    HANDOFF_CUSTOM_TEMPLATE_LABELS[prefs.handoffCustomTemplate].preview && (
+                      <div className="rounded-md border border-border/40 p-3 bg-background/40">
+                        <p className="text-xs text-muted-foreground mb-1">Preview:</p>
+                        <p className="text-sm italic text-foreground/80">
+                          &quot;{HANDOFF_CUSTOM_TEMPLATE_LABELS[prefs.handoffCustomTemplate].preview}&quot;
+                        </p>
+                      </div>
+                    )}
+
+                  {prefs.handoffCustomTemplate === 'free' && (
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="handoffCustomMsg" className="text-xs">
+                        Tu frase de cierre personalizada
+                      </Label>
+                      <textarea
+                        id="handoffCustomMsg"
+                        value={handoffCustomMsgRaw}
+                        onChange={(e) => setHandoffCustomMsgRaw(e.target.value.slice(0, 250))}
+                        placeholder="ej: Cierro la conversación. Te escribe alguien del equipo en menos de 24h por el mismo canal 🙏"
+                        rows={2}
+                        maxLength={250}
+                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                      />
+                      <div className="flex items-center justify-between text-xs">
+                        <p className="text-muted-foreground">
+                          El setter dirá esta frase casi literalmente. NO añadirá canales, números
+                          ni links que no menciones tú.
+                        </p>
+                        <span
+                          className={`tabular-nums ${handoffCustomMsgRaw.length > 220 ? 'text-amber-400' : 'text-muted-foreground'}`}
+                        >
+                          {handoffCustomMsgRaw.length}/250
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

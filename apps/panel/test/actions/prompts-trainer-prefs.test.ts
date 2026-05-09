@@ -269,6 +269,10 @@ describe('saveTrainerPreferences', () => {
       callProposalMode: 'calendar',
       closingResourceUrl: null,
       calendarClosingMessage: null,
+      handoffPersonalizationEnabled: false,
+      handoffMode: 'share_phone',
+      handoffCustomTemplate: 'warm',
+      handoffCustomMessage: null,
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });

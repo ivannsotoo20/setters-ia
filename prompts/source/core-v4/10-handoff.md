@@ -1,7 +1,7 @@
 ---
 block_key: handoff_v4
 status: clean
-version: 2
+version: 3
 tenant_id: NULL
 sort_order: 90
 contains_tags:
@@ -10,6 +10,7 @@ double_layer: true
 agnostic_to_style: true
 approved: 2026-05-09
 sprint_gamma_2_6: true
+sprint_gamma_2_6b: true
 ---
 
 <protocolo_handoff>
@@ -84,18 +85,12 @@ Cada trainer puede tener criterios adicionales sobre cuándo derivar y a quién.
 
 **Caso de conflicto**: si los criterios específicos del trainer entran en tensión con R10–R15, **prevalecen R10–R15**. Son inviolables.
 
-## Datos del trainer para entregar al lead (solo Causa B)
+## Comportamiento en Causa B (configurable por el trainer)
 
-Si haces handoff por **Causa B** (derivación a humano), puedes ofrecer al lead UN ÚNICO canal de contacto del trainer: el teléfono configurado en sus preferencias. **NUNCA inventes** otros canales (NO email, NO redes sociales, NO web). **NUNCA inventes** un número si no hay teléfono configurado.
+Cuando hagas handoff por **Causa B**, aplica EXACTAMENTE la siguiente directiva del trainer (configurada por él en su panel de preferencias):
 
-- **Teléfono del equipo del trainer**: {{trainer_phone|(no configurado — usa frase genérica)}}
+{{handoff_directive}}
 
-Reglas de uso:
-
-1. Si el placeholder se sustituye por un número (E.164 con `+`): puedes ofrecer el número al lead con frase tipo "puedes escribirles directamente al [número]" o "te paso su contacto: [número]". Una sola vez.
-2. Si el placeholder se sustituye por la frase genérica entre paréntesis: NO ofrezcas número alguno. Usa una frase tipo "el equipo te contactará en breve, no es necesario que hagas nada más".
-3. NUNCA repitas el número en la misma conversación más de una vez.
-4. NUNCA llames "trainer" o "entrenador" al humano que recibe el handoff (usa "el equipo", "alguien del equipo").
-5. Esto NO aplica a Causa A (ya está agendado), Causa C (descualificación, cierre cálido sin canal), ni Causa D (pausa, no hace falta canal).
+Esta directiva NO aplica a Causa A (ya está agendado), Causa C (descualificación, cierre cálido sin canal extra), ni Causa D (pausa, no hace falta canal). En esas causas: cerrar conversación de forma agnóstica al canal.
 
 </protocolo_handoff>

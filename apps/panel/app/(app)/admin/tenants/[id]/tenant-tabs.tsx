@@ -365,6 +365,17 @@ function ConfiguracionTab({
                 isDefault={trainerPrefs.trainerEmail == null}
               />
               <PrefRow
+                label="Modo handoff (Causa B)"
+                value={
+                  trainerPrefs.handoffPersonalizationEnabled
+                    ? trainerPrefs.handoffMode === 'custom_message'
+                      ? `custom: ${trainerPrefs.handoffCustomTemplate}${trainerPrefs.handoffCustomTemplate === 'free' && trainerPrefs.handoffCustomMessage ? ` ("${trainerPrefs.handoffCustomMessage.slice(0, 30)}...")` : ''}`
+                      : trainerPrefs.handoffMode
+                    : '(default: comparte tel si lo hay)'
+                }
+                isDefault={!trainerPrefs.handoffPersonalizationEnabled}
+              />
+              <PrefRow
                 label="Eventos suscritos"
                 value={
                   trainerPrefs.notificationSubscriptions.length === 0
