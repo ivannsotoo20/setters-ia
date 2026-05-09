@@ -176,6 +176,55 @@ export type Database = {
           },
         ]
       }
+      conversation_labels: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          applied_via: string
+          conversation_id: number
+          label_id: number
+          tenant_id: number
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          applied_via: string
+          conversation_id: number
+          label_id: number
+          tenant_id: number
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          applied_via?: string
+          conversation_id?: number
+          label_id?: number
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_labels_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_labels_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_labels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_messages: {
         Row: {
           content: string | null
@@ -294,6 +343,7 @@ export type Database = {
           ghl_contact_id: string | null
           ghl_conversation_id: string | null
           ghl_opportunity_id: string | null
+          ghl_opportunity_status: string | null
           goal: string | null
           handoff_at: string | null
           handoff_cause: Database["public"]["Enums"]["handoff_cause"] | null
@@ -334,6 +384,7 @@ export type Database = {
           ghl_contact_id?: string | null
           ghl_conversation_id?: string | null
           ghl_opportunity_id?: string | null
+          ghl_opportunity_status?: string | null
           goal?: string | null
           handoff_at?: string | null
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
@@ -374,6 +425,7 @@ export type Database = {
           ghl_contact_id?: string | null
           ghl_conversation_id?: string | null
           ghl_opportunity_id?: string | null
+          ghl_opportunity_status?: string | null
           goal?: string | null
           handoff_at?: string | null
           handoff_cause?: Database["public"]["Enums"]["handoff_cause"] | null
@@ -560,6 +612,54 @@ export type Database = {
           },
           {
             foreignKeyName: "integration_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      label_automation_rules: {
+        Row: {
+          created_at: string
+          id: number
+          is_active: boolean
+          label_id: number
+          tenant_id: number
+          trigger_type: string
+          trigger_value: Json
+          trigger_who: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          label_id: number
+          tenant_id: number
+          trigger_type: string
+          trigger_value?: Json
+          trigger_who: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          is_active?: boolean
+          label_id?: number
+          tenant_id?: number
+          trigger_type?: string
+          trigger_value?: Json
+          trigger_who?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "label_automation_rules_label_id_fkey"
+            columns: ["label_id"]
+            isOneToOne: false
+            referencedRelation: "tenant_labels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_automation_rules_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
@@ -1134,50 +1234,6 @@ export type Database = {
           },
         ]
       }
-      tenant_audit_log: {
-        Row: {
-          action: string
-          actor_email: string | null
-          actor_user_id: string | null
-          created_at: string
-          id: number
-          metadata: Json
-          target_email: string | null
-          target_user_id: string | null
-          tenant_id: number
-        }
-        Insert: {
-          action: string
-          actor_email?: string | null
-          actor_user_id?: string | null
-          created_at?: string
-          id?: number
-          metadata?: Json
-          target_email?: string | null
-          target_user_id?: string | null
-          tenant_id: number
-        }
-        Update: {
-          action?: string
-          actor_email?: string | null
-          actor_user_id?: string | null
-          created_at?: string
-          id?: number
-          metadata?: Json
-          target_email?: string | null
-          target_user_id?: string | null
-          tenant_id?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tenant_audit_log_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       prompt_block_drafts: {
         Row: {
           base_version: number
@@ -1357,6 +1413,50 @@ export type Database = {
           },
         ]
       }
+      tenant_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: number
+          metadata: Json
+          target_email: string | null
+          target_user_id: string | null
+          tenant_id: number
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: number
+          metadata?: Json
+          target_email?: string | null
+          target_user_id?: string | null
+          tenant_id: number
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: number
+          metadata?: Json
+          target_email?: string | null
+          target_user_id?: string | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_configs: {
         Row: {
           active_conversation_delay: string
@@ -1396,6 +1496,62 @@ export type Database = {
             foreignKeyName: "tenant_configs_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_labels: {
+        Row: {
+          auto_assign_to: string | null
+          color: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          destination_bucket: string | null
+          id: number
+          is_system: boolean
+          name: string
+          pause_ai_on_apply: boolean
+          resume_ai_on_apply: boolean
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          auto_assign_to?: string | null
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          destination_bucket?: string | null
+          id?: number
+          is_system?: boolean
+          name: string
+          pause_ai_on_apply?: boolean
+          resume_ai_on_apply?: boolean
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          auto_assign_to?: string | null
+          color?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          destination_bucket?: string | null
+          id?: number
+          is_system?: boolean
+          name?: string
+          pause_ai_on_apply?: boolean
+          resume_ai_on_apply?: boolean
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_labels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
