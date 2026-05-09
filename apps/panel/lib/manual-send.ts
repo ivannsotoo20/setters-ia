@@ -66,7 +66,7 @@ async function loadChannelContext(
 ): Promise<ChannelInfo> {
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
-    .select('id, lead_id, channel_id')
+    .select('id, lead_id, channel_id, tenant_id')
     .eq('id', conversationId)
     .maybeSingle();
   if (convErr) throw new Error(`conversation lookup: ${convErr.message}`);
@@ -74,28 +74,29 @@ async function loadChannelContext(
 
   const { data: channel, error: chErr } = await supabase
     .from('channels')
-    .select('id, channel_type, integration_account_id')
+    .select('id, channel_type')
     .eq('id', Number(conv.channel_id))
     .maybeSingle();
   if (chErr) throw new Error(`channel lookup: ${chErr.message}`);
   if (!channel) throw new Error(`channel ${conv.channel_id} no encontrado`);
 
-  const integrationAccountId = channel.integration_account_id
-    ? Number(channel.integration_account_id)
-    : null;
-  if (!integrationAccountId) {
-    throw new Error(
-      'channel sin integration_account asociado — configura las credenciales en /settings/integrations',
-    );
-  }
-
+  // La relación va de `integration_accounts.channel_id` → `channels.id`
+  // (1 channel puede tener N integration_accounts a lo largo del tiempo,
+  // pero solo 1 activo por tenant). Filtramos por channel + tenant + active.
   const { data: ia, error: iaErr } = await supabase
     .from('integration_accounts')
     .select('id, provider, credentials, credentials_encrypted, connection_config')
-    .eq('id', integrationAccountId)
+    .eq('channel_id', Number(conv.channel_id))
+    .eq('tenant_id', Number(conv.tenant_id))
+    .eq('is_active', true)
     .maybeSingle();
   if (iaErr) throw new Error(`integration_account lookup: ${iaErr.message}`);
-  if (!ia) throw new Error(`integration_account ${integrationAccountId} no encontrado`);
+  if (!ia) {
+    throw new Error(
+      'sin integration_account activo para este canal — configura las credenciales en /settings/integrations',
+    );
+  }
+  const integrationAccountId = Number(ia.id);
 
   const credentials = decodeCredentialsRow(ia, integrationAccountId);
   const provider = normalizeProvider(typeof ia.provider === 'string' ? ia.provider : '');
