@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
 import {
   Card,
   CardContent,
@@ -12,18 +13,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function ConversationsPage() {
   const supabase = await createSupabaseServerClient();
+  const effective = await getEffectiveTenant();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id')
-    .eq('id', user!.id)
-    .maybeSingle();
-
-  if (!profile?.tenant_id) {
+  if (!effective) {
     return (
       <Card>
         <CardHeader>
@@ -45,7 +37,7 @@ export default async function ConversationsPage() {
        leads(first_name, last_name, username, external_id),
        channels(channel_type, via_provider)`,
     )
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', effective.tenantId)
     .order('updated_at', { ascending: false })
     .limit(100);
 

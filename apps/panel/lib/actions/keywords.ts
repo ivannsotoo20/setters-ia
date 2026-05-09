@@ -1,16 +1,25 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
 
 /**
  * Server Actions para `automation_keywords` — patrones que clasifican mensajes
  * outbound del trainer en bienvenida / lead-magnet / inbound auto-response.
  *
- * RLS protege la tabla por tenant_id (las policies filtran por
- * tenant_id_for_user()). Aquí usamos el cliente con anon key + cookie del
- * usuario, así que RLS aplica automáticamente.
+ * Usa service role + check explícito de tenant_id para soportar impersonate
+ * (un agency admin viendo el panel como otro tenant escribe sus keywords).
  */
+
+function getServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
 
 export type KeywordType = 'bienvenida' | 'lm' | 'inbound';
 
@@ -26,15 +35,14 @@ export interface KeywordRow {
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
 export async function listKeywords(): Promise<ActionResult<KeywordRow[]>> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
 
+  const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from('automation_keywords')
     .select('id, type, pattern, is_active, created_at, updated_at')
+    .eq('tenant_id', effective.tenantId)
     .order('type', { ascending: true })
     .order('id', { ascending: true });
 
@@ -76,23 +84,14 @@ export async function createKeyword(input: {
     return { ok: false, error: 'type inválido' };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (!profile?.tenant_id) return { ok: false, error: 'profile sin tenant' };
-
+  const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from('automation_keywords')
     .insert({
-      tenant_id: profile.tenant_id,
+      tenant_id: effective.tenantId,
       type: input.type,
       pattern: input.pattern.trim(),
       is_active: true,
@@ -110,16 +109,15 @@ export async function toggleKeywordActive(
   keywordId: number,
   active: boolean,
 ): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
 
+  const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from('automation_keywords')
     .update({ is_active: active, updated_at: new Date().toISOString() })
-    .eq('id', keywordId);
+    .eq('id', keywordId)
+    .eq('tenant_id', effective.tenantId);
 
   if (error) return { ok: false, error: error.message };
   revalidatePath('/keywords');
@@ -127,16 +125,15 @@ export async function toggleKeywordActive(
 }
 
 export async function deleteKeyword(keywordId: number): Promise<ActionResult> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: 'unauthenticated' };
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
 
+  const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from('automation_keywords')
     .delete()
-    .eq('id', keywordId);
+    .eq('id', keywordId)
+    .eq('tenant_id', effective.tenantId);
 
   if (error) return { ok: false, error: error.message };
   revalidatePath('/keywords');

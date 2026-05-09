@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, MessageSquare, Sparkles, Settings } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,17 +30,9 @@ function KpiCard({ label, value, hint }: KpiCardProps) {
 
 export default async function DashboardPage() {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id, role, tenants(slug, name)')
-    .eq('id', user!.id)
-    .maybeSingle();
-
-  if (!profile?.tenant_id) {
+  const effective = await getEffectiveTenant();
+  if (!effective) {
     return (
       <Card>
         <CardHeader>
@@ -52,7 +45,18 @@ export default async function DashboardPage() {
     );
   }
 
-  const tenantId = profile.tenant_id;
+  const tenantId = effective.tenantId;
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', effective.userId)
+    .maybeSingle();
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('slug, name')
+    .eq('id', tenantId)
+    .maybeSingle();
 
   const [activeRes, qualifiedRes, pausedRes, todayCostRes, todayRunsRes] = await Promise.all([
     supabase
@@ -92,13 +96,6 @@ export default async function DashboardPage() {
     0,
   );
 
-  const tenantsRel = profile.tenants as
-    | { slug: string; name: string }
-    | { slug: string; name: string }[]
-    | null
-    | undefined;
-  const tenantInfo = Array.isArray(tenantsRel) ? tenantsRel[0] ?? null : tenantsRel ?? null;
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-end justify-between gap-4">
@@ -107,11 +104,11 @@ export default async function DashboardPage() {
             Fyzon Setters · Panel
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">
-            {tenantInfo?.name ?? `Tenant ${tenantId}`}
+            {tenant?.name ?? tenant?.slug ?? `Tenant ${tenantId}`}
           </h1>
         </div>
         <Badge variant="outline" className="capitalize">
-          {profile.role}
+          {profile?.role ?? '—'}
         </Badge>
       </div>
 

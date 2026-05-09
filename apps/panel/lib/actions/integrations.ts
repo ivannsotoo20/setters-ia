@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { encryptJson } from '@/lib/crypto';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
 
 /**
  * Server Actions BYOK (Bring Your Own Keys) — el cliente conecta su propio
@@ -47,18 +47,9 @@ function getServiceRoleClient() {
 }
 
 async function resolveCallerTenant(): Promise<{ tenantId: number } | null> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id, role')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (!profile?.tenant_id) return null;
-  return { tenantId: Number(profile.tenant_id) };
+  const effective = await getEffectiveTenant();
+  if (!effective) return null;
+  return { tenantId: effective.tenantId };
 }
 
 // ---------------------------------------------------------------------------

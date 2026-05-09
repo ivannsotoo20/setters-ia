@@ -984,6 +984,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_agency_admin: boolean
           role: Database["public"]["Enums"]["profile_role"]
           tenant_id: number
         }
@@ -992,6 +993,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_agency_admin?: boolean
           role?: Database["public"]["Enums"]["profile_role"]
           tenant_id: number
         }
@@ -1000,6 +1002,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_agency_admin?: boolean
           role?: Database["public"]["Enums"]["profile_role"]
           tenant_id?: number
         }

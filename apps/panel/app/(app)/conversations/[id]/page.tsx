@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConversationHeader } from './conversation-header';
@@ -19,18 +20,8 @@ export default async function ConversationDetailPage({ params }: PageProps) {
   if (!Number.isFinite(conversationId) || conversationId <= 0) notFound();
 
   const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id')
-    .eq('id', user!.id)
-    .maybeSingle();
-
-  if (!profile?.tenant_id) notFound();
+  const effective = await getEffectiveTenant();
+  if (!effective) notFound();
 
   const { data: conv } = await supabase
     .from('conversations')
@@ -43,7 +34,7 @@ export default async function ConversationDetailPage({ params }: PageProps) {
        channels(channel_type, via_provider)`,
     )
     .eq('id', conversationId)
-    .eq('tenant_id', profile.tenant_id)
+    .eq('tenant_id', effective.tenantId)
     .maybeSingle();
 
   if (!conv) notFound();

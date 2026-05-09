@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
 
 /**
  * Pausa o reactiva la IA en una conversación. Operación idempotente:
@@ -17,6 +18,17 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
  * App Marketplace GHL (real-time outbound humano detection); este botón
  * es el failsafe manual desde panel.
  */
+function getServiceRoleClient() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY missing');
+  }
+  return createClient(url, serviceKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+}
+
 export async function togglePauseConversation(
   conversationId: number,
   currentlyPaused: boolean,
@@ -25,27 +37,14 @@ export async function togglePauseConversation(
     return { ok: false, error: 'invalid conversationId' };
   }
 
-  const supabase = await createSupabaseServerClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return { ok: false, error: 'unauthenticated' };
-  }
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile?.tenant_id) {
-    return { ok: false, error: 'profile_without_tenant' };
-  }
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
 
   const newValue = currentlyPaused ? null : 'infinity';
 
+  // Usamos service role para soportar el flujo impersonate (RLS bloquearía
+  // un agency admin impersonando otro tenant). Validamos tenant_id en código.
+  const supabase = getServiceRoleClient();
   const { error } = await supabase
     .from('conversations')
     .update({
@@ -53,12 +52,11 @@ export async function togglePauseConversation(
       updated_at: new Date().toISOString(),
     })
     .eq('id', conversationId)
-    .eq('tenant_id', profile.tenant_id);
+    .eq('tenant_id', effective.tenantId);
 
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+  if (error) return { ok: false, error: error.message };
 
   revalidatePath('/conversations');
+  revalidatePath(`/conversations/${conversationId}`);
   return { ok: true };
 }

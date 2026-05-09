@@ -3,12 +3,15 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  Building2,
   LayoutDashboard,
   MessageSquare,
   Sparkles,
   Settings,
   LogOut,
   Bot,
+  Users,
+  ShieldCheck,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -23,6 +26,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
+import { Badge } from '@/components/ui/badge';
 import { logout } from '@/lib/actions/auth';
 
 interface NavItem {
@@ -41,12 +45,24 @@ const NAV_CONFIG: NavItem[] = [
   { href: '/settings/integrations', label: 'Integraciones', icon: Settings },
 ];
 
+const NAV_AGENCY: NavItem[] = [
+  { href: '/admin/dashboard', label: 'Resumen agencia', icon: Building2 },
+  { href: '/admin/tenants', label: 'Sub-cuentas', icon: Users },
+];
+
 interface Props {
   tenantName?: string | null;
   userEmail?: string | null;
+  isAgencyAdmin?: boolean;
+  impersonatingTenantName?: string | null;
 }
 
-export function AppSidebar({ tenantName, userEmail }: Props) {
+export function AppSidebar({
+  tenantName,
+  userEmail,
+  isAgencyAdmin,
+  impersonatingTenantName,
+}: Props) {
   const pathname = usePathname();
 
   return (
@@ -55,22 +71,52 @@ export function AppSidebar({ tenantName, userEmail }: Props) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href="/dashboard">
+              <Link href={isAgencyAdmin ? '/admin/dashboard' : '/dashboard'}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                   <Bot className="size-4" />
                 </div>
-                <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold">Fyzon Setters</span>
-                  <span className="text-xs text-muted-foreground">
-                    {tenantName ?? 'Sin tenant'}
+                <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
+                  <span className="font-semibold truncate">Fyzon Setters</span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {impersonatingTenantName
+                      ? `Viendo: ${impersonatingTenantName}`
+                      : tenantName ?? 'Sin tenant'}
                   </span>
                 </div>
+                {isAgencyAdmin ? (
+                  <ShieldCheck className="size-4 text-emerald-400 shrink-0" />
+                ) : null}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        {isAgencyAdmin ? (
+          <div className="px-2 pt-1">
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5 text-[10px]">
+              <ShieldCheck className="size-2.5 mr-1" />
+              Agencia
+            </Badge>
+          </div>
+        ) : null}
       </SidebarHeader>
       <SidebarContent>
+        {isAgencyAdmin ? (
+          <SidebarGroup>
+            <SidebarGroupLabel>Agencia</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {NAV_AGENCY.map((item) => (
+                  <NavItemRow
+                    key={item.href}
+                    item={item}
+                    active={isActive(pathname, item.href)}
+                  />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
+
         <SidebarGroup>
           <SidebarGroupLabel>Operación</SidebarGroupLabel>
           <SidebarGroupContent>
