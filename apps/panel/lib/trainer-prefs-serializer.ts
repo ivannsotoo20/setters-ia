@@ -39,7 +39,9 @@ export interface TrainerPreferences {
 
   /** Densidad de emojis: 0=casi sin emojis, 1=algunos, 2=moderada (default), 3=abundante. */
   emojiDensity: 0 | 1 | 2 | 3;
-  /** Preguntas adicionales antes de proponer la llamada (0-2). */
+  /** Sprint 2.5b/C — Si true, el trainer ajusta preguntas extra; si false (default), el Coach lo gestiona. */
+  qualificationQuestionsEnabled: boolean;
+  /** Preguntas adicionales antes de proponer la llamada (0-2). Solo aplica si qualificationQuestionsEnabled=true. */
   extraQuestionsBeforeCall: 0 | 1 | 2;
   /** Sprint 2.5b/B — Longitud de mensajes: 0=cortos, 1=equilibrado (default), 2=amplios. */
   messageLengthDensity: 0 | 1 | 2;
@@ -58,12 +60,32 @@ export interface TrainerPreferences {
   /** Eventos del motor a los que el trainer está suscrito. Vacío = no recibe nada. */
   notificationSubscriptions: NotificationEventType[];
 
-  // ----- Sprint Gamma 2.5b/B: cualificación + propuesta llamada -----
-  /** URL HTTPS del calendario (cal.com, calendly, etc.) que el setter compartirá al proponer la llamada. null = el setter dice "te paso mi agenda" sin link. */
-  calendarUrl: string | null;
-  /** Frase opcional (max 200 chars) que el setter dirá justo antes de compartir el enlace del calendario. null = el setter decide. */
+  // ----- Sprint Gamma 2.5b/B + 2.5b/C: cualificación + propuesta llamada -----
+  /**
+   * Sprint 2.5b/C — modo de cierre de la cualificación:
+   *   - 'calendar' (default): el setter envía URL de calendario (cal.com, calendly).
+   *   - 'form': el setter envía URL de formulario (typeform, google form, etc.) en vez de proponer llamada.
+   *   - 'human_handoff': el setter NO propone llamada NI envía link; deriva al humano (handoff).
+   */
+  callProposalMode: 'calendar' | 'form' | 'human_handoff';
+  /**
+   * URL HTTPS del recurso de cierre — calendario (modo 'calendar') o formulario (modo 'form').
+   * null = el setter no comparte URL (acepta para 'calendar' como degradación; obligatorio en 'form'
+   * para que tenga sentido). Ignorado si modo='human_handoff'.
+   */
+  closingResourceUrl: string | null;
+  /** Frase opcional (max 200 chars) que el setter dirá justo antes de compartir el enlace de cierre. null = el setter decide. Ignorada si modo='human_handoff'. */
   calendarClosingMessage: string | null;
 }
+
+export const CALL_PROPOSAL_MODES = ['calendar', 'form', 'human_handoff'] as const;
+export type CallProposalMode = (typeof CALL_PROPOSAL_MODES)[number];
+
+export const CALL_PROPOSAL_MODE_LABELS: Record<CallProposalMode, { label: string; desc: string }> = {
+  calendar: { label: 'Calendario', desc: 'El setter cierra proponiendo llamada con tu calendario (cal.com, calendly).' },
+  form: { label: 'Formulario', desc: 'El setter envía un formulario (typeform, google form) en vez de proponer llamada.' },
+  human_handoff: { label: 'Derivar a humano', desc: 'El setter pausa la IA y te deriva el lead — tú lo atiendes personalmente, sin link automático.' },
+};
 
 /**
  * Eventos que el motor puede notificar por email al trainer. Espejo del set
@@ -94,6 +116,7 @@ const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   emojiDensity: 2,
+  qualificationQuestionsEnabled: false,
   extraQuestionsBeforeCall: 0,
   messageLengthDensity: 1,
   toneRegister: 1,
@@ -101,26 +124,34 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   trainerEmail: null,
   trainerPhone: null,
   notificationSubscriptions: [...DEFAULT_SUBSCRIPTIONS],
-  calendarUrl: null,
+  callProposalMode: 'calendar',
+  closingResourceUrl: null,
   calendarClosingMessage: null,
 };
 
-const MAX_CALENDAR_URL_CHARS = 200;
+const MAX_CLOSING_RESOURCE_URL_CHARS = 200;
 const MAX_CALENDAR_CLOSING_CHARS = 200;
 
+function parseCallProposalMode(raw: unknown): CallProposalMode {
+  if (typeof raw === 'string' && (CALL_PROPOSAL_MODES as readonly string[]).includes(raw)) {
+    return raw as CallProposalMode;
+  }
+  return 'calendar';
+}
+
 /**
- * Valida una URL de calendario:
+ * Valida una URL de recurso de cierre (calendario o formulario):
  *   - Debe ser HTTPS (rechaza http://, javascript:, file://, etc).
  *   - Debe ser parseable con `new URL()`.
  *   - Max 200 chars total.
  * Devuelve la URL trimmed normalizada o null si inválida.
  */
-function sanitizeCalendarUrl(raw: unknown): string | null {
+function sanitizeClosingResourceUrl(raw: unknown): string | null {
   if (raw == null) return null;
   if (typeof raw !== 'string') return null;
   const trimmed = raw.trim();
   if (trimmed === '') return null;
-  if (trimmed.length > MAX_CALENDAR_URL_CHARS) return null;
+  if (trimmed.length > MAX_CLOSING_RESOURCE_URL_CHARS) return null;
   try {
     const url = new URL(trimmed);
     if (url.protocol !== 'https:') return null;
@@ -243,6 +274,12 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
     }
   }
 
+  // Sprint Gamma 2.5b/C — toggle preguntas + selector cierre
+  if (typeof r.qualificationQuestionsEnabled === 'boolean') {
+    out.qualificationQuestionsEnabled = r.qualificationQuestionsEnabled;
+  }
+  out.callProposalMode = parseCallProposalMode(r.callProposalMode);
+
   // Sprint Gamma 2.5b/B — sliders nuevos
   if (typeof r.messageLengthDensity === 'number' && Number.isInteger(r.messageLengthDensity)) {
     const n = r.messageLengthDensity;
@@ -257,8 +294,12 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
     }
   }
 
-  // Sprint Gamma 2.5b/B — campos cualificación
-  out.calendarUrl = sanitizeCalendarUrl(r.calendarUrl);
+  // Sprint Gamma 2.5b/B + 2.5b/C — campos cualificación.
+  // Sprint 2.5b/C renombró calendarUrl → closingResourceUrl. Aceptamos ambos
+  // para compatibilidad con BD legacy (calendarUrl tiene prioridad si presente
+  // en JSONB legacy de tenants viejos sin migrar).
+  const urlRaw = r.closingResourceUrl ?? r.calendarUrl;
+  out.closingResourceUrl = sanitizeClosingResourceUrl(urlRaw);
   out.calendarClosingMessage = sanitizeCalendarClosingMessage(r.calendarClosingMessage);
 
   // Sprint Gamma 2.1
@@ -341,30 +382,58 @@ export function serializeTrainerPreferences(
   lines.push('### Cualificación y propuesta de llamada');
   lines.push('');
 
-  if (prefs.extraQuestionsBeforeCall > 0) {
-    const n = prefs.extraQuestionsBeforeCall;
-    const word = n === 1 ? 'pregunta adicional' : 'preguntas adicionales';
-    lines.push(
-      `- **Más contexto antes de la llamada**: antes de proponer la llamada/cita, haz ${n} ` +
-        `${word} para reforzar contexto del lead (no preguntas obvias ya respondidas; ` +
-        'busca matiz: "¿desde cuándo te pasa?", "¿qué has probado antes?", etc.).',
-    );
-  } else {
-    lines.push(
-      '- **Cualificación estándar**: sigue el flujo de fases del Cerebro sin preguntas extra antes de la cita.',
-    );
+  // Sprint 2.5b/C — Solo emitir directriz "preguntas extra" si el trainer la activó.
+  // Si está desactivado (default), el Coach gestiona este aspecto y el Cerebro
+  // decide el flujo estándar — NO inyectamos nada para no contradecir al Coach.
+  if (prefs.qualificationQuestionsEnabled) {
+    if (prefs.extraQuestionsBeforeCall > 0) {
+      const n = prefs.extraQuestionsBeforeCall;
+      const word = n === 1 ? 'pregunta adicional' : 'preguntas adicionales';
+      lines.push(
+        `- **Más contexto antes de la llamada**: antes de proponer la llamada/cita, haz ${n} ` +
+          `${word} para reforzar contexto del lead (no preguntas obvias ya respondidas; ` +
+          'busca matiz: "¿desde cuándo te pasa?", "¿qué has probado antes?", etc.).',
+      );
+    } else {
+      lines.push(
+        '- **Cualificación estándar**: sigue el flujo de fases del Cerebro sin preguntas extra antes de la cita.',
+      );
+    }
   }
 
-  // Sprint 2.5b/B — calendario propio del trainer
-  if (prefs.calendarUrl) {
-    lines.push(
-      `- **Enlace de calendario del trainer**: cuando llegue el momento de proponer la llamada/sesión, ` +
-        `comparte EXACTAMENTE este enlace: \`${prefs.calendarUrl}\`. NO inventes otro, NO modifiques el dominio.`,
-    );
+  // Sprint 2.5b/C — Cierre según modo elegido por el trainer.
+  switch (prefs.callProposalMode) {
+    case 'calendar':
+      if (prefs.closingResourceUrl) {
+        lines.push(
+          `- **Cierre con calendario propio del trainer**: cuando llegue el momento de proponer ` +
+            `la llamada/sesión, comparte EXACTAMENTE este enlace de calendario: ` +
+            `\`${prefs.closingResourceUrl}\`. NO inventes otro, NO modifiques el dominio.`,
+        );
+      }
+      break;
+    case 'form':
+      if (prefs.closingResourceUrl) {
+        lines.push(
+          `- **Cierre con formulario en lugar de llamada**: cuando hayas cualificado al lead, ` +
+            `NO propongas llamada — comparte EXACTAMENTE este enlace de formulario: ` +
+            `\`${prefs.closingResourceUrl}\`. El formulario es el siguiente paso del trainer.`,
+        );
+      }
+      break;
+    case 'human_handoff':
+      lines.push(
+        `- **Cierre con derivación a humano**: cuando hayas cualificado al lead, NO propongas ` +
+          `llamada NI envíes ningún enlace. Marca \`conversation_status='handoff'\` y di una frase ` +
+          `breve tipo "ahora te paso con el equipo personalmente". El motor pausará la IA tras tu turno ` +
+          `y el trainer atenderá manualmente.`,
+      );
+      break;
   }
-  if (prefs.calendarClosingMessage) {
+  // Frase de cierre solo aplica a modos que envían link.
+  if (prefs.calendarClosingMessage && prefs.callProposalMode !== 'human_handoff') {
     lines.push(
-      `- **Frase de cierre del trainer**: cuando vayas a compartir el enlace del calendario, ` +
+      `- **Frase de cierre del trainer**: cuando vayas a compartir el enlace de cierre, ` +
         `di exactamente (o muy similar) esta frase: "${prefs.calendarClosingMessage}".`,
     );
   }

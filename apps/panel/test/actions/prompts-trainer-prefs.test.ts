@@ -253,6 +253,7 @@ describe('saveTrainerPreferences', () => {
   it('UPSERTs trainer_preferences + INSERTs trainer_prefs_v1 prompt_blocks markdown (first time)', async () => {
     const newPrefs: import('@/lib/trainer-prefs-serializer').TrainerPreferences = {
       emojiDensity: 3,
+      qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
       messageLengthDensity: 1,
       toneRegister: 1,
@@ -260,7 +261,8 @@ describe('saveTrainerPreferences', () => {
       trainerEmail: null,
       trainerPhone: null,
       notificationSubscriptions: ['handoff', 'qualified'],
-      calendarUrl: null,
+      callProposalMode: 'calendar',
+      closingResourceUrl: null,
       calendarClosingMessage: null,
     };
 

@@ -27,6 +27,7 @@ describe('parseTrainerPreferences', () => {
   it('accepts valid full input', () => {
     const input: TrainerPreferences = {
       emojiDensity: 3,
+      qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
       messageLengthDensity: 0,
       toneRegister: 2,
@@ -34,7 +35,8 @@ describe('parseTrainerPreferences', () => {
       trainerEmail: null,
       trainerPhone: null,
       notificationSubscriptions: ['handoff', 'appointment_booked'],
-      calendarUrl: null,
+      callProposalMode: 'calendar',
+      closingResourceUrl: null,
       calendarClosingMessage: null,
     };
     expect(parseTrainerPreferences(input)).toEqual(input);
@@ -95,7 +97,9 @@ describe('serializeTrainerPreferences', () => {
     expect(md).toContain('Doble interrogación');
     expect(md).toContain('??');
     expect(md).toContain('densidad moderada');
-    expect(md).toContain('Cualificación estándar');
+    // Sprint 2.5b/C: con qualificationQuestionsEnabled=false (default) NO se emite
+    // la directriz de cualificación — el Coach gestiona ese aspecto.
+    expect(md).not.toContain('Cualificación estándar');
     expect(md).toContain('Acknowledge audios');
     expect(md).toContain('escuché tu audio');
   });
@@ -115,15 +119,17 @@ describe('serializeTrainerPreferences', () => {
     );
   });
 
-  it('singular/plural for extraQuestionsBeforeCall', () => {
+  it('singular/plural for extraQuestionsBeforeCall (con toggle ON, Sprint 2.5b/C)', () => {
     const md1 = serializeTrainerPreferences({
       ...DEFAULT_TRAINER_PREFERENCES,
+      qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 1,
     });
     expect(md1).toContain('1 pregunta adicional');
 
     const md2 = serializeTrainerPreferences({
       ...DEFAULT_TRAINER_PREFERENCES,
+      qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
     });
     expect(md2).toContain('2 preguntas adicionales');
@@ -132,6 +138,7 @@ describe('serializeTrainerPreferences', () => {
   it('full opt-in produces a non-trivial markdown block', () => {
     const md = serializeTrainerPreferences({
       emojiDensity: 3,
+      qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
       messageLengthDensity: 2,
       toneRegister: 0,
@@ -139,7 +146,8 @@ describe('serializeTrainerPreferences', () => {
       trainerEmail: null,
       trainerPhone: null,
       notificationSubscriptions: ['handoff', 'qualified', 'appointment_booked'],
-      calendarUrl: null,
+      callProposalMode: 'calendar',
+      closingResourceUrl: null,
       calendarClosingMessage: null,
     });
     expect(md.length).toBeGreaterThan(400);
@@ -401,37 +409,50 @@ describe('parseTrainerPreferences — sliders nuevos (Gamma 2.5b/B)', () => {
   });
 });
 
-describe('parseTrainerPreferences — calendarUrl (Gamma 2.5b/B)', () => {
-  it('acepta HTTPS válido', () => {
-    expect(parseTrainerPreferences({ calendarUrl: 'https://cal.com/ivan' }).calendarUrl).toBe(
+describe('parseTrainerPreferences — closingResourceUrl (Gamma 2.5b/B + 2.5b/C rename)', () => {
+  it('acepta HTTPS válido (input clave nueva)', () => {
+    expect(parseTrainerPreferences({ closingResourceUrl: 'https://cal.com/ivan' }).closingResourceUrl).toBe(
       'https://cal.com/ivan',
     );
-    expect(parseTrainerPreferences({ calendarUrl: 'https://calendly.com/foo/bar' }).calendarUrl).toBe(
+    expect(parseTrainerPreferences({ closingResourceUrl: 'https://calendly.com/foo/bar' }).closingResourceUrl).toBe(
       'https://calendly.com/foo/bar',
     );
   });
 
+  it('Gamma 2.5b/C compat: acepta clave legacy `calendarUrl` y la mapea a closingResourceUrl', () => {
+    const out = parseTrainerPreferences({ calendarUrl: 'https://cal.com/legacy' });
+    expect(out.closingResourceUrl).toBe('https://cal.com/legacy');
+  });
+
+  it('clave nueva tiene prioridad sobre legacy si ambas presentes', () => {
+    const out = parseTrainerPreferences({
+      calendarUrl: 'https://cal.com/legacy',
+      closingResourceUrl: 'https://cal.com/new',
+    });
+    expect(out.closingResourceUrl).toBe('https://cal.com/new');
+  });
+
   it('rechaza http:// (insecure) → null', () => {
-    expect(parseTrainerPreferences({ calendarUrl: 'http://insecure.com' }).calendarUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: 'http://insecure.com' }).closingResourceUrl).toBeNull();
   });
 
   it('rechaza protocolos peligrosos → null', () => {
-    expect(parseTrainerPreferences({ calendarUrl: 'javascript:alert(1)' }).calendarUrl).toBeNull();
-    expect(parseTrainerPreferences({ calendarUrl: 'file:///etc/passwd' }).calendarUrl).toBeNull();
-    expect(parseTrainerPreferences({ calendarUrl: 'data:text/html,<script>' }).calendarUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: 'javascript:alert(1)' }).closingResourceUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: 'file:///etc/passwd' }).closingResourceUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: 'data:text/html,<script>' }).closingResourceUrl).toBeNull();
   });
 
   it('rechaza URL malformada / no parseable → null', () => {
-    expect(parseTrainerPreferences({ calendarUrl: 'not-a-url' }).calendarUrl).toBeNull();
-    expect(parseTrainerPreferences({ calendarUrl: '' }).calendarUrl).toBeNull();
-    expect(parseTrainerPreferences({ calendarUrl: '   ' }).calendarUrl).toBeNull();
-    expect(parseTrainerPreferences({ calendarUrl: null }).calendarUrl).toBeNull();
-    expect(parseTrainerPreferences({ calendarUrl: 42 }).calendarUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: 'not-a-url' }).closingResourceUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: '' }).closingResourceUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: '   ' }).closingResourceUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: null }).closingResourceUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: 42 }).closingResourceUrl).toBeNull();
   });
 
   it('rechaza URL > 200 chars → null', () => {
     const long = 'https://cal.com/' + 'a'.repeat(200);
-    expect(parseTrainerPreferences({ calendarUrl: long }).calendarUrl).toBeNull();
+    expect(parseTrainerPreferences({ closingResourceUrl: long }).closingResourceUrl).toBeNull();
   });
 });
 
@@ -482,22 +503,23 @@ describe('serializeTrainerPreferences — sliders + cualificación expandida (Ga
     );
   });
 
-  it('inyecta URL calendario en sección Cualificación cuando presente', () => {
+  it('inyecta URL calendario en modo calendar cuando presente', () => {
     const md = serializeTrainerPreferences({
       ...DEFAULT_TRAINER_PREFERENCES,
-      calendarUrl: 'https://cal.com/ivan-soto',
+      callProposalMode: 'calendar',
+      closingResourceUrl: 'https://cal.com/ivan-soto',
     });
-    expect(md).toContain('Enlace de calendario del trainer');
+    expect(md).toContain('Cierre con calendario propio del trainer');
     expect(md).toContain('https://cal.com/ivan-soto');
     expect(md).toContain('NO inventes otro');
   });
 
-  it('NO inyecta sección calendario si calendarUrl null', () => {
+  it('NO inyecta sección calendario si closingResourceUrl null', () => {
     const md = serializeTrainerPreferences(DEFAULT_TRAINER_PREFERENCES);
-    expect(md).not.toContain('Enlace de calendario del trainer');
+    expect(md).not.toContain('Cierre con calendario');
   });
 
-  it('inyecta frase de cierre cuando presente', () => {
+  it('inyecta frase de cierre cuando presente y modo no es handoff', () => {
     const md = serializeTrainerPreferences({
       ...DEFAULT_TRAINER_PREFERENCES,
       calendarClosingMessage: 'Vamos a verlo en una llamada de 15 min',
@@ -512,10 +534,88 @@ describe('serializeTrainerPreferences — sliders + cualificación expandida (Ga
   });
 });
 
-describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B)', () => {
+// =============================================================================
+// Sprint Gamma 2.5b/C — toggle preguntas + selector callProposalMode
+// =============================================================================
+
+describe('Gamma 2.5b/C — qualificationQuestionsEnabled toggle', () => {
+  it('default es false (el Coach gestiona)', () => {
+    expect(parseTrainerPreferences({}).qualificationQuestionsEnabled).toBe(false);
+  });
+
+  it('parser acepta boolean explícito', () => {
+    expect(parseTrainerPreferences({ qualificationQuestionsEnabled: true }).qualificationQuestionsEnabled).toBe(true);
+    expect(parseTrainerPreferences({ qualificationQuestionsEnabled: false }).qualificationQuestionsEnabled).toBe(false);
+  });
+
+  it('serializer NO emite directriz preguntas cuando toggle OFF (default)', () => {
+    const md = serializeTrainerPreferences({
+      ...DEFAULT_TRAINER_PREFERENCES,
+      extraQuestionsBeforeCall: 2,
+    });
+    expect(md).not.toContain('Más contexto antes de la llamada');
+    expect(md).not.toContain('Cualificación estándar');
+    expect(md).not.toContain('preguntas adicionales');
+  });
+
+  it('serializer emite directriz preguntas SOLO cuando toggle ON', () => {
+    const md = serializeTrainerPreferences({
+      ...DEFAULT_TRAINER_PREFERENCES,
+      qualificationQuestionsEnabled: true,
+      extraQuestionsBeforeCall: 1,
+    });
+    expect(md).toContain('1 pregunta adicional');
+  });
+});
+
+describe('Gamma 2.5b/C — callProposalMode (calendar/form/human_handoff)', () => {
+  it('default es calendar', () => {
+    expect(parseTrainerPreferences({}).callProposalMode).toBe('calendar');
+  });
+
+  it('acepta los 3 modos válidos', () => {
+    expect(parseTrainerPreferences({ callProposalMode: 'calendar' }).callProposalMode).toBe('calendar');
+    expect(parseTrainerPreferences({ callProposalMode: 'form' }).callProposalMode).toBe('form');
+    expect(parseTrainerPreferences({ callProposalMode: 'human_handoff' }).callProposalMode).toBe('human_handoff');
+  });
+
+  it('rechaza modos desconocidos → calendar (default seguro)', () => {
+    expect(parseTrainerPreferences({ callProposalMode: 'sms' }).callProposalMode).toBe('calendar');
+    expect(parseTrainerPreferences({ callProposalMode: null }).callProposalMode).toBe('calendar');
+    expect(parseTrainerPreferences({ callProposalMode: 42 }).callProposalMode).toBe('calendar');
+  });
+
+  it('serializer modo `form` cambia copy + reusa la misma URL', () => {
+    const md = serializeTrainerPreferences({
+      ...DEFAULT_TRAINER_PREFERENCES,
+      callProposalMode: 'form',
+      closingResourceUrl: 'https://typeform.com/abc',
+    });
+    expect(md).toContain('Cierre con formulario en lugar de llamada');
+    expect(md).toContain('https://typeform.com/abc');
+    expect(md).toContain('NO propongas llamada');
+    expect(md).not.toContain('calendario propio');
+  });
+
+  it('serializer modo `human_handoff` NO inyecta URL ni frase cierre', () => {
+    const md = serializeTrainerPreferences({
+      ...DEFAULT_TRAINER_PREFERENCES,
+      callProposalMode: 'human_handoff',
+      closingResourceUrl: 'https://cal.com/ignored',
+      calendarClosingMessage: 'frase ignorada en handoff',
+    });
+    expect(md).toContain('Cierre con derivación a humano');
+    expect(md).toContain("conversation_status='handoff'");
+    expect(md).not.toContain('https://cal.com/ignored');
+    expect(md).not.toContain('frase ignorada en handoff');
+  });
+});
+
+describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B + 2.5b/C)', () => {
   it('markdown serializado se mantiene bajo 2500 chars con todos los campos al máximo', () => {
     const maxConfig: TrainerPreferences = {
       emojiDensity: 3,
+      qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
       messageLengthDensity: 2,
       toneRegister: 2,
@@ -529,7 +629,8 @@ describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B)', 
         'descalified',
         'paused_by_rule',
       ],
-      calendarUrl: 'https://cal.com/' + 'a'.repeat(170),
+      callProposalMode: 'calendar',
+      closingResourceUrl: 'https://cal.com/' + 'a'.repeat(170),
       calendarClosingMessage: 'a'.repeat(200),
     };
     const md = serializeTrainerPreferences(maxConfig, []);
@@ -541,7 +642,8 @@ describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B)', 
       ...DEFAULT_TRAINER_PREFERENCES,
       messageLengthDensity: 0,
       toneRegister: 2,
-      calendarUrl: 'https://cal.com/test',
+      callProposalMode: 'calendar',
+      closingResourceUrl: 'https://cal.com/test',
       calendarClosingMessage: 'Te paso mi agenda',
     };
     expect(serializeTrainerPreferences(cfg)).toBe(serializeTrainerPreferences(cfg));

@@ -15,8 +15,11 @@ import { saveTrainerPreferences } from '@/lib/actions/prompts';
 import {
   type TrainerPreferences,
   type NotificationEventType,
+  type CallProposalMode,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_EVENT_LABELS,
+  CALL_PROPOSAL_MODES,
+  CALL_PROPOSAL_MODE_LABELS,
   DEFAULT_TRAINER_PREFERENCES,
   isValidEmail,
   normalizePhoneE164,
@@ -58,7 +61,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
   const [emailRaw, setEmailRaw] = useState(initial.trainerEmail ?? '');
   const [phoneRaw, setPhoneRaw] = useState(initial.trainerPhone ?? '');
   const [nameRaw, setNameRaw] = useState(initial.trainerName ?? '');
-  const [calendarUrlRaw, setCalendarUrlRaw] = useState(initial.calendarUrl ?? '');
+  const [calendarUrlRaw, setCalendarUrlRaw] = useState(initial.closingResourceUrl ?? '');
   const [calendarClosingRaw, setCalendarClosingRaw] = useState(initial.calendarClosingMessage ?? '');
   const [saving, startSave] = useTransition();
 
@@ -70,7 +73,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setEmailRaw(initial.trainerEmail ?? '');
     setPhoneRaw(initial.trainerPhone ?? '');
     setNameRaw(initial.trainerName ?? '');
-    setCalendarUrlRaw(initial.calendarUrl ?? '');
+    setCalendarUrlRaw(initial.closingResourceUrl ?? '');
     setCalendarClosingRaw(initial.calendarClosingMessage ?? '');
   }, [initial]);
 
@@ -96,7 +99,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     trainerEmail: emailRaw === '' ? null : (emailValid ? emailRaw.trim().toLowerCase() : prefs.trainerEmail),
     trainerPhone: phoneRaw === '' ? null : phoneNormalized,
     trainerName: nameRaw.trim() === '' ? null : nameRaw.trim(),
-    calendarUrl: calendarUrlRaw === '' ? null : (calendarUrlValid ? calendarUrlRaw.trim() : prefs.calendarUrl),
+    closingResourceUrl: calendarUrlRaw === '' ? null : (calendarUrlValid ? calendarUrlRaw.trim() : prefs.closingResourceUrl),
     calendarClosingMessage: calendarClosingRaw.trim() === '' ? null : calendarClosingRaw.trim().slice(0, 200),
   };
 
@@ -312,7 +315,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
 
       {/* CARD 3 — Instrucciones libres movido a componente separado (custom-instructions-list.tsx) */}
 
-      {/* CARD 4 — Cualificación + propuesta de llamada (Sprint 2.5b/B) */}
+      {/* CARD 4 — Cualificación + propuesta de llamada (Sprint 2.5b/B + 2.5b/C) */}
       <Card className="lg:col-span-2">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -320,83 +323,156 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             Cualificación + propuesta de llamada
           </CardTitle>
           <CardDescription>
-            Cómo cualifica el setter y cómo introduce la llamada/sesión cuando propone tu calendario.
+            Cómo cualifica el setter y cómo cierra la conversación (calendario, formulario o
+            derivación humana).
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="flex flex-col gap-2">
-            <Label className="text-sm">Preguntas extra antes de la cita</Label>
-            <p className="text-xs text-muted-foreground">
-              Antes de proponer la llamada, pedir al setter que haga preguntas adicionales para
-              reforzar contexto del lead.
-            </p>
-            <div className="flex items-center gap-2 mt-2">
-              {QUESTIONS_LABELS.map((q) => (
-                <Button
-                  key={q.value}
-                  type="button"
-                  size="sm"
-                  variant={prefs.extraQuestionsBeforeCall === q.value ? 'default' : 'outline'}
-                  onClick={() => update('extraQuestionsBeforeCall', q.value as 0 | 1 | 2)}
-                  className="flex-1"
-                >
-                  {q.label}
-                </Button>
-              ))}
+        <CardContent className="flex flex-col gap-8">
+          {/* Bloque 1 — Preguntas extra (toggle ON/OFF + botones si ON) */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex flex-col gap-0.5">
+                <Label htmlFor="qToggle" className="text-sm">
+                  Quiero ajustar las preguntas extra antes de la cita
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Si está apagado (default), el Coach del agente lo gestiona automáticamente. Actívalo
+                  solo si quieres forzar más o menos preguntas previas.
+                </p>
+              </div>
+              <Switch
+                id="qToggle"
+                checked={prefs.qualificationQuestionsEnabled}
+                onCheckedChange={(v) => update('qualificationQuestionsEnabled', v)}
+              />
             </div>
-            <p className="text-xs text-muted-foreground italic">
-              {QUESTIONS_LABELS[prefs.extraQuestionsBeforeCall]!.desc}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="calendarUrl" className="text-xs flex items-center gap-1.5">
-              <LinkIcon className="size-3" />
-              URL de tu calendario
-            </Label>
-            <Input
-              id="calendarUrl"
-              type="url"
-              value={calendarUrlRaw}
-              onChange={(e) => setCalendarUrlRaw(e.target.value)}
-              placeholder="https://cal.com/tu-slug  o  https://calendly.com/tu-slug"
-              className={!calendarUrlValid && calendarUrlRaw !== '' ? 'border-destructive' : ''}
-              maxLength={200}
-            />
-            {!calendarUrlValid && calendarUrlRaw !== '' ? (
-              <p className="text-xs text-destructive">
-                URL inválida. Debe empezar por <code>https://</code> y ser una URL real.
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">
-                El setter compartirá EXACTAMENTE este enlace al proponer la llamada. Si vacío, dirá
-                &quot;te paso mi agenda&quot; sin link (peor experiencia para el lead).
-              </p>
+            {prefs.qualificationQuestionsEnabled && (
+              <>
+                <div className="flex items-center gap-2 mt-1">
+                  {QUESTIONS_LABELS.map((q) => (
+                    <Button
+                      key={q.value}
+                      type="button"
+                      size="sm"
+                      variant={prefs.extraQuestionsBeforeCall === q.value ? 'default' : 'outline'}
+                      onClick={() => update('extraQuestionsBeforeCall', q.value as 0 | 1 | 2)}
+                      className="flex-1"
+                    >
+                      {q.label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  {QUESTIONS_LABELS[prefs.extraQuestionsBeforeCall]!.desc}
+                </p>
+              </>
             )}
           </div>
 
-          <div className="flex flex-col gap-1.5 md:col-span-2">
-            <Label htmlFor="calendarClosing" className="text-xs">
-              Frase de cierre antes del calendario (opcional)
-            </Label>
-            <textarea
-              id="calendarClosing"
-              value={calendarClosingRaw}
-              onChange={(e) => setCalendarClosingRaw(e.target.value)}
-              placeholder="ej: Vamos a verlo en una llamada de 15 min, te paso mi agenda 👇"
-              rows={2}
-              maxLength={200}
-              className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
-            />
-            <div className="flex items-center justify-between text-xs">
-              <p className="text-muted-foreground">
-                Frase opcional que el setter dirá justo antes del enlace. Vacío = el setter decide.
-              </p>
-              <span className={`tabular-nums ${calendarClosingRaw.length > 180 ? 'text-amber-400' : 'text-muted-foreground'}`}>
-                {calendarClosingRaw.length}/200
-              </span>
+          <div className="border-t border-border/40" />
+
+          {/* Bloque 2 — Modo de cierre (selector de 3) */}
+          <div className="flex flex-col gap-3">
+            <Label className="text-sm">¿Cómo cierra el setter cuando el lead está cualificado?</Label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {CALL_PROPOSAL_MODES.map((mode) => {
+                const meta = CALL_PROPOSAL_MODE_LABELS[mode];
+                const active = prefs.callProposalMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => update('callProposalMode', mode as CallProposalMode)}
+                    className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                    <span className="text-xs">{meta.desc}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* Bloque 3 — URL del recurso (solo modos calendar/form) */}
+          {prefs.callProposalMode !== 'human_handoff' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="calendarUrl" className="text-xs flex items-center gap-1.5">
+                  <LinkIcon className="size-3" />
+                  {prefs.callProposalMode === 'calendar' ? 'URL de tu calendario' : 'URL de tu formulario'}
+                </Label>
+                <Input
+                  id="calendarUrl"
+                  type="url"
+                  value={calendarUrlRaw}
+                  onChange={(e) => setCalendarUrlRaw(e.target.value)}
+                  placeholder={
+                    prefs.callProposalMode === 'calendar'
+                      ? 'https://cal.com/tu-slug  o  https://calendly.com/tu-slug'
+                      : 'https://forms.google.com/...  o  https://typeform.com/...'
+                  }
+                  className={!calendarUrlValid && calendarUrlRaw !== '' ? 'border-destructive' : ''}
+                  maxLength={200}
+                />
+                {!calendarUrlValid && calendarUrlRaw !== '' ? (
+                  <p className="text-xs text-destructive">
+                    URL inválida. Debe empezar por <code>https://</code> y ser una URL real.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    El setter compartirá EXACTAMENTE este enlace al cerrar.
+                    {calendarUrlRaw === '' &&
+                      (prefs.callProposalMode === 'form'
+                        ? ' En modo formulario es obligatorio para que tenga sentido.'
+                        : ' Si vacío, dirá "te paso mi agenda" sin link (peor experiencia para el lead).')}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="calendarClosing" className="text-xs">
+                  Frase de cierre antes del enlace (opcional)
+                </Label>
+                <textarea
+                  id="calendarClosing"
+                  value={calendarClosingRaw}
+                  onChange={(e) => setCalendarClosingRaw(e.target.value)}
+                  placeholder={
+                    prefs.callProposalMode === 'calendar'
+                      ? 'ej: Vamos a verlo en una llamada de 15 min, te paso mi agenda 👇'
+                      : 'ej: Para cerrar, déjame tus datos en este formulario 👇'
+                  }
+                  rows={2}
+                  maxLength={200}
+                  className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
+                />
+                <div className="flex items-center justify-between text-xs">
+                  <p className="text-muted-foreground">
+                    Vacío = el setter decide.
+                  </p>
+                  <span className={`tabular-nums ${calendarClosingRaw.length > 180 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                    {calendarClosingRaw.length}/200
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bloque 4 — Nota explicativa cuando modo handoff */}
+          {prefs.callProposalMode === 'human_handoff' && (
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+              <p className="font-medium text-amber-200 mb-1">Modo derivación humana</p>
+              <p className="text-xs text-muted-foreground">
+                El setter cualificará al lead y, en lugar de proponer llamada o enviar enlace, marcará
+                la conversación como handoff. La IA pausará tras ese turno y tú atenderás manualmente.
+                Recibirás email si tienes el evento <strong>Handoff a humano</strong> activado abajo.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
