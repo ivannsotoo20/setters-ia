@@ -29,6 +29,19 @@ const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 const PHONE_E164_REGEX = /^\+[1-9]\d{7,14}$/;
 
 const MAX_TRAINER_NAME_CHARS = 100;
+const MAX_CUSTOM_EMOJIS = 8;
+const MAX_EMOJI_CHARS = 8; // permite ZWJ sequences como "👨‍👩‍👧" (varios codepoints)
+const MAX_EMOJI_DESCRIPTION_CHARS = 100;
+
+/**
+ * Sprint 2.5b/E — Customización de un emoji individual del trainer:
+ *   - emoji: 1-8 chars (acepta ZWJ sequences).
+ *   - whenToUse: descripción 1-100 chars de cuándo usarlo (sanitizada).
+ */
+export interface EmojiCustomization {
+  emoji: string;
+  whenToUse: string;
+}
 
 export interface TrainerPreferences {
   // ----- Sprint Gamma 1 + 2.5b: estilo -----
@@ -37,8 +50,18 @@ export interface TrainerPreferences {
   // trainer los querría). Las directrices se emiten siempre desde el serializer.
   // Datos viejos en JSONB con esas claves se ignoran silenciosamente.
 
-  /** Densidad de emojis: 0=casi sin emojis, 1=algunos, 2=moderada (default), 3=abundante. */
-  emojiDensity: 0 | 1 | 2 | 3;
+  // Sprint 2.5b/E: `emojiDensity` (slider 0-3) eliminado y reemplazado por la
+  // sección Emoticonos completa (toggle + frecuencia + máximo + whitelist
+  // personalizable). Datos legacy con `emojiDensity` se ignoran silenciosamente.
+  /** Sprint 2.5b/E — Si false, el setter NO usa NINGÚN emoji. Default true. */
+  emojisEnabled: boolean;
+  /** Sprint 2.5b/E — Cada cuántos mensajes el setter usa un emoji (1=cada msg, 2=cada 2, 3=cada 3). Default 2. */
+  emojiFrequencyPerMessages: 1 | 2 | 3;
+  /** Sprint 2.5b/E — Tope máximo de emojis por conversación entera (1-8). Default 5. */
+  emojiMaxPerConversation: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  /** Sprint 2.5b/E — Whitelist personalizada de emojis con descripción de cuándo usar cada uno (max 8). Vacío = el setter usa su criterio (los del Coach). */
+  customEmojis: EmojiCustomization[];
+
   /** Sprint 2.5b/C — Si true, el trainer ajusta preguntas extra; si false (default), el Coach lo gestiona. */
   qualificationQuestionsEnabled: boolean;
   /** Preguntas adicionales antes de proponer la llamada (0-2). Solo aplica si qualificationQuestionsEnabled=true. */
@@ -115,7 +138,10 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, { label: s
 const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_booked'];
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
-  emojiDensity: 2,
+  emojisEnabled: true,
+  emojiFrequencyPerMessages: 2,
+  emojiMaxPerConversation: 5,
+  customEmojis: [],
   qualificationQuestionsEnabled: false,
   extraQuestionsBeforeCall: 0,
   messageLengthDensity: 1,
@@ -131,6 +157,59 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
 
 const MAX_CLOSING_RESOURCE_URL_CHARS = 200;
 const MAX_CALENDAR_CLOSING_CHARS = 200;
+
+/**
+ * Sprint 2.5b/E — Sanitiza un emoji individual:
+ *   - trim
+ *   - max 8 chars (cubre la mayoría de ZWJ sequences)
+ *   - Rechaza si vacío, contiene chars de control, ASCII visible (a-z A-Z 0-9
+ *     puntuación normal) — debe parecer un emoji real.
+ *   - Acepta cualquier carácter Unicode no-control (incluye emojis + algunos
+ *     símbolos como ★ ✓ que el trainer podría querer usar).
+ */
+function sanitizeEmoji(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (trimmed === '' || trimmed.length > MAX_EMOJI_CHARS) return null;
+  // Rechaza si contiene chars de control o solo ASCII visible "normal" (letras/dígitos)
+  if (/[\x00-\x1f\x7f]/.test(trimmed)) return null;
+  // Si es 100% ASCII alfanumérico/puntuación común, NO es un emoji
+  if (/^[\x20-\x7e]+$/.test(trimmed)) return null;
+  return trimmed;
+}
+
+function sanitizeEmojiWhenToUse(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim();
+  if (trimmed === '') return null;
+  if (trimmed.length > MAX_EMOJI_DESCRIPTION_CHARS) {
+    trimmed = trimmed.slice(0, MAX_EMOJI_DESCRIPTION_CHARS);
+  }
+  // Escape de tags reservados (igual estrategia que custom_instructions + closingMessage)
+  trimmed = trimmed.replace(
+    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    '&lt;/$1&gt;',
+  );
+  return trimmed;
+}
+
+function parseCustomEmojis(raw: unknown): EmojiCustomization[] {
+  if (!Array.isArray(raw)) return [];
+  const out: EmojiCustomization[] = [];
+  const seenEmojis = new Set<string>();
+  for (const item of raw) {
+    if (out.length >= MAX_CUSTOM_EMOJIS) break;
+    if (item == null || typeof item !== 'object') continue;
+    const r = item as Record<string, unknown>;
+    const emoji = sanitizeEmoji(r.emoji);
+    const whenToUse = sanitizeEmojiWhenToUse(r.whenToUse);
+    if (emoji == null || whenToUse == null) continue;
+    if (seenEmojis.has(emoji)) continue; // dedup
+    seenEmojis.add(emoji);
+    out.push({ emoji, whenToUse });
+  }
+  return out;
+}
 
 function parseCallProposalMode(raw: unknown): CallProposalMode {
   if (typeof raw === 'string' && (CALL_PROPOSAL_MODES as readonly string[]).includes(raw)) {
@@ -257,15 +336,27 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   if (raw == null || typeof raw !== 'object') return out;
   const r = raw as Record<string, unknown>;
 
-  // Sprint 2.5b/A: claves obsoletas (`doubleQuestionMark`, `preferVoiceNotesAcknowledgment`)
-  // se ignoran silenciosamente — siguen en JSONB de tenants legacy pero no se usan.
+  // Sprint 2.5b/A + 2.5b/E: claves obsoletas (`doubleQuestionMark`,
+  // `preferVoiceNotesAcknowledgment`, `emojiDensity`) se ignoran silenciosamente —
+  // pueden seguir en JSONB de tenants legacy pero no se usan.
 
-  if (typeof r.emojiDensity === 'number' && Number.isInteger(r.emojiDensity)) {
-    const n = r.emojiDensity;
-    if (n >= 0 && n <= 3) {
-      out.emojiDensity = n as 0 | 1 | 2 | 3;
+  // Sprint 2.5b/E — sección Emoticonos
+  if (typeof r.emojisEnabled === 'boolean') {
+    out.emojisEnabled = r.emojisEnabled;
+  }
+  if (typeof r.emojiFrequencyPerMessages === 'number' && Number.isInteger(r.emojiFrequencyPerMessages)) {
+    const n = r.emojiFrequencyPerMessages;
+    if (n >= 1 && n <= 3) {
+      out.emojiFrequencyPerMessages = n as 1 | 2 | 3;
     }
   }
+  if (typeof r.emojiMaxPerConversation === 'number' && Number.isInteger(r.emojiMaxPerConversation)) {
+    const n = r.emojiMaxPerConversation;
+    if (n >= 1 && n <= 8) {
+      out.emojiMaxPerConversation = n as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+    }
+  }
+  out.customEmojis = parseCustomEmojis(r.customEmojis);
 
   if (typeof r.extraQuestionsBeforeCall === 'number' && Number.isInteger(r.extraQuestionsBeforeCall)) {
     const n = r.extraQuestionsBeforeCall;
@@ -316,13 +407,6 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   return out;
 }
 
-const EMOJI_DENSITY_DESCRIPTIONS = {
-  0: 'casi sin emojis (máximo 1 emoji cada 3-4 mensajes)',
-  1: 'algunos emojis (1 emoji por mensaje, contextual)',
-  2: 'densidad moderada (1-2 emojis por mensaje, expresivos pero no saturados)',
-  3: 'densidad alta (2-4 emojis por mensaje, muy expresivos)',
-} as const;
-
 const MESSAGE_LENGTH_DESCRIPTIONS = {
   0: 'mensajes cortos y directos (1 frase por turno, máximo 2 si necesitas contexto). Evita párrafos.',
   1: 'longitud equilibrada (1-2 frases por mensaje; si necesitas más contexto, parte en 2 mensajes consecutivos).',
@@ -370,13 +454,45 @@ export function serializeTrainerPreferences(
     '- **Doble interrogación**: cuando termines una frase con pregunta, usa `??` en lugar de `?` ' +
       '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
   );
-  lines.push(`- **Densidad de emojis**: ${EMOJI_DENSITY_DESCRIPTIONS[prefs.emojiDensity]}.`);
   lines.push(`- **Longitud de mensajes**: ${MESSAGE_LENGTH_DESCRIPTIONS[prefs.messageLengthDensity]}`);
   lines.push(`- **Tono**: ${TONE_DESCRIPTIONS[prefs.toneRegister]}`);
   lines.push(
     '- **Acknowledge audios**: si el lead envía un audio, menciónalo explícitamente al inicio ' +
       'de tu respuesta (p.ej. "escuché tu audio…", "acabo de oír lo que mandas…").',
   );
+
+  // Sprint 2.5b/E — Sección Emoticonos.
+  lines.push('');
+  lines.push('### Emoticonos');
+  lines.push('');
+  if (!prefs.emojisEnabled) {
+    lines.push(
+      '- **Sin emojis**: NO uses NINGÚN emoji en tus respuestas. Texto plano siempre. ' +
+        'Esta directriz tiene prioridad sobre cualquier sugerencia del Coach o del Cerebro.',
+    );
+  } else {
+    const freq = prefs.emojiFrequencyPerMessages;
+    const freqText =
+      freq === 1
+        ? 'aproximadamente 1 emoji por mensaje (frecuencia alta)'
+        : freq === 2
+          ? 'aproximadamente 1 emoji cada 2 mensajes (frecuencia media)'
+          : 'aproximadamente 1 emoji cada 3 mensajes (frecuencia baja)';
+    lines.push(`- **Frecuencia**: ${freqText}.`);
+    lines.push(
+      `- **Tope por conversación**: usa como máximo ${prefs.emojiMaxPerConversation} emoji${prefs.emojiMaxPerConversation === 1 ? '' : 's'} en toda la conversación, ` +
+        'aunque el lead la alargue. Si llegas al tope, sigue sin emojis hasta el cierre.',
+    );
+    if (prefs.customEmojis.length > 0) {
+      lines.push(
+        `- **Whitelist del trainer**: usa SOLO estos emojis (NO otros, NO inventes ni añadas variantes), ` +
+          `cada uno cuando aplique el contexto descrito:`,
+      );
+      for (const e of prefs.customEmojis) {
+        lines.push(`  - ${e.emoji} → ${e.whenToUse}`);
+      }
+    }
+  }
 
   lines.push('');
   lines.push('### Cualificación y propuesta de llamada');

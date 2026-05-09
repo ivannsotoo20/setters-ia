@@ -337,16 +337,27 @@ function ConfiguracionTab({
           {trainerPrefs ? (
             <>
               <PrefRow
-                label="Densidad de emojis"
+                label="Emojis"
                 value={
-                  ['casi sin emojis', 'algunos', 'moderada', 'abundante'][trainerPrefs.emojiDensity]!
+                  trainerPrefs.emojisEnabled
+                    ? `cada ${trainerPrefs.emojiFrequencyPerMessages} msg, max ${trainerPrefs.emojiMaxPerConversation}/conv${trainerPrefs.customEmojis.length > 0 ? `, ${trainerPrefs.customEmojis.length} custom` : ''}`
+                    : 'desactivados'
                 }
-                isDefault={trainerPrefs.emojiDensity === 2}
+                isDefault={
+                  trainerPrefs.emojisEnabled &&
+                  trainerPrefs.emojiFrequencyPerMessages === 2 &&
+                  trainerPrefs.emojiMaxPerConversation === 5 &&
+                  trainerPrefs.customEmojis.length === 0
+                }
               />
               <PrefRow
                 label="Preguntas extra antes de cita"
-                value={`+${trainerPrefs.extraQuestionsBeforeCall}`}
-                isDefault={trainerPrefs.extraQuestionsBeforeCall === 0}
+                value={
+                  trainerPrefs.qualificationQuestionsEnabled
+                    ? `+${trainerPrefs.extraQuestionsBeforeCall}`
+                    : '(gestiona Coach)'
+                }
+                isDefault={!trainerPrefs.qualificationQuestionsEnabled}
               />
               <PrefRow
                 label="Email para notificaciones"

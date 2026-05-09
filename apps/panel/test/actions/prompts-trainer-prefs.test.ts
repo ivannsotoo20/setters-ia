@@ -183,11 +183,11 @@ describe('loadTrainerPreferences', () => {
     if (r.ok) expect(r.preferences).toEqual(DEFAULT_TRAINER_PREFERENCES);
   });
 
-  it('returns saved preferences when row exists (Sprint 2.5b/A: legacy keys ignored)', async () => {
+  it('returns saved preferences when row exists (Sprint 2.5b/A + 2.5b/E: legacy keys ignored)', async () => {
     state.prefs.push({
       id: 1,
       tenant_id: 3,
-      // doubleQuestionMark + preferVoiceNotesAcknowledgment son legacy y se ignoran
+      // doubleQuestionMark + preferVoiceNotesAcknowledgment + emojiDensity son legacy y se ignoran
       preferences: { doubleQuestionMark: true, emojiDensity: 3, extraQuestionsBeforeCall: 1, preferVoiceNotesAcknowledgment: true },
       updated_by: null,
       updated_at: new Date().toISOString(),
@@ -195,11 +195,11 @@ describe('loadTrainerPreferences', () => {
     const r = await loadTrainerPreferences({ tenantId: 3 });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.preferences.emojiDensity).toBe(3);
       expect(r.preferences.extraQuestionsBeforeCall).toBe(1);
       // Legacy fields no aparecen en el output
       expect((r.preferences as unknown as Record<string, unknown>).doubleQuestionMark).toBeUndefined();
       expect((r.preferences as unknown as Record<string, unknown>).preferVoiceNotesAcknowledgment).toBeUndefined();
+      expect((r.preferences as unknown as Record<string, unknown>).emojiDensity).toBeUndefined();
     }
   });
 
@@ -207,7 +207,7 @@ describe('loadTrainerPreferences', () => {
     state.prefs.push({
       id: 1,
       tenant_id: 3,
-      preferences: { emojiDensity: 99, extraQuestionsBeforeCall: 'not-a-number' },
+      preferences: { emojiFrequencyPerMessages: 99, extraQuestionsBeforeCall: 'not-a-number' },
       updated_by: null,
       updated_at: new Date().toISOString(),
     });
@@ -215,7 +215,9 @@ describe('loadTrainerPreferences', () => {
     expect(r.ok).toBe(true);
     if (r.ok) {
       // Valores inválidos → defaults
-      expect(r.preferences.emojiDensity).toBe(DEFAULT_TRAINER_PREFERENCES.emojiDensity);
+      expect(r.preferences.emojiFrequencyPerMessages).toBe(
+        DEFAULT_TRAINER_PREFERENCES.emojiFrequencyPerMessages,
+      );
       expect(r.preferences.extraQuestionsBeforeCall).toBe(
         DEFAULT_TRAINER_PREFERENCES.extraQuestionsBeforeCall,
       );
@@ -239,20 +241,23 @@ describe('loadTrainerPreferences', () => {
     state.prefs.push({
       id: 1,
       tenant_id: 7,
-      preferences: { emojiDensity: 0 },
+      preferences: { emojiFrequencyPerMessages: 1 },
       updated_by: null,
       updated_at: new Date().toISOString(),
     });
     const r = await loadTrainerPreferences({ tenantId: 7 });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.preferences.emojiDensity).toBe(0);
+    if (r.ok) expect(r.preferences.emojiFrequencyPerMessages).toBe(1);
   });
 });
 
 describe('saveTrainerPreferences', () => {
   it('UPSERTs trainer_preferences + INSERTs trainer_prefs_v1 prompt_blocks markdown (first time)', async () => {
     const newPrefs: import('@/lib/trainer-prefs-serializer').TrainerPreferences = {
-      emojiDensity: 3,
+      emojisEnabled: true,
+      emojiFrequencyPerMessages: 1,
+      emojiMaxPerConversation: 8,
+      customEmojis: [],
       qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
       messageLengthDensity: 1,
@@ -280,7 +285,7 @@ describe('saveTrainerPreferences', () => {
     expect(promptBlock).toBeDefined();
     expect(promptBlock!.sort_order).toBe(110);
     expect(promptBlock!.content).toContain('Doble interrogación');
-    expect(promptBlock!.content).toContain('densidad alta');
+    expect(promptBlock!.content).toContain('frecuencia alta');
     expect(promptBlock!.content).toContain('2 preguntas adicionales');
     expect(promptBlock!.content).toContain('Acknowledge audios');
   });
@@ -299,13 +304,13 @@ describe('saveTrainerPreferences', () => {
 
     const r = await saveTrainerPreferences({
       tenantId: 3,
-      preferences: { ...DEFAULT_TRAINER_PREFERENCES, emojiDensity: 3 },
+      preferences: { ...DEFAULT_TRAINER_PREFERENCES, emojiFrequencyPerMessages: 1 },
     });
     expect(r.ok).toBe(true);
     expect(state.blocks).toHaveLength(1);
     const updated = state.blocks[0]!;
     expect(updated.id).toBe(200);
-    expect(updated.content).toContain('densidad alta');
+    expect(updated.content).toContain('frecuencia alta');
     expect(updated.content).not.toBe('OLD MARKDOWN');
   });
 
@@ -327,7 +332,7 @@ describe('saveTrainerPreferences', () => {
     };
     const r = await saveTrainerPreferences({
       tenantId: 7,
-      preferences: { ...DEFAULT_TRAINER_PREFERENCES, emojiDensity: 0 },
+      preferences: { ...DEFAULT_TRAINER_PREFERENCES, emojiFrequencyPerMessages: 1 },
     });
     expect(r.ok).toBe(true);
     expect(state.prefs[0]!.tenant_id).toBe(7);
@@ -337,10 +342,11 @@ describe('saveTrainerPreferences', () => {
     // Simulamos un cliente malicioso enviando un payload con valores fuera de rango
     // y claves legacy que ya no forman parte del schema.
     const maliciousPayload = {
-      emojiDensity: 99,
+      emojiFrequencyPerMessages: 99,
       extraQuestionsBeforeCall: -5,
       doubleQuestionMark: true,
       preferVoiceNotesAcknowledgment: false,
+      emojiDensity: 5,
     } as unknown as import('@/lib/trainer-prefs-serializer').TrainerPreferences;
     const r = await saveTrainerPreferences({
       tenantId: 3,
@@ -349,10 +355,11 @@ describe('saveTrainerPreferences', () => {
     expect(r.ok).toBe(true);
     // El parse defensive reemplazó valores inválidos por defaults antes de guardar
     const saved = state.prefs[0]!.preferences as Record<string, unknown>;
-    expect(saved.emojiDensity).toBe(DEFAULT_TRAINER_PREFERENCES.emojiDensity);
+    expect(saved.emojiFrequencyPerMessages).toBe(DEFAULT_TRAINER_PREFERENCES.emojiFrequencyPerMessages);
     expect(saved.extraQuestionsBeforeCall).toBe(DEFAULT_TRAINER_PREFERENCES.extraQuestionsBeforeCall);
-    // Sprint 2.5b/A: legacy keys no se persisten
+    // Sprint 2.5b/A + 2.5b/E: legacy keys no se persisten
     expect(saved.doubleQuestionMark).toBeUndefined();
     expect(saved.preferVoiceNotesAcknowledgment).toBeUndefined();
+    expect(saved.emojiDensity).toBeUndefined();
   });
 });

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -16,6 +16,7 @@ import {
   type TrainerPreferences,
   type NotificationEventType,
   type CallProposalMode,
+  type EmojiCustomization,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_EVENT_LABELS,
   CALL_PROPOSAL_MODES,
@@ -30,12 +31,13 @@ interface Props {
   initial: TrainerPreferences;
 }
 
-const EMOJI_DENSITY_LABELS = [
-  { value: 0, label: 'Casi sin emojis', desc: 'máximo 1 cada 3-4 mensajes' },
-  { value: 1, label: 'Algunos', desc: '1 emoji por mensaje, contextual' },
-  { value: 2, label: 'Moderada', desc: 'expresivos pero no saturados (default)' },
-  { value: 3, label: 'Abundante', desc: '2-4 por mensaje, muy expresivos' },
+const EMOJI_FREQ_LABELS = [
+  { value: 1, label: 'Cada mensaje', desc: 'Frecuencia alta — el setter usa ~1 emoji por mensaje. Más expresivo, más emocional.' },
+  { value: 2, label: 'Cada 2 mensajes', desc: 'Frecuencia media — equilibrado. Recomendado para la mayoría de nichos.' },
+  { value: 3, label: 'Cada 3 mensajes', desc: 'Frecuencia baja — el setter usa pocos emojis. Más sobrio, profesional.' },
 ];
+
+const EMOJI_MAX_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8] as const;
 
 const QUESTIONS_LABELS = [
   {
@@ -160,34 +162,6 @@ export function PreferencesForm({ tenantId, initial }: Props) {
           <CardDescription>Cómo se ve el mensaje del setter en pantalla.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-sm">Densidad de emojis</Label>
-              <Badge variant="outline" className="font-mono text-xs">
-                {EMOJI_DENSITY_LABELS[prefs.emojiDensity]!.label}
-              </Badge>
-            </div>
-            <Slider
-              value={[prefs.emojiDensity]}
-              min={0}
-              max={3}
-              step={1}
-              onValueChange={(v) => {
-                const n = v[0];
-                if (n != null) update('emojiDensity', n as 0 | 1 | 2 | 3);
-              }}
-            />
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
-              <span>Casi sin</span>
-              <span>Algunos</span>
-              <span>Moderada</span>
-              <span>Abundante</span>
-            </div>
-            <p className="text-xs text-muted-foreground italic">
-              {EMOJI_DENSITY_LABELS[prefs.emojiDensity]!.desc}
-            </p>
-          </div>
-
           {/* Sprint 2.5b/B — Slider longitud de mensajes */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
@@ -243,6 +217,121 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               {TONE_LABELS[prefs.toneRegister]!.desc}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* CARD EMOTICONOS (Sprint Gamma 2.5b/E) — full width */}
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Smile className="size-4" />
+            Emoticonos
+          </CardTitle>
+          <CardDescription>
+            Decide si el setter usa emojis, con qué frecuencia, cuántos por conversación y qué emojis
+            concretos. Si no configuras nada, el setter usa los del Coach con criterio normal.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-6">
+          {/* Toggle on/off */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1">
+              <Label htmlFor="emojisToggle" className="text-sm">
+                ¿Quieres que el setter use emojis?
+              </Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Apaga esto si tu nicho es <strong className="text-foreground/80">muy formal</strong>{' '}
+                (legal, B2B premium, médico) o si simplemente prefieres texto plano. Cuando está
+                apagado, el setter NO usa NINGÚN emoji aunque el Coach los sugiera.
+              </p>
+            </div>
+            <Switch
+              id="emojisToggle"
+              checked={prefs.emojisEnabled}
+              onCheckedChange={(v) => update('emojisEnabled', v)}
+            />
+          </div>
+
+          {prefs.emojisEnabled && (
+            <div className="flex flex-col gap-6 p-4 rounded-md border border-border/40 bg-muted/20">
+              {/* Frecuencia */}
+              <div className="flex flex-col gap-2">
+                <Label className="text-sm">Frecuencia: ¿cada cuántos mensajes?</Label>
+                <p className="text-xs text-muted-foreground">
+                  El setter NO usará emojis en cada mensaje a menos que elijas frecuencia alta. Más
+                  emojis no siempre es mejor — depende de tu marca.
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  {EMOJI_FREQ_LABELS.map((f) => (
+                    <Button
+                      key={f.value}
+                      type="button"
+                      size="sm"
+                      variant={prefs.emojiFrequencyPerMessages === f.value ? 'default' : 'outline'}
+                      onClick={() =>
+                        update('emojiFrequencyPerMessages', f.value as 1 | 2 | 3)
+                      }
+                      className="flex-1"
+                    >
+                      {f.label}
+                    </Button>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground italic">
+                  {
+                    EMOJI_FREQ_LABELS.find((f) => f.value === prefs.emojiFrequencyPerMessages)!
+                      .desc
+                  }
+                </p>
+              </div>
+
+              {/* Máximo por conversación */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label className="text-sm">Tope máximo por conversación</Label>
+                  <Badge variant="outline" className="font-mono text-xs">
+                    {prefs.emojiMaxPerConversation} emoji
+                    {prefs.emojiMaxPerConversation === 1 ? '' : 's'}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Aunque la conversación se alargue, el setter no superará este número. Recomendado:
+                  3-5 para nichos normales, 1-2 si quieres que sea muy sobrio.
+                </p>
+                <Slider
+                  value={[prefs.emojiMaxPerConversation]}
+                  min={1}
+                  max={8}
+                  step={1}
+                  onValueChange={(v) => {
+                    const n = v[0];
+                    if (n != null && n >= 1 && n <= 8) {
+                      update(
+                        'emojiMaxPerConversation',
+                        n as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8,
+                      );
+                    }
+                  }}
+                />
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+                  <span>1</span>
+                  <span>2</span>
+                  <span>3</span>
+                  <span>4</span>
+                  <span>5</span>
+                  <span>6</span>
+                  <span>7</span>
+                  <span>8</span>
+                </div>
+              </div>
+
+              {/* Whitelist personalizada */}
+              <CustomEmojiList
+                items={prefs.customEmojis}
+                onChange={(next) => update('customEmojis', next)}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -607,6 +696,138 @@ export function PreferencesForm({ tenantId, initial }: Props) {
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// =============================================================================
+// CustomEmojiList — sub-componente de la sección Emoticonos (Sprint 2.5b/E)
+// =============================================================================
+
+interface CustomEmojiListProps {
+  items: EmojiCustomization[];
+  onChange: (next: EmojiCustomization[]) => void;
+}
+
+function CustomEmojiList({ items, onChange }: CustomEmojiListProps) {
+  const [newEmoji, setNewEmoji] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const MAX = 8;
+
+  function add() {
+    const e = newEmoji.trim();
+    const d = newDesc.trim();
+    if (!e || !d) return;
+    if (items.length >= MAX) return;
+    if (items.some((it) => it.emoji === e)) return; // dedup
+    onChange([...items, { emoji: e, whenToUse: d }]);
+    setNewEmoji('');
+    setNewDesc('');
+  }
+
+  function remove(idx: number) {
+    onChange(items.filter((_, i) => i !== idx));
+  }
+
+  function updateItem(idx: number, patch: Partial<EmojiCustomization>) {
+    onChange(items.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <Label className="text-sm">Lista personalizada de emojis (opcional)</Label>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Si dejas la lista vacía, el setter usa los emojis del Coach con criterio normal. Si añades
+          tus propios emojis, el setter usará <strong className="text-foreground/80">SOLO esos</strong>{' '}
+          y nunca otros — para que el lead reciba siempre tu marca visual. Máximo {MAX} emojis.
+          Describe cuándo usar cada uno (ej: &quot;cuando el lead celebre algo&quot;, &quot;al
+          proponer la llamada&quot;).
+        </p>
+      </div>
+
+      {items.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {items.map((it, idx) => (
+            <div
+              key={idx}
+              className="flex items-start gap-2 p-2 rounded-md border border-border/40 bg-background/40"
+            >
+              <Input
+                value={it.emoji}
+                onChange={(e) => updateItem(idx, { emoji: e.target.value })}
+                maxLength={8}
+                className="w-16 text-center text-lg shrink-0"
+                aria-label={`Emoji ${idx + 1}`}
+              />
+              <Input
+                value={it.whenToUse}
+                onChange={(e) => updateItem(idx, { whenToUse: e.target.value.slice(0, 100) })}
+                maxLength={100}
+                placeholder="ej: cuando el lead celebre algo"
+                className="flex-1"
+                aria-label={`Descripción emoji ${idx + 1}`}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => remove(idx)}
+                className="shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                aria-label={`Eliminar emoji ${idx + 1}`}
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {items.length < MAX ? (
+        <div className="flex items-start gap-2 p-2 rounded-md border border-dashed border-border/60">
+          <Input
+            value={newEmoji}
+            onChange={(e) => setNewEmoji(e.target.value)}
+            maxLength={8}
+            placeholder="✨"
+            className="w-16 text-center text-lg shrink-0"
+            aria-label="Nuevo emoji"
+          />
+          <Input
+            value={newDesc}
+            onChange={(e) => setNewDesc(e.target.value.slice(0, 100))}
+            maxLength={100}
+            placeholder="Cuándo usarlo (ej: cuando el lead celebre algo)"
+            className="flex-1"
+            aria-label="Descripción nuevo emoji"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                add();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={add}
+            disabled={!newEmoji.trim() || !newDesc.trim()}
+            className="shrink-0"
+          >
+            <Plus className="size-4" />
+            Añadir
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-amber-400">
+          Has llegado al máximo de {MAX} emojis. Elimina alguno para añadir otro.
+        </p>
+      )}
+
+      <p className="text-[11px] text-muted-foreground">
+        {items.length}/{MAX} emojis configurados
+      </p>
     </div>
   );
 }
