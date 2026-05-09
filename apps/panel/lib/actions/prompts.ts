@@ -846,6 +846,11 @@ export async function saveTrainerPreferences(args: {
   if (!eff.isAgencyAdmin && eff.tenantId !== args.tenantId) {
     return { ok: false, error: 'forbidden' };
   }
+  // Sprint Epsilon: solo owner del tenant o agency admin pueden escribir.
+  // Collaborators (role='admin') NO pueden modificar preferencias del setter.
+  if (!eff.isAgencyAdmin && eff.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede modificar preferencias' };
+  }
 
   const safePrefs = parseTrainerPreferences(args.preferences as unknown);
   const supabase = getServiceRoleClient();

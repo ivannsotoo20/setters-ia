@@ -1033,6 +1033,9 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          invited_at: string | null
+          invited_by: string | null
+          is_active: boolean
           is_agency_admin: boolean
           role: Database["public"]["Enums"]["profile_role"]
           tenant_id: number
@@ -1042,6 +1045,9 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean
           is_agency_admin?: boolean
           role?: Database["public"]["Enums"]["profile_role"]
           tenant_id: number
@@ -1051,6 +1057,9 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          is_active?: boolean
           is_agency_admin?: boolean
           role?: Database["public"]["Enums"]["profile_role"]
           tenant_id?: number
@@ -1058,6 +1067,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_audit_log: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_user_id: string | null
+          created_at: string
+          id: number
+          metadata: Json
+          target_email: string | null
+          target_user_id: string | null
+          tenant_id: number
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: number
+          metadata?: Json
+          target_email?: string | null
+          target_user_id?: string | null
+          tenant_id: number
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_user_id?: string | null
+          created_at?: string
+          id?: number
+          metadata?: Json
+          target_email?: string | null
+          target_user_id?: string | null
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_audit_log_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

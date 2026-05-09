@@ -10,11 +10,19 @@ import { resolveEffectiveTenantId } from '@/lib/impersonate';
  * (/dashboard, /conversations, /keywords, /settings/integrations) en vez de
  * leer `profile.tenant_id` directo.
  */
+export type TenantMembershipRole = 'owner' | 'admin' | 'viewer';
+
 export async function getEffectiveTenant(): Promise<{
   userId: string;
   tenantId: number;
   isAgencyAdmin: boolean;
   isImpersonating: boolean;
+  /**
+   * Rol del profile en SU tenant natural (NO en el impersonado). El agency
+   * admin que impersonea sigue siendo "owner" de su tenant Fyzon. La
+   * autorización per-action debe combinar `isAgencyAdmin || role === 'owner'`.
+   */
+  role: TenantMembershipRole;
 } | null> {
   const supabase = await createSupabaseServerClient();
   const {
@@ -24,10 +32,11 @@ export async function getEffectiveTenant(): Promise<{
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('tenant_id, is_agency_admin')
+    .select('tenant_id, is_agency_admin, role, is_active')
     .eq('id', user.id)
     .maybeSingle();
   if (!profile?.tenant_id) return null;
+  if (profile.is_active === false) return null;
 
   const { tenantId, isImpersonating } = await resolveEffectiveTenantId({
     profileTenantId: Number(profile.tenant_id),
@@ -39,5 +48,6 @@ export async function getEffectiveTenant(): Promise<{
     tenantId,
     isAgencyAdmin: profile.is_agency_admin === true,
     isImpersonating,
+    role: (profile.role as TenantMembershipRole | null) ?? 'owner',
   };
 }

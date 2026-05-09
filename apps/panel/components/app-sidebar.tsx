@@ -14,6 +14,10 @@ import {
   Brain,
   Users,
   ShieldCheck,
+  ArrowLeft,
+  ClipboardList,
+  Receipt,
+  UserCog,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -27,6 +31,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { logout } from '@/lib/actions/auth';
@@ -37,15 +42,18 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-const NAV_MAIN: NavItem[] = [
+type SidebarMode = 'agency' | 'tenant-admin' | 'trainer';
+
+const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/conversations', label: 'Conversaciones', icon: MessageSquare },
 ];
 
-const NAV_CONFIG: NavItem[] = [
+const NAV_TRAINER_CONFIG: NavItem[] = [
   { href: '/keywords', label: 'Keywords', icon: Sparkles },
   { href: '/settings/integrations', label: 'Integraciones', icon: Settings },
   { href: '/settings/preferences', label: 'Preferencias', icon: Sliders },
+  { href: '/settings/members', label: 'Miembros', icon: UserCog },
 ];
 
 const NAV_AGENCY: NavItem[] = [
@@ -53,6 +61,38 @@ const NAV_AGENCY: NavItem[] = [
   { href: '/admin/tenants', label: 'Sub-cuentas', icon: Users },
   { href: '/admin/cerebro', label: 'Cerebro (prompt)', icon: Brain },
 ];
+
+function buildTenantAdminNav(tenantId: string | number): NavItem[] {
+  const base = `/admin/tenants/${tenantId}`;
+  return [
+    { href: base, label: 'Resumen', icon: LayoutDashboard },
+    { href: `${base}/members`, label: 'Miembros', icon: UserCog },
+    { href: `${base}/audit`, label: 'Auditoría', icon: ClipboardList },
+    { href: `${base}/billing`, label: 'Facturación', icon: Receipt },
+  ];
+}
+
+/**
+ * Deriva el modo de sidebar según pathname + flag agency admin.
+ *
+ * - `agency`: agency admin en `/admin/dashboard|tenants|cerebro|settings`.
+ *   NO en `/admin/tenants/[id]/...`, eso es tenant-admin.
+ * - `tenant-admin`: agency admin en `/admin/tenants/[id]/...`.
+ * - `trainer`: cualquier otra ruta (dashboard, conversations, keywords,
+ *   settings/*). Tanto trainer normal como agency admin impersonando.
+ */
+function deriveMode(pathname: string, isAgencyAdmin: boolean): SidebarMode {
+  if (!isAgencyAdmin) return 'trainer';
+  const tenantMatch = /^\/admin\/tenants\/(\d+)(\/|$)/.exec(pathname);
+  if (tenantMatch) return 'tenant-admin';
+  if (pathname.startsWith('/admin/')) return 'agency';
+  return 'trainer';
+}
+
+function extractTenantId(pathname: string): string | null {
+  const m = /^\/admin\/tenants\/(\d+)(\/|$)/.exec(pathname);
+  return m && m[1] ? m[1] : null;
+}
 
 interface Props {
   tenantName?: string | null;
@@ -68,6 +108,20 @@ export function AppSidebar({
   impersonatingTenantName,
 }: Props) {
   const pathname = usePathname();
+  const mode = deriveMode(pathname, isAgencyAdmin === true);
+  const tenantIdInUrl = extractTenantId(pathname);
+
+  const homeHref =
+    mode === 'agency' || mode === 'tenant-admin'
+      ? '/admin/dashboard'
+      : '/dashboard';
+
+  const subtitle =
+    impersonatingTenantName !== null && impersonatingTenantName !== undefined
+      ? `Viendo: ${impersonatingTenantName}`
+      : mode === 'agency'
+        ? 'Modo agencia'
+        : tenantName ?? 'Sin tenant';
 
   return (
     <Sidebar collapsible="icon">
@@ -75,16 +129,14 @@ export function AppSidebar({
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <Link href={isAgencyAdmin ? '/admin/dashboard' : '/dashboard'}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <Link href={homeHref}>
+                <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shrink-0">
                   <Bot className="size-4" />
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
                   <span className="font-semibold truncate">Fyzon Setters</span>
                   <span className="text-xs text-muted-foreground truncate">
-                    {impersonatingTenantName
-                      ? `Viendo: ${impersonatingTenantName}`
-                      : tenantName ?? 'Sin tenant'}
+                    {subtitle}
                   </span>
                 </div>
                 {isAgencyAdmin ? (
@@ -94,17 +146,10 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {isAgencyAdmin ? (
-          <div className="px-2 pt-1">
-            <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5 text-[10px]">
-              <ShieldCheck className="size-2.5 mr-1" />
-              Agencia
-            </Badge>
-          </div>
-        ) : null}
+        {isAgencyAdmin && mode === 'agency' ? <AgencyBadge /> : null}
       </SidebarHeader>
       <SidebarContent>
-        {isAgencyAdmin ? (
+        {mode === 'agency' ? (
           <SidebarGroup>
             <SidebarGroupLabel>Agencia</SidebarGroupLabel>
             <SidebarGroupContent>
@@ -121,49 +166,86 @@ export function AppSidebar({
           </SidebarGroup>
         ) : null}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Operación</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV_MAIN.map((item) => (
-                <NavItemRow
-                  key={item.href}
-                  item={item}
-                  active={isActive(pathname, item.href)}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {mode === 'tenant-admin' && tenantIdInUrl ? (
+          <>
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Volver a Sub-cuentas">
+                      <Link href="/admin/tenants">
+                        <ArrowLeft className="size-4" />
+                        <span>Sub-cuentas</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+            <SidebarGroup>
+              <SidebarGroupLabel>Sub-cuenta</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {buildTenantAdminNav(tenantIdInUrl).map((item) => (
+                    <NavItemRow
+                      key={item.href}
+                      item={item}
+                      active={isExactActive(pathname, item.href)}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Configuración</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {NAV_CONFIG.map((item) => (
-                <NavItemRow
-                  key={item.href}
-                  item={item}
-                  active={isActive(pathname, item.href)}
-                />
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {mode === 'trainer' ? (
+          <>
+            <SidebarGroup>
+              <SidebarGroupLabel>Operación</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {NAV_TRAINER_MAIN.map((item) => (
+                    <NavItemRow
+                      key={item.href}
+                      item={item}
+                      active={isActive(pathname, item.href)}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Configuración</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {NAV_TRAINER_CONFIG.map((item) => (
+                    <NavItemRow
+                      key={item.href}
+                      item={item}
+                      active={isActive(pathname, item.href)}
+                    />
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </>
+        ) : null}
       </SidebarContent>
 
       <SidebarFooter>
         <SidebarMenu>
           {userEmail ? (
             <SidebarMenuItem>
-              <div className="px-2 py-1 text-xs text-muted-foreground truncate">
+              <div className="px-2 py-1 text-xs text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
                 {userEmail}
               </div>
             </SidebarMenuItem>
           ) : null}
           <SidebarMenuItem>
             <form action={logout} className="w-full">
-              <SidebarMenuButton type="submit" className="w-full justify-start">
+              <SidebarMenuButton type="submit" tooltip="Cerrar sesión" className="w-full justify-start">
                 <LogOut className="size-4" />
                 <span>Cerrar sesión</span>
               </SidebarMenuButton>
@@ -173,6 +255,32 @@ export function AppSidebar({
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
+  );
+}
+
+/**
+ * Badge "Agencia" adaptativo: full label cuando expanded, icon-only cuando
+ * collapsed (evita overflow del badge en sidebar colapsado).
+ */
+function AgencyBadge() {
+  const { state } = useSidebar();
+  if (state === 'collapsed') {
+    return (
+      <div className="flex justify-center pt-1" aria-label="Modo Agencia">
+        <ShieldCheck className="size-4 text-emerald-400" aria-hidden />
+      </div>
+    );
+  }
+  return (
+    <div className="px-2 pt-1">
+      <Badge
+        variant="outline"
+        className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5 text-[10px]"
+      >
+        <ShieldCheck className="size-2.5 mr-1" />
+        Agencia
+      </Badge>
+    </div>
   );
 }
 
@@ -193,4 +301,12 @@ function NavItemRow({ item, active }: { item: NavItem; active: boolean }) {
 function isActive(pathname: string, href: string): boolean {
   if (href === '/dashboard') return pathname === '/dashboard';
   return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+/**
+ * Match exacto: usado para tenant-admin sub-routes donde "Resumen" es la base
+ * y los sub-items NO deben activar también "Resumen".
+ */
+function isExactActive(pathname: string, href: string): boolean {
+  return pathname === href;
 }

@@ -70,6 +70,7 @@ describe('getEffectiveTenant', () => {
       tenantId: 5,
       isAgencyAdmin: false,
       isImpersonating: false,
+      role: 'owner',
     });
   });
 
@@ -89,6 +90,7 @@ describe('getEffectiveTenant', () => {
       tenantId: 1,
       isAgencyAdmin: true,
       isImpersonating: false,
+      role: 'owner',
     });
   });
 
@@ -101,6 +103,7 @@ describe('getEffectiveTenant', () => {
       tenantId: 42,
       isAgencyAdmin: true,
       isImpersonating: true,
+      role: 'owner',
     });
   });
 
@@ -112,5 +115,6 @@ describe('getEffectiveTenant', () => {
     expect(result?.tenantId).toBe(5);
     expect(result?.isAgencyAdmin).toBe(false);
     expect(result?.isImpersonating).toBe(false);
+    expect(result?.role).toBe('owner');
   });
 });

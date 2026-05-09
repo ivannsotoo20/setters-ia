@@ -35,5 +35,29 @@ export async function GET(request: NextRequest) {
   // next puede ser /dashboard, /onboarding, /dashboard/conversations/123, etc.
   // Validamos que sea una ruta interna (no open redirect).
   const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/dashboard';
+
+  // Si el `next` es el default `/dashboard` (no había explícito), redirigir
+  // según el rol del profile. Agency admin → /admin/dashboard. Colaborador
+  // sin tenant → /dashboard (donde se le mostrará un mensaje si no hay
+  // permisos en alguna sub-ruta).
+  if (safeNext === '/dashboard') {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_agency_admin, is_active')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (profile?.is_active === false) {
+        const errUrl = new URL('/login', url.origin);
+        errUrl.searchParams.set('error', 'inactive');
+        return NextResponse.redirect(errUrl);
+      }
+      if (profile?.is_agency_admin === true) {
+        return NextResponse.redirect(new URL('/admin/dashboard', url.origin));
+      }
+    }
+  }
+
   return NextResponse.redirect(new URL(safeNext, url.origin));
 }

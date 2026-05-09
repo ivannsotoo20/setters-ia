@@ -4,6 +4,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ImpersonateBanner } from '@/components/impersonate-banner';
+import { ScopeSwitcher } from '@/components/scope-switcher';
 import { getImpersonateTenantId } from '@/lib/impersonate';
 
 export const dynamic = 'force-dynamic';
@@ -41,9 +42,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Si es agency admin y tiene cookie de impersonate, cargar el tenant
   // impersonado para mostrarlo en sidebar + banner.
   let impersonatingTenantName: string | null = null;
+  let impersonatingTenantId: number | null = null;
   if (isAgencyAdmin) {
     const impersonateId = await getImpersonateTenantId();
     if (impersonateId != null) {
+      impersonatingTenantId = impersonateId;
       const { data: impersonateTenant } = await supabase
         .from('tenants')
         .select('name, slug')
@@ -68,6 +71,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
           <div className="flex-1" />
+          <ScopeSwitcher
+            isAgencyAdmin={isAgencyAdmin}
+            impersonatingTenantId={impersonatingTenantId}
+            impersonatingTenantName={impersonatingTenantName}
+          />
         </header>
         {impersonatingTenantName ? (
           <ImpersonateBanner tenantName={impersonatingTenantName} />

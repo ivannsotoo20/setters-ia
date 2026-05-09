@@ -33,11 +33,15 @@ function getServiceRoleClient() {
 
 async function requireTenantAccess(
   tenantId: number,
+  options?: { requireOwner?: boolean },
 ): Promise<{ ok: true; userId: string } | { ok: false; error: string }> {
   const eff = await getEffectiveTenant();
   if (!eff) return { ok: false, error: 'unauthenticated' };
   if (!Number.isFinite(tenantId) || tenantId <= 0) return { ok: false, error: 'invalid tenantId' };
   if (!eff.isAgencyAdmin && eff.tenantId !== tenantId) return { ok: false, error: 'forbidden' };
+  if (options?.requireOwner && !eff.isAgencyAdmin && eff.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede modificar' };
+  }
   return { ok: true, userId: eff.userId };
 }
 
@@ -91,7 +95,7 @@ export async function createCustomInstruction(args: {
   tenantId: number;
   content: string;
 }): Promise<{ ok: true; instructionId: number } | { ok: false; error: string }> {
-  const auth = await requireTenantAccess(args.tenantId);
+  const auth = await requireTenantAccess(args.tenantId, { requireOwner: true });
   if (!auth.ok) return auth;
 
   const sanitized = sanitizeCustomInstruction(args.content);
@@ -140,7 +144,7 @@ export async function updateCustomInstruction(args: {
   content?: string;
   isActive?: boolean;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await requireTenantAccess(args.tenantId);
+  const auth = await requireTenantAccess(args.tenantId, { requireOwner: true });
   if (!auth.ok) return auth;
 
   const supabase = getServiceRoleClient();
@@ -177,7 +181,7 @@ export async function deleteCustomInstruction(args: {
   tenantId: number;
   id: number;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const auth = await requireTenantAccess(args.tenantId);
+  const auth = await requireTenantAccess(args.tenantId, { requireOwner: true });
   if (!auth.ok) return auth;
 
   const supabase = getServiceRoleClient();

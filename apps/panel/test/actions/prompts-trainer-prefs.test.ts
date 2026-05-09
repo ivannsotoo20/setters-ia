@@ -39,11 +39,13 @@ let mockEffectiveTenant: {
   tenantId: number;
   isAgencyAdmin: boolean;
   isImpersonating: boolean;
+  role: 'owner' | 'admin' | 'viewer';
 } | null = {
   userId: 'trainer-user',
   tenantId: 3,
   isAgencyAdmin: false,
   isImpersonating: false,
+  role: 'owner',
 };
 
 vi.mock('next/cache', () => ({ revalidatePath: () => undefined }));
@@ -168,6 +170,7 @@ beforeEach(() => {
     tenantId: 3,
     isAgencyAdmin: false,
     isImpersonating: false,
+    role: 'owner',
   };
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake-service-role-key';
@@ -237,6 +240,7 @@ describe('loadTrainerPreferences', () => {
       tenantId: 1,
       isAgencyAdmin: true,
       isImpersonating: false,
+      role: 'owner',
     };
     state.prefs.push({
       id: 1,
@@ -333,6 +337,7 @@ describe('saveTrainerPreferences', () => {
       tenantId: 1,
       isAgencyAdmin: true,
       isImpersonating: false,
+      role: 'owner',
     };
     const r = await saveTrainerPreferences({
       tenantId: 7,

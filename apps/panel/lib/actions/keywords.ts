@@ -86,6 +86,9 @@ export async function createKeyword(input: {
 
   const effective = await getEffectiveTenant();
   if (!effective) return { ok: false, error: 'unauthenticated' };
+  if (!effective.isAgencyAdmin && effective.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede crear keywords' };
+  }
 
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -111,6 +114,9 @@ export async function toggleKeywordActive(
 ): Promise<ActionResult> {
   const effective = await getEffectiveTenant();
   if (!effective) return { ok: false, error: 'unauthenticated' };
+  if (!effective.isAgencyAdmin && effective.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede modificar keywords' };
+  }
 
   const supabase = getServiceRoleClient();
   const { error } = await supabase
@@ -127,6 +133,9 @@ export async function toggleKeywordActive(
 export async function deleteKeyword(keywordId: number): Promise<ActionResult> {
   const effective = await getEffectiveTenant();
   if (!effective) return { ok: false, error: 'unauthenticated' };
+  if (!effective.isAgencyAdmin && effective.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo el owner puede borrar keywords' };
+  }
 
   const supabase = getServiceRoleClient();
   const { error } = await supabase

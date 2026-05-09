@@ -46,10 +46,21 @@ function getServiceRoleClient() {
   });
 }
 
-async function resolveCallerTenant(): Promise<{ tenantId: number } | null> {
+async function resolveCallerTenant(
+  options?: { requireOwner?: boolean },
+): Promise<{ tenantId: number } | { error: string } | null> {
   const effective = await getEffectiveTenant();
   if (!effective) return null;
+  if (options?.requireOwner && !effective.isAgencyAdmin && effective.role !== 'owner') {
+    return { error: 'forbidden — solo el owner puede modificar integraciones' };
+  }
   return { tenantId: effective.tenantId };
+}
+
+function isResolveError(
+  v: { tenantId: number } | { error: string },
+): v is { error: string } {
+  return 'error' in v;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,6 +168,7 @@ export async function listIntegrations(): Promise<
 > {
   const ctx = await resolveCallerTenant();
   if (!ctx) return { ok: false, error: 'unauthenticated' };
+  if (isResolveError(ctx)) return { ok: false, error: ctx.error };
 
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
@@ -198,8 +210,9 @@ export async function listIntegrations(): Promise<
 export async function createOrUpdateIntegration(
   input: CreateIntegrationInput,
 ): Promise<ActionResult<{ id: number; validated: boolean; derived?: Record<string, string> }>> {
-  const ctx = await resolveCallerTenant();
+  const ctx = await resolveCallerTenant({ requireOwner: true });
   if (!ctx) return { ok: false, error: 'unauthenticated' };
+  if (isResolveError(ctx)) return { ok: false, error: ctx.error };
 
   // 1. Validar credenciales contra el provider real.
   const validation = await validateCredentials(input.provider, input.credentials, input.connectionConfig);
@@ -300,8 +313,9 @@ export async function toggleIntegrationActive(
   integrationId: number,
   active: boolean,
 ): Promise<ActionResult> {
-  const ctx = await resolveCallerTenant();
+  const ctx = await resolveCallerTenant({ requireOwner: true });
   if (!ctx) return { ok: false, error: 'unauthenticated' };
+  if (isResolveError(ctx)) return { ok: false, error: ctx.error };
 
   const supabase = getServiceRoleClient();
   const { error } = await supabase
@@ -316,8 +330,9 @@ export async function toggleIntegrationActive(
 }
 
 export async function deleteIntegration(integrationId: number): Promise<ActionResult> {
-  const ctx = await resolveCallerTenant();
+  const ctx = await resolveCallerTenant({ requireOwner: true });
   if (!ctx) return { ok: false, error: 'unauthenticated' };
+  if (isResolveError(ctx)) return { ok: false, error: ctx.error };
 
   const supabase = getServiceRoleClient();
   const { error } = await supabase

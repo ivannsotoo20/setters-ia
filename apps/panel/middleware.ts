@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const isAuthOnly = AUTH_ONLY_PATHS.some((p) => pathname === p);
+  const isAdminRoute = pathname.startsWith('/admin');
 
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();
@@ -66,9 +67,43 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // Role guard: /admin/* SOLO para is_agency_admin=true. Los profiles
+  // con is_active=false se rechazan en cualquier ruta protegida.
+  if (isProtected && user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_agency_admin, is_active')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile && profile.is_active === false) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/login';
+      redirectUrl.search = '';
+      redirectUrl.searchParams.set('error', 'inactive');
+      // borra cookie de sesión
+      await supabase.auth.signOut();
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    if (isAdminRoute && profile?.is_agency_admin !== true) {
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = '/dashboard';
+      redirectUrl.search = '';
+      return NextResponse.redirect(redirectUrl);
+    }
+  }
+
   if (isAuthOnly && user) {
+    // Post-login redirect: agency admin → /admin/dashboard, resto → /dashboard.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_agency_admin')
+      .eq('id', user.id)
+      .maybeSingle();
+
     const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/dashboard';
+    redirectUrl.pathname = profile?.is_agency_admin === true ? '/admin/dashboard' : '/dashboard';
     redirectUrl.search = '';
     return NextResponse.redirect(redirectUrl);
   }
