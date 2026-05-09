@@ -1,3 +1,4 @@
+#!/usr/bin/env tsx
 /**
  * Sprint Eta.6 — Backfill one-shot.
  *
@@ -5,20 +6,17 @@
  * apropiadas según el estado actual:
  *   - is_handoff_to_human=true → Hot Lead.
  *   - phase_number=6           → Completado.
- *   - ghl_opportunity_status='won' → Comprado.
- *   - Resto (no handoff, no F6, no won) → Activo.
+ *   - ghl_opportunity_status='won' → Comprado (dormido hasta Sprint Theta).
+ *   - Resto                    → Activo (default).
  *
- * Idempotente (applyLabelMotor usa UPSERT con check previo). Se puede correr
+ * Idempotente (applyLabelMotor verifica antes de INSERT). Se puede correr
  * varias veces sin efectos secundarios.
  *
- * Uso:
- *   pnpm --filter @fyzon/motor-agente exec tsx scripts/backfill-system-labels.ts
- *
- * Output: resumen por tenant + conversaciones procesadas + labels aplicadas.
+ * Uso (PowerShell desde la raíz del monorepo):
+ *   pnpm --filter @fyzon/motor-agente run backfill-labels
  */
 
-import 'dotenv/config';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '../src/lib/supabase.js';
 import { applyLabelMotor } from '../src/services/labels/index.js';
 
 interface BackfillSummary {
@@ -32,15 +30,7 @@ interface BackfillSummary {
 }
 
 async function main() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    console.error('Missing SUPABASE env vars');
-    process.exit(1);
-  }
-  const supabase = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const supabase = getSupabase();
 
   console.log('[backfill] cargando system labels por tenant...');
   const { data: systemLabels, error: lblErr } = await supabase
@@ -52,7 +42,7 @@ async function main() {
     process.exit(1);
   }
 
-  const labelMap = new Map<string, number>(); // key = `${tenant_id}:${name}`
+  const labelMap = new Map<string, number>();
   for (const l of systemLabels) {
     labelMap.set(`${l.tenant_id}:${l.name}`, Number(l.id));
   }
@@ -103,7 +93,6 @@ async function main() {
     ) {
       labelsToApply.push('Comprado');
     }
-    // Si no hay ninguna label específica, aplicamos Activo como default.
     if (labelsToApply.length === 0) labelsToApply.push('Activo');
 
     for (const name of labelsToApply) {
@@ -147,6 +136,7 @@ async function main() {
     }
   }
   console.log('\n[backfill] done');
+  process.exit(0);
 }
 
 main().catch((err) => {
