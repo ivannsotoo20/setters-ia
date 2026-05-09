@@ -38,9 +38,24 @@ const EMOJI_DENSITY_LABELS = [
 ];
 
 const QUESTIONS_LABELS = [
-  { value: 0, label: '0 preguntas extra', desc: 'flujo estándar del Cerebro' },
-  { value: 1, label: '+1 pregunta', desc: 'una pregunta adicional de matiz' },
-  { value: 2, label: '+2 preguntas', desc: 'dos preguntas adicionales de matiz' },
+  {
+    value: 0,
+    label: 'Sin preguntas extra',
+    desc:
+      'El setter sigue el flujo estándar del Cerebro y propone la llamada en cuanto el lead encaja con tu criterio. Más rápido — menos fricción para el lead.',
+  },
+  {
+    value: 1,
+    label: 'Una pregunta de matiz',
+    desc:
+      'Antes de proponer la llamada, el setter hace 1 pregunta adicional para entender mejor el contexto (ej: "¿desde cuándo te pasa?", "¿qué has probado antes?"). Más información para ti — algo más de fricción.',
+  },
+  {
+    value: 2,
+    label: 'Dos preguntas de matiz',
+    desc:
+      'Antes de proponer la llamada, el setter hace 2 preguntas adicionales para profundizar (ej: contexto + intento previo). Llegas a la llamada con más información preparada — útil en nichos consultivos.',
+  },
 ];
 
 const MESSAGE_LENGTH_LABELS = [
@@ -331,13 +346,20 @@ export function PreferencesForm({ tenantId, initial }: Props) {
           {/* Bloque 1 — Preguntas extra (toggle ON/OFF + botones si ON) */}
           <div className="flex flex-col gap-3">
             <div className="flex items-start justify-between gap-4">
-              <div className="flex flex-col gap-0.5">
+              <div className="flex flex-col gap-1">
                 <Label htmlFor="qToggle" className="text-sm">
-                  Quiero ajustar las preguntas extra antes de la cita
+                  ¿Quieres que el setter pregunte más al lead antes de proponer la llamada?
                 </Label>
-                <p className="text-xs text-muted-foreground">
-                  Si está apagado (default), el Coach del agente lo gestiona automáticamente. Actívalo
-                  solo si quieres forzar más o menos preguntas previas.
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Por defecto el setter sigue tu Coach: cualifica con las preguntas que tu agente ya
+                  tiene definidas y propone llamada en cuanto el lead encaja. Esto funciona bien para
+                  la mayoría de negocios.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed mt-1">
+                  Activa esta opción <strong className="text-foreground/80">solo si quieres llegar a la
+                  llamada con más contexto del lead</strong> (útil en nichos consultivos: salud,
+                  coaching, formación premium). El setter añadirá 1-2 preguntas de matiz justo antes
+                  de cerrar — el lead invierte 30s más, tú llegas más preparado.
                 </p>
               </div>
               <Switch
@@ -347,8 +369,13 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               />
             </div>
             {prefs.qualificationQuestionsEnabled && (
-              <>
-                <div className="flex items-center gap-2 mt-1">
+              <div className="flex flex-col gap-3 mt-2 p-3 rounded-md border border-border/40 bg-muted/20">
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground/80">¿Cuántas preguntas extra?</strong> El setter
+                  las hará justo antes de proponer la llamada, NUNCA al inicio (eso interrumpiría el
+                  flujo natural). Cada extra añade ~1 turno a la conversación.
+                </p>
+                <div className="flex items-center gap-2">
                   {QUESTIONS_LABELS.map((q) => (
                     <Button
                       key={q.value}
@@ -362,10 +389,10 @@ export function PreferencesForm({ tenantId, initial }: Props) {
                     </Button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground italic">
+                <p className="text-xs text-muted-foreground leading-relaxed">
                   {QUESTIONS_LABELS[prefs.extraQuestionsBeforeCall]!.desc}
                 </p>
-              </>
+              </div>
             )}
           </div>
 
