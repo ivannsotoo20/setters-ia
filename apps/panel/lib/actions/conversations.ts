@@ -324,3 +324,104 @@ export async function deleteConversation(
   revalidateConv(conversationId);
   return { ok: true };
 }
+
+// ---- sendManualMessage (envío manual desde el composer del panel) ---------
+
+const MAX_MANUAL_MESSAGE_LENGTH = 4000;
+
+export async function sendManualMessage(
+  conversationId: number,
+  content: string,
+): Promise<ConversationActionResult<{ messageId: number; providerMessageId: string | null }>> {
+  const auth = await requireConvAccess(conversationId);
+  if (!auth.ok) return auth;
+
+  // viewer no puede enviar; owner/admin/agency_admin sí.
+  if (!auth.ctx.isAgencyAdmin && auth.ctx.role === 'viewer') {
+    return { ok: false, error: 'forbidden — viewer no puede enviar mensajes' };
+  }
+
+  const trimmed = content?.trim() ?? '';
+  if (!trimmed) return { ok: false, error: 'mensaje vacío' };
+  if (trimmed.length > MAX_MANUAL_MESSAGE_LENGTH) {
+    return {
+      ok: false,
+      error: `mensaje demasiado largo (>${MAX_MANUAL_MESSAGE_LENGTH} chars)`,
+    };
+  }
+
+  const supabase = getServiceRoleClient();
+
+  // Verificar que la conversation NO esté bloqueada (bloqueo = sin envíos manuales).
+  const { data: convCheck, error: convCheckErr } = await supabase
+    .from('conversations')
+    .select('is_blocked')
+    .eq('id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId)
+    .maybeSingle();
+  if (convCheckErr) return { ok: false, error: convCheckErr.message };
+  if (convCheck?.is_blocked === true) {
+    return { ok: false, error: 'conversación bloqueada — desbloquea primero' };
+  }
+
+  // Lazy import del helper de envío para no cargar adapters en cold-start
+  // de páginas que no envían (lista, detalle simple, etc).
+  const { sendManualMessageDirect } = await import('../manual-send');
+
+  let providerMessageId: string | null = null;
+  try {
+    const sendResult = await sendManualMessageDirect({
+      supabase,
+      conversationId,
+      text: trimmed,
+    });
+    providerMessageId = sendResult.providerMessageId;
+  } catch (err) {
+    return {
+      ok: false,
+      error: `envío al proveedor falló: ${(err as Error).message}`,
+    };
+  }
+
+  // INSERT mensaje human + UPDATE auto-pause IA en una transacción lógica.
+  // En Supabase no hay transacciones reales sin PL/pgSQL; hacemos best-effort
+  // con un INSERT seguido de UPDATE. Si falla el UPDATE el mensaje queda
+  // visible y el usuario puede pausar manualmente.
+  const nowIso = new Date().toISOString();
+  const { data: inserted, error: insertErr } = await supabase
+    .from('conversation_messages')
+    .insert({
+      tenant_id: auth.ctx.tenantId,
+      conversation_id: conversationId,
+      source: 'human',
+      content_type: 'text',
+      content: trimmed,
+      sent_at: nowIso,
+    })
+    .select('id')
+    .single();
+  if (insertErr || !inserted) {
+    return {
+      ok: false,
+      error: `mensaje enviado al proveedor pero no se pudo guardar en BD: ${insertErr?.message ?? 'unknown'}`,
+    };
+  }
+
+  // Auto-pausa IA — el envío manual implica que el humano toma el control.
+  await supabase
+    .from('conversations')
+    .update({
+      ai_paused_until: 'infinity',
+      last_message_at: nowIso,
+      is_unread: false,
+      updated_at: nowIso,
+    })
+    .eq('id', conversationId)
+    .eq('tenant_id', auth.ctx.tenantId);
+
+  revalidateConv(conversationId);
+  return {
+    ok: true,
+    data: { messageId: Number(inserted.id), providerMessageId },
+  };
+}

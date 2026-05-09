@@ -1,6 +1,7 @@
 import { MessageSquare } from 'lucide-react';
 import { MessagesTimeline } from '@/app/(app)/conversations/[id]/messages-timeline';
 import { ThreadTopbar } from './thread-topbar';
+import { ThreadComposer } from './thread-composer';
 import type {
   ConversationViewer,
   TenantMember,
@@ -47,6 +48,12 @@ export function ThreadPane({ detail, messages, notes, viewer, members }: Props) 
           <MessagesTimeline messages={messages} />
         )}
       </div>
+      <ThreadComposer
+        conversationId={detail.id}
+        viewer={viewer}
+        isBlocked={detail.isBlocked}
+        isHandoffToHuman={detail.isHandoffToHuman}
+      />
     </section>
   );
 }
