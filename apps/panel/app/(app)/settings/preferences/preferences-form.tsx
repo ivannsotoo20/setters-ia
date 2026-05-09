@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -14,6 +14,9 @@ import { Input } from '@/components/ui/input';
 import { saveTrainerPreferences } from '@/lib/actions/prompts';
 import {
   type TrainerPreferences,
+  type NotificationEventType,
+  NOTIFICATION_EVENT_TYPES,
+  NOTIFICATION_EVENT_LABELS,
   DEFAULT_TRAINER_PREFERENCES,
   isValidEmail,
   normalizePhoneE164,
@@ -44,6 +47,16 @@ export function PreferencesForm({ tenantId, initial }: Props) {
   const [phoneRaw, setPhoneRaw] = useState(initial.trainerPhone ?? '');
   const [nameRaw, setNameRaw] = useState(initial.trainerName ?? '');
   const [saving, startSave] = useTransition();
+
+  // Re-sync state cuando el server component pasa nueva `initial` tras router.refresh()
+  // (p.ej. después de guardar). Sin esto, el form queda con el snapshot viejo de
+  // useState y los gates (como Card 5 disabled) usan datos obsoletos.
+  useEffect(() => {
+    setPrefs(initial);
+    setEmailRaw(initial.trainerEmail ?? '');
+    setPhoneRaw(initial.trainerPhone ?? '');
+    setNameRaw(initial.trainerName ?? '');
+  }, [initial]);
 
   // Validaciones cliente
   const emailValid = emailRaw === '' || isValidEmail(emailRaw);
@@ -94,39 +107,6 @@ export function PreferencesForm({ tenantId, initial }: Props) {
           <CardDescription>Cómo se ve el mensaje del setter en pantalla.</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-6">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor="doubleQ" className="text-sm">
-                Doble interrogación final
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Cuando una frase termina en pregunta, usar <code className="font-mono">??</code> en
-                lugar de <code className="font-mono">?</code>.
-              </p>
-            </div>
-            <Switch
-              id="doubleQ"
-              checked={prefs.doubleQuestionMark}
-              onCheckedChange={(v) => update('doubleQuestionMark', v)}
-            />
-          </div>
-
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex flex-col gap-0.5">
-              <Label htmlFor="ackVoice" className="text-sm">
-                Reconocer audios del lead
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Cuando el lead envía un audio, mencionarlo explícitamente al inicio de la respuesta.
-              </p>
-            </div>
-            <Switch
-              id="ackVoice"
-              checked={prefs.preferVoiceNotesAcknowledgment}
-              onCheckedChange={(v) => update('preferVoiceNotesAcknowledgment', v)}
-            />
-          </div>
-
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
               <Label className="text-sm">Densidad de emojis</Label>
@@ -180,8 +160,8 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               maxLength={100}
             />
             <p className="text-xs text-muted-foreground">
-              Usado en mensajes de handoff: &quot;te paso con <strong>{nameRaw || '[tu nombre]'}</strong>&quot;.
-              Si vacío, dirá &quot;te paso con el equipo&quot;.
+              Para personalizar los emails que recibes (saludo &quot;Hola {nameRaw || '[tu nombre]'},&quot;).
+              El setter NO usa este nombre con el lead.
             </p>
           </div>
 
@@ -272,6 +252,61 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               {QUESTIONS_LABELS[prefs.extraQuestionsBeforeCall]!.desc}
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* CARD 5 — Notificaciones email (Sprint Gamma 2.5) */}
+      <Card className="lg:col-span-2">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Bell className="size-4" />
+            Notificaciones por email
+          </CardTitle>
+          <CardDescription>
+            Elige qué eventos del motor te llegan por email a{' '}
+            <code className="font-mono text-xs">{finalPrefs.trainerEmail ?? '(sin email configurado)'}</code>.
+            {finalPrefs.trainerEmail == null && (
+              <span className="block mt-1 text-amber-400">
+                ⚠ Configura tu email en &quot;Datos de contacto&quot; arriba para activar las notificaciones.
+              </span>
+            )}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {NOTIFICATION_EVENT_TYPES.map((eventType) => {
+            const meta = NOTIFICATION_EVENT_LABELS[eventType];
+            const checked = prefs.notificationSubscriptions.includes(eventType);
+            const disabled = finalPrefs.trainerEmail == null;
+            return (
+              <div
+                key={eventType}
+                className={`flex items-start justify-between gap-3 rounded-md border border-border/40 p-3 ${
+                  disabled ? 'opacity-50' : ''
+                }`}
+              >
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <Label htmlFor={`notif-${eventType}`} className="text-sm font-medium">
+                    {meta.label}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">{meta.desc}</p>
+                </div>
+                <Switch
+                  id={`notif-${eventType}`}
+                  checked={checked}
+                  disabled={disabled}
+                  onCheckedChange={(v) => {
+                    const current = new Set<NotificationEventType>(prefs.notificationSubscriptions);
+                    if (v) current.add(eventType);
+                    else current.delete(eventType);
+                    update(
+                      'notificationSubscriptions',
+                      NOTIFICATION_EVENT_TYPES.filter((t) => current.has(t)),
+                    );
+                  }}
+                />
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 

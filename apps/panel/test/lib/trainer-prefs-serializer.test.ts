@@ -26,21 +26,20 @@ describe('parseTrainerPreferences', () => {
 
   it('accepts valid full input', () => {
     const input: TrainerPreferences = {
-      doubleQuestionMark: true,
       emojiDensity: 3,
       extraQuestionsBeforeCall: 2,
-      preferVoiceNotesAcknowledgment: true,
       trainerName: null,
       trainerEmail: null,
       trainerPhone: null,
+      notificationSubscriptions: ['handoff', 'appointment_booked'],
     };
     expect(parseTrainerPreferences(input)).toEqual(input);
   });
 
   it('accepts partial input and fills with defaults', () => {
-    expect(parseTrainerPreferences({ doubleQuestionMark: true })).toEqual({
+    expect(parseTrainerPreferences({ emojiDensity: 0 })).toEqual({
       ...DEFAULT_TRAINER_PREFERENCES,
-      doubleQuestionMark: true,
+      emojiDensity: 0,
     });
   });
 
@@ -59,56 +58,40 @@ describe('parseTrainerPreferences', () => {
     );
   });
 
-  it('rejects non-boolean booleans', () => {
-    expect(parseTrainerPreferences({ doubleQuestionMark: 'yes' })).toEqual(
-      DEFAULT_TRAINER_PREFERENCES,
-    );
-    expect(parseTrainerPreferences({ doubleQuestionMark: 1 })).toEqual(
-      DEFAULT_TRAINER_PREFERENCES,
-    );
+  it('Sprint 2.5b/A: ignores legacy keys silently (doubleQuestionMark, preferVoiceNotesAcknowledgment)', () => {
+    const out = parseTrainerPreferences({
+      doubleQuestionMark: true,
+      preferVoiceNotesAcknowledgment: true,
+      emojiDensity: 1,
+    });
+    expect(out).toEqual({ ...DEFAULT_TRAINER_PREFERENCES, emojiDensity: 1 });
+    expect((out as unknown as Record<string, unknown>).doubleQuestionMark).toBeUndefined();
+    expect((out as unknown as Record<string, unknown>).preferVoiceNotesAcknowledgment).toBeUndefined();
   });
 
   it('ignores unknown keys', () => {
     const input = {
-      doubleQuestionMark: true,
+      emojiDensity: 1,
       unknownKey: 'sneaky',
       anotherOne: 42,
     };
     const out = parseTrainerPreferences(input);
     expect(out).toEqual({
       ...DEFAULT_TRAINER_PREFERENCES,
-      doubleQuestionMark: true,
+      emojiDensity: 1,
     });
     expect((out as unknown as Record<string, unknown>).unknownKey).toBeUndefined();
   });
 });
 
 describe('serializeTrainerPreferences', () => {
-  it('serializes default preferences with single ?', () => {
+  it('Sprint 2.5b/A: emits double interrogation + ack audios always (no toggles)', () => {
     const md = serializeTrainerPreferences(DEFAULT_TRAINER_PREFERENCES);
     expect(md).toContain('Preferencias del trainer');
-    expect(md).toContain('Interrogación simple');
-    expect(md).not.toContain('Doble interrogación');
-    expect(md).toContain('densidad moderada');
-    expect(md).toContain('Cualificación estándar');
-    expect(md).not.toContain('Acknowledge audios');
-  });
-
-  it('emits double interrogation block when toggle on', () => {
-    const md = serializeTrainerPreferences({
-      ...DEFAULT_TRAINER_PREFERENCES,
-      doubleQuestionMark: true,
-    });
     expect(md).toContain('Doble interrogación');
     expect(md).toContain('??');
-    expect(md).not.toContain('Interrogación simple');
-  });
-
-  it('emits voice notes acknowledgment when toggle on', () => {
-    const md = serializeTrainerPreferences({
-      ...DEFAULT_TRAINER_PREFERENCES,
-      preferVoiceNotesAcknowledgment: true,
-    });
+    expect(md).toContain('densidad moderada');
+    expect(md).toContain('Cualificación estándar');
     expect(md).toContain('Acknowledge audios');
     expect(md).toContain('escuché tu audio');
   });
@@ -144,13 +127,12 @@ describe('serializeTrainerPreferences', () => {
 
   it('full opt-in produces a non-trivial markdown block', () => {
     const md = serializeTrainerPreferences({
-      doubleQuestionMark: true,
       emojiDensity: 3,
       extraQuestionsBeforeCall: 2,
-      preferVoiceNotesAcknowledgment: true,
       trainerName: null,
       trainerEmail: null,
       trainerPhone: null,
+      notificationSubscriptions: ['handoff', 'qualified', 'appointment_booked'],
     });
     expect(md.length).toBeGreaterThan(400);
     expect(md).toContain('Doble interrogación');
@@ -324,5 +306,64 @@ describe('serializeTrainerPreferences — sección instrucciones libres (lista)'
   it('default arg = empty array (backward compatible)', () => {
     const md = serializeTrainerPreferences(DEFAULT_TRAINER_PREFERENCES);
     expect(md).not.toContain('Instrucciones específicas del trainer');
+  });
+});
+
+// =============================================================================
+// Sprint Gamma 2.5 — notification subscriptions (multi-select email events)
+// =============================================================================
+
+describe('parseTrainerPreferences — notificationSubscriptions (Gamma 2.5)', () => {
+  it('defaults to handoff + appointment_booked when missing', () => {
+    const out = parseTrainerPreferences({});
+    expect(out.notificationSubscriptions.sort()).toEqual(['appointment_booked', 'handoff'].sort());
+  });
+
+  it('accepts a valid subset', () => {
+    const out = parseTrainerPreferences({
+      notificationSubscriptions: ['handoff', 'qualified', 'descalified'],
+    });
+    expect(out.notificationSubscriptions).toContain('handoff');
+    expect(out.notificationSubscriptions).toContain('qualified');
+    expect(out.notificationSubscriptions).toContain('descalified');
+    expect(out.notificationSubscriptions).not.toContain('appointment_booked');
+  });
+
+  it('filters out unknown event types silently', () => {
+    const out = parseTrainerPreferences({
+      notificationSubscriptions: ['handoff', 'made_up_event', 'qualified', 42, null],
+    });
+    expect(out.notificationSubscriptions).toEqual(['handoff', 'qualified']);
+  });
+
+  it('empty array → no subscriptions (trainer opted out of all)', () => {
+    const out = parseTrainerPreferences({ notificationSubscriptions: [] });
+    expect(out.notificationSubscriptions).toEqual([]);
+  });
+
+  it('non-array input falls back to defaults', () => {
+    expect(
+      parseTrainerPreferences({ notificationSubscriptions: 'handoff' }).notificationSubscriptions.sort(),
+    ).toEqual(['appointment_booked', 'handoff'].sort());
+    expect(
+      parseTrainerPreferences({ notificationSubscriptions: null }).notificationSubscriptions.sort(),
+    ).toEqual(['appointment_booked', 'handoff'].sort());
+  });
+
+  it('deduplicates entries', () => {
+    const out = parseTrainerPreferences({
+      notificationSubscriptions: ['handoff', 'handoff', 'qualified', 'handoff'],
+    });
+    expect(out.notificationSubscriptions.filter((e) => e === 'handoff')).toHaveLength(1);
+  });
+
+  it('does NOT serialize subscriptions to markdown (metadata only)', () => {
+    const md = serializeTrainerPreferences({
+      ...DEFAULT_TRAINER_PREFERENCES,
+      notificationSubscriptions: ['handoff', 'qualified', 'appointment_booked'],
+    });
+    expect(md).not.toContain('notificationSubscriptions');
+    expect(md).not.toContain('handoff');
+    expect(md).not.toContain('qualified');
   });
 });

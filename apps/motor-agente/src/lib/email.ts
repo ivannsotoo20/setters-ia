@@ -38,8 +38,9 @@ export class EmailSendError extends Error {
 
 export async function sendEmail(args: SendEmailArgs): Promise<SendEmailResult> {
   // Lee process.env en runtime (NO env cacheado al import) para que los tests
-  // puedan mutar la API key con beforeEach sin reiniciar el módulo.
-  const apiKey = process.env.RESEND_API_KEY ?? env.RESEND_API_KEY;
+  // puedan mutar la API key con beforeEach sin reiniciar el módulo. En prod,
+  // dotenv ya pobló process.env durante el import de config/env.js.
+  const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     return { ok: false, error: 'RESEND_API_KEY not configured' };
   }

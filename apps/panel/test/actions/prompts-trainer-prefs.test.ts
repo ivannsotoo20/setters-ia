@@ -183,10 +183,11 @@ describe('loadTrainerPreferences', () => {
     if (r.ok) expect(r.preferences).toEqual(DEFAULT_TRAINER_PREFERENCES);
   });
 
-  it('returns saved preferences when row exists', async () => {
+  it('returns saved preferences when row exists (Sprint 2.5b/A: legacy keys ignored)', async () => {
     state.prefs.push({
       id: 1,
       tenant_id: 3,
+      // doubleQuestionMark + preferVoiceNotesAcknowledgment son legacy y se ignoran
       preferences: { doubleQuestionMark: true, emojiDensity: 3, extraQuestionsBeforeCall: 1, preferVoiceNotesAcknowledgment: true },
       updated_by: null,
       updated_at: new Date().toISOString(),
@@ -194,10 +195,11 @@ describe('loadTrainerPreferences', () => {
     const r = await loadTrainerPreferences({ tenantId: 3 });
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.preferences.doubleQuestionMark).toBe(true);
       expect(r.preferences.emojiDensity).toBe(3);
       expect(r.preferences.extraQuestionsBeforeCall).toBe(1);
-      expect(r.preferences.preferVoiceNotesAcknowledgment).toBe(true);
+      // Legacy fields no aparecen en el output
+      expect((r.preferences as unknown as Record<string, unknown>).doubleQuestionMark).toBeUndefined();
+      expect((r.preferences as unknown as Record<string, unknown>).preferVoiceNotesAcknowledgment).toBeUndefined();
     }
   });
 
@@ -249,15 +251,13 @@ describe('loadTrainerPreferences', () => {
 
 describe('saveTrainerPreferences', () => {
   it('UPSERTs trainer_preferences + INSERTs trainer_prefs_v1 prompt_blocks markdown (first time)', async () => {
-    const newPrefs = {
-      doubleQuestionMark: true,
-      emojiDensity: 3 as const,
-      extraQuestionsBeforeCall: 2 as const,
-      preferVoiceNotesAcknowledgment: true,
+    const newPrefs: import('@/lib/trainer-prefs-serializer').TrainerPreferences = {
+      emojiDensity: 3,
+      extraQuestionsBeforeCall: 2,
       trainerName: null,
       trainerEmail: null,
       trainerPhone: null,
-      customInstructions: null,
+      notificationSubscriptions: ['handoff', 'qualified'],
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });
@@ -293,13 +293,13 @@ describe('saveTrainerPreferences', () => {
 
     const r = await saveTrainerPreferences({
       tenantId: 3,
-      preferences: { ...DEFAULT_TRAINER_PREFERENCES, doubleQuestionMark: true },
+      preferences: { ...DEFAULT_TRAINER_PREFERENCES, emojiDensity: 3 },
     });
     expect(r.ok).toBe(true);
     expect(state.blocks).toHaveLength(1);
     const updated = state.blocks[0]!;
     expect(updated.id).toBe(200);
-    expect(updated.content).toContain('Doble interrogación');
+    expect(updated.content).toContain('densidad alta');
     expect(updated.content).not.toBe('OLD MARKDOWN');
   });
 
@@ -328,22 +328,25 @@ describe('saveTrainerPreferences', () => {
   });
 
   it('parses defensively: invalid values in input are sanitized before save', async () => {
+    // Simulamos un cliente malicioso enviando un payload con valores fuera de rango
+    // y claves legacy que ya no forman parte del schema.
+    const maliciousPayload = {
+      emojiDensity: 99,
+      extraQuestionsBeforeCall: -5,
+      doubleQuestionMark: true,
+      preferVoiceNotesAcknowledgment: false,
+    } as unknown as import('@/lib/trainer-prefs-serializer').TrainerPreferences;
     const r = await saveTrainerPreferences({
       tenantId: 3,
-      preferences: {
-        // @ts-expect-error: simulamos cliente malicioso enviando valor fuera de rango
-        emojiDensity: 99,
-        // @ts-expect-error
-        extraQuestionsBeforeCall: -5,
-        doubleQuestionMark: true,
-        preferVoiceNotesAcknowledgment: false,
-      },
+      preferences: maliciousPayload,
     });
     expect(r.ok).toBe(true);
     // El parse defensive reemplazó valores inválidos por defaults antes de guardar
     const saved = state.prefs[0]!.preferences as Record<string, unknown>;
     expect(saved.emojiDensity).toBe(DEFAULT_TRAINER_PREFERENCES.emojiDensity);
     expect(saved.extraQuestionsBeforeCall).toBe(DEFAULT_TRAINER_PREFERENCES.extraQuestionsBeforeCall);
-    expect(saved.doubleQuestionMark).toBe(true);
+    // Sprint 2.5b/A: legacy keys no se persisten
+    expect(saved.doubleQuestionMark).toBeUndefined();
+    expect(saved.preferVoiceNotesAcknowledgment).toBeUndefined();
   });
 });

@@ -114,6 +114,10 @@ export async function processNotificationQueue(deps: ProcessDeps): Promise<Proce
         .maybeSingle();
       const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
       const trainerEmail = typeof prefs.trainerEmail === 'string' ? prefs.trainerEmail : null;
+      const trainerName =
+        typeof prefs.trainerName === 'string' && prefs.trainerName.trim() !== ''
+          ? prefs.trainerName.trim()
+          : null;
       const subscriptions = Array.isArray(prefs.notificationSubscriptions)
         ? (prefs.notificationSubscriptions as string[])
         : DEFAULT_SUBSCRIPTIONS;
@@ -138,10 +142,11 @@ export async function processNotificationQueue(deps: ProcessDeps): Promise<Proce
         .maybeSingle();
       const tenantName = (tenant?.name as string | undefined) ?? `Tenant #${tenantId}`;
 
-      // 4. Renderiza template
+      // 4. Renderiza template (Sprint 2.5b/A: incluye trainerName para saludo personalizado)
       const rendered = renderEmailTemplate(eventType, {
         tenantName,
         payload: (row.payload as Record<string, unknown>) ?? {},
+        trainerName,
       });
 
       // 5. Send vía Resend

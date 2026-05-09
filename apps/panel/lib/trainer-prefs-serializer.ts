@@ -31,15 +31,16 @@ const PHONE_E164_REGEX = /^\+[1-9]\d{7,14}$/;
 const MAX_TRAINER_NAME_CHARS = 100;
 
 export interface TrainerPreferences {
-  // ----- Sprint Gamma 1: estilo (existentes) -----
-  /** Termina las preguntas con `??` en lugar de `?`. */
-  doubleQuestionMark: boolean;
+  // ----- Sprint Gamma 1 + 2.5b: estilo -----
+  // NOTA Sprint 2.5b/A: `doubleQuestionMark` y `preferVoiceNotesAcknowledgment`
+  // se eliminaron del schema porque son universalmente deseables (cualquier
+  // trainer los querría). Las directrices se emiten siempre desde el serializer.
+  // Datos viejos en JSONB con esas claves se ignoran silenciosamente.
+
   /** Densidad de emojis: 0=casi sin emojis, 1=algunos, 2=moderada (default), 3=abundante. */
   emojiDensity: 0 | 1 | 2 | 3;
   /** Preguntas adicionales antes de proponer la llamada (0-2). */
   extraQuestionsBeforeCall: 0 | 1 | 2;
-  /** Si lead manda audio, mencionarlo explícitamente en la respuesta. */
-  preferVoiceNotesAcknowledgment: boolean;
 
   // ----- Sprint Gamma 2.1: datos de contacto -----
   /** Nombre que la IA usará al referirse al trainer en handoff. null = "el equipo". */
@@ -48,17 +49,58 @@ export interface TrainerPreferences {
   trainerEmail: string | null;
   /** Teléfono E.164 (+34...) que la IA puede entregar al lead en handoff. null = no entregar. */
   trainerPhone: string | null;
+
+  // ----- Sprint Gamma 2.5: notificaciones email -----
+  /** Eventos del motor a los que el trainer está suscrito. Vacío = no recibe nada. */
+  notificationSubscriptions: NotificationEventType[];
 }
 
+/**
+ * Eventos que el motor puede notificar por email al trainer. Espejo del set
+ * que `apps/motor-agente/src/lib/email-templates.ts` sabe renderizar. Si añades
+ * uno nuevo aquí, añade también la plantilla en el motor.
+ */
+// Sprint Gamma 2.5b/A: `error_motor` removido del set público — los errores
+// técnicos van a un canal admin separado (no al trainer). Sprint posterior
+// definirá ese canal (email Iván directo / Slack webhook / tabla admin_alerts).
+export const NOTIFICATION_EVENT_TYPES = [
+  'handoff',
+  'qualified',
+  'appointment_booked',
+  'descalified',
+  'paused_by_rule',
+] as const;
+export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];
+
+export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, { label: string; desc: string }> = {
+  handoff: { label: 'Handoff a humano', desc: 'La IA te pasa la conversación porque el lead lo pidió o se queda fuera del flujo automatizado.' },
+  qualified: { label: 'Lead cualificado', desc: 'La IA marca el lead como cualificado tras pasar el filtro del Cerebro.' },
+  appointment_booked: { label: 'Cita agendada', desc: 'El lead reservó la llamada/sesión por el flujo automatizado.' },
+  descalified: { label: 'Lead descalificado', desc: 'La IA descarta el lead (no encaja con tu criterio de cliente ideal).' },
+  paused_by_rule: { label: 'IA pausada por regla', desc: 'Se pausó la IA en una conversación por una regla configurada (cuando esté disponible).' },
+};
+
+const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_booked'];
+
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
-  doubleQuestionMark: false,
   emojiDensity: 2,
   extraQuestionsBeforeCall: 0,
-  preferVoiceNotesAcknowledgment: false,
   trainerName: null,
   trainerEmail: null,
   trainerPhone: null,
+  notificationSubscriptions: [...DEFAULT_SUBSCRIPTIONS],
 };
+
+function parseNotificationSubscriptions(raw: unknown): NotificationEventType[] {
+  if (!Array.isArray(raw)) return [...DEFAULT_SUBSCRIPTIONS];
+  const valid = new Set<NotificationEventType>();
+  for (const item of raw) {
+    if (typeof item === 'string' && (NOTIFICATION_EVENT_TYPES as readonly string[]).includes(item)) {
+      valid.add(item as NotificationEventType);
+    }
+  }
+  return Array.from(valid);
+}
 
 /**
  * Sanitiza el contenido de una instrucción libre antes de persistirla a BD o
@@ -128,9 +170,8 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   if (raw == null || typeof raw !== 'object') return out;
   const r = raw as Record<string, unknown>;
 
-  if (typeof r.doubleQuestionMark === 'boolean') {
-    out.doubleQuestionMark = r.doubleQuestionMark;
-  }
+  // Sprint 2.5b/A: claves obsoletas (`doubleQuestionMark`, `preferVoiceNotesAcknowledgment`)
+  // se ignoran silenciosamente — siguen en JSONB de tenants legacy pero no se usan.
 
   if (typeof r.emojiDensity === 'number' && Number.isInteger(r.emojiDensity)) {
     const n = r.emojiDensity;
@@ -146,10 +187,6 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
     }
   }
 
-  if (typeof r.preferVoiceNotesAcknowledgment === 'boolean') {
-    out.preferVoiceNotesAcknowledgment = r.preferVoiceNotesAcknowledgment;
-  }
-
   // Sprint Gamma 2.1
   out.trainerName = sanitizeTrainerName(r.trainerName as string | null | undefined);
 
@@ -158,6 +195,8 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   }
 
   out.trainerPhone = normalizePhoneE164(r.trainerPhone as string | null | undefined);
+
+  out.notificationSubscriptions = parseNotificationSubscriptions(r.notificationSubscriptions);
 
   return out;
 }
@@ -199,23 +238,16 @@ export function serializeTrainerPreferences(
   lines.push('### Estilo');
   lines.push('');
 
-  if (prefs.doubleQuestionMark) {
-    lines.push(
-      '- **Doble interrogación**: cuando termines una frase con pregunta, usa `??` en lugar de `?` ' +
-        '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
-    );
-  } else {
-    lines.push('- **Interrogación simple**: usa `?` estándar al final de las preguntas.');
-  }
-
+  // Sprint 2.5b/A: directrices universalmente deseables — siempre activas.
+  lines.push(
+    '- **Doble interrogación**: cuando termines una frase con pregunta, usa `??` en lugar de `?` ' +
+      '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
+  );
   lines.push(`- **Densidad de emojis**: ${EMOJI_DENSITY_DESCRIPTIONS[prefs.emojiDensity]}.`);
-
-  if (prefs.preferVoiceNotesAcknowledgment) {
-    lines.push(
-      '- **Acknowledge audios**: si el lead envía un audio, menciónalo explícitamente al inicio ' +
-        'de tu respuesta (p.ej. "escuché tu audio…", "acabo de oír lo que mandas…").',
-    );
-  }
+  lines.push(
+    '- **Acknowledge audios**: si el lead envía un audio, menciónalo explícitamente al inicio ' +
+      'de tu respuesta (p.ej. "escuché tu audio…", "acabo de oír lo que mandas…").',
+  );
 
   lines.push('');
   lines.push('### Cualificación');

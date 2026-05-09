@@ -14,6 +14,8 @@ import {
   failPipelineRun,
   startPipelineRun,
 } from './pipeline-runs.js';
+import { enqueueNotification } from './notify-trainer.js';
+import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
 
@@ -264,6 +266,36 @@ export async function processDebounced(
     })
     .eq('id', conversationId);
 
+  // 9.5. Sprint Gamma 2.5 — encolar notificación al trainer si el evento es
+  //      relevante (handoff/qualified/disqualified). El cron `notify-tick`
+  //      cada 10s leerá la cola, comprobará si el trainer está suscrito,
+  //      renderizará la plantilla y enviará via Resend. Best-effort: si
+  //      enqueueNotification falla, log y seguimos (no rompemos el pipeline).
+  const generatorStatus = pipelineOut.generator.setterOutput.conversation_status;
+  const eventType = mapStatusToEventType(generatorStatus);
+  if (eventType) {
+    const enqueueRes = await enqueueNotification({
+      supabase,
+      tenantId,
+      eventType,
+      payload: {
+        lead_id: Number(lead.id),
+        first_name: lead.first_name ?? null,
+        phone: lead.phone ?? null,
+        conversation_id: conversationId,
+        channel_type: channelType,
+        correlation_id: run.correlationId,
+      },
+    });
+    if (!enqueueRes.ok) {
+      // No tirar — la notificación es best-effort. Siguiente turno podrá reintentar
+      // si el trainer dispara otro evento.
+      console.warn(
+        `[notify] enqueueNotification failed for tenant=${tenantId} conv=${conversationId} event=${eventType}: ${enqueueRes.error}`,
+      );
+    }
+  }
+
   // 10. Cerrar pipeline_run con éxito + métricas (incluye multimodal si hubo)
   await completePipelineRun(supabase, {
     id: run.id,
@@ -310,5 +342,29 @@ function mapConversationStatus(
       return 'closed'; // tras handoff, conversación cerrada en el bot
     case 'disqualified':
       return 'stopped';
+  }
+}
+
+/**
+ * Mapea el `conversation_status` del Generator al `event_type` de notificación
+ * para email. Devuelve null si el status no merece email (active/paused son
+ * estados de tránsito, no eventos accionables para el trainer).
+ *
+ * Nota: 'appointment_booked' no se dispara aquí — vendrá de un hook más
+ * adelante cuando exista integración con el calendar booking del Generator.
+ */
+function mapStatusToEventType(
+  s: 'active' | 'qualified' | 'disqualified' | 'handoff' | 'paused',
+): NotificationEventType | null {
+  switch (s) {
+    case 'qualified':
+      return 'qualified';
+    case 'handoff':
+      return 'handoff';
+    case 'disqualified':
+      return 'descalified';
+    case 'active':
+    case 'paused':
+      return null;
   }
 }

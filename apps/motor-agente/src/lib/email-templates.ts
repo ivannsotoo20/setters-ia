@@ -11,13 +11,14 @@ import { env } from '../config/env.js';
  * según el event_type.
  */
 
+// Sprint 2.5b/A: `error_motor` removido del set público (canal admin separado
+// pendiente de definir en sprint posterior).
 export type NotificationEventType =
   | 'handoff'
   | 'qualified'
   | 'appointment_booked'
   | 'descalified'
-  | 'paused_by_rule'
-  | 'error_motor';
+  | 'paused_by_rule';
 
 export interface RenderedEmail {
   subject: string;
@@ -28,6 +29,8 @@ export interface RenderArgs {
   tenantName: string;
   /** Contenido de notification_events.payload (estructura variable por event_type). */
   payload: Record<string, unknown>;
+  /** Nombre del trainer para saludo personalizado en el email (Sprint 2.5b/A). */
+  trainerName?: string | null;
 }
 
 /** Escape HTML básico para evitar XSS en datos del payload. */
@@ -47,7 +50,10 @@ function panelUrl(path: string): string {
 }
 
 /** Wrapper común con header + footer del email. */
-function wrap(args: { tenantName: string; title: string; bodyHtml: string }): string {
+function wrap(args: { tenantName: string; title: string; bodyHtml: string; trainerName?: string | null }): string {
+  const greeting = args.trainerName
+    ? `<p style="margin:0 0 16px;font-size:15px;color:#444;">Hola ${esc(args.trainerName)},</p>`
+    : '';
   return `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -64,6 +70,7 @@ function wrap(args: { tenantName: string; title: string; bodyHtml: string }): st
       <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;line-height:1.3;color:#0a0a0a;">
         ${esc(args.title)}
       </h1>
+      ${greeting}
       ${args.bodyHtml}
     </div>
     <div style="text-align:center;margin-top:16px;font-size:12px;color:#999;">
@@ -113,7 +120,7 @@ function renderHandoff(args: RenderArgs): RenderedEmail {
     ${lastMessage ? `<div style="margin:12px 0;padding:12px;background:#f5f5f5;border-radius:8px;font-size:13px;color:#444;font-style:italic;">"${esc(lastMessage)}"</div>` : ''}
     ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
   `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body }) };
+  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
 }
 
 function renderQualified(args: RenderArgs): RenderedEmail {
@@ -132,7 +139,7 @@ function renderQualified(args: RenderArgs): RenderedEmail {
     ${field('Fase', phase != null ? `F${phase}` : '')}
     ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
   `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body }) };
+  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
 }
 
 function renderAppointmentBooked(args: RenderArgs): RenderedEmail {
@@ -151,7 +158,7 @@ function renderAppointmentBooked(args: RenderArgs): RenderedEmail {
     ${field('Enlace', appointmentLink)}
     ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
   `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body }) };
+  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
 }
 
 function renderDescalified(args: RenderArgs): RenderedEmail {
@@ -168,7 +175,7 @@ function renderDescalified(args: RenderArgs): RenderedEmail {
     ${field('Causa', cause)}
     ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
   `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body }) };
+  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
 }
 
 function renderPausedByRule(args: RenderArgs): RenderedEmail {
@@ -188,32 +195,12 @@ function renderPausedByRule(args: RenderArgs): RenderedEmail {
     </p>
     ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
   `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body }) };
+  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
 }
 
-function renderErrorMotor(args: RenderArgs): RenderedEmail {
-  const p = args.payload;
-  const conversationId = p.conversation_id as number | undefined;
-  const errorMessage = (p.error_message as string | undefined) ?? '(sin detalles)';
-  const attempts = p.attempts as number | undefined;
-
-  const subject = `⚠ Error técnico del motor`;
-  const body = `
-    <p style="font-size:15px;line-height:1.5;margin:0 0 12px;">
-      Hubo un fallo técnico procesando una conversación. Es posible que la IA no
-      haya respondido al lead.
-    </p>
-    ${field('Conversación', conversationId)}
-    ${field('Intentos', attempts)}
-    <div style="margin:12px 0;padding:12px;background:#fef2f2;border-radius:8px;font-size:12px;color:#991b1b;font-family:monospace;">
-      ${esc(errorMessage)}
-    </div>
-    <p style="font-size:13px;color:#666;margin:12px 0;">
-      El equipo técnico de Fyzon revisa estos errores. Si se repite, contacta soporte.
-    </p>
-  `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body }) };
-}
+// Sprint 2.5b/A: `renderErrorMotor` removido. Los errores técnicos del motor
+// no se notifican al trainer — quedarán en un canal admin separado (sprint
+// posterior cuando se defina email a Iván / Slack webhook / tabla `admin_alerts`).
 
 // =============================================================================
 // Dispatcher
@@ -234,7 +221,5 @@ export function renderEmailTemplate(
       return renderDescalified(args);
     case 'paused_by_rule':
       return renderPausedByRule(args);
-    case 'error_motor':
-      return renderErrorMotor(args);
   }
 }

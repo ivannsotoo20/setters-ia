@@ -337,11 +337,6 @@ function ConfiguracionTab({
           {trainerPrefs ? (
             <>
               <PrefRow
-                label="Doble interrogación final"
-                value={trainerPrefs.doubleQuestionMark ? 'Sí (??)' : 'No (?)'}
-                isDefault={!trainerPrefs.doubleQuestionMark}
-              />
-              <PrefRow
                 label="Densidad de emojis"
                 value={
                   ['casi sin emojis', 'algunos', 'moderada', 'abundante'][trainerPrefs.emojiDensity]!
@@ -354,9 +349,22 @@ function ConfiguracionTab({
                 isDefault={trainerPrefs.extraQuestionsBeforeCall === 0}
               />
               <PrefRow
-                label="Acknowledge audios del lead"
-                value={trainerPrefs.preferVoiceNotesAcknowledgment ? 'Sí' : 'No'}
-                isDefault={!trainerPrefs.preferVoiceNotesAcknowledgment}
+                label="Email para notificaciones"
+                value={trainerPrefs.trainerEmail ?? '(no configurado)'}
+                isDefault={trainerPrefs.trainerEmail == null}
+              />
+              <PrefRow
+                label="Eventos suscritos"
+                value={
+                  trainerPrefs.notificationSubscriptions.length === 0
+                    ? '(ninguno)'
+                    : `${trainerPrefs.notificationSubscriptions.length} eventos`
+                }
+                isDefault={
+                  trainerPrefs.notificationSubscriptions.length === 2 &&
+                  trainerPrefs.notificationSubscriptions.includes('handoff') &&
+                  trainerPrefs.notificationSubscriptions.includes('appointment_booked')
+                }
               />
             </>
           ) : (
