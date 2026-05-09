@@ -38,7 +38,7 @@ const NAV_MAIN: NavItem[] = [
 
 const NAV_CONFIG: NavItem[] = [
   { href: '/keywords', label: 'Keywords', icon: Sparkles },
-  { href: '/settings', label: 'Ajustes', icon: Settings },
+  { href: '/settings/integrations', label: 'Integraciones', icon: Settings },
 ];
 
 interface Props {
