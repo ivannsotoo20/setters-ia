@@ -22,9 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ColorPicker } from '@/components/labels/color-picker';
 import { SystemBadge } from '@/components/labels/system-badge';
 import { updateLabel, type DestinationBucket, type LabelRow } from '@/lib/actions/labels';
+import { RulesForm } from './rules-form';
 
 interface MemberOption {
   userId: string;
@@ -82,7 +84,7 @@ export function EditLabelDialog({ open, onOpenChange, label, members }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             Editar etiqueta {label.isSystem ? <SystemBadge /> : null}
@@ -90,11 +92,19 @@ export function EditLabelDialog({ open, onOpenChange, label, members }: Props) {
           <DialogDescription>
             {label.isSystem
               ? 'El nombre y el bucket están bloqueados (etiqueta del sistema). Color, descripción y acciones sí son editables.'
-              : 'Modifica nombre, color, bucket de destino y acciones automáticas.'}
+              : 'Modifica nombre, color, bucket, acciones y reglas automáticas.'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex flex-col gap-4">
+        <Tabs defaultValue="info" className="w-full">
+          <TabsList variant="line" className="w-full justify-start">
+            <TabsTrigger value="info">Información</TabsTrigger>
+            <TabsTrigger value="rules">
+              Reglas auto {label.activeRuleCount > 0 ? `(${label.activeRuleCount})` : ''}
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="info" className="flex flex-col gap-4 pt-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="edit-label-name">Nombre</Label>
             <Input
@@ -180,7 +190,12 @@ export function EditLabelDialog({ open, onOpenChange, label, members }: Props) {
               </SelectContent>
             </Select>
           </div>
-        </div>
+          </TabsContent>
+
+          <TabsContent value="rules" className="pt-3">
+            <RulesForm labelId={label.id} />
+          </TabsContent>
+        </Tabs>
 
         <DialogFooter>
           <Button
