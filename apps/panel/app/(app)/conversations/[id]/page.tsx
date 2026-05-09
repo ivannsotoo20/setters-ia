@@ -1,80 +1,46 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getEffectiveTenant } from '@/lib/effective-tenant';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ConversationHeader } from './conversation-header';
-import { MessagesTimeline, type TimelineMessage } from './messages-timeline';
+import { ConversationLayout } from '@/components/conversation-layout/conversation-layout';
+import {
+  parseTab,
+  parseChannel,
+  parseBoolFlag,
+} from '@/lib/conversation-list-query';
 
 export const dynamic = 'force-dynamic';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    q?: string;
+    channel?: string;
+    unread?: string;
+    mine?: string;
+  }>;
 }
 
-export default async function ConversationDetailPage({ params }: PageProps) {
+/**
+ * Deep-link directo al chat: renderiza el mismo `<ConversationLayout>` que
+ * `/conversations`, con `selectedId` forzado al param. URL canónica
+ * preservada (no usamos redirect → back button limpio).
+ */
+export default async function ConversationDetailPage({ params, searchParams }: PageProps) {
   const { id } = await params;
-  const conversationId = Number(id);
-  if (!Number.isFinite(conversationId) || conversationId <= 0) notFound();
+  const sp = await searchParams;
 
-  const supabase = await createSupabaseServerClient();
-  const effective = await getEffectiveTenant();
-  if (!effective) notFound();
-
-  const { data: conv } = await supabase
-    .from('conversations')
-    .select(
-      `id, lead_id, channel_id, phase_number, state, conversation_source,
-       ai_paused_until, last_message_at, created_at, updated_at,
-       is_qualified, is_handoff_to_human,
-       handoff_cause, handoff_reason, handoff_at,
-       leads(first_name, last_name, username, external_id, phone, email),
-       channels(channel_type, via_provider)`,
-    )
-    .eq('id', conversationId)
-    .eq('tenant_id', effective.tenantId)
-    .maybeSingle();
-
-  if (!conv) notFound();
-
-  const { data: messages } = await supabase
-    .from('conversation_messages')
-    .select('id, source, content_type, content, transcription, media_url, sent_at')
-    .eq('conversation_id', conversationId)
-    .order('sent_at', { ascending: true })
-    .limit(200);
+  const selectedNum = Number(id);
+  if (!Number.isFinite(selectedNum) || selectedNum <= 0) notFound();
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/conversations">
-            <ArrowLeft className="size-4" />
-            Volver
-          </Link>
-        </Button>
-        <span className="text-sm text-muted-foreground font-mono">#{conv.id}</span>
-      </div>
-
-      <ConversationHeader conv={conv as never} />
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Timeline</CardTitle>
-          <CardDescription>
-            {messages?.length ?? 0} mensajes · ordenados cronológicamente
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(messages?.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">Sin mensajes todavía.</p>
-          ) : (
-            <MessagesTimeline messages={(messages ?? []) as TimelineMessage[]} />
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <ConversationLayout
+      selectedId={selectedNum}
+      activeTab={parseTab(sp.tab)}
+      filters={{
+        q: sp.q ?? '',
+        channel: parseChannel(sp.channel),
+        unread: parseBoolFlag(sp.unread),
+        mine: parseBoolFlag(sp.mine),
+      }}
+    />
   );
 }
