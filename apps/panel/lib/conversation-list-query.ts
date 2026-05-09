@@ -35,6 +35,13 @@ export interface ConversationListChannel {
   via_provider: string;
 }
 
+export interface ConversationListLabel {
+  id: number;
+  name: string;
+  color: string;
+  destinationBucket: 'chats' | 'hot' | 'done' | 'bought' | null;
+}
+
 export interface ConversationListRow {
   id: number;
   phase_number: number;
@@ -49,6 +56,11 @@ export interface ConversationListRow {
   conversation_source: string | null;
   leads: ConversationListLead | null;
   channels: ConversationListChannel | null;
+  // Sprint Eta — labels aplicadas (opcional para no romper tests legacy;
+  // siempre tratado como array vacío si undefined). Puede estar vacío para
+  // conversations pre-Eta sin backfill aún ejecutado — ver classifyTabByLabels
+  // fallback.
+  labels?: ConversationListLabel[];
 }
 
 export interface FilterParams {
@@ -57,6 +69,8 @@ export interface FilterParams {
   unread?: boolean;
   mine?: boolean;
   viewerId?: string | null;
+  /** Sprint Eta — IDs de labels para filtrar. Match si la row tiene AL MENOS una. */
+  labelIds?: number[];
 }
 
 export function classifyTab(row: Pick<ConversationListRow, 'is_handoff_to_human' | 'phase_number' | 'state' | 'is_qualified'>): TabKey {
@@ -72,9 +86,34 @@ export function classifyTab(row: Pick<ConversationListRow, 'is_handoff_to_human'
   return 'chats';
 }
 
+/**
+ * Sprint Eta — clasifica tab basándose en `destination_bucket` de las labels
+ * aplicadas. Precedencia: bought > hot > done > chats. Si la conversation
+ * no tiene labels system aplicadas (caso pre-Eta o nunca pasó por pipeline),
+ * cae al `classifyTab` legacy. Cuando se ejecute backfill (Eta.6), todas las
+ * conversations tendrán al menos una system label y este fallback dejará de
+ * activarse.
+ */
+export function classifyTabByLabels(row: ConversationListRow): TabKey {
+  const buckets = (row.labels ?? [])
+    .map((l) => l.destinationBucket)
+    .filter((b): b is TabKey => b != null);
+  if (buckets.includes('bought')) return 'bought';
+  if (buckets.includes('hot')) return 'hot';
+  if (buckets.includes('done')) return 'done';
+  if (buckets.includes('chats')) return 'chats';
+  return classifyTab(row);
+}
+
 export function tabCounts(rows: ConversationListRow[]): Record<TabKey, number> {
   const counts: Record<TabKey, number> = { chats: 0, hot: 0, done: 0, bought: 0 };
   for (const r of rows) counts[classifyTab(r)] += 1;
+  return counts;
+}
+
+export function tabCountsByLabels(rows: ConversationListRow[]): Record<TabKey, number> {
+  const counts: Record<TabKey, number> = { chats: 0, hot: 0, done: 0, bought: 0 };
+  for (const r of rows) counts[classifyTabByLabels(r)] += 1;
   return counts;
 }
 
@@ -93,6 +132,8 @@ export function applyFilters(
   const unread = filters.unread === true;
   const mine = filters.mine === true;
   const viewerId = filters.viewerId ?? null;
+
+  const labelIds = filters.labelIds ?? [];
 
   return rows.filter((row) => {
     if (unread && row.is_unread !== true) return false;
@@ -115,6 +156,10 @@ export function applyFilters(
         .toLowerCase();
       if (!haystack.includes(q)) return false;
     }
+    if (labelIds.length > 0) {
+      const rowLabelIds = (row.labels ?? []).map((l) => l.id);
+      if (!labelIds.some((id) => rowLabelIds.includes(id))) return false;
+    }
     return true;
   });
 }
@@ -125,7 +170,15 @@ export function rowsForTab(
   filters: FilterParams,
 ): ConversationListRow[] {
   const filtered = applyFilters(rows, filters);
-  return filtered.filter((r) => classifyTab(r) === tab);
+  return filtered.filter((r) => classifyTabByLabels(r) === tab);
+}
+
+export function parseLabelIds(value: string | null | undefined): number[] {
+  if (!value) return [];
+  return value
+    .split(',')
+    .map((s) => Number(s.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0);
 }
 
 const VALID_TABS: readonly TabKey[] = ['chats', 'hot', 'done', 'bought'] as const;

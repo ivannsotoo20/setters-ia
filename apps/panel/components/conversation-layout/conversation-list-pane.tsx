@@ -4,8 +4,9 @@ import {
   type FilterParams,
   type TabKey,
   rowsForTab,
-  tabCounts,
+  tabCountsByLabels,
 } from '@/lib/conversation-list-query';
+import type { LabelRow } from '@/lib/actions/labels';
 import { ConversationListItem } from './conversation-list-item';
 import { ConversationListTabs } from './conversation-list-tabs';
 import { ConversationListFilters } from './conversation-list-filters';
@@ -16,6 +17,7 @@ interface Props {
   activeTab: TabKey;
   filters: FilterParams;
   assigneeMap: Record<string, string>;
+  allLabels: LabelRow[];
 }
 
 export function ConversationListPane({
@@ -24,8 +26,9 @@ export function ConversationListPane({
   activeTab,
   filters,
   assigneeMap,
+  allLabels,
 }: Props) {
-  const counts = tabCounts(rows);
+  const counts = tabCountsByLabels(rows);
   const visible = rowsForTab(rows, activeTab, filters);
 
   return (
@@ -45,6 +48,8 @@ export function ConversationListPane({
           channel={filters.channel ?? 'all'}
           unread={filters.unread === true}
           mine={filters.mine === true}
+          labelIds={filters.labelIds ?? []}
+          allLabels={allLabels}
         />
       </div>
       <div className="shrink-0">

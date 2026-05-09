@@ -11,6 +11,7 @@ import {
   formatRelative,
   isAiPaused,
 } from './format-helpers';
+import { LabelChip } from '@/components/labels/label-chip';
 import type { ConversationListRow } from '@/lib/conversation-list-query';
 
 interface Props {
@@ -98,6 +99,18 @@ export function ConversationListItem({ row, isSelected, assigneeLabel }: Props) 
               </span>
             ) : null}
           </div>
+          {row.labels && row.labels.length > 0 ? (
+            <div className="flex items-center gap-1 flex-wrap">
+              {row.labels.slice(0, 3).map((l) => (
+                <LabelChip key={l.id} size="mini" label={l} />
+              ))}
+              {row.labels.length > 3 ? (
+                <span className="text-[9px] text-muted-foreground tabular-nums">
+                  +{row.labels.length - 3}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </button>
     </li>
