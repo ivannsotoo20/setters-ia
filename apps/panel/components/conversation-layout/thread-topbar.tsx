@@ -2,6 +2,7 @@
 
 import { FolderInput, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AssignAction } from './actions/assign-action';
 import { NotesAction } from './actions/notes-action';
@@ -9,6 +10,7 @@ import { UnreadToggleAction } from './actions/unread-toggle-action';
 import { BlockAction } from './actions/block-action';
 import { DeleteAction } from './actions/delete-action';
 import { PlaceholderAction } from './actions/placeholder-action';
+import { ScheduleFollowupDialog } from './actions/schedule-followup-dialog';
 import { formatLeadName, leadInitials, formatChannelLong, isAiPaused } from './format-helpers';
 import {
   LabelMultiSelect,
@@ -21,6 +23,7 @@ import type {
   ConversationNote,
 } from './types';
 import type { LabelRow } from '@/lib/actions/labels';
+import type { FollowupTemplateRow } from '@/lib/actions/followups';
 
 interface Props {
   detail: SelectedConversationDetail;
@@ -28,9 +31,17 @@ interface Props {
   viewer: ConversationViewer;
   members: TenantMember[];
   allLabels: LabelRow[];
+  followupTemplates: FollowupTemplateRow[];
 }
 
-export function ThreadTopbar({ detail, notes, viewer, members, allLabels }: Props) {
+export function ThreadTopbar({
+  detail,
+  notes,
+  viewer,
+  members,
+  allLabels,
+  followupTemplates,
+}: Props) {
   const lead = detail.lead;
   const name = formatLeadName(lead);
   const initials = leadInitials(lead);
@@ -118,11 +129,23 @@ export function ThreadTopbar({ detail, notes, viewer, members, allLabels }: Prop
           {canModerate ? (
             <DeleteAction conversationId={detail.id} leadName={name} />
           ) : null}
-          <PlaceholderAction
-            label="Programar mensaje"
-            icon={Clock}
-            tooltip="Próximamente Sprint Iota"
-          />
+          {canWrite ? (
+            <ScheduleFollowupDialog
+              conversationId={detail.id}
+              templates={followupTemplates}
+              trigger={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs"
+                  aria-label="Programar followup"
+                >
+                  <Clock className="size-3.5" />
+                  Programar
+                </Button>
+              }
+            />
+          ) : null}
         </div>
       </div>
 

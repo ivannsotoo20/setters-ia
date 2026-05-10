@@ -561,6 +561,47 @@ export type Database = {
           },
         ]
       }
+      followup_templates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: number
+          name: string
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          name: string
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          name?: string
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ignored_users: {
         Row: {
           channel_id: number | null
@@ -955,8 +996,10 @@ export type Database = {
         Row: {
           attachment_url: string | null
           attempts: number
+          auto_cancel_on_reply: boolean
           conversation_id: number
           created_at: string
+          created_by_user_id: string | null
           has_attachment: boolean
           id: number
           integration_account_id: number
@@ -968,13 +1011,16 @@ export type Database = {
           scheduled_at: string
           sent_at: string | null
           status: Database["public"]["Enums"]["schedule_status"]
+          template_id: number | null
           tenant_id: number
         }
         Insert: {
           attachment_url?: string | null
           attempts?: number
+          auto_cancel_on_reply?: boolean
           conversation_id: number
           created_at?: string
+          created_by_user_id?: string | null
           has_attachment?: boolean
           id?: number
           integration_account_id: number
@@ -986,13 +1032,16 @@ export type Database = {
           scheduled_at: string
           sent_at?: string | null
           status?: Database["public"]["Enums"]["schedule_status"]
+          template_id?: number | null
           tenant_id: number
         }
         Update: {
           attachment_url?: string | null
           attempts?: number
+          auto_cancel_on_reply?: boolean
           conversation_id?: number
           created_at?: string
+          created_by_user_id?: string | null
           has_attachment?: boolean
           id?: number
           integration_account_id?: number
@@ -1004,6 +1053,7 @@ export type Database = {
           scheduled_at?: string
           sent_at?: string | null
           status?: Database["public"]["Enums"]["schedule_status"]
+          template_id?: number | null
           tenant_id?: number
         }
         Relationships: [
@@ -1026,6 +1076,13 @@ export type Database = {
             columns: ["resource_id"]
             isOneToOne: false
             referencedRelation: "resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_schedules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "followup_templates"
             referencedColumns: ["id"]
           },
           {

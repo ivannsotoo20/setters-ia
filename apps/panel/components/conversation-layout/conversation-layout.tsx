@@ -5,6 +5,12 @@ import { listMembers } from '@/lib/actions/members';
 import { listConversationNotes } from '@/lib/actions/conversations';
 import { listLabels, type LabelRow } from '@/lib/actions/labels';
 import {
+  listFollowupTemplates,
+  listScheduledFollowups,
+  type FollowupTemplateRow,
+  type ScheduledFollowupRow,
+} from '@/lib/actions/followups';
+import {
   type ConversationListRow,
   type ConversationListLabel,
   type FilterParams,
@@ -56,6 +62,14 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   // ---- Sprint Eta — carga labels del tenant (selector + filtro) -----------
   const allLabelsPromise = listLabels();
 
+  // ---- Sprint Iota — followup templates del tenant (siempre, para topbar) -
+  const followupTemplatesPromise = listFollowupTemplates();
+
+  // ---- Sprint Iota — followups programados (solo si hay selectedId) -------
+  const followupsPromise = selectedId
+    ? listScheduledFollowups(selectedId)
+    : Promise.resolve({ ok: true as const, data: [] as ScheduledFollowupRow[] });
+
   // ---- Carga detalle + mensajes + notas (solo si selectedId) --------------
   const detailPromise = selectedId
     ? supabase
@@ -103,6 +117,8 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     notesRes,
     viewerEmailRes,
     allLabelsRes,
+    followupTemplatesRes,
+    followupsRes,
   ] = await Promise.all([
     listPromise,
     membersPromise,
@@ -111,6 +127,8 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     notesPromise,
     viewerEmailPromise,
     allLabelsPromise,
+    followupTemplatesPromise,
+    followupsPromise,
   ]);
 
   if (listRes.error) {
@@ -158,6 +176,12 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   })) as unknown as ConversationListRow[];
 
   const allLabels: LabelRow[] = allLabelsRes.ok ? allLabelsRes.data ?? [] : [];
+  const followupTemplates: FollowupTemplateRow[] = followupTemplatesRes.ok
+    ? followupTemplatesRes.data ?? []
+    : [];
+  const followups: ScheduledFollowupRow[] = followupsRes.ok ? followupsRes.data ?? [] : [];
+  const canScheduleFollowups =
+    effective.isAgencyAdmin || effective.role === 'owner' || effective.role === 'admin';
 
   const members: TenantMember[] = membersRes.ok
     ? membersRes.data!.map((m) => ({
@@ -219,9 +243,17 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
           viewer={viewer}
           members={members}
           allLabels={allLabels}
+          followupTemplates={followupTemplates}
         />
       }
-      panel={<ControlPanel detail={selectedDetail} />}
+      panel={
+        <ControlPanel
+          detail={selectedDetail}
+          followups={followups}
+          followupTemplates={followupTemplates}
+          canScheduleFollowups={canScheduleFollowups}
+        />
+      }
     />
   );
 }

@@ -20,6 +20,7 @@ import {
   UserCog,
   Tag,
   Kanban,
+  Clock,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -57,6 +58,7 @@ function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
   const items: NavItem[] = [
     { href: '/keywords', label: 'Keywords', icon: Sparkles },
     { href: '/labels', label: 'Etiquetas', icon: Tag },
+    { href: '/settings/followup-templates', label: 'Followups', icon: Clock },
   ];
   if (canManageTenant) {
     items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
