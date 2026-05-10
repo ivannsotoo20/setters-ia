@@ -1121,6 +1121,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "message_schedules_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "followup_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "message_schedules_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
