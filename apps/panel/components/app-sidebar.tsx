@@ -21,6 +21,9 @@ import {
   Tag,
   Kanban,
   Clock,
+  ContactRound,
+  Activity,
+  Rocket,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -50,6 +53,7 @@ type SidebarMode = 'agency' | 'tenant-admin' | 'trainer';
 const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/conversations', label: 'Conversaciones', icon: MessageSquare },
+  { href: '/contacts', label: 'Contactos', icon: ContactRound },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
 ];
 
@@ -61,7 +65,9 @@ function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
     { href: '/settings/followup-templates', label: 'Followups', icon: Clock },
   ];
   if (canManageTenant) {
+    items.push({ href: '/onboarding/integrations', label: 'Onboarding', icon: Rocket });
     items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
+    items.push({ href: '/settings/integrations/health', label: 'Salud integraciones', icon: Activity });
     items.push({ href: '/settings/preferences', label: 'Preferencias', icon: Sliders });
   }
   // Miembros visible para todos: collaborator ve la lista en read-only.

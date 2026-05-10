@@ -4,6 +4,7 @@ import { parseManyChatInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
@@ -106,6 +107,9 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
         // No bloqueamos el ack si Redis está caído — el motor sigue persistiendo.
         request.log.warn({ err }, 'enqueueDebounce failed (non-fatal)');
       }
+
+      // 5b. Toca last_webhook_at para el dashboard /settings/integrations/health.
+      await touchIntegrationLastWebhook(supabase, tenantId, 'manychat');
 
       // 6. Ack a ManyChat. El pipeline + outbound suceden out-of-band tras el debounce.
       return reply.code(200).send({

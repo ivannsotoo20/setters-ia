@@ -92,12 +92,14 @@ export function AddIntegrationDialog() {
       } else if (provider === 'ycloud') {
         const apiKey = String(formData.get('apiKey') ?? '').trim();
         const businessPhone = String(formData.get('businessPhone') ?? '').trim();
+        const wabaId = String(formData.get('wabaId') ?? '').trim();
         if (!apiKey) {
           toast.error('apiKey es obligatorio');
           return;
         }
         credentials.apiKey = apiKey;
         if (businessPhone) connectionConfig.business_phone = businessPhone;
+        if (wabaId) connectionConfig.wabaId = wabaId;
       } else if (provider === 'manychat') {
         const apiKey = String(formData.get('apiKey') ?? '').trim();
         if (!apiKey) {
@@ -279,6 +281,14 @@ function ProviderFields({ provider }: { provider: IntegrationProvider }) {
         <div className="flex flex-col gap-2">
           <Label htmlFor="businessPhone">Business Phone (E.164, opcional)</Label>
           <Input id="businessPhone" name="businessPhone" placeholder="+34684703803" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="wabaId">WABA ID (opcional)</Label>
+          <Input id="wabaId" name="wabaId" placeholder="auto-detectado si tu cuenta tiene WABA conectada" />
+          <p className="text-xs text-muted-foreground">
+            WhatsApp Business Account ID. Si no se detecta automáticamente al
+            validar, pégalo a mano (YCloud panel → WhatsApp Business Accounts → ID).
+          </p>
         </div>
       </div>
     );

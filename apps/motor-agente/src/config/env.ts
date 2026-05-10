@@ -37,6 +37,13 @@ const envSchema = z.object({
   //   warn     → se verifica si el header llega; si falla, log warn y continúa (default transición).
   //   enforce  → si la firma falta o es inválida → 401.
   YCLOUD_WEBHOOK_VERIFY_MODE: z.enum(['disabled', 'warn', 'enforce']).default('warn'),
+  // Hito 9 sub-fase 3 — modo de verificación shared-secret del endpoint
+  // POST /automations/lead-form/:tenant_token. El secret se reusa de
+  // integration_accounts.webhook_secret de la cuenta ycloud activa del tenant.
+  //   disabled → skip verificación (dev local).
+  //   warn     → log si header missing/mismatch + continúa (transición).
+  //   enforce  → header missing/mismatch → 401.
+  LEAD_FORM_VERIFY_MODE: z.enum(['disabled', 'warn', 'enforce']).default('warn'),
   // Hardening 1.3 — bearer token para GET /internal/stats. Opcional en dev,
   // pero el endpoint devuelve 503 si no está configurado. Generar con
   // openssl rand -hex 32.

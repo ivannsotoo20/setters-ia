@@ -13,6 +13,7 @@ import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { verifyGhlSignature } from '../lib/webhook-verify-ghl.js';
 import { verifyMarketplaceWebhook } from '../lib/webhook-verify-marketplace.js';
+import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import {
   routeGhlInbound,
   routeGhlOutbound,
@@ -190,6 +191,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
             inbound,
             debounceWindowSeconds: debounceWindow,
           });
+          await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
           return reply.code(200).send({
             ack: true,
             type: 'InboundMessage',
@@ -201,6 +203,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         if (payload.type === 'OutboundMessage') {
           const outbound = parseGhlOutboundMessage(payload, tenantId);
           const result = await routeGhlOutbound({ supabase, ghlClient, outbound });
+          await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
           return reply.code(200).send({
             ack: true,
             type: 'OutboundMessage',
@@ -339,6 +342,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
             inbound,
             debounceWindowSeconds: debounceWindow,
           });
+          await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
           return reply.code(200).send({
             ack: true,
             type: 'InboundMessage',
@@ -351,6 +355,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           const ghlClient = await loadGhlClient(supabase, tenantId);
           const outbound = parseGhlOutboundMessage(payload, tenantId);
           const result = await routeGhlOutbound({ supabase, ghlClient, outbound });
+          await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
           return reply.code(200).send({
             ack: true,
             type: 'OutboundMessage',

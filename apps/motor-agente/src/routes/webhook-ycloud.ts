@@ -5,6 +5,7 @@ import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { enqueueDebounce } from '../lib/debounce-buffer.js';
 import { verifyYCloudSignature } from '../lib/webhook-verify.js';
+import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import { env } from '../config/env.js';
 import {
   getOrCreateChannel,
@@ -185,6 +186,9 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
       } catch (err) {
         request.log.warn({ err }, 'enqueueDebounce failed (non-fatal)');
       }
+
+      // 6b. Toca last_webhook_at (Hito 9 sub-fase 6)
+      await touchIntegrationLastWebhook(supabase, tenantId, 'ycloud');
 
       // 7. Ack a YCloud
       return reply.code(200).send({

@@ -21,7 +21,11 @@ export function SyncYCloudButton() {
         setLast(data);
         const summary = `+${data.added} nuevas · ${data.updated} actualizadas · ${data.skipped} sin cambios`;
         if (data.errors.length > 0) {
-          toast.warning(`${summary} · ${data.errors.length} errores`, { duration: 8000 });
+          // Mostramos el primer error explícitamente (no solo el conteo) para
+          // que el trainer pueda actuar sin mirar logs server-side.
+          const first = data.errors[0] ?? '';
+          const more = data.errors.length > 1 ? ` (+${data.errors.length - 1} más)` : '';
+          toast.warning(`${summary}\n${first}${more}`, { duration: 12000 });
         } else {
           toast.success(`Sync OK: ${summary}`);
         }

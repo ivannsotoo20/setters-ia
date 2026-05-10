@@ -40,7 +40,11 @@ export async function ycloudListTemplates(params: {
   const { apiKey, wabaId, baseUrl = DEFAULT_BASE_URL } = params;
   if (!apiKey || !wabaId) throw new Error('ycloudListTemplates: apiKey + wabaId requeridos');
 
-  const url = `${baseUrl.replace(/\/$/, '')}/v2/whatsapp/templates?wabaId=${encodeURIComponent(wabaId)}&limit=200`;
+  // YCloud rechaza limit > 100 con 400 PARAM_INVALID. Si en algún tenant Iván
+  // llega a tener >100 plantillas, habrá que paginar con offset (raro: el cap
+  // típico de Meta es ~100-250 plantillas por WABA y el trainer rara vez supera
+  // las 20). Para MVP el primer batch de 100 cubre todos los casos reales.
+  const url = `${baseUrl.replace(/\/$/, '')}/v2/whatsapp/templates?wabaId=${encodeURIComponent(wabaId)}&limit=100`;
   const response = await fetch(url, {
     method: 'GET',
     headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
@@ -61,7 +65,16 @@ export async function ycloudListTemplates(params: {
   }
 
   const obj = (parsed ?? {}) as Record<string, unknown>;
-  const list = Array.isArray(obj.list) ? obj.list : Array.isArray(obj.data) ? obj.data : [];
+  // YCloud devuelve {offset, limit, length, items: [...]}. Mantenemos fallbacks
+  // a `list` / `data` por defensa (otros wrappers pueden devolver shapes
+  // distintos), pero el shape real verificado de YCloud usa `items`.
+  const list = Array.isArray(obj.items)
+    ? obj.items
+    : Array.isArray(obj.list)
+      ? obj.list
+      : Array.isArray(obj.data)
+        ? obj.data
+        : [];
   return list.filter((it) => typeof it === 'object' && it != null) as YCloudTemplateRow[];
 }
 
@@ -77,12 +90,24 @@ export function extractTemplateVariables(
 ): Array<{ name: string; sample: string | null }> {
   const body = extractTemplateBody(template);
   if (!body) return [];
-  const matches = body.match(/\{\{(\d+)\}\}/g) ?? [];
-  const unique = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, ''))));
+  // Soporta dos formatos de placeholder en plantillas Meta WhatsApp:
+  //   - Numérico clásico: {{1}}, {{2}}  → orden estricto.
+  //   - Named (NEW v15+): {{nombre}}, {{producto}} → más legible, mismo orden.
+  // Capturamos cualquier {{anything}} y deduplicamos preservando orden de aparición.
+  const matches = body.match(/\{\{([^{}]+)\}\}/g) ?? [];
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const m of matches) {
+    const name = m.replace(/[{}]/g, '').trim();
+    if (!seen.has(name)) {
+      seen.add(name);
+      ordered.push(name);
+    }
+  }
   const samples =
     template.components?.find((c) => c.type === 'BODY' || c.type === 'body')?.example
       ?.body_text?.[0] ?? [];
-  return unique.map((name, idx) => ({
+  return ordered.map((name, idx) => ({
     name,
     sample: samples[idx] ?? null,
   }));

@@ -683,6 +683,7 @@ export type Database = {
           credentials_encrypted: Json | null
           id: number
           is_active: boolean
+          last_webhook_at: string | null
           provider: Database["public"]["Enums"]["channel_provider"]
           tenant_id: number
           updated_at: string
@@ -696,6 +697,7 @@ export type Database = {
           credentials_encrypted?: Json | null
           id?: number
           is_active?: boolean
+          last_webhook_at?: string | null
           provider: Database["public"]["Enums"]["channel_provider"]
           tenant_id: number
           updated_at?: string
@@ -709,6 +711,7 @@ export type Database = {
           credentials_encrypted?: Json | null
           id?: number
           is_active?: boolean
+          last_webhook_at?: string | null
           provider?: Database["public"]["Enums"]["channel_provider"]
           tenant_id?: number
           updated_at?: string
@@ -839,6 +842,7 @@ export type Database = {
           external_id: string
           first_name: string | null
           id: number
+          last_message_at: string | null
           last_name: string | null
           location: string | null
           notes: string | null
@@ -855,6 +859,7 @@ export type Database = {
           external_id: string
           first_name?: string | null
           id?: number
+          last_message_at?: string | null
           last_name?: string | null
           location?: string | null
           notes?: string | null
@@ -871,6 +876,7 @@ export type Database = {
           external_id?: string
           first_name?: string | null
           id?: number
+          last_message_at?: string | null
           last_name?: string | null
           location?: string | null
           notes?: string | null
@@ -1656,6 +1662,7 @@ export type Database = {
           tenant_id: number
           timezone: string
           updated_at: string
+          welcome_template_id: number | null
         }
         Insert: {
           active_conversation_delay?: string
@@ -1667,6 +1674,7 @@ export type Database = {
           tenant_id: number
           timezone?: string
           updated_at?: string
+          welcome_template_id?: number | null
         }
         Update: {
           active_conversation_delay?: string
@@ -1678,6 +1686,7 @@ export type Database = {
           tenant_id?: number
           timezone?: string
           updated_at?: string
+          welcome_template_id?: number | null
         }
         Relationships: [
           {
@@ -1685,6 +1694,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_configs_welcome_template_id_fkey"
+            columns: ["welcome_template_id"]
+            isOneToOne: false
+            referencedRelation: "followup_templates"
             referencedColumns: ["id"]
           },
         ]

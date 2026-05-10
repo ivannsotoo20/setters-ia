@@ -63,7 +63,9 @@ export async function ycloudListTemplates(
   if (!apiKey) throw new Error('ycloudListTemplates: apiKey requerida');
   if (!wabaId) throw new Error('ycloudListTemplates: wabaId requerida');
 
-  const url = `${baseUrl.replace(/\/$/, '')}/v2/whatsapp/templates?wabaId=${encodeURIComponent(wabaId)}&limit=200`;
+  // YCloud rechaza limit > 100 con 400 PARAM_INVALID. Para MVP basta con 100
+  // (el trainer típico tiene <20 plantillas WA aprobadas).
+  const url = `${baseUrl.replace(/\/$/, '')}/v2/whatsapp/templates?wabaId=${encodeURIComponent(wabaId)}&limit=100`;
   const response = await fetchImpl(url, {
     method: 'GET',
     headers: {
@@ -88,7 +90,15 @@ export async function ycloudListTemplates(
   }
 
   const obj = (parsed ?? {}) as Record<string, unknown>;
-  const list = Array.isArray(obj.list) ? obj.list : Array.isArray(obj.data) ? obj.data : [];
+  // YCloud responde {offset, limit, length, items: [...]}. Fallbacks a list/data
+  // por defensa pero el shape real verificado usa `items`.
+  const list = Array.isArray(obj.items)
+    ? obj.items
+    : Array.isArray(obj.list)
+      ? obj.list
+      : Array.isArray(obj.data)
+        ? obj.data
+        : [];
   return list.filter((it) => typeof it === 'object' && it != null) as YCloudTemplateRow[];
 }
 
@@ -215,11 +225,20 @@ export function extractTemplateVariables(
 ): Array<{ name: string; sample: string | null }> {
   const body = extractTemplateBody(template);
   if (!body) return [];
-  const matches = body.match(/\{\{(\d+)\}\}/g) ?? [];
-  const unique = Array.from(new Set(matches.map((m) => m.replace(/[{}]/g, ''))));
+  // Soporta {{1}} numéricas y {{nombre}} named (Meta v15+).
+  const matches = body.match(/\{\{([^{}]+)\}\}/g) ?? [];
+  const seen = new Set<string>();
+  const ordered: string[] = [];
+  for (const m of matches) {
+    const name = m.replace(/[{}]/g, '').trim();
+    if (!seen.has(name)) {
+      seen.add(name);
+      ordered.push(name);
+    }
+  }
   const samples =
     template.components?.find((c) => c.type === 'BODY' || c.type === 'body')?.example?.body_text?.[0] ?? [];
-  return unique.map((name, idx) => ({
+  return ordered.map((name, idx) => ({
     name,
     sample: samples[idx] ?? null,
   }));

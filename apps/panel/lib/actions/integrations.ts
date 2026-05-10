@@ -115,11 +115,35 @@ async function validateCredentials(
     const apiKey = credentials.apiKey;
     if (!apiKey) return { ok: false, reason: 'apiKey requerido' };
     try {
-      const res = await fetch('https://api.ycloud.com/v2/account', {
+      // Validamos contra /v2/whatsapp/businessAccounts: endpoint protegido
+      // por API key que devuelve la lista de WABAs accesibles. Confirmado:
+      // - dummy key → 401 INVALID_API_KEY
+      // - key válida → 200 con array de WABAs (puede ser vacío si la cuenta
+      //   aún no tiene WABA conectada, pero la key es válida).
+      // /v2/account NO existe (devuelve 404 con auth válida) — ese era el bug.
+      const res = await fetch('https://api.ycloud.com/v2/whatsapp/businessAccounts', {
         headers: { 'X-API-Key': apiKey, Accept: 'application/json' },
       });
-      if (!res.ok) return { ok: false, reason: `YCloud HTTP ${res.status}` };
-      return { ok: true };
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, reason: `YCloud rechazó la API key (HTTP ${res.status})` };
+      }
+      if (!res.ok) {
+        return { ok: false, reason: `YCloud respondió HTTP ${res.status} (endpoint inesperado)` };
+      }
+      // Opcional: extraer wabaId de la primera WABA para guardarlo en derived,
+      // útil para sincronización de plantillas posterior.
+      const json = (await res.json().catch(() => null)) as
+        | { list?: Array<{ id?: string; name?: string }>; data?: Array<{ id?: string; name?: string }> }
+        | null;
+      const list = json?.list ?? json?.data ?? [];
+      const firstWaba = Array.isArray(list) && list.length > 0 ? list[0] : null;
+      const derived: Record<string, string> = {};
+      if (firstWaba?.id) derived.wabaId = String(firstWaba.id);
+      if (firstWaba?.name) derived.wabaName = String(firstWaba.name);
+      return {
+        ok: true,
+        derived: Object.keys(derived).length > 0 ? derived : undefined,
+      };
     } catch (err) {
       return { ok: false, reason: `YCloud fetch falló: ${(err as Error).message}` };
     }
@@ -220,6 +244,20 @@ export async function createOrUpdateIntegration(
     return { ok: false, error: `Validación falló: ${validation.reason}` };
   }
 
+  // 1b. Mergear info derivada del ping (ej. wabaId YCloud) al connectionConfig
+  //     ANTES del UPSERT — así el sync de plantillas (Sprint Iota.1) encuentra
+  //     wabaId sin pedir al trainer que lo pegue a mano.
+  //     IMPORTANTE: si el trainer pasó wabaId manualmente en input.connectionConfig,
+  //     respetamos su valor (no lo sobreescribimos).
+  const mergedConnectionConfig: Record<string, string> = { ...input.connectionConfig };
+  if (validation.derived) {
+    for (const [key, value] of Object.entries(validation.derived)) {
+      if (!mergedConnectionConfig[key] && typeof value === 'string') {
+        mergedConnectionConfig[key] = value;
+      }
+    }
+  }
+
   // 2. Cifrar credenciales.
   let encryptedBlob: string;
   try {
@@ -274,7 +312,7 @@ export async function createOrUpdateIntegration(
       .from('integration_accounts')
       .update({
         credentials_encrypted: { blob: encryptedBlob },
-        connection_config: input.connectionConfig,
+        connection_config: mergedConnectionConfig,
         is_active: true,
         updated_at: new Date().toISOString(),
       })

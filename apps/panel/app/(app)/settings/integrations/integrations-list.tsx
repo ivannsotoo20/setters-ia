@@ -25,6 +25,7 @@ import {
   deleteIntegration,
   toggleIntegrationActive,
 } from '@/lib/actions/integrations';
+import { EditIntegrationDialog } from './edit-integration-dialog';
 
 interface Integration {
   id: number;
@@ -144,6 +145,12 @@ function IntegrationRow({ integration }: { integration: Integration }) {
       </TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-2">
+          <EditIntegrationDialog
+            integrationId={integration.id}
+            provider={integration.provider}
+            channelType={integration.channelType}
+            connectionConfig={integration.connectionConfig}
+          />
           <Button
             variant="outline"
             size="sm"

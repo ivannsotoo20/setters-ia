@@ -313,6 +313,50 @@ curl localhost:3001/health        # smoke test del motor
 
 Plantilla en `.env.example`. `.env.local` es gitignored — Ivan lo rellena con credenciales reales. Motor y panel leen del mismo `.env` en desarrollo.
 
+## Hito 9 — GHL/YCloud como conectores de origen + bienvenida WA por formulario
+
+**Doctrina** (decidida 2026-05-10): el SaaS Setters IA es el CRM. **GHL NO se usa como CRM** — solo como conector de origen (lead magnet IG/FB, bienvenidas manuales del trainer en chat IG/FB). YCloud es la pasarela WhatsApp (hasta API Meta directa BSP). Toda la gestión de contactos, conversaciones, pipeline y etiquetas vive en el panel Fyzon. Ver plan: `~/.claude/plans/arranquemos-el-hito-9-eventual-stearns.md`.
+
+**Endpoint nuevo `POST /automations/lead-form/:tenant_token`** (`apps/motor-agente/src/routes/automation-lead-form.ts`): recibe leads de formularios externos (n8n / GHL Workflow / Tally / Meta Lead Ads) → crea lead WA + envía plantilla bienvenida YCloud + crea conv F1 outbound + activa IA. Opcional shared-secret en header `X-Form-Secret` validado contra `integration_accounts.webhook_secret` de la cuenta YCloud activa, modo `LEAD_FORM_VERIFY_MODE` (warn|enforce|disabled, default warn).
+
+**Endpoint nuevo `POST /internal/welcome`** (`apps/motor-agente/src/routes/internal-welcome.ts`): bearer auth con `INTERNAL_STATS_TOKEN`. Disparado por server actions del panel (botón "Enviar bienvenida" en ficha contacto). Mismo flujo que lead-form pero sobre lead que YA existe en BD.
+
+**Service compartido `sendWelcomeTemplate`** (`apps/motor-agente/src/services/send-welcome-template.ts`): reusable desde ambos endpoints. Lee `tenant_configs.welcome_template_id` (BIGINT FK → `followup_templates.id` con `channel_kind='whatsapp'`, `provider IN ('ycloud','meta_cloud')`, `status='approved'`). Llama `ycloudSendTemplate` + INSERT `conversation_messages` source='ai' + UPDATE `conversations` a F1 outbound bienvenida + `ai_paused_until=null`. Errores tipados con `WelcomeTemplateError` + `httpStatus`.
+
+**Onboarding wizard `/onboarding/integrations`** (panel): 4 pasos guiados (Conectar GHL OAuth → Configurar keywords → Conectar YCloud + sincronizar plantillas → Designar plantilla bienvenida + generar token webhook). Server action `setWelcomeTemplate(templateId | null)` y `ensureLeadFormToken()` en `apps/panel/lib/actions/welcome-template.ts`.
+
+**Dashboard `/settings/integrations/health`** (panel): tabla con `last_webhook_at` por integration_account + estado verde/ámbar/rojo (<24h, 24h-7d, >7d/null). Hooks en `webhook-{ghl,manychat,ycloud}.ts` + `automation-lead-form.ts` llaman `touchIntegrationLastWebhook(supabase, tenantId, provider)` (helper en `apps/motor-agente/src/lib/touch-integration.ts`) post-procesado.
+
+**Migrations añadidas**:
+- `033-tenant-configs-welcome-template.sql`: `tenant_configs.welcome_template_id BIGINT REFERENCES followup_templates(id) ON DELETE SET NULL`.
+- `034-integration-accounts-last-webhook-at.sql`: `integration_accounts.last_webhook_at TIMESTAMPTZ` + índice `(tenant_id, last_webhook_at DESC)`.
+
+**Nuevo purpose** en `tenant_tokens.purpose`: `'lead_form_webhook'`. La columna no tiene CHECK constraint, se valida solo desde código.
+
+**Keywords (`automation_keywords`) vs Etiquetas (`tenant_labels`) — sistemas independientes**:
+- **Keywords**: filtros TEXT que clasifican el ORIGEN de mensajes outbound recibidos por webhook GHL (`bienvenida` / `lm` / `inbound`). Las usa `routeGhlOutbound` en el motor para decidir si activa IA (caso A/B) o pausa IA (caso D). Operan al ENTRAR un webhook, sobre el TEXTO del mensaje. NO se aplican a conversaciones existentes.
+- **Etiquetas**: chips de colores aplicados a conversaciones (`conversation_labels`) por el trainer manualmente o vía `label_rules` (Sprint Eta). Sirven para organización visual del kanban (Hot Lead, Comprado, Perdido, etc.) y no afectan al routing del motor.
+- Configurarlas es independiente. La página `/keywords` (Hito 9) y `/labels` (Sprint Eta) son completamente distintas.
+
+**Hardening security en producción** (recomendado tras smoke real):
+- `GHL_WEBHOOK_VERIFY_MODE=enforce`: tenants nuevos entran con enforce desde día 1. Tenants legacy sin `webhook_secret` configurado se mantienen en `warn` hasta migración cliente-a-cliente.
+- `YCLOUD_WEBHOOK_VERIFY_MODE=enforce`: idem.
+- `LEAD_FORM_VERIFY_MODE=enforce`: requerir `X-Form-Secret` siempre. El trainer recibe el secret durante onboarding (paso 3 YCloud connection) y lo configura en su automation n8n / GHL Workflow.
+- ManyChat sigue con deuda asumida (no firma webhooks): la única auth es el `tenant_token` aleatorio en URL. Documentado.
+
+**Lo que NO hacemos en Hito 9** (descartado por Ivan, confirmado 2026-05-10):
+- CRM mirror motor → GHL (espejado de mensajes/stages/custom fields). Las columnas `conversations.{ghl_contact_id, ghl_opportunity_id, ghl_conversation_id}` se siguen poblando "gratis" cuando el webhook GHL llega (`maybeUpdateGhlIds`) por si futuro, pero no se usan activamente.
+- Sincronización de pipeline F0-F7 → opportunity stage GHL.
+- GHL como pasarela WhatsApp (YCloud sigue para WA hasta API Meta directa BSP).
+- Webhook GHL "opportunity won/closed" (Sprint Theta dormido).
+
+**Pendiente externo** (no bloquea cierre Hito 9, sí bloquea producción):
+- Smoke E2E real con cliente Pablo (D32 — gate cliente).
+- Configurar las 4 automations en sub-cuenta GHL real de Pablo + automation n8n para formulario VSL.
+- Aprobar plantilla WA "bienvenida-pablo-v1" en Meta Business Manager via YCloud.
+- Pasar `*_VERIFY_MODE` a `enforce` en producción tras smoke.
+- Docs operativos: `docs/ghl-trainer-setup.md` + `docs/lead-form-webhook.md`.
+
 ## Qué NO hacer
 
 - No añadir Prisma al motor sin conversación previa con Ivan.
