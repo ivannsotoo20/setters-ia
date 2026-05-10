@@ -1695,6 +1695,7 @@ export type Database = {
           created_at: string
           default_followup_text: string | null
           enabled: boolean
+          followup_voice_examples: string | null
           intervals_hours: number[]
           materialize_lookahead_hours: number
           max_followups_per_lead: number
@@ -1709,6 +1710,7 @@ export type Database = {
           created_at?: string
           default_followup_text?: string | null
           enabled?: boolean
+          followup_voice_examples?: string | null
           intervals_hours?: number[]
           materialize_lookahead_hours?: number
           max_followups_per_lead?: number
@@ -1723,6 +1725,7 @@ export type Database = {
           created_at?: string
           default_followup_text?: string | null
           enabled?: boolean
+          followup_voice_examples?: string | null
           intervals_hours?: number[]
           materialize_lookahead_hours?: number
           max_followups_per_lead?: number

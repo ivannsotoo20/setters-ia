@@ -17,6 +17,7 @@ const DEFAULT_CONFIG = {
   autoPersonalize: true,
   defaultFollowupText: 'Hola, ¿pudiste ver mi mensaje? 🙂',
   materializeLookaheadHours: 24,
+  followupVoiceExamples: null,
 };
 
 export default async function FollowupTemplatesPage() {

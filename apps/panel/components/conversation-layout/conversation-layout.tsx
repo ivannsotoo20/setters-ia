@@ -215,6 +215,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     autoPersonalize: true,
     defaultFollowupText: null,
     materializeLookaheadHours: 24,
+    followupVoiceExamples: null,
   };
   const followupConfig: TenantFollowupConfigRow = followupConfigRes.ok
     ? followupConfigRes.data!

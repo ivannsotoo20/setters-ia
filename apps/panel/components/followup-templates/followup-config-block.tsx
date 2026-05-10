@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Clock, Sparkles } from 'lucide-react';
+import { Clock, Sparkles, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Card,
@@ -35,6 +35,7 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
   const [windowEnd, setWindowEnd] = useState(initial.windowEndHour);
   const [autoPersonalize, setAutoPersonalize] = useState(initial.autoPersonalize);
   const [defaultText, setDefaultText] = useState(initial.defaultFollowupText ?? '');
+  const [voiceExamples, setVoiceExamples] = useState(initial.followupVoiceExamples ?? '');
   const [isPending, startTransition] = useTransition();
 
   const dirty =
@@ -43,7 +44,8 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
     windowStart !== initial.windowStartHour ||
     windowEnd !== initial.windowEndHour ||
     autoPersonalize !== initial.autoPersonalize ||
-    defaultText.trim() !== (initial.defaultFollowupText ?? '').trim();
+    defaultText.trim() !== (initial.defaultFollowupText ?? '').trim() ||
+    voiceExamples.trim() !== (initial.followupVoiceExamples ?? '').trim();
 
   function onSave() {
     if (windowStart >= windowEnd) {
@@ -63,6 +65,7 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
         windowEndHour: windowEnd,
         autoPersonalize,
         defaultFollowupText: defaultText.trim() || null,
+        followupVoiceExamples: voiceExamples.trim() || null,
       });
       if (!r.ok) toast.error(r.error);
       else toast.success('Configuración guardada');
@@ -200,6 +203,34 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
           <p className="text-[10px] text-muted-foreground">
             Solo aplica a Instagram y Facebook. WhatsApp siempre usa plantillas YCloud
             aprobadas (Meta bloquea texto libre fuera de la ventana 24h).
+          </p>
+        </div>
+
+        {/* Sprint Iota.2 — Voice tuning: ejemplos del trainer */}
+        <div className="flex flex-col gap-1.5 rounded-md border border-border/40 bg-muted/10 px-3 py-2.5">
+          <Label htmlFor="voice-examples" className="text-sm flex items-center gap-1.5">
+            <MessageCircle className="size-3.5 text-sky-400" />
+            Ejemplos de tu voz <span className="text-[10px] text-muted-foreground font-normal">(opcional)</span>
+          </Label>
+          <p className="text-[10px] text-muted-foreground">
+            Pega 3-5 ejemplos de cómo TÚ escribirías un followup. La IA aprenderá tu
+            tono exacto: extensión, ritmo, expresiones, emojis, signos. Separa cada
+            ejemplo con una línea en blanco. Si lo dejas vacío, la IA usa el estilo
+            general definido en tu coach + ejemplos genéricos del sistema.
+          </p>
+          <textarea
+            id="voice-examples"
+            value={voiceExamples}
+            onChange={(e) => setVoiceExamples(e.target.value)}
+            maxLength={4000}
+            placeholder={`Ejemplo:\n\nHola Marta, te escribo porque me quedé pensando en lo del bloqueo con la dieta. ¿Te late agendar 10 min y le damos forma?\n\nQué tal Pablo, vi que aún no me has contado cómo te fue probando lo que comentamos. ¿Funcionó o seguimos igual?\n\nMari, una pregunta rápida — ¿pudiste ver el plan que te mandé? Si tienes dudas yo te las aclaro tranquilamente.`}
+            disabled={!canEdit || !enabled || !autoPersonalize}
+            rows={6}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-xs leading-snug resize-y focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 font-mono"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Solo se usa si "Personalizar IG/FB con IA" está activo. Coste extra por
+            followup: insignificante (los ejemplos pesan ~200-500 tokens).
           </p>
         </div>
 

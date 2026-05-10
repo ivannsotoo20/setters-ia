@@ -31,6 +31,8 @@ export interface TenantFollowupConfigRow {
   autoPersonalize: boolean;
   defaultFollowupText: string | null;
   materializeLookaheadHours: number;
+  /** Sprint Iota.2 — ejemplos opcionales para personalizar el tono de Haiku. */
+  followupVoiceExamples: string | null;
 }
 
 export async function getTenantFollowupConfig(): Promise<
@@ -45,7 +47,8 @@ export async function getTenantFollowupConfig(): Promise<
     .select(
       `enabled, window_start_hour, window_end_hour, window_timezone,
        max_followups_per_lead, intervals_hours,
-       auto_personalize, default_followup_text, materialize_lookahead_hours`,
+       auto_personalize, default_followup_text, materialize_lookahead_hours,
+       followup_voice_examples`,
     )
     .eq('tenant_id', eff.tenantId)
     .maybeSingle();
@@ -64,6 +67,7 @@ export async function getTenantFollowupConfig(): Promise<
         autoPersonalize: true,
         defaultFollowupText: 'Hola, ¿pudiste ver mi mensaje? Quería saber si sigues interesado/a 🙂',
         materializeLookaheadHours: 24,
+        followupVoiceExamples: null,
       },
     };
   }
@@ -82,6 +86,7 @@ export async function getTenantFollowupConfig(): Promise<
       autoPersonalize: Boolean(data.auto_personalize),
       defaultFollowupText: (data.default_followup_text as string | null) ?? null,
       materializeLookaheadHours: Number(data.materialize_lookahead_hours ?? 24),
+      followupVoiceExamples: (data.followup_voice_examples as string | null) ?? null,
     },
   };
 }
@@ -96,6 +101,7 @@ export interface UpdateFollowupConfigInput {
   autoPersonalize?: boolean;
   defaultFollowupText?: string | null;
   materializeLookaheadHours?: number;
+  followupVoiceExamples?: string | null;
 }
 
 export async function updateTenantFollowupConfig(
@@ -165,6 +171,13 @@ export async function updateTenantFollowupConfig(
       return { ok: false, error: 'materialize_lookahead_hours fuera de rango [0, 168]' };
     }
     updates.materialize_lookahead_hours = v;
+  }
+  if (input.followupVoiceExamples !== undefined) {
+    const t = (input.followupVoiceExamples ?? '').trim();
+    if (t.length > 4000) {
+      return { ok: false, error: 'followup_voice_examples demasiado largo (>4000 chars)' };
+    }
+    updates.followup_voice_examples = t.length > 0 ? t : null;
   }
 
   const supabase = getServiceRoleClient();

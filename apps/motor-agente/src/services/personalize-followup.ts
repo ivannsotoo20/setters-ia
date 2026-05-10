@@ -2,29 +2,23 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type Anthropic from '@anthropic-ai/sdk';
 
 /**
- * Sprint Iota.1.d — Personalización IA del followup justo antes de enviar.
+ * Sprint Iota.1.d + Iota.2 — Personalización IA del followup justo antes
+ * de enviar (fallback motor cuando la pre-generación del panel no ocurrió).
  *
- * Cuando outbound-sender procesa un schedule con `ai_personalize=true` y
- * `message=null`, llama a esta función para generar el mensaje contextual
- * usando los últimos 20 mensajes de la conv + datos del lead + ai_guide.
+ * Flow normal: el panel pre-genera el mensaje al materializar el schedule.
+ * El motor solo entra aquí si message es null (fallback).
  *
- * Devuelve el mensaje generado. El caller actualiza el schedule.message
- * antes de enviarlo y luego ejecuta el provider send normal.
+ * Cambios Iota.2:
+ *  - Carga coach_v3 del tenant + ejemplos del trainer (followup_voice_examples)
+ *    e inyecta en el system prompt para mantener consistencia de voz con
+ *    el setter en tiempo real.
  *
- * Modelo: Haiku 4.5 (rápido, barato, suficiente para mensaje corto).
- *
- * Mejoras v2 (Iota.1.d):
- *   - Prompt más explícito sobre uso del nombre del lead.
- *   - Detección automática de "inicio de conversación" vs "avanzada" para
- *     adaptar el tono.
- *   - Few-shot con ejemplos concretos del estilo de Iván Soto (Fyzon).
- *   - Validación: si el nombre del lead está disponible, debe aparecer en
- *     el mensaje generado (cuando es inicio de conversación).
+ * Modelo: Haiku 4.5.
  */
 
 const HAIKU_MODEL = 'claude-haiku-4-5';
 const MAX_OUTPUT_TOKENS = 400;
-const EARLY_CONV_THRESHOLD = 4; // <=4 mensajes lead→ tratamos como inicio
+const EARLY_CONV_THRESHOLD = 4;
 
 export interface PersonalizeInput {
   supabase: SupabaseClient;
@@ -56,7 +50,42 @@ interface LeadInfo {
   username: string | null;
 }
 
-function buildSystemPrompt(): string {
+interface VoiceContext {
+  coachBlock: string | null;
+  trainerExamples: string | null;
+}
+
+const GENERIC_EXAMPLES = `Ejemplo 1 (inicio de conversación, lead llamado Iván que pidió info):
+"Hola Iván, ¿pudiste echarle un ojo a lo que comentamos? Me gustaría retomar contigo cuando tengas un rato, ¿te encaja?"
+
+Ejemplo 2 (conversación avanzada, lead habló de captación de leads y caos en el equipo):
+"Iván, me quedé pensando en lo del caos con las cuatro personas gestionando los leads. ¿Has podido darle una vuelta o seguís igual?"
+
+Ejemplo 3 (lead sin nombre conocido, inicio):
+"Hola, ¿cómo lo llevas? Quería saber si te queda alguna duda sobre lo que comentamos para acabar de aclararte."
+
+Ejemplo 4 (lead llamado Cristina, conversación sobre objetivos de pérdida de peso):
+"Hola Cristina, ¿qué tal te ha ido la semana? Me acordé del objetivo que comentaste de los 5kg, ¿sigues queriendo darle?"`;
+
+function buildSystemPrompt(voice: VoiceContext): string {
+  const examplesBlock = voice.trainerExamples
+    ? `Ejemplos de cómo escribe followups este setter (úsalos como referencia exacta de tono, ritmo y estructura):
+
+${voice.trainerExamples}`
+    : `Ejemplos de estilo correcto:
+
+${GENERIC_EXAMPLES}`;
+
+  const coachBlock = voice.coachBlock
+    ? `
+
+---
+Estilo y voz del setter (heredado de su configuración general — RESPÉTALO al pie de la letra):
+
+${voice.coachBlock}
+---`
+    : '';
+
   return `Eres un setter (responsable comercial) que escribe followups personalizados en castellano para reactivar a un lead que dejó de responder.
 
 Tu misión: redactar UN único mensaje (NO una conversación) que invite al lead a retomar la conversación. El mensaje debe sentirse humano, cercano y natural.
@@ -77,21 +106,9 @@ Reglas estrictas:
 - NO uses emojis a menos que el lead haya usado emojis primero.
 - NO termines con "..." abrupto ni con interrogación encadenada ("¿quieres? ¿te interesa?").
 - NO menciones que eres IA ni que es un seguimiento automático.
-- Acaba con UNA pregunta abierta breve que invite a responder.
+- Acaba con UNA pregunta abierta breve que invite a responder.${coachBlock}
 
-Ejemplos de estilo correcto:
-
-Ejemplo 1 (inicio de conversación, lead llamado Iván que pidió info):
-"Hola Iván, ¿pudiste echarle un ojo a lo que comentamos? Me gustaría retomar contigo cuando tengas un rato, ¿te encaja?"
-
-Ejemplo 2 (conversación avanzada, lead habló de captación de leads y caos en el equipo):
-"Iván, me quedé pensando en lo del caos con las cuatro personas gestionando los leads. ¿Has podido darle una vuelta o seguís igual?"
-
-Ejemplo 3 (lead sin nombre conocido, inicio):
-"Hola, ¿cómo lo llevas? Quería saber si te queda alguna duda sobre lo que comentamos para acabar de aclararte."
-
-Ejemplo 4 (lead llamado Cristina, conversación sobre objetivos de pérdida de peso):
-"Hola Cristina, ¿qué tal te ha ido la semana? Me acordé del objetivo que comentaste de los 5kg, ¿sigues queriendo darle?"`;
+${examplesBlock}`;
 }
 
 function buildUserPrompt(input: {
@@ -136,6 +153,39 @@ ${input.guide}
 Genera el mensaje (solo el texto, sin envoltorios):`;
 }
 
+async function loadVoiceContext(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<VoiceContext> {
+  const [coachRes, cfgRes] = await Promise.all([
+    supabase
+      .from('prompt_blocks')
+      .select('content')
+      .eq('block_key', 'coach_v3')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .maybeSingle(),
+    supabase
+      .from('tenant_followup_config')
+      .select('followup_voice_examples')
+      .eq('tenant_id', tenantId)
+      .maybeSingle(),
+  ]);
+
+  const coachBlock =
+    typeof coachRes.data?.content === 'string' && coachRes.data.content.trim().length > 0
+      ? coachRes.data.content.trim()
+      : null;
+
+  const examplesRaw = cfgRes.data?.followup_voice_examples;
+  const trainerExamples =
+    typeof examplesRaw === 'string' && examplesRaw.trim().length > 0
+      ? examplesRaw.trim()
+      : null;
+
+  return { coachBlock, trainerExamples };
+}
+
 export async function personalizeFollowupMessage(
   input: PersonalizeInput,
 ): Promise<PersonalizeResult | PersonalizeError> {
@@ -150,10 +200,10 @@ export async function personalizeFollowupMessage(
 
   const recentMessages = (msgs ?? []).reverse() as ConvMessage[];
 
-  // 2. Cargar info del lead
+  // 2. Cargar info del lead + tenant_id
   const { data: conv } = await input.supabase
     .from('conversations')
-    .select('lead_id, leads(first_name, last_name, username)')
+    .select('lead_id, tenant_id, leads(first_name, last_name, username)')
     .eq('id', input.conversationId)
     .maybeSingle();
   if (!conv) return { ok: false, error: 'conversación no encontrada' };
@@ -163,16 +213,18 @@ export async function personalizeFollowupMessage(
     ? leadRel[0] ?? { first_name: null, last_name: null, username: null }
     : leadRel ?? { first_name: null, last_name: null, username: null };
 
-  // Detectar si es inicio de conversación: <= EARLY_CONV_THRESHOLD mensajes del lead
   const leadMsgCount = recentMessages.filter((m) => m.source === 'lead').length;
   const isEarlyConversation = leadMsgCount <= EARLY_CONV_THRESHOLD;
 
-  // 3. Llamada a Haiku
+  // 3. Sprint Iota.2 — cargar voice context
+  const voice = await loadVoiceContext(input.supabase, Number(conv.tenant_id));
+
+  // 4. Llamada a Haiku
   try {
     const response = await input.anthropic.messages.create({
       model: HAIKU_MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
-      system: buildSystemPrompt(),
+      system: buildSystemPrompt(voice),
       messages: [
         {
           role: 'user',
@@ -193,21 +245,17 @@ export async function personalizeFollowupMessage(
     }
 
     let message = textBlock.text.trim();
-    // Sanitizar: quitar comillas envolventes accidentales (rectas o tipográficas)
     const startsWithQuote = /^["'“”‘’]/.test(message);
     const endsWithQuote = /["'“”‘’]$/.test(message);
     if (startsWithQuote && endsWithQuote) {
       message = message.slice(1, -1).trim();
     }
-    // Quitar prefijos accidentales tipo "Mensaje:" o "Texto:"
     message = message.replace(/^(mensaje|texto|message|text)\s*:\s*/i, '').trim();
     if (!message) return { ok: false, error: 'mensaje generado vacío' };
     if (message.length > 600) {
-      // truncar duro si la IA se pasó (el prompt pide <=280, pero por si acaso)
       message = message.slice(0, 597).trim() + '...';
     }
 
-    // Coste aprox Haiku 4.5: $1/MTok input + $5/MTok output
     const inputTokens = response.usage.input_tokens;
     const outputTokens = response.usage.output_tokens;
     const costUsd = (inputTokens / 1_000_000) * 1 + (outputTokens / 1_000_000) * 5;

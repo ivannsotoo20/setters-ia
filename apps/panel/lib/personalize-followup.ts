@@ -1,5 +1,5 @@
 /**
- * Sprint Iota.1.e — Personalización IA del followup AL MATERIALIZAR.
+ * Sprint Iota.1.e + Iota.2 — Personalización IA del followup AL MATERIALIZAR.
  *
  * Versión panel-side de la función `personalizeFollowupMessage` del motor.
  * Se ejecuta cuando el server action materializeFollowupSequenceForConv
@@ -7,7 +7,14 @@
  * AHORA y lo guarda en el row para que el panel lo muestre como preview real
  * (no como placeholder "el mensaje se generará al enviar").
  *
- * Modelo: Haiku 4.5. Coste por followup: ~$0.0001-0.0003.
+ * Modelo: Haiku 4.5. Coste base por followup: ~$0.0003. Con coach_v3
+ * inyectado puede subir a ~$0.001 (3×) — sigue siendo trivial.
+ *
+ * Iota.2 — Voz del trainer:
+ *   1. Carga el bloque coach_v3 del tenant y lo inyecta en el system prompt
+ *      → el followup hereda el tono del setter en tiempo real.
+ *   2. Si `tenant_followup_config.followup_voice_examples` no es null, sus
+ *      ejemplos reemplazan los 4 ejemplos genéricos hardcodeados.
  *
  * Fallback: si la generación falla (Anthropic timeout, sin API key, etc.),
  * el schedule queda con message=null y el motor outbound-sender intentará
@@ -35,6 +42,8 @@ export interface PersonalizePanelInput {
   supabase: SupabaseClient;
   conversationId: number;
   aiGuide: string;
+  /** Sprint Iota.2 — opcional: tenant_id para cargar coach_v3 + voice_examples */
+  tenantId?: number;
 }
 
 export interface PersonalizeOk {
@@ -60,7 +69,42 @@ interface LeadInfo {
   username: string | null;
 }
 
-function buildSystemPrompt(): string {
+interface VoiceContext {
+  coachBlock: string | null;
+  trainerExamples: string | null;
+}
+
+const GENERIC_EXAMPLES = `Ejemplo 1 (inicio de conversación, lead llamado Iván que pidió info):
+"Hola Iván, ¿pudiste echarle un ojo a lo que comentamos? Me gustaría retomar contigo cuando tengas un rato, ¿te encaja?"
+
+Ejemplo 2 (conversación avanzada, lead habló de captación de leads y caos en el equipo):
+"Iván, me quedé pensando en lo del caos con las cuatro personas gestionando los leads. ¿Has podido darle una vuelta o seguís igual?"
+
+Ejemplo 3 (lead sin nombre conocido, inicio):
+"Hola, ¿cómo lo llevas? Quería saber si te queda alguna duda sobre lo que comentamos para acabar de aclararte."
+
+Ejemplo 4 (lead llamado Cristina, conversación sobre objetivos de pérdida de peso):
+"Hola Cristina, ¿qué tal te ha ido la semana? Me acordé del objetivo que comentaste de los 5kg, ¿sigues queriendo darle?"`;
+
+function buildSystemPrompt(voice: VoiceContext): string {
+  const examplesBlock = voice.trainerExamples
+    ? `Ejemplos de cómo escribe followups este setter (úsalos como referencia exacta de tono, ritmo y estructura):
+
+${voice.trainerExamples}`
+    : `Ejemplos de estilo correcto:
+
+${GENERIC_EXAMPLES}`;
+
+  const coachBlock = voice.coachBlock
+    ? `
+
+---
+Estilo y voz del setter (heredado de su configuración general — RESPÉTALO al pie de la letra):
+
+${voice.coachBlock}
+---`
+    : '';
+
   return `Eres un setter (responsable comercial) que escribe followups personalizados en castellano para reactivar a un lead que dejó de responder.
 
 Tu misión: redactar UN único mensaje (NO una conversación) que invite al lead a retomar la conversación. El mensaje debe sentirse humano, cercano y natural.
@@ -81,21 +125,9 @@ Reglas estrictas:
 - NO uses emojis a menos que el lead haya usado emojis primero.
 - NO termines con "..." abrupto ni con interrogación encadenada ("¿quieres? ¿te interesa?").
 - NO menciones que eres IA ni que es un seguimiento automático.
-- Acaba con UNA pregunta abierta breve que invite a responder.
+- Acaba con UNA pregunta abierta breve que invite a responder.${coachBlock}
 
-Ejemplos de estilo correcto:
-
-Ejemplo 1 (inicio de conversación, lead llamado Iván que pidió info):
-"Hola Iván, ¿pudiste echarle un ojo a lo que comentamos? Me gustaría retomar contigo cuando tengas un rato, ¿te encaja?"
-
-Ejemplo 2 (conversación avanzada, lead habló de captación de leads y caos en el equipo):
-"Iván, me quedé pensando en lo del caos con las cuatro personas gestionando los leads. ¿Has podido darle una vuelta o seguís igual?"
-
-Ejemplo 3 (lead sin nombre conocido, inicio):
-"Hola, ¿cómo lo llevas? Quería saber si te queda alguna duda sobre lo que comentamos para acabar de aclararte."
-
-Ejemplo 4 (lead llamado Cristina, conversación sobre objetivos de pérdida de peso):
-"Hola Cristina, ¿qué tal te ha ido la semana? Me acordé del objetivo que comentaste de los 5kg, ¿sigues queriendo darle?"`;
+${examplesBlock}`;
 }
 
 function buildUserPrompt(input: {
@@ -140,6 +172,45 @@ ${input.guide}
 Genera el mensaje (solo el texto, sin envoltorios):`;
 }
 
+/**
+ * Carga el bloque coach_v3 del tenant + ejemplos del trainer en una sola pasada.
+ * Si tenantId no se proporciona o no hay coach, se usa null (se cae al genérico).
+ */
+async function loadVoiceContext(
+  supabase: SupabaseClient,
+  tenantId: number | undefined,
+): Promise<VoiceContext> {
+  if (!tenantId) return { coachBlock: null, trainerExamples: null };
+
+  const [coachRes, cfgRes] = await Promise.all([
+    supabase
+      .from('prompt_blocks')
+      .select('content')
+      .eq('block_key', 'coach_v3')
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true)
+      .maybeSingle(),
+    supabase
+      .from('tenant_followup_config')
+      .select('followup_voice_examples')
+      .eq('tenant_id', tenantId)
+      .maybeSingle(),
+  ]);
+
+  const coachBlock =
+    typeof coachRes.data?.content === 'string' && coachRes.data.content.trim().length > 0
+      ? coachRes.data.content.trim()
+      : null;
+
+  const examplesRaw = cfgRes.data?.followup_voice_examples;
+  const trainerExamples =
+    typeof examplesRaw === 'string' && examplesRaw.trim().length > 0
+      ? examplesRaw.trim()
+      : null;
+
+  return { coachBlock, trainerExamples };
+}
+
 export async function personalizeFollowupAtMaterialize(
   input: PersonalizePanelInput,
 ): Promise<PersonalizeOk | PersonalizeFail> {
@@ -157,10 +228,10 @@ export async function personalizeFollowupAtMaterialize(
 
   const recentMessages = ((msgs ?? []) as ConvMessage[]).reverse();
 
-  // 2. Cargar info del lead
+  // 2. Cargar info del lead + tenant_id (si no vino)
   const { data: conv } = await input.supabase
     .from('conversations')
-    .select('lead_id, leads(first_name, last_name, username)')
+    .select('lead_id, tenant_id, leads(first_name, last_name, username)')
     .eq('id', input.conversationId)
     .maybeSingle();
   if (!conv) return { ok: false, error: 'conversación no encontrada' };
@@ -170,15 +241,20 @@ export async function personalizeFollowupAtMaterialize(
     ? leadRel[0] ?? { first_name: null, last_name: null, username: null }
     : leadRel ?? { first_name: null, last_name: null, username: null };
 
+  const tenantId = input.tenantId ?? Number(conv.tenant_id);
+
   const leadMsgCount = recentMessages.filter((m) => m.source === 'lead').length;
   const isEarlyConversation = leadMsgCount <= EARLY_CONV_THRESHOLD;
 
-  // 3. Llamada a Haiku
+  // 3. Sprint Iota.2 — cargar voice context (coach_v3 + ejemplos del trainer)
+  const voice = await loadVoiceContext(input.supabase, tenantId);
+
+  // 4. Llamada a Haiku
   try {
     const response = await anthropic.messages.create({
       model: HAIKU_MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
-      system: buildSystemPrompt(),
+      system: buildSystemPrompt(voice),
       messages: [
         {
           role: 'user',
