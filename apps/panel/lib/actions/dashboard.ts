@@ -9,10 +9,8 @@ import {
   type KpiSnapshot,
 } from '@/lib/dashboard-metrics';
 import {
-  aggregateMatrix,
   detectBottlenecks,
   type ChannelInfo,
-  type MatrixData,
   type ChannelKey,
 } from '@/lib/dashboard-query';
 import {
@@ -28,6 +26,8 @@ import {
   type WindowKey,
 } from '@/lib/pipeline-window';
 import type { PipelineEvent } from '@/lib/pipeline-metrics';
+import { computeWidget, type ComputedWidgetValue, type WidgetFilter } from '@/lib/widget-catalog';
+import type { WidgetRow } from '@/lib/actions/dashboard-widgets';
 
 /**
  * Sprint Lambda — Dashboard global.
@@ -63,9 +63,11 @@ export interface DashboardSnapshot {
     granularity: Granularity;
   };
   kpis: KpiSnapshot;
-  matrix: MatrixData;
   trend: TrendPoint[];
   alerts: Alert[];
+  widgets: WidgetRow[];
+  widgetValues: Record<number, ComputedWidgetValue>;
+  canEditWidgets: boolean;
   meta: {
     totalConvsCurrent: number;
     totalConvsPrev: number;
@@ -244,17 +246,6 @@ export async function loadDashboardData(input: {
     prevWindowFromIso: prevRange.from,
   });
 
-  // 4. Matrix
-  const matrix = aggregateMatrix({
-    events,
-    convs,
-    prevEvents,
-    prevConvs,
-    channelMap,
-    windowFromIso: range.from,
-    prevWindowFromIso: prevRange.from,
-  });
-
   // 5. Trend
   const trend = aggregateTrend({
     events,
@@ -286,6 +277,53 @@ export async function loadDashboardData(input: {
     historicEvents: historyEvents,
   });
 
+  // 7. Widgets — cargar lista del tenant + computar value para cada uno.
+  // Cada widget puede tener su propio filtro de canal independiente del filtro
+  // global del dashboard. Si el widget tiene channel=wa, se computa solo con
+  // datos de WA (independiente del channelKey global).
+  const widgetsRes = await supabase
+    .from('dashboard_widgets')
+    .select('id, metric_key, filter_json, position')
+    .eq('tenant_id', tenantId)
+    .order('position', { ascending: true });
+
+  const widgets: WidgetRow[] = (widgetsRes.data ?? []).map((r) => ({
+    id: Number(r.id),
+    metricKey: String(r.metric_key),
+    filter: ((): WidgetFilter => {
+      const raw = r.filter_json as unknown;
+      if (!raw || typeof raw !== 'object') return {};
+      const obj = raw as Record<string, unknown>;
+      if (typeof obj.channel === 'string') {
+        if (['wa', 'fb', 'ig-in', 'ig-out'].includes(obj.channel)) {
+          return { channel: obj.channel as ChannelKey };
+        }
+      }
+      return {};
+    })(),
+    position: Number(r.position),
+  }));
+
+  const widgetValues: Record<number, ComputedWidgetValue> = {};
+  for (const w of widgets) {
+    widgetValues[w.id] = computeWidget(
+      w.metricKey,
+      w.filter,
+      {
+        currentEvents: events,
+        prevEvents,
+        currentConvs: convs,
+        prevConvs,
+        currentWindowFromIso: range.from,
+        prevWindowFromIso: prevRange.from,
+      },
+      channelMap,
+    );
+  }
+
+  const canEditWidgets =
+    effective.isAgencyAdmin || effective.role === 'owner' || effective.role === 'admin';
+
   return {
     ok: true,
     data: {
@@ -298,9 +336,11 @@ export async function loadDashboardData(input: {
         granularity,
       },
       kpis,
-      matrix,
       trend,
       alerts,
+      widgets,
+      widgetValues,
+      canEditWidgets,
       meta: {
         totalConvsCurrent: convs.length,
         totalConvsPrev: prevConvs.length,
