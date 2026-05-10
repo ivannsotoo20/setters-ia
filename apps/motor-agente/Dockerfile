@@ -11,7 +11,10 @@ COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
 COPY apps/motor-agente ./apps/motor-agente
 COPY packages ./packages
 RUN pnpm install --frozen-lockfile --filter @fyzon/motor-agente...
-RUN pnpm --filter @fyzon/motor-agente build
+# Build TODAS las dependencias internas del motor (prompt-composer, agent-pipeline,
+# channel-adapters, ghl-client, db, shared-validator) en orden topológico.
+# Sin esto, tsc del motor no encuentra los .d.ts de @fyzon/prompt-composer etc.
+RUN pnpm -r --filter "@fyzon/motor-agente..." build
 
 # --- runner: solo runtime mínimo ---
 FROM base AS runner
