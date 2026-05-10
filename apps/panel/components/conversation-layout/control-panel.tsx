@@ -22,29 +22,36 @@ export function ControlPanel({
 }: Props) {
   if (!detail) {
     return (
-      <aside
-        className="hidden lg:flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto h-full min-h-0 items-center justify-center text-center text-sm text-muted-foreground"
-        aria-label="Panel de control"
-      >
-        <p>Selecciona una conversación para ver el panel de control.</p>
-      </aside>
+      <div className="relative h-full w-full hidden lg:block">
+        <aside
+          className="absolute inset-0 flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto items-center justify-center text-center text-sm text-muted-foreground"
+          aria-label="Panel de control"
+        >
+          <p>Selecciona una conversación para ver el panel de control.</p>
+        </aside>
+      </div>
     );
   }
 
+  // Sprint Iota.2 — wrapper relative + aside absolute inset-0 fuerza altura
+  // concreta y scroll robusto en cualquier viewport (mobile/tablet/desktop).
+  // Antes con flex/grid sólo a veces el aside expandía con el contenido.
   return (
-    <aside
-      className="flex flex-col gap-4 p-4 pb-8 border-l border-border bg-card/30 overflow-y-auto h-full min-h-0 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/50"
-      aria-label="Panel de control"
-    >
-      <LeadInfoCard detail={detail} />
-      <FunnelPhaseIndicator detail={detail} />
-      <AIControlPanel
-        detail={detail}
-        followups={followups}
-        followupConfig={followupConfig}
-        canManageFollowups={canManageFollowups}
-        lastLeadMessageAt={lastLeadMessageAt}
-      />
-    </aside>
+    <div className="relative h-full w-full">
+      <aside
+        className="absolute inset-0 flex flex-col gap-4 p-4 pb-8 border-l border-border bg-card/30 overflow-y-auto [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/60"
+        aria-label="Panel de control"
+      >
+        <LeadInfoCard detail={detail} />
+        <FunnelPhaseIndicator detail={detail} />
+        <AIControlPanel
+          detail={detail}
+          followups={followups}
+          followupConfig={followupConfig}
+          canManageFollowups={canManageFollowups}
+          lastLeadMessageAt={lastLeadMessageAt}
+        />
+      </aside>
+    </div>
   );
 }

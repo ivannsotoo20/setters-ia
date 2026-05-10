@@ -116,9 +116,10 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
       </nav>
 
       {/* Mobile panel pane (renderizado solo cuando esa tab está activa) */}
+      {/* Sprint Iota.2 — sin overflow-hidden: el aside hijo controla su scroll */}
       <div
         className={cn(
-          'md:hidden min-w-0 min-h-0 h-full overflow-hidden',
+          'md:hidden min-w-0 min-h-0 h-full',
           mobileView === 'panel' ? 'block' : 'hidden',
         )}
       >
