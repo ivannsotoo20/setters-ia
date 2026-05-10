@@ -545,6 +545,64 @@ export async function sendScheduledFollowupNow(scheduleId: number): Promise<Acti
   return { ok: true };
 }
 
+/**
+ * Sprint Iota.1.h — Regenerar el mensaje IA de un followup pending con
+ * el contexto actual de la conversación. Útil cuando el setter ha enviado
+ * mensajes nuevos tras la materialización inicial y quiere refrescar el
+ * preview antes del envío automático.
+ *
+ * Coste: ~$0.0003 por regenerate (Haiku 4.5).
+ */
+export async function regenerateFollowupMessage(
+  scheduleId: number,
+): Promise<ActionResult<{ message: string }>> {
+  const eff = await getEffectiveTenant();
+  if (!eff) return { ok: false, error: 'unauthenticated' };
+  if (!isAdminOrAbove(eff)) {
+    return { ok: false, error: 'forbidden — solo admin u owner pueden regenerar followups' };
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data: row } = await supabase
+    .from('message_schedules')
+    .select('tenant_id, status, conversation_id, ai_personalize, ai_guide')
+    .eq('id', scheduleId)
+    .maybeSingle();
+  if (!row) return { ok: false, error: 'followup no encontrado' };
+  if (Number(row.tenant_id) !== eff.tenantId && !eff.isAgencyAdmin) {
+    return { ok: false, error: 'forbidden — wrong tenant' };
+  }
+  if (row.status !== 'pending') {
+    return { ok: false, error: `no se puede regenerar (status=${row.status})` };
+  }
+  if (!row.ai_personalize || !row.ai_guide) {
+    return { ok: false, error: 'este followup no usa personalización IA' };
+  }
+
+  const { personalizeFollowupAtMaterialize } = await import('@/lib/personalize-followup');
+  const result = await personalizeFollowupAtMaterialize({
+    supabase,
+    conversationId: Number(row.conversation_id),
+    aiGuide: String(row.ai_guide),
+  });
+  if (!result.ok) {
+    return { ok: false, error: `IA: ${result.error}` };
+  }
+
+  const { error: updErr } = await supabase
+    .from('message_schedules')
+    .update({ message: result.message })
+    .eq('id', scheduleId)
+    .eq('status', 'pending'); // race-safe
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath('/conversations');
+  if (row.conversation_id) {
+    revalidatePath(`/conversations/${row.conversation_id}`);
+  }
+  return { ok: true, data: { message: result.message } };
+}
+
 export async function cancelScheduledFollowup(scheduleId: number): Promise<ActionResult> {
   const eff = await getEffectiveTenant();
   if (!eff) return { ok: false, error: 'unauthenticated' };

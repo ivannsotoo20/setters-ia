@@ -11,13 +11,21 @@ import {
   Sparkles,
   Pin,
   Settings,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import {
   cancelScheduledFollowup,
+  regenerateFollowupMessage,
   sendScheduledFollowupNow,
   type ScheduledFollowupRow,
   type ChannelKind,
@@ -327,6 +335,14 @@ function FollowupCard({
     });
   }
 
+  function onRegenerate() {
+    startTransition(async () => {
+      const r = await regenerateFollowupMessage(followup.id);
+      if (!r.ok) toast.error(r.error);
+      else toast.success('Mensaje regenerado con contexto actual');
+    });
+  }
+
   const seqLabel = followup.sequenceIndex ? `FU #${followup.sequenceIndex}` : 'FU';
 
   return (
@@ -356,13 +372,24 @@ function FollowupCard({
             </span>
           ) : null}
           {followup.aiPersonalize ? (
-            <Badge
-              variant="outline"
-              className="h-3.5 text-[8px] px-1 font-normal text-amber-500 border-amber-500/40"
-            >
-              <Sparkles className="size-2 mr-0.5" />
-              Personalizado
-            </Badge>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge
+                    variant="outline"
+                    className="h-3.5 text-[8px] px-1 font-normal text-amber-500 border-amber-500/40 cursor-help"
+                  >
+                    <Sparkles className="size-2 mr-0.5" />
+                    Personalizado
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  Generado por IA (Haiku 4.5) con el contexto actual de la conversación
+                  + el nombre del lead. Si la conversación cambió y quieres un mensaje
+                  fresco, pulsa <strong>Regenerar</strong>.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : (
             <Badge
               variant="outline"
@@ -387,7 +414,7 @@ function FollowupCard({
       ) : null}
 
       {variant === 'pending' && canManage ? (
-        <div className="flex items-center gap-1.5 pt-0.5">
+        <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
           <Button
             size="sm"
             variant="default"
@@ -398,6 +425,19 @@ function FollowupCard({
             <Send className="size-2.5 mr-1" />
             Enviar ya
           </Button>
+          {followup.aiPersonalize ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onRegenerate}
+              disabled={isPending}
+              className="h-6 text-[10px] px-2"
+              title="Regenerar el mensaje con el contexto actual de la conversación"
+            >
+              <RefreshCw className={cn('size-2.5 mr-1', isPending && 'animate-spin')} />
+              Regenerar
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="ghost"
