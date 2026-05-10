@@ -286,3 +286,69 @@ function mapMediaTypeToContentType(
       return 'text';
   }
 }
+
+// ============================================================================
+// Hito 10 sub-fase 3 — WhatsApp inbound mode helpers
+// ============================================================================
+
+export type WaInboundMode = 'form_only' | 'all' | 'keyword';
+
+/**
+ * Lee `tenant_configs.wa_inbound_mode`. Default 'all' si la fila no existe o
+ * el valor es inesperado (defensivo). El default coincide con el de la migration
+ * 035 → backwards-compat para tenants existentes.
+ */
+export async function loadWaInboundMode(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<WaInboundMode> {
+  const { data, error } = await supabase
+    .from('tenant_configs')
+    .select('wa_inbound_mode')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  if (error || !data) return 'all';
+  const v = (data as { wa_inbound_mode?: unknown }).wa_inbound_mode;
+  if (v === 'form_only' || v === 'all' || v === 'keyword') return v;
+  return 'all';
+}
+
+/**
+ * Devuelve true si existe alguna conversación NO cerrada del lead identificado
+ * por (tenantId, externalId) cuyo `conversation_source` coincide con `source`.
+ *
+ * Usado por el gate WA inbound para detectar si el lead vino por formulario
+ * (`source='bienvenida'` lo deja `sendWelcomeTemplate` cuando dispara la
+ * plantilla inicial vía `/automations/lead-form`).
+ *
+ * Si el lead nunca ha conversado (no hay row en `leads` para este externalId),
+ * devuelve false directamente.
+ */
+export async function hasConversationWithSource(
+  supabase: SupabaseClient,
+  tenantId: number,
+  externalId: string,
+  source: 'bienvenida' | 'lm' | 'inbound' | 'manual',
+): Promise<boolean> {
+  const { data: lead, error: leadError } = await supabase
+    .from('leads')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('external_id', externalId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (leadError || !lead) return false;
+
+  const { data: conv, error: convError } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('lead_id', (lead as { id: number }).id)
+    .eq('conversation_source', source)
+    .not('state', 'eq', 'closed')
+    .limit(1)
+    .maybeSingle();
+  if (convError || !conv) return false;
+  return true;
+}

@@ -21,7 +21,9 @@ function getServiceRoleClient() {
   });
 }
 
-export type KeywordType = 'bienvenida' | 'lm' | 'inbound';
+export type KeywordType = 'bienvenida' | 'lm' | 'inbound' | 'wa_open';
+
+const VALID_KEYWORD_TYPES: readonly KeywordType[] = ['bienvenida', 'lm', 'inbound', 'wa_open'];
 
 export interface KeywordRow {
   id: number;
@@ -59,7 +61,7 @@ export async function listKeywords(): Promise<ActionResult<KeywordRow[]>> {
 
   const rows = (data as RawRow[])
     .filter((r): r is RawRow & { type: KeywordType } =>
-      r.type === 'bienvenida' || r.type === 'lm' || r.type === 'inbound',
+      (VALID_KEYWORD_TYPES as readonly string[]).includes(r.type),
     )
     .map((r) => ({
       id: r.id,
@@ -73,6 +75,39 @@ export async function listKeywords(): Promise<ActionResult<KeywordRow[]>> {
   return { ok: true, data: rows };
 }
 
+/**
+ * Cuenta keywords activas por tipo. Usado por `/settings/whatsapp` para
+ * mostrar el banner "configura keywords antes de activar modo keyword".
+ */
+export async function countActiveKeywordsByType(): Promise<
+  ActionResult<Record<KeywordType, number>>
+> {
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
+
+  const supabase = getServiceRoleClient();
+  const { data, error } = await supabase
+    .from('automation_keywords')
+    .select('type')
+    .eq('tenant_id', effective.tenantId)
+    .eq('is_active', true);
+
+  if (error) return { ok: false, error: error.message };
+
+  const counts: Record<KeywordType, number> = {
+    bienvenida: 0,
+    lm: 0,
+    inbound: 0,
+    wa_open: 0,
+  };
+  for (const row of (data as Array<{ type: string }>) ?? []) {
+    if ((VALID_KEYWORD_TYPES as readonly string[]).includes(row.type)) {
+      counts[row.type as KeywordType] += 1;
+    }
+  }
+  return { ok: true, data: counts };
+}
+
 export async function createKeyword(input: {
   type: KeywordType;
   pattern: string;
@@ -80,7 +115,7 @@ export async function createKeyword(input: {
   if (!input.pattern || input.pattern.trim().length === 0) {
     return { ok: false, error: 'pattern no puede estar vacío' };
   }
-  if (!['bienvenida', 'lm', 'inbound'].includes(input.type)) {
+  if (!(VALID_KEYWORD_TYPES as readonly string[]).includes(input.type)) {
     return { ok: false, error: 'type inválido' };
   }
 

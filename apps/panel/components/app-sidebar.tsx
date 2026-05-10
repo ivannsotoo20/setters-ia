@@ -24,6 +24,7 @@ import {
   ContactRound,
   Activity,
   Rocket,
+  MessageCircle,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -65,6 +66,7 @@ function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
     { href: '/settings/followup-templates', label: 'Followups', icon: Clock },
   ];
   if (canManageTenant) {
+    items.push({ href: '/settings/whatsapp', label: 'WhatsApp', icon: MessageCircle });
     items.push({ href: '/onboarding/integrations', label: 'Onboarding', icon: Rocket });
     items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
     items.push({ href: '/settings/integrations/health', label: 'Salud integraciones', icon: Activity });

@@ -1,0 +1,22 @@
+# Override para desarrollo local de Iván.
+#
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Diferencias vs prod (docker-compose.yml):
+#   - motor se construye desde Dockerfile local en lugar de pull desde ghcr.io.
+#   - puerto 3001 expuesto al host para `curl localhost:3001/health`.
+#   - cloudflared NO se levanta (en dev se usa cloudflared instalado en el host
+#     de Iván con tunnel `setter-dev.fyzon.es`).
+services:
+  motor:
+    build:
+      context: .
+      dockerfile: apps/motor-agente/Dockerfile
+    image: fyzon/motor-agente:dev
+    ports:
+      - "3001:3001"
+
+  cloudflared:
+    profiles:
+      - disabled

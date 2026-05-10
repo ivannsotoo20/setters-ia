@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   classifyByKeywords,
   inferContentTypeFromUrl,
+  matchesAnyKeyword,
 } from '../src/services/ghl-message-router.js';
 
 describe('classifyByKeywords', () => {
@@ -61,6 +62,38 @@ describe('classifyByKeywords', () => {
     ];
     const result = classifyByKeywords('aquí va el magnet', withEmpty);
     expect(result).toBe('lm');
+  });
+});
+
+describe('matchesAnyKeyword (Hito 10 sub-fase 3 — gate WA inbound)', () => {
+  const waOpenKeywords = [
+    { type: 'wa_open' as const, pattern: 'hola' },
+    { type: 'wa_open' as const, pattern: 'INFO' },
+    { type: 'wa_open' as const, pattern: 'me interesa' },
+  ];
+
+  it('returns true when text contains a keyword (case-insensitive)', () => {
+    expect(matchesAnyKeyword('Hola entrenador!', waOpenKeywords)).toBe(true);
+    expect(matchesAnyKeyword('quería info por favor', waOpenKeywords)).toBe(true);
+    expect(matchesAnyKeyword('me   interesa   mucho', waOpenKeywords)).toBe(true);
+  });
+
+  it('returns false when no keyword matches', () => {
+    expect(matchesAnyKeyword('saludos buenas noches', waOpenKeywords)).toBe(false);
+  });
+
+  it('returns false on empty body or empty keywords list', () => {
+    expect(matchesAnyKeyword('', waOpenKeywords)).toBe(false);
+    expect(matchesAnyKeyword('hola amigo', [])).toBe(false);
+  });
+
+  it('skips empty patterns without crashing', () => {
+    const withEmpty = [
+      { type: 'wa_open' as const, pattern: '' },
+      { type: 'wa_open' as const, pattern: 'masterclass' },
+    ];
+    expect(matchesAnyKeyword('vengo por la masterclass', withEmpty)).toBe(true);
+    expect(matchesAnyKeyword('nada que matchee', withEmpty)).toBe(false);
   });
 });
 

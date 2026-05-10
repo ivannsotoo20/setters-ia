@@ -10,10 +10,16 @@ import { env } from '../config/env.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
+  hasConversationWithSource,
   insertInboundMessage,
+  loadWaInboundMode,
   resolveTenantByToken,
   upsertLead,
 } from '../services/lead-ingest.js';
+import {
+  loadAutomationKeywords,
+  matchesAnyKeyword,
+} from '../services/ghl-message-router.js';
 
 const DEFAULT_DEBOUNCE_SECONDS = 25;
 
@@ -142,6 +148,62 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
       const claimed = await tryClaimDedupKey(fullDedupKey, 60);
       if (!claimed) {
         return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId });
+      }
+
+      // 4.5. Hito 10 sub-fase 3 — Gate WA inbound mode.
+      //   - 'all'        → flow normal (sin gate). Default backwards-compat.
+      //   - 'form_only'  → solo procesa si el lead ya tiene conv con
+      //                    conversation_source='bienvenida' (vino por
+      //                    /automations/lead-form). Si no, ack + skip.
+      //   - 'keyword'    → como form_only, pero también admite leads frescos
+      //                    cuyo primer mensaje matchea alguna automation_keywords
+      //                    type='wa_open'. Si no matchea ni viene de form, skip.
+      const waInboundMode = await loadWaInboundMode(supabase, tenantId);
+
+      if (waInboundMode !== 'all') {
+        const hasFormOriginConv = await hasConversationWithSource(
+          supabase,
+          tenantId,
+          message.externalUserId,
+          'bienvenida',
+        );
+
+        if (!hasFormOriginConv) {
+          if (waInboundMode === 'form_only') {
+            request.log.info(
+              { tenantId, waId: message.externalUserId, mode: waInboundMode },
+              'webhook-ycloud: wa_inbound_gate form_only + sin conv form-origin → skip',
+            );
+            return reply.code(200).send({
+              ack: true,
+              skipped: 'wa_inbound_gate_form_only',
+              tenant_id: tenantId,
+            });
+          }
+
+          if (waInboundMode === 'keyword') {
+            const keywords = (await loadAutomationKeywords(supabase, tenantId)).filter(
+              (k) => k.type === 'wa_open',
+            );
+            const text = message.text ?? '';
+            if (!matchesAnyKeyword(text, keywords)) {
+              request.log.info(
+                {
+                  tenantId,
+                  waId: message.externalUserId,
+                  mode: waInboundMode,
+                  waOpenKeywordCount: keywords.length,
+                },
+                'webhook-ycloud: wa_inbound_gate keyword sin match → skip',
+              );
+              return reply.code(200).send({
+                ack: true,
+                skipped: 'wa_inbound_gate_no_keyword',
+                tenant_id: tenantId,
+              });
+            }
+          }
+        }
       }
 
       // 5. Canal + lead + conversación + mensaje

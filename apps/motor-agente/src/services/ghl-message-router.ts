@@ -36,7 +36,7 @@ import {
 // ============================================================================
 
 export interface AutomationKeywordRow {
-  type: 'bienvenida' | 'lm' | 'inbound';
+  type: 'bienvenida' | 'lm' | 'inbound' | 'wa_open';
   pattern: string;
 }
 
@@ -58,7 +58,10 @@ export async function loadAutomationKeywords(
   return data
     .filter(
       (r): r is AutomationKeywordRow =>
-        (r.type === 'bienvenida' || r.type === 'lm' || r.type === 'inbound') &&
+        (r.type === 'bienvenida' ||
+          r.type === 'lm' ||
+          r.type === 'inbound' ||
+          r.type === 'wa_open') &&
         typeof r.pattern === 'string' &&
         r.pattern.length > 0,
     )
@@ -80,7 +83,8 @@ export function classifyByKeywords(
 ): 'bienvenida' | 'lm' | 'inbound' | null {
   if (!body || typeof body !== 'string') return null;
   const normalizedBody = normalizeForMatch(body);
-  // Ordering: bienvenida > lm > inbound (mismo orden que el switch legacy)
+  // Ordering: bienvenida > lm > inbound (mismo orden que el switch legacy).
+  // wa_open NO entra aquí — solo lo usa el gate WA en webhook-ycloud.
   for (const type of ['bienvenida', 'lm', 'inbound'] as const) {
     const matches = keywords.filter((k) => k.type === type);
     for (const k of matches) {
@@ -93,7 +97,25 @@ export function classifyByKeywords(
   return null;
 }
 
-function normalizeForMatch(s: string): string {
+/**
+ * Devuelve true si `body` contiene alguna de las keywords (case-insensitive,
+ * sin espacios). Usada por el gate WA inbound (`webhook-ycloud.ts`) cuando
+ * `wa_inbound_mode='keyword'`. Las keywords ya vienen pre-filtradas por type
+ * (típicamente `'wa_open'`).
+ */
+export function matchesAnyKeyword(body: string, keywords: AutomationKeywordRow[]): boolean {
+  if (!body || typeof body !== 'string' || keywords.length === 0) return false;
+  const normalizedBody = normalizeForMatch(body);
+  for (const k of keywords) {
+    const normalizedPattern = normalizeForMatch(k.pattern);
+    if (normalizedPattern.length > 0 && normalizedBody.includes(normalizedPattern)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function normalizeForMatch(s: string): string {
   return s.toLowerCase().replace(/\s+/g, '');
 }
 

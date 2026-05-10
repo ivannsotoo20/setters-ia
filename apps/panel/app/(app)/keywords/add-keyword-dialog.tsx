@@ -20,18 +20,23 @@ import { createKeyword, type KeywordType } from '@/lib/actions/keywords';
 const TYPES: { value: KeywordType; label: string; hint: string }[] = [
   {
     value: 'bienvenida',
-    label: 'Bienvenida',
-    hint: 'Saludo manual al primer contacto. Ej: "Hola! Gracias por escribir, soy Iván".',
+    label: 'Bienvenida (IG/FB)',
+    hint: 'Saludo manual al primer contacto en chat IG/FB. Ej: "Hola! Gracias por escribir, soy Iván".',
   },
   {
     value: 'lm',
-    label: 'Lead Magnet',
-    hint: 'Recurso enviado automáticamente. Ej: "Aquí tienes la guía gratis".',
+    label: 'Lead Magnet (IG/FB)',
+    hint: 'Recurso enviado automáticamente vía GHL Workflow. Ej: "Aquí tienes la guía gratis".',
   },
   {
     value: 'inbound',
-    label: 'Inbound auto',
-    hint: 'Auto-respuesta. Ej: "Gracias por escribir, en breve te contestamos".',
+    label: 'Inbound auto (IG/FB)',
+    hint: 'Auto-respuesta del trainer al primer DM. Ej: "Gracias por escribir, en breve te contestamos".',
+  },
+  {
+    value: 'wa_open',
+    label: 'WhatsApp open (gate inbound)',
+    hint: 'Gate de WhatsApp inbound cuando /settings/whatsapp está en modo "keyword". Ej: "hola", "INFO", "me interesa".',
   },
 ];
 

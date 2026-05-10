@@ -1662,6 +1662,7 @@ export type Database = {
           tenant_id: number
           timezone: string
           updated_at: string
+          wa_inbound_mode: string
           welcome_template_id: number | null
         }
         Insert: {
@@ -1674,6 +1675,7 @@ export type Database = {
           tenant_id: number
           timezone?: string
           updated_at?: string
+          wa_inbound_mode?: string
           welcome_template_id?: number | null
         }
         Update: {
@@ -1686,6 +1688,7 @@ export type Database = {
           tenant_id?: number
           timezone?: string
           updated_at?: string
+          wa_inbound_mode?: string
           welcome_template_id?: number | null
         }
         Relationships: [

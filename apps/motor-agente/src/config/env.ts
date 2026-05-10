@@ -66,11 +66,13 @@ const envSchema = z.object({
   /** Shared secret de la app — para HMAC verification de webhooks app emite. */
   GHL_OAUTH_SHARED_SECRET: z.string().optional(),
   /** URL pública del OAuth callback. Debe coincidir con la registrada en
-   *  developer portal de la app. */
+   *  developer portal de la app. Default apunta al dominio de producción
+   *  `setter.fyzon.es`; para desarrollo override en `.env.local` con
+   *  `setter-dev.fyzon.es`. */
   GHL_OAUTH_REDIRECT_URI: z
     .string()
     .url()
-    .default('https://setter-dev.fyzon.es/integrations/oauth/callback'),
+    .default('https://setter.fyzon.es/integrations/oauth/callback'),
   /** Scopes solicitados al instalar — separados por espacio. */
   GHL_OAUTH_SCOPES: z
     .string()
