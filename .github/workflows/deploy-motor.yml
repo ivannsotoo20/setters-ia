@@ -60,6 +60,20 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: 22
+          source: "docker-compose.yml,docker-compose.dev.yml,scripts/rollback.sh"
+          target: "/opt/fyzon"
+          overwrite: true
+
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -71,16 +85,15 @@ jobs:
           script: |
             set -euo pipefail
             cd /opt/fyzon
-            git fetch origin main
-            git checkout main
-            git pull origin main
             export IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}"
             echo "Pulling motor image ${IMAGE_TAG}..."
             docker compose pull motor
-            echo "Restarting motor container..."
-            docker compose up -d motor
+            echo "Starting motor + redis + cloudflared..."
+            docker compose up -d
             echo "Pruning old images (>7 days)..."
             docker image prune -f --filter "until=168h" || true
+            echo "Container status:"
+            docker compose ps
 
       - name: Smoke check /health
         run: |
