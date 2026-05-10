@@ -1,7 +1,6 @@
 import { DashboardFilters } from './dashboard-filters';
 import { KpiRow } from './kpi-row';
 import { AlertsList } from './alerts-list';
-import { ChannelStageMatrix } from './channel-stage-matrix';
 import { TrendChart } from './trend-chart';
 import { DashboardEmpty } from './dashboard-empty';
 import type { DashboardSnapshot } from '@/lib/actions/dashboard';
@@ -11,7 +10,7 @@ interface Props {
 }
 
 export function DashboardLayout({ snapshot }: Props) {
-  const { filters, kpis, matrix, trend, alerts, meta } = snapshot;
+  const { filters, kpis, trend, alerts, meta } = snapshot;
   const isEmpty = meta.totalConvsCurrent === 0 && trend.every((p) => p.total === 0);
 
   return (
@@ -25,14 +24,7 @@ export function DashboardLayout({ snapshot }: Props) {
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-3 sm:p-4 flex flex-col gap-3 sm:gap-4">
         <KpiRow kpis={kpis} />
         <AlertsList alerts={alerts} />
-        {isEmpty ? (
-          <DashboardEmpty />
-        ) : (
-          <>
-            <ChannelStageMatrix matrix={matrix} activeChannel={filters.channelKey} />
-            <TrendChart trend={trend} />
-          </>
-        )}
+        {isEmpty ? <DashboardEmpty /> : <TrendChart trend={trend} />}
       </div>
     </div>
   );

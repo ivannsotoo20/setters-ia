@@ -84,7 +84,7 @@ export function DashboardFilters({ active, windowKey, fromIso, toIso }: Props) {
 
       <div className="flex-1" />
 
-      <Select value={windowKey} onValueChange={(v) => setParam('w', v === '7d' ? null : v)}>
+      <Select value={windowKey} onValueChange={(v) => setParam('w', v)}>
         <SelectTrigger className="h-8 w-[170px] text-xs">
           <SelectValue placeholder="Periodo" />
         </SelectTrigger>
