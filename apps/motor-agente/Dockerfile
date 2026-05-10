@@ -21,16 +21,21 @@ FROM base AS runner
 ENV NODE_ENV=production
 RUN addgroup -S app && adduser -S app -G app
 
-COPY --from=builder /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/package.json ./
+COPY --from=builder /app/pnpm-workspace.yaml /app/pnpm-lock.yaml /app/package.json /app/tsconfig.base.json ./
 COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/apps/motor-agente/dist ./apps/motor-agente/dist
+COPY --from=builder /app/apps/motor-agente/src ./apps/motor-agente/src
+COPY --from=builder /app/apps/motor-agente/tsconfig.json ./apps/motor-agente/
 COPY --from=builder /app/apps/motor-agente/package.json ./apps/motor-agente/
 
-# Install production deps only (sin devDependencies como tsx/tsc)
+# Install production deps (incluye tsx — está en dependencies del motor).
+# Los packages internos quedan como symlinks workspace.
 RUN pnpm install --frozen-lockfile --filter @fyzon/motor-agente... --prod
 
 RUN chown -R app:app /app
 USER app
 WORKDIR /app/apps/motor-agente
 EXPOSE 3001
-CMD ["node", "dist/index.js"]
+# tsx ejecuta TypeScript en runtime. Decisión consciente vs node dist/ porque
+# los packages internos del workspace exponen src/index.ts (no dist/) — sin
+# tsx habría que añadir build step + tsconfig.build.json a cada package.
+CMD ["./node_modules/.bin/tsx", "src/index.ts"]
