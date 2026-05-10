@@ -19,6 +19,7 @@ import {
   Receipt,
   UserCog,
   Tag,
+  Kanban,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -48,6 +49,7 @@ type SidebarMode = 'agency' | 'tenant-admin' | 'trainer';
 const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/conversations', label: 'Conversaciones', icon: MessageSquare },
+  { href: '/pipeline', label: 'Pipeline', icon: Kanban },
 ];
 
 /** Entradas de configuración visibles según rol. */

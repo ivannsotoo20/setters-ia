@@ -27,7 +27,15 @@ function getServiceRoleClient() {
   });
 }
 
-export type DestinationBucket = 'chats' | 'hot' | 'done' | 'bought';
+export type DestinationBucket =
+  | 'chats'
+  | 'hot'
+  | 'done'
+  | 'bought'
+  | 'cancelled'
+  | 'no_show'
+  | 'recontact'
+  | 'lost';
 export type AppliedVia = 'manual' | 'rule' | 'system_hook';
 
 export interface LabelRow {
@@ -49,7 +57,16 @@ export interface LabelRow {
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
-const VALID_BUCKETS: readonly DestinationBucket[] = ['chats', 'hot', 'done', 'bought'];
+const VALID_BUCKETS: readonly DestinationBucket[] = [
+  'chats',
+  'hot',
+  'done',
+  'bought',
+  'cancelled',
+  'no_show',
+  'recontact',
+  'lost',
+];
 
 function isOwnerOrAgency(eff: { isAgencyAdmin: boolean; role: string }): boolean {
   return eff.isAgencyAdmin || eff.role === 'owner';

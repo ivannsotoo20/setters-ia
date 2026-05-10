@@ -39,7 +39,16 @@ export interface ConversationListLabel {
   id: number;
   name: string;
   color: string;
-  destinationBucket: 'chats' | 'hot' | 'done' | 'bought' | null;
+  destinationBucket:
+    | 'chats'
+    | 'hot'
+    | 'done'
+    | 'bought'
+    | 'cancelled'
+    | 'no_show'
+    | 'recontact'
+    | 'lost'
+    | null;
 }
 
 export interface ConversationListRow {

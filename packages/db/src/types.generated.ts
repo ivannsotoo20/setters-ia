@@ -1070,6 +1070,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pipeline_events: {
+        Row: {
+          conversation_id: number
+          event_type: string
+          from_value: string | null
+          id: number
+          occurred_at: string
+          source: string
+          tenant_id: number
+          to_value: string
+        }
+        Insert: {
+          conversation_id: number
+          event_type: string
+          from_value?: string | null
+          id?: number
+          occurred_at?: string
+          source: string
+          tenant_id: number
+          to_value: string
+        }
+        Update: {
+          conversation_id?: number
+          event_type?: string
+          from_value?: string | null
+          id?: number
+          occurred_at?: string
+          source?: string
+          tenant_id?: number
+          to_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_events_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pipeline_runs: {
         Row: {
           conversation_id: number | null

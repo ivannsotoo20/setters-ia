@@ -73,7 +73,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         memberRole={role}
         impersonatingTenantName={impersonatingTenantName}
       />
-      <SidebarInset>
+      <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
@@ -87,7 +87,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         {impersonatingTenantName ? (
           <ImpersonateBanner tenantName={impersonatingTenantName} />
         ) : null}
-        <main className="flex-1 p-6 md:p-8">{children}</main>
+        <main className="flex-1 min-w-0 p-6 md:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

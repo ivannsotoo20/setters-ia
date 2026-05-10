@@ -146,12 +146,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
         id: Number(labelObj.id),
         name: String(labelObj.name),
         color: String(labelObj.color),
-        destinationBucket: (labelObj.destination_bucket ?? null) as
-          | 'chats'
-          | 'hot'
-          | 'done'
-          | 'bought'
-          | null,
+        destinationBucket: (labelObj.destination_bucket ?? null) as ConversationListLabel['destinationBucket'],
       });
       labelsByConvId.set(cid, arr);
     }
