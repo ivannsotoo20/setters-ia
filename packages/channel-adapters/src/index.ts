@@ -29,6 +29,17 @@ export {
   type YCloudSendTextResult,
 } from './ycloud/api-client.js';
 export {
+  ycloudListTemplates,
+  ycloudSendTemplate,
+  extractTemplateBody,
+  extractTemplateVariables,
+  YCloudTemplatesError,
+  type YCloudTemplateRow,
+  type YCloudListTemplatesParams,
+  type YCloudSendTemplateParams,
+  type YCloudSendTemplateResult,
+} from './ycloud/templates.js';
+export {
   ycloudInboundPayloadSchema,
   type YCloudInboundPayload,
   type YCloudMessage,

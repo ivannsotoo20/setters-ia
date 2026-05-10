@@ -5,6 +5,12 @@ import { listMembers } from '@/lib/actions/members';
 import { listConversationNotes } from '@/lib/actions/conversations';
 import { listLabels, type LabelRow } from '@/lib/actions/labels';
 import {
+  listFollowupTemplates,
+  listScheduledFollowups,
+  type FollowupTemplateRow,
+  type ScheduledFollowupRow,
+} from '@/lib/actions/followups';
+import {
   type ConversationListRow,
   type ConversationListLabel,
   type FilterParams,
@@ -56,6 +62,26 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   // ---- Sprint Eta — carga labels del tenant (selector + filtro) -----------
   const allLabelsPromise = listLabels();
 
+  // ---- Sprint Iota.1 — followup templates (siempre, todos los canales) ----
+  const followupTemplatesPromise = listFollowupTemplates();
+
+  // ---- Sprint Iota.1 — followups programados (solo si hay selectedId) -----
+  const followupsPromise = selectedId
+    ? listScheduledFollowups(selectedId)
+    : Promise.resolve({ ok: true as const, data: [] as ScheduledFollowupRow[] });
+
+  // ---- Sprint Iota.1 — último mensaje del lead (para detectar 24h WA) -----
+  const lastLeadMessagePromise = selectedId
+    ? supabase
+        .from('conversation_messages')
+        .select('sent_at')
+        .eq('conversation_id', selectedId)
+        .eq('source', 'lead')
+        .order('sent_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : Promise.resolve({ data: null });
+
   // ---- Carga detalle + mensajes + notas (solo si selectedId) --------------
   const detailPromise = selectedId
     ? supabase
@@ -103,6 +129,9 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     notesRes,
     viewerEmailRes,
     allLabelsRes,
+    followupTemplatesRes,
+    followupsRes,
+    lastLeadMessageRes,
   ] = await Promise.all([
     listPromise,
     membersPromise,
@@ -111,6 +140,9 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     notesPromise,
     viewerEmailPromise,
     allLabelsPromise,
+    followupTemplatesPromise,
+    followupsPromise,
+    lastLeadMessagePromise,
   ]);
 
   if (listRes.error) {
@@ -158,6 +190,14 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   })) as unknown as ConversationListRow[];
 
   const allLabels: LabelRow[] = allLabelsRes.ok ? allLabelsRes.data ?? [] : [];
+  const followupTemplates: FollowupTemplateRow[] = followupTemplatesRes.ok
+    ? followupTemplatesRes.data ?? []
+    : [];
+  const followups: ScheduledFollowupRow[] = followupsRes.ok ? followupsRes.data ?? [] : [];
+  const canScheduleFollowups =
+    effective.isAgencyAdmin || effective.role === 'owner' || effective.role === 'admin';
+  const lastLeadMessageAt =
+    (lastLeadMessageRes?.data as { sent_at?: string } | null)?.sent_at ?? null;
 
   const members: TenantMember[] = membersRes.ok
     ? membersRes.data!.map((m) => ({
@@ -219,9 +259,19 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
           viewer={viewer}
           members={members}
           allLabels={allLabels}
+          followupTemplates={followupTemplates}
+          lastLeadMessageAt={lastLeadMessageAt}
         />
       }
-      panel={<ControlPanel detail={selectedDetail} />}
+      panel={
+        <ControlPanel
+          detail={selectedDetail}
+          followups={followups}
+          followupTemplates={followupTemplates}
+          canScheduleFollowups={canScheduleFollowups}
+          lastLeadMessageAt={lastLeadMessageAt}
+        />
+      }
     />
   );
 }

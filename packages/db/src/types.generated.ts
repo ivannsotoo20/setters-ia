@@ -561,6 +561,77 @@ export type Database = {
           },
         ]
       }
+      followup_templates: {
+        Row: {
+          ai_guide: string | null
+          ai_personalize: boolean
+          body: string | null
+          category: string | null
+          channel_kind: Database["public"]["Enums"]["channel_type"]
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: number
+          language: string | null
+          name: string
+          provider: string
+          provider_metadata: Json
+          provider_template_id: string | null
+          status: string
+          tenant_id: number
+          updated_at: string
+          variables: Json
+        }
+        Insert: {
+          ai_guide?: string | null
+          ai_personalize?: boolean
+          body?: string | null
+          category?: string | null
+          channel_kind: Database["public"]["Enums"]["channel_type"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          language?: string | null
+          name: string
+          provider?: string
+          provider_metadata?: Json
+          provider_template_id?: string | null
+          status?: string
+          tenant_id: number
+          updated_at?: string
+          variables?: Json
+        }
+        Update: {
+          ai_guide?: string | null
+          ai_personalize?: boolean
+          body?: string | null
+          category?: string | null
+          channel_kind?: Database["public"]["Enums"]["channel_type"]
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: number
+          language?: string | null
+          name?: string
+          provider?: string
+          provider_metadata?: Json
+          provider_template_id?: string | null
+          status?: string
+          tenant_id?: number
+          updated_at?: string
+          variables?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "followup_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ignored_users: {
         Row: {
           channel_id: number | null
@@ -953,10 +1024,14 @@ export type Database = {
       }
       message_schedules: {
         Row: {
+          ai_guide: string | null
+          ai_personalize: boolean
           attachment_url: string | null
           attempts: number
+          auto_cancel_on_reply: boolean
           conversation_id: number
           created_at: string
+          created_by_user_id: string | null
           has_attachment: boolean
           id: number
           integration_account_id: number
@@ -967,14 +1042,21 @@ export type Database = {
           resource_type: Database["public"]["Enums"]["resource_type"] | null
           scheduled_at: string
           sent_at: string | null
+          sequence_index: number | null
           status: Database["public"]["Enums"]["schedule_status"]
+          template_id: number | null
           tenant_id: number
+          triggered_by: string
         }
         Insert: {
+          ai_guide?: string | null
+          ai_personalize?: boolean
           attachment_url?: string | null
           attempts?: number
+          auto_cancel_on_reply?: boolean
           conversation_id: number
           created_at?: string
+          created_by_user_id?: string | null
           has_attachment?: boolean
           id?: number
           integration_account_id: number
@@ -985,14 +1067,21 @@ export type Database = {
           resource_type?: Database["public"]["Enums"]["resource_type"] | null
           scheduled_at: string
           sent_at?: string | null
+          sequence_index?: number | null
           status?: Database["public"]["Enums"]["schedule_status"]
+          template_id?: number | null
           tenant_id: number
+          triggered_by?: string
         }
         Update: {
+          ai_guide?: string | null
+          ai_personalize?: boolean
           attachment_url?: string | null
           attempts?: number
+          auto_cancel_on_reply?: boolean
           conversation_id?: number
           created_at?: string
+          created_by_user_id?: string | null
           has_attachment?: boolean
           id?: number
           integration_account_id?: number
@@ -1003,8 +1092,11 @@ export type Database = {
           resource_type?: Database["public"]["Enums"]["resource_type"] | null
           scheduled_at?: string
           sent_at?: string | null
+          sequence_index?: number | null
           status?: Database["public"]["Enums"]["schedule_status"]
+          template_id?: number | null
           tenant_id?: number
+          triggered_by?: string
         }
         Relationships: [
           {
@@ -1583,6 +1675,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tenant_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_followup_config: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          intervals_hours: number[]
+          max_followups_per_lead: number
+          tenant_id: number
+          updated_at: string
+          window_end_hour: number
+          window_start_hour: number
+          window_timezone: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          intervals_hours?: number[]
+          max_followups_per_lead?: number
+          tenant_id: number
+          updated_at?: string
+          window_end_hour?: number
+          window_start_hour?: number
+          window_timezone?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          intervals_hours?: number[]
+          max_followups_per_lead?: number
+          tenant_id?: number
+          updated_at?: string
+          window_end_hour?: number
+          window_start_hour?: number
+          window_timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_followup_config_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "tenants"

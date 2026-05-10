@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { Bot, Pause, Play, Zap, Clock, Loader2 } from 'lucide-react';
+import { Bot, Pause, Play, Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,30 @@ import {
 } from '@/components/ui/tooltip';
 import { togglePauseConversation } from '@/lib/actions/conversations';
 import { isAiPaused } from './format-helpers';
+import { ScheduleFollowupDialog } from './actions/schedule-followup-dialog';
+import { ScheduledFollowupsList } from './scheduled-followups-list';
 import type { SelectedConversationDetail } from './types';
+import type {
+  ChannelKind,
+  FollowupTemplateRow,
+  ScheduledFollowupRow,
+} from '@/lib/actions/followups';
 
 interface Props {
   detail: SelectedConversationDetail;
+  followups: ScheduledFollowupRow[];
+  templates: FollowupTemplateRow[];
+  canScheduleFollowups: boolean;
+  lastLeadMessageAt: string | null;
 }
 
-export function AIControlPanel({ detail }: Props) {
+export function AIControlPanel({
+  detail,
+  followups,
+  templates,
+  canScheduleFollowups,
+  lastLeadMessageAt,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const paused = isAiPaused(detail.aiPausedUntil);
 
@@ -102,38 +119,16 @@ export function AIControlPanel({ detail }: Props) {
             <span className="text-xs uppercase tracking-wider text-muted-foreground">
               Seguimientos
             </span>
-            <Badge
-              variant="outline"
-              className="h-4 text-[9px] px-1.5 font-normal border-border text-muted-foreground"
-            >
-              Sprint Iota
-            </Badge>
+            {canScheduleFollowups ? (
+              <ScheduleFollowupDialog
+                conversationId={detail.id}
+                channelKind={detail.channel.channel_type as ChannelKind}
+                lastLeadMessageAt={lastLeadMessageAt}
+                templates={templates}
+              />
+            ) : null}
           </div>
-          <p className="text-xs text-muted-foreground italic">
-            Sin seguimientos programados.
-          </p>
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex w-full">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    aria-disabled
-                    className="w-full justify-start opacity-60 cursor-not-allowed"
-                  >
-                    <Clock className="size-3.5" />
-                    Programar seguimiento
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                Próximamente Sprint Iota (followups personalizados)
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <ScheduledFollowupsList followups={followups} canCancel={canScheduleFollowups} />
         </div>
       </CardContent>
     </Card>

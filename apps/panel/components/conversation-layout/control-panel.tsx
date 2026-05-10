@@ -2,12 +2,26 @@ import { LeadInfoCard } from './lead-info-card';
 import { FunnelPhaseIndicator } from './funnel-phase-indicator';
 import { AIControlPanel } from './ai-control-panel';
 import type { SelectedConversationDetail } from './types';
+import type {
+  FollowupTemplateRow,
+  ScheduledFollowupRow,
+} from '@/lib/actions/followups';
 
 interface Props {
   detail: SelectedConversationDetail | null;
+  followups: ScheduledFollowupRow[];
+  followupTemplates: FollowupTemplateRow[];
+  canScheduleFollowups: boolean;
+  lastLeadMessageAt: string | null;
 }
 
-export function ControlPanel({ detail }: Props) {
+export function ControlPanel({
+  detail,
+  followups,
+  followupTemplates,
+  canScheduleFollowups,
+  lastLeadMessageAt,
+}: Props) {
   if (!detail) {
     return (
       <aside
@@ -26,7 +40,13 @@ export function ControlPanel({ detail }: Props) {
     >
       <LeadInfoCard detail={detail} />
       <FunnelPhaseIndicator detail={detail} />
-      <AIControlPanel detail={detail} />
+      <AIControlPanel
+        detail={detail}
+        followups={followups}
+        templates={followupTemplates}
+        canScheduleFollowups={canScheduleFollowups}
+        lastLeadMessageAt={lastLeadMessageAt}
+      />
     </aside>
   );
 }
