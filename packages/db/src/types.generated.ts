@@ -472,6 +472,47 @@ export type Database = {
           },
         ]
       }
+      dashboard_widgets: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          filter_json: Json
+          id: number
+          metric_key: string
+          position: number
+          tenant_id: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          filter_json?: Json
+          id?: number
+          metric_key: string
+          position?: number
+          tenant_id: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          filter_json?: Json
+          id?: number
+          metric_key?: string
+          position?: number
+          tenant_id?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_widgets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       follow_ups: {
         Row: {
           attachment_resource_id: number | null
