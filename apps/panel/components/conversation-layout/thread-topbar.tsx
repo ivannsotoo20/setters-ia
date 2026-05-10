@@ -1,6 +1,6 @@
 'use client';
 
-import { FolderInput, Clock } from 'lucide-react';
+import { FolderInput } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { AssignAction } from './actions/assign-action';
@@ -30,7 +30,13 @@ interface Props {
   allLabels: LabelRow[];
 }
 
-export function ThreadTopbar({ detail, notes, viewer, members, allLabels }: Props) {
+export function ThreadTopbar({
+  detail,
+  notes,
+  viewer,
+  members,
+  allLabels,
+}: Props) {
   const lead = detail.lead;
   const name = formatLeadName(lead);
   const initials = leadInitials(lead);
@@ -118,11 +124,6 @@ export function ThreadTopbar({ detail, notes, viewer, members, allLabels }: Prop
           {canModerate ? (
             <DeleteAction conversationId={detail.id} leadName={name} />
           ) : null}
-          <PlaceholderAction
-            label="Programar mensaje"
-            icon={Clock}
-            tooltip="Próximamente Sprint Iota"
-          />
         </div>
       </div>
 

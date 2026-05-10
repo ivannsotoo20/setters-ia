@@ -66,8 +66,8 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
         {thread}
       </div>
 
-      {/* Panel pane (lg+ only) */}
-      <div className="hidden lg:block min-w-0 min-h-0 h-full overflow-hidden">{panel}</div>
+      {/* Panel pane (lg+ only) — wrapper sin overflow para que el aside controle el suyo */}
+      <div className="hidden lg:block min-w-0 min-h-0 h-full">{panel}</div>
 
       {/* Tablet (md only): Sheet derecho disparado por botón flotante */}
       <div className="hidden md:flex lg:hidden fixed right-4 bottom-4 z-20">
@@ -116,9 +116,10 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
       </nav>
 
       {/* Mobile panel pane (renderizado solo cuando esa tab está activa) */}
+      {/* Sprint Iota.2 — sin overflow-hidden: el aside hijo controla su scroll */}
       <div
         className={cn(
-          'md:hidden min-w-0 min-h-0 h-full overflow-hidden',
+          'md:hidden min-w-0 min-h-0 h-full',
           mobileView === 'panel' ? 'block' : 'hidden',
         )}
       >

@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { Bot, Pause, Play, Zap, Clock, Loader2 } from 'lucide-react';
+import { Bot, Pause, Play, Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,26 @@ import {
 } from '@/components/ui/tooltip';
 import { togglePauseConversation } from '@/lib/actions/conversations';
 import { isAiPaused } from './format-helpers';
+import { AutomatedFollowupsPanel } from './automated-followups-panel';
 import type { SelectedConversationDetail } from './types';
+import type { ChannelKind, ScheduledFollowupRow } from '@/lib/actions/followups';
+import type { TenantFollowupConfigRow } from '@/lib/actions/followup-config';
 
 interface Props {
   detail: SelectedConversationDetail;
+  followups: ScheduledFollowupRow[];
+  followupConfig: TenantFollowupConfigRow;
+  canManageFollowups: boolean;
+  lastLeadMessageAt: string | null;
 }
 
-export function AIControlPanel({ detail }: Props) {
+export function AIControlPanel({
+  detail,
+  followups,
+  followupConfig,
+  canManageFollowups,
+  lastLeadMessageAt,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const paused = isAiPaused(detail.aiPausedUntil);
 
@@ -97,44 +110,13 @@ export function AIControlPanel({ detail }: Props) {
           </TooltipProvider>
         </div>
 
-        <div className="border-t border-border/60 pt-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">
-              Seguimientos
-            </span>
-            <Badge
-              variant="outline"
-              className="h-4 text-[9px] px-1.5 font-normal border-border text-muted-foreground"
-            >
-              Sprint Iota
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground italic">
-            Sin seguimientos programados.
-          </p>
-          <TooltipProvider delayDuration={150}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex w-full">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    aria-disabled
-                    className="w-full justify-start opacity-60 cursor-not-allowed"
-                  >
-                    <Clock className="size-3.5" />
-                    Programar seguimiento
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                Próximamente Sprint Iota (followups personalizados)
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
+        <AutomatedFollowupsPanel
+          followups={followups}
+          config={followupConfig}
+          channelKind={detail.channel.channel_type as ChannelKind}
+          lastLeadMessageAt={lastLeadMessageAt}
+          canManage={canManageFollowups}
+        />
       </CardContent>
     </Card>
   );

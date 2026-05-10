@@ -1,9 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type Anthropic from '@anthropic-ai/sdk';
 import {
   GhlChannelAdapter,
   ManyChatInstagramAdapter,
   ManyChatWhatsAppAdapter,
   YCloudWhatsAppAdapter,
+  ycloudSendTemplate,
   type ChannelAdapter,
 } from '@fyzon/channel-adapters';
 import {
@@ -13,6 +15,8 @@ import {
   nextRetryAt,
   rescheduleForRetry,
 } from './scheduler.js';
+import { personalizeFollowupMessage } from './personalize-followup.js';
+import { getAnthropic } from '../lib/anthropic.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 
@@ -54,7 +58,10 @@ export async function sendNextBatch(
   const nowIso = new Date().toISOString();
   const { data: candidates, error: pickErr } = await supabase
     .from('message_schedules')
-    .select('id, tenant_id, conversation_id, integration_account_id, message, attempts, scheduled_at')
+    .select(
+      `id, tenant_id, conversation_id, integration_account_id, message, attempts, scheduled_at,
+       message_type, template_id, ai_personalize, ai_guide`,
+    )
     .eq('status', 'pending')
     .lte('scheduled_at', nowIso)
     .order('scheduled_at', { ascending: true })
@@ -81,21 +88,104 @@ export async function sendNextBatch(
   // 3. Procesar uno a uno
   for (const row of candidates) {
     const scheduleId = Number(row.id);
-    const messageText = String(row.message ?? '');
-    if (!messageText.trim()) {
-      await markScheduleFailed({
-        supabase,
-        scheduleId,
-        attempts: Number(row.attempts) + 1,
-        error: 'message empty',
-      });
-      result.skipped++;
-      result.details.push({ scheduleId, status: 'skipped', error: 'message empty' });
-      continue;
-    }
+    let messageText = String(row.message ?? '');
+    const messageType = String(row.message_type ?? 'message');
+    const templateId = row.template_id != null ? Number(row.template_id) : null;
+    const aiPersonalize = Boolean(row.ai_personalize);
+    const aiGuide = (row.ai_guide as string | null) ?? null;
 
     try {
-      // Cargar credenciales + canal + provider + lead
+      // 3.a) AI-personalize: el panel pre-genera al materializar (Sprint Iota.1.e)
+      // → si messageText ya existe, NO regeneramos (preview = realidad enviada).
+      // Solo regeneramos como fallback si materialize falló (message_text=null).
+      if (
+        messageType === 'follow_up' &&
+        aiPersonalize &&
+        aiGuide &&
+        (!messageText || messageText.trim().length === 0)
+      ) {
+        const anthropic = getAnthropic();
+        const personalized = await personalizeFollowupMessage({
+          supabase,
+          anthropic: anthropic as unknown as Anthropic,
+          conversationId: Number(row.conversation_id),
+          aiGuide,
+        });
+        if (!personalized.ok) {
+          throw new Error(`AI-personalize fallback: ${personalized.error}`);
+        }
+        messageText = personalized.message;
+        await supabase
+          .from('message_schedules')
+          .update({ message: messageText })
+          .eq('id', scheduleId);
+      }
+
+      // 3.b) WA template via YCloud: enviar template message
+      if (messageType === 'follow_up' && templateId != null) {
+        const sendCtx = await loadSendContext(supabase, {
+          integrationAccountId: Number(row.integration_account_id),
+          conversationId: Number(row.conversation_id),
+        });
+
+        const { data: tpl } = await supabase
+          .from('followup_templates')
+          .select('provider, provider_template_id, language, variables')
+          .eq('id', templateId)
+          .maybeSingle();
+        if (
+          tpl &&
+          (tpl.provider === 'ycloud' || tpl.provider === 'meta_cloud') &&
+          sendCtx.provider === 'ycloud' &&
+          sendCtx.businessPhone
+        ) {
+          const variables = Array.isArray(tpl.variables)
+            ? (tpl.variables as Array<{ sample?: string | null }>)
+            : [];
+          const bodyVariables = variables
+            .map((v) => v.sample)
+            .filter((s): s is string => typeof s === 'string' && s.length > 0);
+          const sendResult = await ycloudSendTemplate({
+            apiKey: sendCtx.apiKey,
+            from: sendCtx.businessPhone,
+            to: sendCtx.externalUserId,
+            templateName: String(tpl.provider_template_id),
+            language: String(tpl.language ?? 'es'),
+            bodyVariables,
+            baseUrl: env.YCLOUD_API_BASE,
+          });
+          await markScheduleSent({
+            supabase,
+            scheduleId,
+            providerMessageId: sendResult.providerMessageId,
+          });
+          await supabase.from('conversation_messages').insert({
+            tenant_id: Number(row.tenant_id),
+            conversation_id: Number(row.conversation_id),
+            source: 'ai',
+            content_type: 'text',
+            content: messageText || `[template:${tpl.provider_template_id}]`,
+            sent_at: new Date().toISOString(),
+          });
+          result.sent++;
+          result.details.push({ scheduleId, status: 'sent' });
+          continue;
+        }
+      }
+
+      if (!messageText.trim()) {
+        await markScheduleFailed({
+          supabase,
+          scheduleId,
+          attempts: Number(row.attempts) + 1,
+          error: 'message empty',
+        });
+        result.skipped++;
+        result.details.push({ scheduleId, status: 'skipped', error: 'message empty' });
+        continue;
+      }
+
+      // 3.c) Path normal: cargar credenciales + adapter + send text
       const sendCtx = await loadSendContext(supabase, {
         integrationAccountId: Number(row.integration_account_id),
         conversationId: Number(row.conversation_id),
@@ -108,7 +198,6 @@ export async function sendNextBatch(
         text: messageText,
       });
 
-      // Marca enviado + replica como conversation_messages source='ai'
       await markScheduleSent({
         supabase,
         scheduleId,
