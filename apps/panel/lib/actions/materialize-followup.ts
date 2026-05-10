@@ -249,6 +249,10 @@ export async function materializeFollowupSequenceForConv(
 
     // Sprint Iota.1.e — pre-generar el mensaje IA AHORA (no esperar al envío)
     // para que el panel del chat lo muestre como preview real, no placeholder.
+    //
+    // Fallback Iota.1.f: si pre-gen falla (no hay ANTHROPIC_API_KEY en env del
+    // panel, timeout, etc.) usamos `default_followup_text` como body literal
+    // para que el panel SIEMPRE muestre algo concreto, nunca un placeholder.
     let preGenerated: string | null = null;
     if (tpl.aiPersonalize && tpl.aiGuide) {
       const result = await personalizeFollowupAtMaterialize({
@@ -258,8 +262,11 @@ export async function materializeFollowupSequenceForConv(
       });
       if (result.ok) {
         preGenerated = result.message;
+      } else if (cfg.default_followup_text) {
+        // Fallback: texto fijo del trainer (lo ve el lead literal — mejor que nada).
+        preGenerated = String(cfg.default_followup_text);
       }
-      // Si falla: schedule se crea con message=null y el motor regenera al envío.
+      // Si tampoco hay default: schedule queda con message=null y el motor regenera.
     }
 
     const { data, error } = await supabase
