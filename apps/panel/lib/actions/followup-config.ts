@@ -28,6 +28,9 @@ export interface TenantFollowupConfigRow {
   windowTimezone: string;
   maxFollowupsPerLead: number;
   intervalsHours: number[];
+  autoPersonalize: boolean;
+  defaultFollowupText: string | null;
+  materializeLookaheadHours: number;
 }
 
 export async function getTenantFollowupConfig(): Promise<
@@ -40,14 +43,15 @@ export async function getTenantFollowupConfig(): Promise<
   const { data, error } = await supabase
     .from('tenant_followup_config')
     .select(
-      'enabled, window_start_hour, window_end_hour, window_timezone, max_followups_per_lead, intervals_hours',
+      `enabled, window_start_hour, window_end_hour, window_timezone,
+       max_followups_per_lead, intervals_hours,
+       auto_personalize, default_followup_text, materialize_lookahead_hours`,
     )
     .eq('tenant_id', eff.tenantId)
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
 
   if (!data) {
-    // Trigger seed debería haberlo creado, pero defensivo:
     return {
       ok: true,
       data: {
@@ -57,6 +61,9 @@ export async function getTenantFollowupConfig(): Promise<
         windowTimezone: 'Europe/Madrid',
         maxFollowupsPerLead: 3,
         intervalsHours: [24, 72, 168],
+        autoPersonalize: true,
+        defaultFollowupText: 'Hola, ¿pudiste ver mi mensaje? Quería saber si sigues interesado/a 🙂',
+        materializeLookaheadHours: 24,
       },
     };
   }
@@ -72,6 +79,9 @@ export async function getTenantFollowupConfig(): Promise<
       intervalsHours: Array.isArray(data.intervals_hours)
         ? (data.intervals_hours as number[])
         : [24, 72, 168],
+      autoPersonalize: Boolean(data.auto_personalize),
+      defaultFollowupText: (data.default_followup_text as string | null) ?? null,
+      materializeLookaheadHours: Number(data.materialize_lookahead_hours ?? 24),
     },
   };
 }
@@ -83,6 +93,9 @@ export interface UpdateFollowupConfigInput {
   windowTimezone?: string;
   maxFollowupsPerLead?: number;
   intervalsHours?: number[];
+  autoPersonalize?: boolean;
+  defaultFollowupText?: string | null;
+  materializeLookaheadHours?: number;
 }
 
 export async function updateTenantFollowupConfig(
@@ -137,6 +150,21 @@ export async function updateTenantFollowupConfig(
       }
     }
     updates.intervals_hours = input.intervalsHours.map((h) => Number(h));
+  }
+  if (input.autoPersonalize !== undefined) {
+    updates.auto_personalize = input.autoPersonalize === true;
+  }
+  if (input.defaultFollowupText !== undefined) {
+    const t = (input.defaultFollowupText ?? '').trim();
+    if (t.length > 4000) return { ok: false, error: 'default_followup_text demasiado largo (>4000)' };
+    updates.default_followup_text = t.length > 0 ? t : null;
+  }
+  if (input.materializeLookaheadHours !== undefined) {
+    const v = Number(input.materializeLookaheadHours);
+    if (!Number.isInteger(v) || v < 0 || v > 168) {
+      return { ok: false, error: 'materialize_lookahead_hours fuera de rango [0, 168]' };
+    }
+    updates.materialize_lookahead_hours = v;
   }
 
   const supabase = getServiceRoleClient();

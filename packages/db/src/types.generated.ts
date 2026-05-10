@@ -1684,9 +1684,12 @@ export type Database = {
       }
       tenant_followup_config: {
         Row: {
+          auto_personalize: boolean
           created_at: string
+          default_followup_text: string | null
           enabled: boolean
           intervals_hours: number[]
+          materialize_lookahead_hours: number
           max_followups_per_lead: number
           tenant_id: number
           updated_at: string
@@ -1695,9 +1698,12 @@ export type Database = {
           window_timezone: string
         }
         Insert: {
+          auto_personalize?: boolean
           created_at?: string
+          default_followup_text?: string | null
           enabled?: boolean
           intervals_hours?: number[]
+          materialize_lookahead_hours?: number
           max_followups_per_lead?: number
           tenant_id: number
           updated_at?: string
@@ -1706,9 +1712,12 @@ export type Database = {
           window_timezone?: string
         }
         Update: {
+          auto_personalize?: boolean
           created_at?: string
+          default_followup_text?: string | null
           enabled?: boolean
           intervals_hours?: number[]
+          materialize_lookahead_hours?: number
           max_followups_per_lead?: number
           tenant_id?: number
           updated_at?: string

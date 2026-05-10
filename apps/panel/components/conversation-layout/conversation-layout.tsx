@@ -10,6 +10,7 @@ import {
   type FollowupTemplateRow,
   type ScheduledFollowupRow,
 } from '@/lib/actions/followups';
+import { materializeNextFollowupForConv } from '@/lib/actions/materialize-followup';
 import {
   type ConversationListRow,
   type ConversationListLabel,
@@ -64,6 +65,18 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
 
   // ---- Sprint Iota.1 — followup templates (siempre, todos los canales) ----
   const followupTemplatesPromise = listFollowupTemplates();
+
+  // ---- Sprint Iota.1.b — materializar próximo followup AL ENTRAR -----------
+  // Si la conv es elegible (IG/FB con auto-followups enabled), creamos el
+  // siguiente schedule inmediatamente para que se vea en el panel con preview.
+  // Best-effort: si falla, log y seguir (no bloquear render).
+  if (selectedId) {
+    try {
+      await materializeNextFollowupForConv(selectedId);
+    } catch {
+      // ignore — el cron 15min lo intentará después
+    }
+  }
 
   // ---- Sprint Iota.1 — followups programados (solo si hay selectedId) -----
   const followupsPromise = selectedId

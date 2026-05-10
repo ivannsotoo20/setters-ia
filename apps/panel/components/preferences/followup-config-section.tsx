@@ -26,6 +26,8 @@ export function FollowupConfigSection({ initial, canEdit }: Props) {
   const [maxFollowups, setMaxFollowups] = useState(initial.maxFollowupsPerLead);
   const [intervals, setIntervals] = useState<number[]>(initial.intervalsHours);
   const [newInterval, setNewInterval] = useState<string>('');
+  const [autoPersonalize, setAutoPersonalize] = useState(initial.autoPersonalize);
+  const [defaultText, setDefaultText] = useState(initial.defaultFollowupText ?? '');
   const [isPending, startTransition] = useTransition();
 
   function addInterval() {
@@ -62,6 +64,8 @@ export function FollowupConfigSection({ initial, canEdit }: Props) {
         windowEndHour: windowEnd,
         maxFollowupsPerLead: maxFollowups,
         intervalsHours: intervals,
+        autoPersonalize,
+        defaultFollowupText: defaultText.trim() || null,
       });
       if (!r.ok) toast.error(r.error);
       else toast.success('Configuración guardada');
@@ -216,6 +220,49 @@ export function FollowupConfigSection({ initial, canEdit }: Props) {
               </Button>
             </div>
           ) : null}
+        </div>
+
+        <div className="border-t border-border/40 pt-3 flex flex-col gap-3">
+          <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+            <div className="flex flex-col">
+              <Label htmlFor="auto-personalize" className="text-sm cursor-pointer">
+                Personalizar followups IG/FB con IA
+              </Label>
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                ON: el motor genera un mensaje contextual único por lead usando los últimos
+                mensajes de la conversación. Estilo SkaleX. OFF: usa el texto fijo de abajo
+                igual para todos.
+              </p>
+            </div>
+            <Switch
+              id="auto-personalize"
+              checked={autoPersonalize}
+              onCheckedChange={setAutoPersonalize}
+              disabled={!canEdit}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="default-text" className="text-xs">
+              Mensaje fijo predeterminado{' '}
+              <span className="text-muted-foreground">
+                {autoPersonalize ? '(fallback si no hay plantilla AI)' : '(se enviará igual a todos)'}
+              </span>
+            </Label>
+            <textarea
+              id="default-text"
+              value={defaultText}
+              onChange={(e) => setDefaultText(e.target.value)}
+              maxLength={4000}
+              placeholder="ej. Hola, ¿pudiste ver mi mensaje? Me gustaría saber si sigues interesado/a 🙂"
+              disabled={!canEdit}
+              className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-xs resize-y focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Solo aplica a IG/FB. WhatsApp siempre usa plantillas YCloud aprobadas
+              (Meta bloquea texto libre).
+            </p>
+          </div>
         </div>
 
         {canEdit ? (

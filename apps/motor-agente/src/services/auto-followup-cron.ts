@@ -28,6 +28,9 @@ interface AutoFollowupConfig {
   window_timezone: string;
   max_followups_per_lead: number;
   intervals_hours: number[];
+  auto_personalize: boolean;
+  default_followup_text: string | null;
+  materialize_lookahead_hours: number;
 }
 
 interface ConvCandidate {
@@ -103,7 +106,9 @@ export async function runAutoFollowupCron(
   const { data: configs, error: configErr } = await supabase
     .from('tenant_followup_config')
     .select(
-      'tenant_id, enabled, window_start_hour, window_end_hour, window_timezone, max_followups_per_lead, intervals_hours',
+      `tenant_id, enabled, window_start_hour, window_end_hour, window_timezone,
+       max_followups_per_lead, intervals_hours,
+       auto_personalize, default_followup_text, materialize_lookahead_hours`,
     )
     .eq('enabled', true);
   if (configErr) {
@@ -186,25 +191,116 @@ export async function runAutoFollowupCron(
       const pick = pickIntervalForConv(intervals, sent, hoursSinceLastLead);
       if (!pick) continue;
 
-      // 5. Resolver template adecuada según canal
-      const { data: tpls } = await supabase
-        .from('followup_templates')
-        .select('id, body, ai_personalize, ai_guide, provider, status, language')
-        .eq('tenant_id', cfg.tenant_id)
-        .eq('channel_kind', channelKind)
-        .eq('status', 'approved')
-        .limit(1);
+      // 5. Resolver template + lógica auto_personalize per canal
+      let tpl: {
+        id: number | null;
+        body: string | null;
+        ai_personalize: boolean;
+        ai_guide: string | null;
+        provider: string;
+        status: string;
+        language: string | null;
+      } | null = null;
 
-      const tpl = tpls?.[0];
-      if (!tpl) {
-        result.skippedNoTemplate += 1;
-        continue;
-      }
-
-      // 6. Para WA: tpl debe ser ycloud/meta_cloud (regla 24h se cumple por intervals).
-      if (channelKind === 'whatsapp' && tpl.provider !== 'ycloud' && tpl.provider !== 'meta_cloud') {
-        result.skippedNoTemplate += 1;
-        continue;
+      if (channelKind === 'whatsapp') {
+        // WA: template YCloud/Meta aprobada obligatoria (no admite texto libre).
+        const { data: waTpls } = await supabase
+          .from('followup_templates')
+          .select('id, body, ai_personalize, ai_guide, provider, status, language')
+          .eq('tenant_id', cfg.tenant_id)
+          .eq('channel_kind', channelKind)
+          .eq('status', 'approved')
+          .in('provider', ['ycloud', 'meta_cloud'])
+          .limit(1);
+        tpl = waTpls?.[0]
+          ? {
+              id: Number(waTpls[0].id),
+              body: (waTpls[0].body as string | null) ?? null,
+              ai_personalize: Boolean(waTpls[0].ai_personalize),
+              ai_guide: (waTpls[0].ai_guide as string | null) ?? null,
+              provider: String(waTpls[0].provider),
+              status: String(waTpls[0].status),
+              language: (waTpls[0].language as string | null) ?? null,
+            }
+          : null;
+        if (!tpl) {
+          result.skippedNoTemplate += 1;
+          continue;
+        }
+      } else {
+        // IG/FB: si auto_personalize ON → buscar plantilla AI; si no encuentra,
+        // usar default_followup_text como guía. Si auto_personalize OFF → usar
+        // default_followup_text como mensaje fijo directo.
+        if (cfg.auto_personalize) {
+          const { data: aiTpls } = await supabase
+            .from('followup_templates')
+            .select('id, body, ai_personalize, ai_guide, provider, status, language')
+            .eq('tenant_id', cfg.tenant_id)
+            .eq('channel_kind', channelKind)
+            .eq('status', 'approved')
+            .eq('ai_personalize', true)
+            .limit(1);
+          if (aiTpls?.[0]) {
+            tpl = {
+              id: Number(aiTpls[0].id),
+              body: null,
+              ai_personalize: true,
+              ai_guide: (aiTpls[0].ai_guide as string | null) ?? null,
+              provider: String(aiTpls[0].provider),
+              status: String(aiTpls[0].status),
+              language: (aiTpls[0].language as string | null) ?? null,
+            };
+          } else if (cfg.default_followup_text) {
+            // Plantilla virtual con default_followup_text como guía
+            tpl = {
+              id: null,
+              body: null,
+              ai_personalize: true,
+              ai_guide: `Reescribe este mensaje base manteniendo el tono y la intención, pero personalizándolo con el contexto de la conversación: "${cfg.default_followup_text}"`,
+              provider: 'manual',
+              status: 'approved',
+              language: null,
+            };
+          } else {
+            result.skippedNoTemplate += 1;
+            continue;
+          }
+        } else {
+          // Modo "fijo": usar default_followup_text directo si existe, si no buscar plantilla manual cualquiera
+          if (cfg.default_followup_text) {
+            tpl = {
+              id: null,
+              body: cfg.default_followup_text,
+              ai_personalize: false,
+              ai_guide: null,
+              provider: 'manual',
+              status: 'approved',
+              language: null,
+            };
+          } else {
+            const { data: manualTpls } = await supabase
+              .from('followup_templates')
+              .select('id, body, ai_personalize, ai_guide, provider, status, language')
+              .eq('tenant_id', cfg.tenant_id)
+              .eq('channel_kind', channelKind)
+              .eq('status', 'approved')
+              .eq('ai_personalize', false)
+              .limit(1);
+            if (!manualTpls?.[0]) {
+              result.skippedNoTemplate += 1;
+              continue;
+            }
+            tpl = {
+              id: Number(manualTpls[0].id),
+              body: (manualTpls[0].body as string | null) ?? null,
+              ai_personalize: false,
+              ai_guide: null,
+              provider: String(manualTpls[0].provider),
+              status: String(manualTpls[0].status),
+              language: (manualTpls[0].language as string | null) ?? null,
+            };
+          }
+        }
       }
 
       // 7. Resolver integration_account
@@ -223,23 +319,23 @@ export async function runAutoFollowupCron(
 
       // 8. INSERT message_schedules para envío inmediato (scheduled_at = now + 30s)
       const scheduledAt = new Date(now.getTime() + 30 * 1000);
-      const aiPersonalize = Boolean(tpl.ai_personalize);
+      const aiPersonalize = tpl.ai_personalize;
       const { error: insErr } = await supabase.from('message_schedules').insert({
         tenant_id: cfg.tenant_id,
         conversation_id: Number(conv.id),
         integration_account_id: Number(ia.id),
         message_type: 'follow_up',
-        message: aiPersonalize ? null : (tpl.body as string | null),
+        message: aiPersonalize ? null : tpl.body,
         has_attachment: false,
         scheduled_at: scheduledAt.toISOString(),
         status: 'pending',
         attempts: 0,
         auto_cancel_on_reply: true,
-        template_id: Number(tpl.id),
+        template_id: tpl.id,
         triggered_by: 'auto_inactivity',
         sequence_index: pick.sequenceIndex,
         ai_personalize: aiPersonalize,
-        ai_guide: aiPersonalize ? (tpl.ai_guide as string | null) : null,
+        ai_guide: aiPersonalize ? tpl.ai_guide : null,
       });
       if (insErr) {
         result.errors.push(

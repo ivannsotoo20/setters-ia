@@ -41,6 +41,9 @@ export default async function PreferencesPage() {
         windowTimezone: 'Europe/Madrid',
         maxFollowupsPerLead: 3,
         intervalsHours: [24, 72, 168],
+        autoPersonalize: true,
+        defaultFollowupText: 'Hola, ¿pudiste ver mi mensaje? 🙂',
+        materializeLookaheadHours: 24,
       };
   const canEditFollowupConfig = effective.isAgencyAdmin || effective.role === 'owner';
 
