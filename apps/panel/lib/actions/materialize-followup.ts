@@ -222,7 +222,21 @@ export async function materializeFollowupSequenceForConv(
     };
   }
 
-  // 8. Iterar por cada interval restante y crear UN schedule por cada uno
+  // 8. Validación 24h Meta — si lead lleva >24h sin responder, no materializar
+  // (los followups solo tienen sentido dentro de la ventana de 24h tras el
+  // último mensaje del lead; pasada esa ventana, el sistema no insiste).
+  const HOURS_24_MS = 24 * 3600 * 1000;
+  if (now - lastLeadMs > HOURS_24_MS) {
+    return {
+      ok: true,
+      data: {
+        materialized: 0,
+        reason: 'lead inactivo >24h — fuera de ventana de seguimiento',
+      },
+    };
+  }
+
+  // 9. Iterar por cada interval restante y crear UN schedule por cada uno
   const tz = String(cfg.window_timezone);
   const startHour = Number(cfg.window_start_hour);
   const endHour = Number(cfg.window_end_hour);
@@ -232,12 +246,17 @@ export async function materializeFollowupSequenceForConv(
     const intervalHours = intervals[idx]!;
     const projectedMs = lastLeadMs + intervalHours * 3600_000;
 
-    // Skip si scheduled_at ya pasó hace mucho (>1h en el pasado)
+    // Si proyectado pasó >1h: la ventana de ese intervalo ya cerró → SKIP
+    // (no enviamos followups "atrasados" a deshora; mejor saltarlos y que
+    // el siguiente interval cubra si llega su hora).
     if (projectedMs < now - 3600_000) continue;
 
+    // Si proyectado en el pasado <1h: enviar inmediato (now+60s)
+    // Si proyectado en el futuro: usar projected
     let scheduledAt = new Date(Math.max(projectedMs, now + 60_000));
-    // Ajustar al window horario
-    let safety = 48;
+
+    // Ajustar al window horario (max 24 iter = un día entero)
+    let safety = 24;
     while (
       (getCurrentHourInTimezone(tz, scheduledAt) < startHour ||
         getCurrentHourInTimezone(tz, scheduledAt) >= endHour) &&
@@ -246,6 +265,13 @@ export async function materializeFollowupSequenceForConv(
       scheduledAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
       safety -= 1;
     }
+
+    // Si tras el ajuste de horario salimos de las 24h del last_lead → SKIP
+    // (regla Meta: pasadas 24h del último mensaje del lead, en WhatsApp
+    // solo se permiten plantillas aprobadas. Y en cualquier canal, perder
+    // tanto tiempo entre la respuesta del lead y el followup automático no
+    // tiene sentido conversacional).
+    if (scheduledAt.getTime() > lastLeadMs + HOURS_24_MS) continue;
 
     // Sprint Iota.1.e — pre-generar el mensaje IA AHORA (no esperar al envío)
     // para que el panel del chat lo muestre como preview real, no placeholder.

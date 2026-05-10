@@ -95,21 +95,27 @@ export function AutomatedFollowupsPanel({
   ).length;
   const maxFollowups = config.maxFollowupsPerLead ?? config.intervalsHours.length;
 
+  // Detectar si el lead ya está fuera de la ventana 24h (regla Meta).
+  const lastLeadMs = lastLeadMessageAt ? Date.parse(lastLeadMessageAt) : 0;
+  const hoursSinceLead = lastLeadMs ? (Date.now() - lastLeadMs) / 3600000 : 0;
+  const leadOutOf24hWindow = lastLeadMs > 0 && hoursSinceLead > 24;
+
   // Estado del header
-  let badge: { label: string; tone: 'active' | 'off' | 'waiting' | 'done' | 'wa-blocked' };
+  let badge: {
+    label: string;
+    tone: 'active' | 'off' | 'waiting' | 'done' | 'wa-blocked' | 'out-of-window';
+  };
   if (!config.enabled) {
     badge = { label: 'desactivado', tone: 'off' };
+  } else if (leadOutOf24hWindow && pending.length === 0) {
+    badge = { label: 'fuera de ventana', tone: 'out-of-window' };
   } else if (channelKind === 'whatsapp') {
-    const lastMs = lastLeadMessageAt ? Date.parse(lastLeadMessageAt) : 0;
-    const isOver24h = !lastMs || Date.now() - lastMs > 24 * 3600 * 1000;
-    if (isOver24h) badge = { label: 'WhatsApp 24h', tone: 'wa-blocked' };
+    if (leadOutOf24hWindow) badge = { label: 'WhatsApp 24h', tone: 'wa-blocked' };
     else badge = { label: `${pending.length} programados`, tone: 'active' };
   } else if (sentCount >= maxFollowups) {
     badge = { label: `${sentCount}/${maxFollowups} enviados`, tone: 'done' };
   } else if (pending.length === 0) {
-    const lastMs = lastLeadMessageAt ? Date.parse(lastLeadMessageAt) : 0;
-    const minutesSince = lastMs ? (Date.now() - lastMs) / 60000 : 0;
-    if (minutesSince < 60) badge = { label: 'esperando ventana', tone: 'waiting' };
+    if (hoursSinceLead < 1) badge = { label: 'esperando ventana', tone: 'waiting' };
     else badge = { label: 'sin programar', tone: 'waiting' };
   } else {
     badge = { label: `${pending.length}/${maxFollowups}`, tone: 'active' };
@@ -130,6 +136,7 @@ export function AutomatedFollowupsPanel({
             badge.tone === 'waiting' && 'border-sky-500/40 text-sky-400 bg-sky-500/5',
             badge.tone === 'done' && 'border-amber-500/40 text-amber-400 bg-amber-500/5',
             badge.tone === 'wa-blocked' && 'border-rose-500/40 text-rose-400 bg-rose-500/5',
+            badge.tone === 'out-of-window' && 'border-muted-foreground/40 text-muted-foreground bg-muted/30',
           )}
         >
           {badge.label}
@@ -222,6 +229,26 @@ function Body({
         los seguimientos.
       </div>
     );
+  }
+
+  // Empty state 3.5: lead inactivo >24h (fuera de ventana Meta)
+  if (pending.length === 0 && lastLeadMessageAt) {
+    const hoursSince = (Date.now() - Date.parse(lastLeadMessageAt)) / 3600000;
+    if (hoursSince > 24) {
+      return (
+        <div className="rounded-md border border-muted-foreground/40 bg-muted/30 p-3 flex flex-col gap-1.5 text-xs text-foreground/80">
+          <p>
+            <strong>El lead lleva {Math.round(hoursSince)}h sin responder.</strong>
+          </p>
+          <p className="text-muted-foreground">
+            Los seguimientos automáticos solo se programan dentro de las primeras
+            24h tras el último mensaje del lead (regla Meta para WhatsApp; convención
+            general para Instagram y Facebook). Si quieres reactivar este lead,
+            envíale un mensaje manual desde el chat.
+          </p>
+        </div>
+      );
+    }
   }
 
   // Empty state 4: lead acaba de escribir (esperando ventana)

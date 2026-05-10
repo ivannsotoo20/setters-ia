@@ -180,7 +180,24 @@ export async function updateTenantFollowupConfig(
     );
   if (error) return { ok: false, error: error.message };
 
+  // Sprint Iota.1.g — al cambiar la config, cancelamos TODOS los followups
+  // automáticos pendientes del tenant para que se re-materialicen con la
+  // configuración nueva (intervals, texto, auto_personalize) en la próxima
+  // visita a cada conv. Sin esto, schedules viejos quedan con texto antiguo
+  // y horarios obsoletos.
+  await supabase
+    .from('message_schedules')
+    .update({
+      status: 'cancelled',
+      last_error: 'cancelled — followup config updated, will re-materialize',
+    })
+    .eq('tenant_id', eff.tenantId)
+    .eq('message_type', 'follow_up')
+    .eq('triggered_by', 'auto_inactivity')
+    .eq('status', 'pending');
+
   revalidatePath('/settings/preferences');
+  revalidatePath('/settings/followup-templates');
   revalidatePath('/conversations');
   return { ok: true };
 }
