@@ -1,8 +1,7 @@
 'use client';
 
-import { FolderInput, Clock } from 'lucide-react';
+import { FolderInput } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AssignAction } from './actions/assign-action';
 import { NotesAction } from './actions/notes-action';
@@ -10,7 +9,6 @@ import { UnreadToggleAction } from './actions/unread-toggle-action';
 import { BlockAction } from './actions/block-action';
 import { DeleteAction } from './actions/delete-action';
 import { PlaceholderAction } from './actions/placeholder-action';
-import { ScheduleFollowupDialog } from './actions/schedule-followup-dialog';
 import { formatLeadName, leadInitials, formatChannelLong, isAiPaused } from './format-helpers';
 import {
   LabelMultiSelect,
@@ -23,7 +21,6 @@ import type {
   ConversationNote,
 } from './types';
 import type { LabelRow } from '@/lib/actions/labels';
-import type { ChannelKind, FollowupTemplateRow } from '@/lib/actions/followups';
 
 interface Props {
   detail: SelectedConversationDetail;
@@ -31,9 +28,6 @@ interface Props {
   viewer: ConversationViewer;
   members: TenantMember[];
   allLabels: LabelRow[];
-  followupTemplates: FollowupTemplateRow[];
-  /** Última vez que el lead escribió (para detectar window 24h en WA). */
-  lastLeadMessageAt: string | null;
 }
 
 export function ThreadTopbar({
@@ -42,8 +36,6 @@ export function ThreadTopbar({
   viewer,
   members,
   allLabels,
-  followupTemplates,
-  lastLeadMessageAt,
 }: Props) {
   const lead = detail.lead;
   const name = formatLeadName(lead);
@@ -131,25 +123,6 @@ export function ThreadTopbar({
           ) : null}
           {canModerate ? (
             <DeleteAction conversationId={detail.id} leadName={name} />
-          ) : null}
-          {canWrite ? (
-            <ScheduleFollowupDialog
-              conversationId={detail.id}
-              channelKind={detail.channel.channel_type as ChannelKind}
-              lastLeadMessageAt={lastLeadMessageAt}
-              templates={followupTemplates}
-              trigger={
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1 text-xs"
-                  aria-label="Programar followup"
-                >
-                  <Clock className="size-3.5" />
-                  Programar
-                </Button>
-              }
-            />
           ) : null}
         </div>
       </div>

@@ -11,7 +11,6 @@ import type {
   TimelineMessage,
 } from './types';
 import type { LabelRow } from '@/lib/actions/labels';
-import type { FollowupTemplateRow } from '@/lib/actions/followups';
 
 interface Props {
   detail: SelectedConversationDetail | null;
@@ -20,8 +19,6 @@ interface Props {
   viewer: ConversationViewer;
   members: TenantMember[];
   allLabels: LabelRow[];
-  followupTemplates: FollowupTemplateRow[];
-  lastLeadMessageAt: string | null;
 }
 
 export function ThreadPane({
@@ -31,8 +28,6 @@ export function ThreadPane({
   viewer,
   members,
   allLabels,
-  followupTemplates,
-  lastLeadMessageAt,
 }: Props) {
   if (!detail) {
     return (
@@ -60,8 +55,6 @@ export function ThreadPane({
         viewer={viewer}
         members={members}
         allLabels={allLabels}
-        followupTemplates={followupTemplates}
-        lastLeadMessageAt={lastLeadMessageAt}
       />
       <div className="flex-1 min-h-0 overflow-y-auto p-4">
         {messages.length === 0 ? (

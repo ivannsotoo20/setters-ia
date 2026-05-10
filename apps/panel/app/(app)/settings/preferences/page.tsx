@@ -4,11 +4,9 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 import { loadTrainerPreferences } from '@/lib/actions/prompts';
 import { listCustomInstructions } from '@/lib/actions/custom-instructions';
-import { getTenantFollowupConfig } from '@/lib/actions/followup-config';
 import { DEFAULT_TRAINER_PREFERENCES } from '@/lib/trainer-prefs-serializer';
 import { PreferencesForm } from './preferences-form';
 import { CustomInstructionsList } from './custom-instructions-list';
-import { FollowupConfigSection } from '@/components/preferences/followup-config-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,28 +22,13 @@ export default async function PreferencesPage() {
   const effective = await getEffectiveTenant();
   if (!effective) redirect('/dashboard');
 
-  const [prefsResult, instructionsResult, followupConfigResult] = await Promise.all([
+  const [prefsResult, instructionsResult] = await Promise.all([
     loadTrainerPreferences({ tenantId: effective.tenantId }),
     listCustomInstructions({ tenantId: effective.tenantId }),
-    getTenantFollowupConfig(),
   ]);
 
   const initial = prefsResult.ok ? prefsResult.preferences : DEFAULT_TRAINER_PREFERENCES;
   const instructions = instructionsResult.ok ? instructionsResult.instructions : [];
-  const followupConfig = followupConfigResult.ok
-    ? followupConfigResult.data!
-    : {
-        enabled: false,
-        windowStartHour: 9,
-        windowEndHour: 21,
-        windowTimezone: 'Europe/Madrid',
-        maxFollowupsPerLead: 3,
-        intervalsHours: [24, 72, 168],
-        autoPersonalize: true,
-        defaultFollowupText: 'Hola, ¿pudiste ver mi mensaje? 🙂',
-        materializeLookaheadHours: 24,
-      };
-  const canEditFollowupConfig = effective.isAgencyAdmin || effective.role === 'owner';
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,8 +49,6 @@ export default async function PreferencesPage() {
       <PreferencesForm tenantId={effective.tenantId} initial={initial} />
 
       <CustomInstructionsList tenantId={effective.tenantId} initial={instructions} />
-
-      <FollowupConfigSection initial={followupConfig} canEdit={canEditFollowupConfig} />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 -- Sprint Iota.1.b — Toggle "personalizar IG/FB con IA" + texto fijo fallback +
--- ventana materialize al vuelo cuando entras a una conv (estilo SkaleX preview).
+-- ventana materialize al vuelo cuando entras a una conv (previsualización al cargar).
 
 BEGIN;
 

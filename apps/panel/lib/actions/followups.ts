@@ -505,6 +505,46 @@ export async function scheduleFollowup(
 // Cancel + List
 // ===========================================================================
 
+/**
+ * Adelanta el envío de un followup pending: pone scheduled_at = NOW + 30s
+ * para que el siguiente outbound-tick (cada 5s) lo coja inmediatamente.
+ */
+export async function sendScheduledFollowupNow(scheduleId: number): Promise<ActionResult> {
+  const eff = await getEffectiveTenant();
+  if (!eff) return { ok: false, error: 'unauthenticated' };
+  if (!isAdminOrAbove(eff)) {
+    return { ok: false, error: 'forbidden — solo admin u owner pueden adelantar followups' };
+  }
+
+  const supabase = getServiceRoleClient();
+  const { data: existing } = await supabase
+    .from('message_schedules')
+    .select('tenant_id, status, conversation_id')
+    .eq('id', scheduleId)
+    .maybeSingle();
+  if (!existing) return { ok: false, error: 'followup no encontrado' };
+  if (Number(existing.tenant_id) !== eff.tenantId && !eff.isAgencyAdmin) {
+    return { ok: false, error: 'forbidden — wrong tenant' };
+  }
+  if (existing.status !== 'pending') {
+    return { ok: false, error: `no se puede adelantar (status=${existing.status})` };
+  }
+
+  const newScheduledAt = new Date(Date.now() + 30_000).toISOString();
+  const { error } = await supabase
+    .from('message_schedules')
+    .update({ scheduled_at: newScheduledAt })
+    .eq('id', scheduleId)
+    .eq('status', 'pending'); // race-safe: solo si sigue pending
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/conversations');
+  if (existing.conversation_id) {
+    revalidatePath(`/conversations/${existing.conversation_id}`);
+  }
+  return { ok: true };
+}
+
 export async function cancelScheduledFollowup(scheduleId: number): Promise<ActionResult> {
   const eff = await getEffectiveTenant();
   if (!eff) return { ok: false, error: 'unauthenticated' };

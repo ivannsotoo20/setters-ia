@@ -5,12 +5,14 @@ import { listMembers } from '@/lib/actions/members';
 import { listConversationNotes } from '@/lib/actions/conversations';
 import { listLabels, type LabelRow } from '@/lib/actions/labels';
 import {
-  listFollowupTemplates,
   listScheduledFollowups,
-  type FollowupTemplateRow,
   type ScheduledFollowupRow,
 } from '@/lib/actions/followups';
-import { materializeNextFollowupForConv } from '@/lib/actions/materialize-followup';
+import {
+  getTenantFollowupConfig,
+  type TenantFollowupConfigRow,
+} from '@/lib/actions/followup-config';
+import { materializeFollowupSequenceForConv } from '@/lib/actions/materialize-followup';
 import {
   type ConversationListRow,
   type ConversationListLabel,
@@ -63,16 +65,16 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   // ---- Sprint Eta — carga labels del tenant (selector + filtro) -----------
   const allLabelsPromise = listLabels();
 
-  // ---- Sprint Iota.1 — followup templates (siempre, todos los canales) ----
-  const followupTemplatesPromise = listFollowupTemplates();
+  // ---- Sprint Iota.1.c — config followups (para chat panel) ---------------
+  const followupConfigPromise = getTenantFollowupConfig();
 
-  // ---- Sprint Iota.1.b — materializar próximo followup AL ENTRAR -----------
-  // Si la conv es elegible (IG/FB con auto-followups enabled), creamos el
-  // siguiente schedule inmediatamente para que se vea en el panel con preview.
-  // Best-effort: si falla, log y seguir (no bloquear render).
+  // ---- Sprint Iota.1.c — materializar SECUENCIA COMPLETA al entrar a conv -
+  // Si la conv es elegible (IG/FB con auto-followups enabled), creamos toda
+  // la secuencia restante en BD para que el panel derecho la muestre con
+  // hora absoluta + preview. Best-effort: si falla, seguir.
   if (selectedId) {
     try {
-      await materializeNextFollowupForConv(selectedId);
+      await materializeFollowupSequenceForConv(selectedId);
     } catch {
       // ignore — el cron 15min lo intentará después
     }
@@ -142,7 +144,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     notesRes,
     viewerEmailRes,
     allLabelsRes,
-    followupTemplatesRes,
+    followupConfigRes,
     followupsRes,
     lastLeadMessageRes,
   ] = await Promise.all([
@@ -153,7 +155,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
     notesPromise,
     viewerEmailPromise,
     allLabelsPromise,
-    followupTemplatesPromise,
+    followupConfigPromise,
     followupsPromise,
     lastLeadMessagePromise,
   ]);
@@ -203,11 +205,22 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   })) as unknown as ConversationListRow[];
 
   const allLabels: LabelRow[] = allLabelsRes.ok ? allLabelsRes.data ?? [] : [];
-  const followupTemplates: FollowupTemplateRow[] = followupTemplatesRes.ok
-    ? followupTemplatesRes.data ?? []
-    : [];
+  const DEFAULT_FOLLOWUP_CONFIG: TenantFollowupConfigRow = {
+    enabled: false,
+    windowStartHour: 9,
+    windowEndHour: 21,
+    windowTimezone: 'Europe/Madrid',
+    maxFollowupsPerLead: 3,
+    intervalsHours: [6, 12, 20],
+    autoPersonalize: true,
+    defaultFollowupText: null,
+    materializeLookaheadHours: 24,
+  };
+  const followupConfig: TenantFollowupConfigRow = followupConfigRes.ok
+    ? followupConfigRes.data!
+    : DEFAULT_FOLLOWUP_CONFIG;
   const followups: ScheduledFollowupRow[] = followupsRes.ok ? followupsRes.data ?? [] : [];
-  const canScheduleFollowups =
+  const canManageFollowups =
     effective.isAgencyAdmin || effective.role === 'owner' || effective.role === 'admin';
   const lastLeadMessageAt =
     (lastLeadMessageRes?.data as { sent_at?: string } | null)?.sent_at ?? null;
@@ -272,16 +285,14 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
           viewer={viewer}
           members={members}
           allLabels={allLabels}
-          followupTemplates={followupTemplates}
-          lastLeadMessageAt={lastLeadMessageAt}
         />
       }
       panel={
         <ControlPanel
           detail={selectedDetail}
           followups={followups}
-          followupTemplates={followupTemplates}
-          canScheduleFollowups={canScheduleFollowups}
+          followupConfig={followupConfig}
+          canManageFollowups={canManageFollowups}
           lastLeadMessageAt={lastLeadMessageAt}
         />
       }

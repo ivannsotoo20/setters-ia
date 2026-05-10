@@ -6,12 +6,13 @@ import { getEffectiveTenant } from '@/lib/effective-tenant';
 import type { ActionResult } from './followups';
 
 /**
- * Sprint Iota.1.b — Materializar el siguiente followup AL ENTRAR a la conv
- * (estilo SkaleX preview).
+ * Sprint Iota.1.c — Materializar la SECUENCIA COMPLETA de followups
+ * automáticos al entrar a una conversación (previsualización al cargar).
  *
  * En vez de esperar al cron 15min, cuando el trainer abre una conversación
- * elegible, creamos el siguiente schedule INMEDIATAMENTE en BD para que el
- * panel derecho lo muestre con countdown + preview.
+ * elegible, creamos TODOS los schedules pendientes (uno por cada interval
+ * dentro de la ventana 24h post-último-mensaje del lead) INMEDIATAMENTE
+ * en BD para que el panel derecho los muestre con hora absoluta + preview.
  *
  * Reglas:
  *   - tenant_followup_config.enabled = true
@@ -56,12 +57,16 @@ function getCurrentHourInTimezone(timezone: string, now: Date = new Date()): num
 }
 
 export interface MaterializeResult {
-  materialized: boolean;
+  materialized: number; // count de schedules creados (puede ser >1 si toda la secuencia)
   reason?: string;
-  scheduleId?: number;
+  scheduleIds?: number[];
 }
 
-export async function materializeNextFollowupForConv(
+/**
+ * Materializa TODA la secuencia de followups pendientes para una conv.
+ * Idempotente: si ya hay pending, no duplica.
+ */
+export async function materializeFollowupSequenceForConv(
   conversationId: number,
 ): Promise<ActionResult<MaterializeResult>> {
   const eff = await getEffectiveTenant();
@@ -83,10 +88,10 @@ export async function materializeNextFollowupForConv(
     return { ok: false, error: 'forbidden — wrong tenant' };
   }
   if (conv.state !== 'active') {
-    return { ok: true, data: { materialized: false, reason: 'conv no activa' } };
+    return { ok: true, data: { materialized: 0, reason: 'conv no activa' } };
   }
   if (conv.is_blocked) {
-    return { ok: true, data: { materialized: false, reason: 'conv bloqueada' } };
+    return { ok: true, data: { materialized: 0, reason: 'conv bloqueada' } };
   }
 
   const channelRel = conv.channels as { channel_type: string } | { channel_type: string }[] | null;
@@ -95,7 +100,7 @@ export async function materializeNextFollowupForConv(
 
   // WhatsApp NO se pre-materializa (necesita template aprobada explícita).
   if (channelKind !== 'instagram_dm' && channelKind !== 'facebook_messenger') {
-    return { ok: true, data: { materialized: false, reason: 'canal no IG/FB' } };
+    return { ok: true, data: { materialized: 0, reason: 'canal no IG/FB' } };
   }
 
   // 2. Cargar config
@@ -109,10 +114,13 @@ export async function materializeNextFollowupForConv(
     .eq('tenant_id', eff.tenantId)
     .maybeSingle();
   if (!cfg || !cfg.enabled) {
-    return { ok: true, data: { materialized: false, reason: 'auto-followups desactivados' } };
+    return {
+      ok: true,
+      data: { materialized: 0, reason: 'auto-followups desactivados' },
+    };
   }
 
-  // 3. Skip si ya hay pending follow_up para esta conv
+  // 3. Skip si ya hay pending follow_up para esta conv (idempotente)
   const { count: pendingCount } = await supabase
     .from('message_schedules')
     .select('id', { count: 'exact', head: true })
@@ -120,10 +128,10 @@ export async function materializeNextFollowupForConv(
     .eq('message_type', 'follow_up')
     .eq('status', 'pending');
   if ((pendingCount ?? 0) > 0) {
-    return { ok: true, data: { materialized: false, reason: 'ya hay pending' } };
+    return { ok: true, data: { materialized: 0, reason: 'ya hay pending' } };
   }
 
-  // 4. Contar followups auto enviados/pending/processing
+  // 4. Contar followups auto enviados ya
   const { count: sentCount } = await supabase
     .from('message_schedules')
     .select('id', { count: 'exact', head: true })
@@ -132,53 +140,24 @@ export async function materializeNextFollowupForConv(
     .eq('triggered_by', 'auto_inactivity')
     .in('status', ['pending', 'processing', 'sent']);
   const sent = sentCount ?? 0;
-  const intervals = (cfg.intervals_hours as number[]).filter((h) => h > 0);
-  if (sent >= Number(cfg.max_followups_per_lead) || sent >= intervals.length) {
-    return { ok: true, data: { materialized: false, reason: 'max alcanzado' } };
+  const intervals = (cfg.intervals_hours as number[])
+    .filter((h) => Number.isFinite(h) && h >= 1 && h <= 24)
+    .sort((a, b) => a - b);
+  const maxFromConfig = Number(cfg.max_followups_per_lead);
+  const remaining = Math.min(intervals.length, maxFromConfig) - sent;
+  if (remaining <= 0) {
+    return { ok: true, data: { materialized: 0, reason: 'max alcanzado' } };
   }
 
-  // 5. Calcular scheduled_at proyectado
+  // 5. Validar last_message_at
   const lastLeadIso = conv.last_message_at as string | null;
   if (!lastLeadIso) {
-    return { ok: true, data: { materialized: false, reason: 'sin last_message_at' } };
+    return { ok: true, data: { materialized: 0, reason: 'sin last_message_at' } };
   }
   const lastLeadMs = Date.parse(lastLeadIso);
-  const intervalHours = intervals[sent]!;
-  const projectedMs = lastLeadMs + intervalHours * 3600_000;
-  const lookaheadMs = Number(cfg.materialize_lookahead_hours ?? 24) * 3600_000;
-  const earliestMaterializeMs = projectedMs - lookaheadMs;
   const now = Date.now();
 
-  if (now < earliestMaterializeMs) {
-    return {
-      ok: true,
-      data: {
-        materialized: false,
-        reason: `aún muy pronto (${Math.round((earliestMaterializeMs - now) / 3600_000)}h hasta ventana)`,
-      },
-    };
-  }
-
-  // 6. Ajustar scheduled_at al window horario (si proyectado cae fuera, mover dentro)
-  let scheduledAt = new Date(Math.max(projectedMs, now + 60_000));
-  const tz = String(cfg.window_timezone);
-  const startHour = Number(cfg.window_start_hour);
-  const endHour = Number(cfg.window_end_hour);
-  const hourAtScheduled = getCurrentHourInTimezone(tz, scheduledAt);
-  if (hourAtScheduled < startHour || hourAtScheduled >= endHour) {
-    // Mover al startHour del próximo día permitido (simplificado: añadir hasta caer dentro)
-    let safety = 24;
-    while (
-      (getCurrentHourInTimezone(tz, scheduledAt) < startHour ||
-        getCurrentHourInTimezone(tz, scheduledAt) >= endHour) &&
-      safety > 0
-    ) {
-      scheduledAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
-      safety -= 1;
-    }
-  }
-
-  // 7. Resolver template + lógica auto_personalize per canal (mismo patrón que cron)
+  // 6. Resolver template (una para toda la secuencia)
   let tpl: {
     id: number | null;
     body: string | null;
@@ -222,11 +201,11 @@ export async function materializeNextFollowupForConv(
   if (!tpl) {
     return {
       ok: true,
-      data: { materialized: false, reason: 'sin plantilla AI ni texto fallback configurado' },
+      data: { materialized: 0, reason: 'sin plantilla AI ni texto fallback configurado' },
     };
   }
 
-  // 8. Resolver integration_account
+  // 7. Resolver integration_account
   const { data: ia } = await supabase
     .from('integration_accounts')
     .select('id')
@@ -238,36 +217,67 @@ export async function materializeNextFollowupForConv(
   if (!ia) {
     return {
       ok: true,
-      data: { materialized: false, reason: 'integration_account no activa' },
+      data: { materialized: 0, reason: 'integration_account no activa' },
     };
   }
 
-  // 9. INSERT message_schedules
-  const { data, error } = await supabase
-    .from('message_schedules')
-    .insert({
-      tenant_id: Number(conv.tenant_id),
-      conversation_id: conversationId,
-      integration_account_id: Number(ia.id),
-      message_type: 'follow_up',
-      message: tpl.aiPersonalize ? null : tpl.body,
-      has_attachment: false,
-      scheduled_at: scheduledAt.toISOString(),
-      status: 'pending',
-      attempts: 0,
-      auto_cancel_on_reply: true,
-      template_id: tpl.id,
-      triggered_by: 'auto_inactivity',
-      sequence_index: sent + 1,
-      ai_personalize: tpl.aiPersonalize,
-      ai_guide: tpl.aiPersonalize ? tpl.aiGuide : null,
-    })
-    .select('id')
-    .single();
-  if (error || !data) {
-    return { ok: false, error: error?.message ?? 'insert failed' };
+  // 8. Iterar por cada interval restante y crear UN schedule por cada uno
+  const tz = String(cfg.window_timezone);
+  const startHour = Number(cfg.window_start_hour);
+  const endHour = Number(cfg.window_end_hour);
+  const created: number[] = [];
+
+  for (let idx = sent; idx < Math.min(intervals.length, maxFromConfig); idx++) {
+    const intervalHours = intervals[idx]!;
+    const projectedMs = lastLeadMs + intervalHours * 3600_000;
+
+    // Skip si scheduled_at ya pasó hace mucho (>1h en el pasado)
+    if (projectedMs < now - 3600_000) continue;
+
+    let scheduledAt = new Date(Math.max(projectedMs, now + 60_000));
+    // Ajustar al window horario
+    let safety = 48;
+    while (
+      (getCurrentHourInTimezone(tz, scheduledAt) < startHour ||
+        getCurrentHourInTimezone(tz, scheduledAt) >= endHour) &&
+      safety > 0
+    ) {
+      scheduledAt = new Date(scheduledAt.getTime() + 60 * 60 * 1000);
+      safety -= 1;
+    }
+
+    const { data, error } = await supabase
+      .from('message_schedules')
+      .insert({
+        tenant_id: Number(conv.tenant_id),
+        conversation_id: conversationId,
+        integration_account_id: Number(ia.id),
+        message_type: 'follow_up',
+        message: tpl.aiPersonalize ? null : tpl.body,
+        has_attachment: false,
+        scheduled_at: scheduledAt.toISOString(),
+        status: 'pending',
+        attempts: 0,
+        auto_cancel_on_reply: true,
+        template_id: tpl.id,
+        triggered_by: 'auto_inactivity',
+        sequence_index: idx + 1,
+        ai_personalize: tpl.aiPersonalize,
+        ai_guide: tpl.aiPersonalize ? tpl.aiGuide : null,
+      })
+      .select('id')
+      .single();
+    if (error || !data) continue; // best-effort
+    created.push(Number(data.id));
+  }
+
+  if (created.length === 0) {
+    return { ok: true, data: { materialized: 0, reason: 'todos los intervals ya pasaron' } };
   }
 
   revalidatePath(`/conversations/${conversationId}`);
-  return { ok: true, data: { materialized: true, scheduleId: Number(data.id) } };
+  return { ok: true, data: { materialized: created.length, scheduleIds: created } };
 }
+
+/** Alias retro-compat por si hay imports antiguos. */
+export const materializeNextFollowupForConv = materializeFollowupSequenceForConv;

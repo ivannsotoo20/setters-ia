@@ -2,24 +2,22 @@ import { LeadInfoCard } from './lead-info-card';
 import { FunnelPhaseIndicator } from './funnel-phase-indicator';
 import { AIControlPanel } from './ai-control-panel';
 import type { SelectedConversationDetail } from './types';
-import type {
-  FollowupTemplateRow,
-  ScheduledFollowupRow,
-} from '@/lib/actions/followups';
+import type { ScheduledFollowupRow } from '@/lib/actions/followups';
+import type { TenantFollowupConfigRow } from '@/lib/actions/followup-config';
 
 interface Props {
   detail: SelectedConversationDetail | null;
   followups: ScheduledFollowupRow[];
-  followupTemplates: FollowupTemplateRow[];
-  canScheduleFollowups: boolean;
+  followupConfig: TenantFollowupConfigRow;
+  canManageFollowups: boolean;
   lastLeadMessageAt: string | null;
 }
 
 export function ControlPanel({
   detail,
   followups,
-  followupTemplates,
-  canScheduleFollowups,
+  followupConfig,
+  canManageFollowups,
   lastLeadMessageAt,
 }: Props) {
   if (!detail) {
@@ -43,8 +41,8 @@ export function ControlPanel({
       <AIControlPanel
         detail={detail}
         followups={followups}
-        templates={followupTemplates}
-        canScheduleFollowups={canScheduleFollowups}
+        followupConfig={followupConfig}
+        canManageFollowups={canManageFollowups}
         lastLeadMessageAt={lastLeadMessageAt}
       />
     </aside>

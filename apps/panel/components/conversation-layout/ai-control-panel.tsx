@@ -14,28 +14,24 @@ import {
 } from '@/components/ui/tooltip';
 import { togglePauseConversation } from '@/lib/actions/conversations';
 import { isAiPaused } from './format-helpers';
-import { ScheduleFollowupDialog } from './actions/schedule-followup-dialog';
-import { ScheduledFollowupsList } from './scheduled-followups-list';
+import { AutomatedFollowupsPanel } from './automated-followups-panel';
 import type { SelectedConversationDetail } from './types';
-import type {
-  ChannelKind,
-  FollowupTemplateRow,
-  ScheduledFollowupRow,
-} from '@/lib/actions/followups';
+import type { ChannelKind, ScheduledFollowupRow } from '@/lib/actions/followups';
+import type { TenantFollowupConfigRow } from '@/lib/actions/followup-config';
 
 interface Props {
   detail: SelectedConversationDetail;
   followups: ScheduledFollowupRow[];
-  templates: FollowupTemplateRow[];
-  canScheduleFollowups: boolean;
+  followupConfig: TenantFollowupConfigRow;
+  canManageFollowups: boolean;
   lastLeadMessageAt: string | null;
 }
 
 export function AIControlPanel({
   detail,
   followups,
-  templates,
-  canScheduleFollowups,
+  followupConfig,
+  canManageFollowups,
   lastLeadMessageAt,
 }: Props) {
   const [pending, startTransition] = useTransition();
@@ -114,22 +110,13 @@ export function AIControlPanel({
           </TooltipProvider>
         </div>
 
-        <div className="border-t border-border/60 pt-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs uppercase tracking-wider text-muted-foreground">
-              Seguimientos
-            </span>
-            {canScheduleFollowups ? (
-              <ScheduleFollowupDialog
-                conversationId={detail.id}
-                channelKind={detail.channel.channel_type as ChannelKind}
-                lastLeadMessageAt={lastLeadMessageAt}
-                templates={templates}
-              />
-            ) : null}
-          </div>
-          <ScheduledFollowupsList followups={followups} canCancel={canScheduleFollowups} />
-        </div>
+        <AutomatedFollowupsPanel
+          followups={followups}
+          config={followupConfig}
+          channelKind={detail.channel.channel_type as ChannelKind}
+          lastLeadMessageAt={lastLeadMessageAt}
+          canManage={canManageFollowups}
+        />
       </CardContent>
     </Card>
   );
