@@ -69,12 +69,17 @@ export function EditIntegrationDialog({
         const businessPhone =
           String(formData.get('businessPhone') ?? '').trim() ||
           String(connectionConfig.business_phone ?? '').trim();
+        const wabaId =
+          String(formData.get('wabaId') ?? '').trim() ||
+          String(connectionConfig.wabaId ?? '').trim() ||
+          String(connectionConfig.waba_id ?? '').trim();
         if (!apiKey) {
           toast.error('apiKey es obligatorio');
           return;
         }
         credentials.apiKey = apiKey;
         if (businessPhone) newConnectionConfig.business_phone = businessPhone;
+        if (wabaId) newConnectionConfig.wabaId = wabaId;
       } else if (provider === 'manychat') {
         const apiKey = String(formData.get('apiKey') ?? '').trim();
         if (!apiKey) {
@@ -224,6 +229,25 @@ function ProviderEditFields({
           />
           <p className="text-xs text-muted-foreground">
             Actual: <code>{String(connectionConfig.business_phone ?? '—')}</code>
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="wabaId">WABA ID</Label>
+          <Input
+            id="wabaId"
+            name="wabaId"
+            placeholder="auto-detectado al validar"
+            defaultValue={String(
+              connectionConfig.wabaId ?? connectionConfig.waba_id ?? '',
+            )}
+          />
+          <p className="text-xs text-muted-foreground">
+            Actual:{' '}
+            <code>
+              {String(connectionConfig.wabaId ?? connectionConfig.waba_id ?? '—')}
+            </code>
+            . Necesario para sincronizar plantillas WA. Si no se detecta auto al
+            validar, pégalo manual (YCloud panel → WhatsApp Business Accounts).
           </p>
         </div>
       </div>
