@@ -41,13 +41,14 @@ export default async function FollowupTemplatesPage() {
       <div className="flex flex-col">
         <p className="text-xs uppercase tracking-wider text-muted-foreground">Followups</p>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Seguimientos automáticos y plantillas
+          Seguimientos automáticos
         </h1>
         <p className="text-xs text-muted-foreground mt-1 max-w-2xl">
-          Configura cuándo y cómo el motor envía seguimientos a leads inactivos. Las
-          plantillas <strong>WhatsApp</strong> se sincronizan desde YCloud (aprobadas
-          por Meta). Las plantillas <strong>Instagram</strong> y{' '}
-          <strong>Facebook</strong> se generan al vuelo con personalización contextual.
+          Configura cuándo y cómo el motor reactiva a leads inactivos. En{' '}
+          <strong>Instagram</strong> y <strong>Facebook</strong> los mensajes se
+          generan al vuelo con personalización contextual (nombre del lead + últimos
+          mensajes). En <strong>WhatsApp</strong> se usan plantillas aprobadas por
+          Meta sincronizadas desde YCloud (única forma de mensajear pasadas 24h).
         </p>
       </div>
 
@@ -56,8 +57,8 @@ export default async function FollowupTemplatesPage() {
       <Separator />
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-semibold tracking-tight uppercase tracking-wide text-muted-foreground">
-          Plantillas por canal
+        <h2 className="text-sm font-semibold tracking-wide uppercase text-muted-foreground">
+          Plantillas WhatsApp
         </h2>
         <TemplatesTabs templates={templates} canEdit={canEditTemplates} />
       </div>

@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type Anthropic from '@anthropic-ai/sdk';
 
 /**
- * Sprint Iota.1 — Personalización IA del followup justo antes de enviar.
+ * Sprint Iota.1.d — Personalización IA del followup justo antes de enviar.
  *
  * Cuando outbound-sender procesa un schedule con `ai_personalize=true` y
  * `message=null`, llama a esta función para generar el mensaje contextual
@@ -12,10 +12,19 @@ import type Anthropic from '@anthropic-ai/sdk';
  * antes de enviarlo y luego ejecuta el provider send normal.
  *
  * Modelo: Haiku 4.5 (rápido, barato, suficiente para mensaje corto).
+ *
+ * Mejoras v2 (Iota.1.d):
+ *   - Prompt más explícito sobre uso del nombre del lead.
+ *   - Detección automática de "inicio de conversación" vs "avanzada" para
+ *     adaptar el tono.
+ *   - Few-shot con ejemplos concretos del estilo de Iván Soto (Fyzon).
+ *   - Validación: si el nombre del lead está disponible, debe aparecer en
+ *     el mensaje generado (cuando es inicio de conversación).
  */
 
 const HAIKU_MODEL = 'claude-haiku-4-5';
 const MAX_OUTPUT_TOKENS = 400;
+const EARLY_CONV_THRESHOLD = 4; // <=4 mensajes lead→ tratamos como inicio
 
 export interface PersonalizeInput {
   supabase: SupabaseClient;
@@ -36,7 +45,7 @@ export interface PersonalizeError {
 }
 
 interface ConvMessage {
-  source: 'lead' | 'ai' | 'system';
+  source: 'lead' | 'ai' | 'system' | 'human';
   content: string | null;
   sent_at: string;
 }
@@ -48,52 +57,83 @@ interface LeadInfo {
 }
 
 function buildSystemPrompt(): string {
-  return `Eres un asistente de ventas que escribe followups personalizados en castellano para un lead que llevaba sin contestar a una conversación con un setter.
+  return `Eres un setter (responsable comercial) que escribe followups personalizados en castellano para reactivar a un lead que dejó de responder.
 
-Tu tarea: redactar UN único mensaje (NO una conversación) basado en:
-1. Una "guía" del trainer que indica qué quiere mensajear (tono, intención).
-2. Los últimos mensajes de la conversación reciente.
-3. El nombre y datos del lead.
+Tu misión: redactar UN único mensaje (NO una conversación) que invite al lead a retomar la conversación. El mensaje debe sentirse humano, cercano y natural.
+
+Recibirás:
+1. El nombre del lead (úsalo siempre que esté disponible).
+2. Los últimos mensajes de la conversación entre el setter (tú) y el lead.
+3. Una "guía" del trainer indicando la intención del followup.
 
 Reglas estrictas:
-- Devuelve SOLO el texto del mensaje, sin explicaciones ni envoltorio.
-- Máximo 350 caracteres.
-- Tono natural, cercano, español hispanohablante. NUNCA suene robotizado.
-- Si la guía dice usar el nombre del lead y lo tienes, úsalo. Si no lo tienes, no inventes.
-- Refiere algo CONCRETO de lo último hablado en la conversación (no genérico).
-- NO uses comillas ni markdown.
-- NO termines con "…" abrupto.
-- NO menciones que eres IA.`;
+- Devuelve SOLO el texto del mensaje. Sin explicaciones, sin comillas envolventes, sin etiquetas, sin markdown.
+- Máximo 280 caracteres.
+- Si tienes el nombre del lead, ÚSALO en el saludo (ej. "Hola, Iván," o "Iván, qué tal,"). Si no lo tienes, NO inventes uno — empieza con un saludo neutro como "Hola,".
+- Tono natural, conversacional, español hispanohablante. NUNCA suene corporativo o robotizado.
+- Refiere algo CONCRETO de lo último hablado (un dato, una pregunta abierta, un detalle del problema que mencionó). Nunca genérico.
+- Si la conversación está al inicio (pocos mensajes del lead), retoma desde el contexto inicial sin asumir cosas.
+- Si la conversación ya está avanzada, conecta con el último tema concreto.
+- NO uses emojis a menos que el lead haya usado emojis primero.
+- NO termines con "..." abrupto ni con interrogación encadenada ("¿quieres? ¿te interesa?").
+- NO menciones que eres IA ni que es un seguimiento automático.
+- Acaba con UNA pregunta abierta breve que invite a responder.
+
+Ejemplos de estilo correcto:
+
+Ejemplo 1 (inicio de conversación, lead llamado Iván que pidió info):
+"Hola Iván, ¿pudiste echarle un ojo a lo que comentamos? Me gustaría retomar contigo cuando tengas un rato, ¿te encaja?"
+
+Ejemplo 2 (conversación avanzada, lead habló de captación de leads y caos en el equipo):
+"Iván, me quedé pensando en lo del caos con las cuatro personas gestionando los leads. ¿Has podido darle una vuelta o seguís igual?"
+
+Ejemplo 3 (lead sin nombre conocido, inicio):
+"Hola, ¿cómo lo llevas? Quería saber si te queda alguna duda sobre lo que comentamos para acabar de aclararte."
+
+Ejemplo 4 (lead llamado Cristina, conversación sobre objetivos de pérdida de peso):
+"Hola Cristina, ¿qué tal te ha ido la semana? Me acordé del objetivo que comentaste de los 5kg, ¿sigues queriendo darle?"`;
 }
 
 function buildUserPrompt(input: {
   guide: string;
   lead: LeadInfo;
   recentMessages: ConvMessage[];
+  isEarlyConversation: boolean;
 }): string {
   const leadName = input.lead.first_name?.trim() || input.lead.username?.trim() || null;
   const leadInfo = leadName
-    ? `Nombre del lead: ${leadName}`
-    : 'Nombre del lead: (no disponible — no inventes uno)';
+    ? `Nombre del lead: ${leadName} (úsalo en el saludo)`
+    : 'Nombre del lead: (no disponible — usa saludo neutro tipo "Hola,")';
+
+  const phaseHint = input.isEarlyConversation
+    ? 'Fase de la conversación: INICIO (pocos mensajes del lead). Retoma desde el contexto inicial.'
+    : 'Fase de la conversación: AVANZADA (ya hubo varios intercambios). Conecta con el último tema concreto.';
 
   const transcript = input.recentMessages
     .filter((m) => m.content && m.content.trim().length > 0)
     .slice(-20)
     .map((m) => {
-      const author = m.source === 'lead' ? 'LEAD' : m.source === 'ai' ? 'SETTER' : 'SISTEMA';
+      const author =
+        m.source === 'lead'
+          ? 'LEAD'
+          : m.source === 'ai' || m.source === 'human'
+            ? 'SETTER'
+            : 'SISTEMA';
       return `[${author}] ${m.content}`;
     })
     .join('\n');
 
   return `${leadInfo}
 
+${phaseHint}
+
 Conversación reciente:
-${transcript || '(sin mensajes previos)'}
+${transcript || '(sin mensajes previos — el lead solo escribió un saludo inicial sin contenido)'}
 
 Guía del trainer para este followup:
 ${input.guide}
 
-Genera el mensaje:`;
+Genera el mensaje (solo el texto, sin envoltorios):`;
 }
 
 export async function personalizeFollowupMessage(
@@ -123,6 +163,10 @@ export async function personalizeFollowupMessage(
     ? leadRel[0] ?? { first_name: null, last_name: null, username: null }
     : leadRel ?? { first_name: null, last_name: null, username: null };
 
+  // Detectar si es inicio de conversación: <= EARLY_CONV_THRESHOLD mensajes del lead
+  const leadMsgCount = recentMessages.filter((m) => m.source === 'lead').length;
+  const isEarlyConversation = leadMsgCount <= EARLY_CONV_THRESHOLD;
+
   // 3. Llamada a Haiku
   try {
     const response = await input.anthropic.messages.create({
@@ -136,6 +180,7 @@ export async function personalizeFollowupMessage(
             guide: input.aiGuide,
             lead,
             recentMessages,
+            isEarlyConversation,
           }),
         },
       ],
@@ -148,14 +193,19 @@ export async function personalizeFollowupMessage(
     }
 
     let message = textBlock.text.trim();
-    // Sanitizar: quitar comillas envolventes accidentales
-    if (
-      (message.startsWith('"') && message.endsWith('"')) ||
-      (message.startsWith('"') && message.endsWith('"'))
-    ) {
+    // Sanitizar: quitar comillas envolventes accidentales (rectas o tipográficas)
+    const startsWithQuote = /^["'“”‘’]/.test(message);
+    const endsWithQuote = /["'“”‘’]$/.test(message);
+    if (startsWithQuote && endsWithQuote) {
       message = message.slice(1, -1).trim();
     }
+    // Quitar prefijos accidentales tipo "Mensaje:" o "Texto:"
+    message = message.replace(/^(mensaje|texto|message|text)\s*:\s*/i, '').trim();
     if (!message) return { ok: false, error: 'mensaje generado vacío' };
+    if (message.length > 600) {
+      // truncar duro si la IA se pasó (el prompt pide <=280, pero por si acaso)
+      message = message.slice(0, 597).trim() + '...';
+    }
 
     // Coste aprox Haiku 4.5: $1/MTok input + $5/MTok output
     const inputTokens = response.usage.input_tokens;

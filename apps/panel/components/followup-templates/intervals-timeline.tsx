@@ -1,21 +1,27 @@
 'use client';
 
-import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+/**
+ * Sprint Iota.1.d — Selector simple de intervalos para seguimientos.
+ *
+ * Sustituye la timeline visual previa (chips sobre eje 24h) por una lista
+ * de dropdowns intuitivos: "Seguimiento #1 = 6h", "Seguimiento #2 = 12h",
+ * etc. El usuario elige cada hora con un select 1-24h. Más claro y más
+ * accesible móvil.
+ */
+
 interface Props {
-  intervals: number[]; // horas, cada uno entre 1 y 24, ordenadas asc
+  intervals: number[]; // horas, cada una entre 1 y 24
   onChange: (next: number[]) => void;
   disabled?: boolean;
   maxFollowups?: number; // default 5
@@ -23,14 +29,21 @@ interface Props {
 
 const HOUR_CAP = 24;
 const MIN_HOUR = 1;
+const HOUR_OPTIONS = Array.from({ length: HOUR_CAP }, (_, i) => i + 1);
 
 function clampHour(h: number): number {
   if (!Number.isFinite(h)) return 1;
   return Math.max(MIN_HOUR, Math.min(HOUR_CAP, Math.round(h)));
 }
 
-function sortUnique(arr: number[]): number[] {
-  return Array.from(new Set(arr.map(clampHour))).sort((a, b) => a - b);
+function sortAsc(arr: number[]): number[] {
+  return arr.map(clampHour).slice().sort((a, b) => a - b);
+}
+
+function nextSuggestion(intervals: number[]): number {
+  if (intervals.length === 0) return 6;
+  const last = intervals[intervals.length - 1]!;
+  return clampHour(last + 6);
 }
 
 export function IntervalsTimeline({
@@ -39,232 +52,142 @@ export function IntervalsTimeline({
   disabled,
   maxFollowups = 5,
 }: Props) {
-  const sorted = sortUnique(intervals);
+  const sorted = sortAsc(intervals);
 
-  function updateAt(idx: number, newHour: number) {
+  function updateAt(originalIdx: number, newHour: number) {
     const next = sorted.slice();
-    next[idx] = clampHour(newHour);
-    onChange(sortUnique(next));
+    next[originalIdx] = clampHour(newHour);
+    onChange(sortAsc(next));
   }
 
-  function removeAt(idx: number) {
+  function removeAt(originalIdx: number) {
     const next = sorted.slice();
-    next.splice(idx, 1);
+    next.splice(originalIdx, 1);
     onChange(next);
   }
 
-  function add(hour: number) {
+  function add() {
     if (sorted.length >= maxFollowups) return;
-    onChange(sortUnique([...sorted, hour]));
+    onChange(sortAsc([...sorted, nextSuggestion(sorted)]));
   }
 
   return (
     <div className="flex flex-col gap-2 select-none">
-      <div className="flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
-        <span>Lead responde</span>
-        <span>Cap 24h (límite Meta/GHL)</span>
-      </div>
-
-      {/* Track */}
-      <div className="relative h-12 rounded-md border border-border/40 bg-muted/20">
-        {/* Línea base */}
-        <div className="absolute inset-y-0 left-0 right-0 flex items-center">
-          <div className="h-px w-full bg-border/40" />
+      {sorted.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border/40 bg-muted/10 px-3 py-6 text-center text-xs text-muted-foreground">
+          Sin seguimientos programados todavía.
+          <br />
+          Pulsa <strong>"Añadir seguimiento"</strong> para programar el primero
+          (recomendado: 6h, 12h y 20h tras el último mensaje del lead).
         </div>
-        {/* Marker inicio */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2">
-          <div className="size-2.5 rounded-full bg-emerald-500" />
-        </div>
-        {/* Marker fin */}
-        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2">
-          <div className="size-2.5 rounded-full bg-rose-500/70" />
-        </div>
-
-        {/* Chips intervals */}
-        {sorted.map((h, idx) => {
-          const leftPct = (h / HOUR_CAP) * 100;
-          return (
-            <ChipMarker
-              key={`${idx}-${h}`}
-              hour={h}
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {sorted.map((hour, idx) => (
+            <IntervalRow
+              key={`row-${idx}-${hour}`}
               index={idx}
-              leftPct={leftPct}
+              hour={hour}
               disabled={disabled}
-              onChange={(newHour) => updateAt(idx, newHour)}
+              onChangeHour={(h) => updateAt(idx, h)}
               onRemove={() => removeAt(idx)}
+              isLast={sorted.length === 1}
             />
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <div className="flex items-center justify-between text-[11px]">
-        <span className="text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 mt-1">
+        <span className="text-[11px] text-muted-foreground">
           {sorted.length === 0
-            ? 'Sin seguimientos programados'
-            : `${sorted.length} ${sorted.length === 1 ? 'mensaje' : 'mensajes'} en ${sorted[sorted.length - 1]}h`}
+            ? 'Ningún mensaje programado'
+            : `${sorted.length} ${sorted.length === 1 ? 'mensaje' : 'mensajes'} en las primeras ${sorted[sorted.length - 1]}h tras el último mensaje del lead`}
         </span>
         {!disabled && sorted.length < maxFollowups ? (
-          <AddChipButton currentMax={sorted[sorted.length - 1] ?? 0} onAdd={add} />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={add}
+            className="h-7 text-xs"
+          >
+            <Plus className="size-3 mr-1" />
+            Añadir seguimiento
+          </Button>
         ) : null}
       </div>
 
-      {sorted.length === 0 && !disabled ? (
+      {sorted.length >= maxFollowups ? (
         <p className="text-[10px] text-muted-foreground italic">
-          Pulsa "Añadir" para programar el primer seguimiento (recomendado: 6h, 12h, 20h).
+          Máximo {maxFollowups} seguimientos por lead. Quita uno para añadir otro.
         </p>
       ) : null}
     </div>
   );
 }
 
-function ChipMarker({
-  hour,
+function IntervalRow({
   index,
-  leftPct,
+  hour,
   disabled,
-  onChange,
+  onChangeHour,
   onRemove,
+  isLast,
 }: {
-  hour: number;
   index: number;
-  leftPct: number;
+  hour: number;
   disabled?: boolean;
-  onChange: (h: number) => void;
+  onChangeHour: (h: number) => void;
   onRemove: () => void;
+  isLast: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(String(hour));
-
-  function commit() {
-    const v = Number(draft);
-    if (Number.isFinite(v) && v >= MIN_HOUR && v <= HOUR_CAP) {
-      onChange(v);
-      setOpen(false);
-    }
-  }
-
   return (
     <div
-      className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
-      style={{ left: `${leftPct}%` }}
+      className={cn(
+        'flex items-center gap-2 rounded-md border border-border/40 bg-muted/10 px-3 py-2',
+        disabled && 'opacity-60',
+      )}
     >
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>
-          <button
-            type="button"
-            disabled={disabled}
-            className={cn(
-              'group flex flex-col items-center gap-0.5 cursor-pointer disabled:cursor-not-allowed',
-            )}
-          >
-            <div className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-amber-500/15 border border-amber-500/40 text-amber-500 whitespace-nowrap group-hover:bg-amber-500/25">
-              FU#{index + 1} · {hour}h
-            </div>
-            <div className="size-2 rounded-full bg-amber-500 ring-2 ring-amber-500/30" />
-          </button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-xs">
-          <DialogHeader>
-            <DialogTitle className="text-sm">
-              Seguimiento #{index + 1}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex flex-col gap-2">
-            <label className="text-xs">
-              Horas tras el último mensaje del lead{' '}
-              <span className="text-muted-foreground">(1-24)</span>
-            </label>
-            <Input
-              type="number"
-              min={MIN_HOUR}
-              max={HOUR_CAP}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') commit();
-              }}
-              autoFocus
-              className="h-8 text-xs"
-            />
-          </div>
-          <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                onRemove();
-                setOpen(false);
-              }}
-              className="text-rose-500 hover:text-rose-600"
-            >
-              <X className="size-3 mr-1" />
-              Eliminar
-            </Button>
-            <Button size="sm" onClick={commit}>
-              Guardar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className="text-[10px] font-mono uppercase text-amber-500 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 shrink-0">
+          FU#{index + 1}
+        </span>
+        <span className="text-xs text-muted-foreground">enviar a las</span>
+      </div>
+
+      <Select
+        value={String(hour)}
+        onValueChange={(v) => onChangeHour(Number(v))}
+        disabled={disabled}
+      >
+        <SelectTrigger className="h-8 w-[110px] text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {HOUR_OPTIONS.map((h) => (
+            <SelectItem key={h} value={String(h)} className="text-xs">
+              {h} {h === 1 ? 'hora' : 'horas'}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <span className="text-[11px] text-muted-foreground hidden sm:inline">
+        tras último mensaje del lead
+      </span>
+
+      <div className="flex-1" />
+
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        onClick={onRemove}
+        disabled={disabled || isLast}
+        className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"
+        title={isLast ? 'Debe quedar al menos un seguimiento' : 'Eliminar este seguimiento'}
+      >
+        <X className="size-3.5" />
+      </Button>
     </div>
-  );
-}
-
-function AddChipButton({
-  currentMax,
-  onAdd,
-}: {
-  currentMax: number;
-  onAdd: (h: number) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState(String(Math.min(HOUR_CAP, currentMax + 6)));
-
-  function commit() {
-    const v = Number(draft);
-    if (Number.isFinite(v) && v >= MIN_HOUR && v <= HOUR_CAP) {
-      onAdd(v);
-      setOpen(false);
-      setDraft(String(Math.min(HOUR_CAP, v + 6)));
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline" className="h-7 text-xs">
-          <Plus className="size-3 mr-1" />
-          Añadir seguimiento
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-xs">
-        <DialogHeader>
-          <DialogTitle className="text-sm">Nuevo seguimiento</DialogTitle>
-        </DialogHeader>
-        <div className="flex flex-col gap-2">
-          <label className="text-xs">
-            Horas tras el último mensaje del lead{' '}
-            <span className="text-muted-foreground">(1-24)</span>
-          </label>
-          <Input
-            type="number"
-            min={MIN_HOUR}
-            max={HOUR_CAP}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') commit();
-            }}
-            className="h-8 text-xs"
-            autoFocus
-          />
-        </div>
-        <DialogFooter>
-          <Button size="sm" onClick={commit}>
-            Añadir
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

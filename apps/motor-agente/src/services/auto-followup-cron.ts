@@ -125,7 +125,12 @@ export async function runAutoFollowupCron(
       result.skippedOutOfWindow += 1;
       continue;
     }
-    const intervals = (cfg.intervals_hours ?? []).map(Number).filter((h) => h > 0);
+    // Sprint Iota.1.d — modelo 24h estricto (Meta/GHL): solo intervals 1-24h.
+    const intervals = (cfg.intervals_hours ?? [])
+      .map(Number)
+      .filter((h) => Number.isFinite(h) && h >= 1 && h <= 24)
+      .sort((a, b) => a - b);
+    if (intervals.length === 0) continue;
     const maxIntervalsHours = intervals[intervals.length - 1] ?? 168;
     const minSinceLastMs = (intervals[0] ?? 24) * 3600 * 1000;
     const maxSinceLastMs = maxIntervalsHours * 3600 * 1000 * 2; // ventana de búsqueda generosa
