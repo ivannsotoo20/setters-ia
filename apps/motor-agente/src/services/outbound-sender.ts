@@ -95,8 +95,15 @@ export async function sendNextBatch(
     const aiGuide = (row.ai_guide as string | null) ?? null;
 
     try {
-      // 3.a) AI-personalize: generar mensaje contextual antes de enviar
-      if (messageType === 'follow_up' && aiPersonalize && aiGuide) {
+      // 3.a) AI-personalize: el panel pre-genera al materializar (Sprint Iota.1.e)
+      // → si messageText ya existe, NO regeneramos (preview = realidad enviada).
+      // Solo regeneramos como fallback si materialize falló (message_text=null).
+      if (
+        messageType === 'follow_up' &&
+        aiPersonalize &&
+        aiGuide &&
+        (!messageText || messageText.trim().length === 0)
+      ) {
         const anthropic = getAnthropic();
         const personalized = await personalizeFollowupMessage({
           supabase,
@@ -105,7 +112,7 @@ export async function sendNextBatch(
           aiGuide,
         });
         if (!personalized.ok) {
-          throw new Error(`AI-personalize: ${personalized.error}`);
+          throw new Error(`AI-personalize fallback: ${personalized.error}`);
         }
         messageText = personalized.message;
         await supabase

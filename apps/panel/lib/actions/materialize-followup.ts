@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
+import { personalizeFollowupAtMaterialize } from '@/lib/personalize-followup';
 import type { ActionResult } from './followups';
 
 /**
@@ -246,6 +247,21 @@ export async function materializeFollowupSequenceForConv(
       safety -= 1;
     }
 
+    // Sprint Iota.1.e — pre-generar el mensaje IA AHORA (no esperar al envío)
+    // para que el panel del chat lo muestre como preview real, no placeholder.
+    let preGenerated: string | null = null;
+    if (tpl.aiPersonalize && tpl.aiGuide) {
+      const result = await personalizeFollowupAtMaterialize({
+        supabase,
+        conversationId,
+        aiGuide: tpl.aiGuide,
+      });
+      if (result.ok) {
+        preGenerated = result.message;
+      }
+      // Si falla: schedule se crea con message=null y el motor regenera al envío.
+    }
+
     const { data, error } = await supabase
       .from('message_schedules')
       .insert({
@@ -253,7 +269,7 @@ export async function materializeFollowupSequenceForConv(
         conversation_id: conversationId,
         integration_account_id: Number(ia.id),
         message_type: 'follow_up',
-        message: tpl.aiPersonalize ? null : tpl.body,
+        message: tpl.aiPersonalize ? preGenerated : tpl.body,
         has_attachment: false,
         scheduled_at: scheduledAt.toISOString(),
         status: 'pending',

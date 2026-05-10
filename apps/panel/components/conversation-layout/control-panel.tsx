@@ -33,7 +33,7 @@ export function ControlPanel({
 
   return (
     <aside
-      className="flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto h-full min-h-0"
+      className="flex flex-col gap-4 p-4 pb-8 border-l border-border bg-card/30 overflow-y-auto h-full min-h-0 [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/50"
       aria-label="Panel de control"
     >
       <LeadInfoCard detail={detail} />

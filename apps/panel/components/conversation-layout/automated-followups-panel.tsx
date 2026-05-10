@@ -348,14 +348,14 @@ function FollowupCard({
         </div>
       </div>
 
-      {followup.aiPersonalize && variant === 'pending' && !followup.body ? (
-        <p className="text-amber-500/80 italic text-[11px] leading-snug">
-          El mensaje se generará al enviar usando los últimos mensajes de la
-          conversación.
-        </p>
-      ) : followup.body ? (
-        <p className="text-foreground/80 line-clamp-3 leading-snug whitespace-pre-wrap">
+      {followup.body ? (
+        <div className="rounded bg-background/40 border border-border/30 px-2 py-1.5 text-[11px] leading-snug whitespace-pre-wrap text-foreground/85">
           {followup.body}
+        </div>
+      ) : followup.aiPersonalize && variant === 'pending' ? (
+        <p className="text-amber-500/80 italic text-[11px] leading-snug">
+          Generando mensaje con IA…  Si tarda, se reintentará al enviar usando
+          los últimos mensajes de la conversación.
         </p>
       ) : null}
 
