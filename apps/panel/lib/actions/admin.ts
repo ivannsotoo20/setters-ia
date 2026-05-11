@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -238,14 +239,29 @@ export async function stopImpersonating(): Promise<ActionResult> {
 }
 
 /**
- * Server Action que inicia impersonate y redirige al dashboard de tenant.
+ * Server Action que inicia impersonate y redirige al dashboard del tenant.
  * Útil como `formAction` en botones de la lista admin.
+ *
+ * Hito 11.1: cuando se invoca desde admin.fyzon.es, redirigimos directamente
+ * a panel.fyzon.es/dashboard (URL absoluta) para evitar el doble-hop
+ * admin.fyzon.es/dashboard → middleware cross-domain → panel.fyzon.es/dashboard.
+ * La cookie de impersonate viaja porque está en `.fyzon.es` (ver lib/impersonate.ts).
  */
 export async function startImpersonatingAndRedirect(formData: FormData): Promise<void> {
   const tenantIdRaw = formData.get('tenant_id');
   const tenantId = Number(tenantIdRaw);
   const result = await startImpersonating(tenantId);
-  if (result.ok) {
-    redirect('/dashboard');
+  if (!result.ok) {
+    // En lugar de redirect silencioso (UX rota), tiramos error que aparece en
+    // el formulario via error boundary o queda en el log.
+    throw new Error(result.error);
   }
+
+  const h = await headers();
+  const host = h.get('x-forwarded-host') ?? h.get('host') ?? '';
+  if (host === 'admin.fyzon.es') {
+    redirect('https://panel.fyzon.es/dashboard');
+  }
+  // localhost dev o caso edge: redirect relativo dentro del mismo domain.
+  redirect('/dashboard');
 }

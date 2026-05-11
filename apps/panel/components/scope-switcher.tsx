@@ -55,12 +55,28 @@ export function ScopeSwitcher({
   const tenantId = tenantIdInUrl ?? impersonatingTenantId!;
   const tenantName = impersonatingTenantName ?? `Tenant #${tenantId}`;
 
+  // Navega entre subdomains (admin.fyzon.es ↔ panel.fyzon.es) sin doble hop
+  // del middleware cross-domain. En localhost dev usa router.push relativo.
+  const isProdSubdomain = () =>
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'admin.fyzon.es' ||
+      window.location.hostname === 'panel.fyzon.es');
+
+  const goCrossDomain = (toHost: 'admin' | 'panel', path: string) => {
+    if (isProdSubdomain()) {
+      const target = toHost === 'admin' ? 'https://admin.fyzon.es' : 'https://panel.fyzon.es';
+      window.location.href = `${target}${path}`;
+    } else {
+      router.push(path);
+      router.refresh();
+    }
+  };
+
   const onEnterClientView = () => {
     startTransition(async () => {
       const result = await startImpersonating(tenantId);
       if (result.ok) {
-        router.push('/dashboard');
-        router.refresh();
+        goCrossDomain('panel', '/dashboard');
       } else {
         toast.error(result.error);
       }
@@ -70,8 +86,7 @@ export function ScopeSwitcher({
   const onBackToAdminView = () => {
     startTransition(async () => {
       await stopImpersonating();
-      router.push(`/admin/tenants/${tenantId}`);
-      router.refresh();
+      goCrossDomain('admin', `/admin/tenants/${tenantId}`);
     });
   };
 
