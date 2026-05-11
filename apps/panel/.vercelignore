@@ -1,0 +1,19 @@
+# Vercel ignore — Root Directory = apps/panel
+# Vercel respeta .gitignore por defecto. Este archivo refuerza para que
+# NUNCA suban builds locales ni node_modules en caso de upload manual.
+
+node_modules
+.next
+.turbo
+dist
+build
+out
+.cache
+coverage
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db

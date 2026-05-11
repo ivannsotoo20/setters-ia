@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs",
-  "buildCommand": "pnpm turbo run build --filter=@fyzon/panel",
-  "installCommand": "pnpm install --frozen-lockfile --filter @fyzon/panel...",
-  "outputDirectory": "apps/panel/.next"
-}
