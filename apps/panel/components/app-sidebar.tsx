@@ -25,7 +25,10 @@ import {
   Activity,
   Rocket,
   MessageCircle,
+  ChevronDown,
+  User,
 } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +40,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
   useSidebar,
 } from '@/components/ui/sidebar';
@@ -60,7 +66,9 @@ const NAV_TRAINER_MAIN: NavItem[] = [
 
 /** Entradas de configuración visibles según rol. */
 function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
+  // Perfil siempre primero — accesible para todos los roles.
   const items: NavItem[] = [
+    { href: '/settings/profile', label: 'Perfil', icon: User },
     { href: '/keywords', label: 'Keywords', icon: Sparkles },
     { href: '/labels', label: 'Etiquetas', icon: Tag },
     { href: '/settings/followup-templates', label: 'Followups', icon: Clock },
@@ -246,16 +254,12 @@ export function AppSidebar({
             </SidebarGroup>
 
             <SidebarGroup>
-              <SidebarGroupLabel>Configuración</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {trainerConfigNav.map((item) => (
-                    <NavItemRow
-                      key={item.href}
-                      item={item}
-                      active={isActive(pathname, item.href)}
-                    />
-                  ))}
+                  <ConfigCollapsibleItem
+                    items={trainerConfigNav}
+                    pathname={pathname}
+                  />
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>
@@ -334,6 +338,52 @@ function NavItemRow({ item, active }: { item: NavItem; active: boolean }) {
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
+  );
+}
+
+/**
+ * Item colapsable "Configuración" — agrupa todos los settings del trainer
+ * detrás de un único click. Inicialmente cerrado, pero si la ruta actual
+ * pertenece al submenu lo abrimos automáticamente.
+ */
+function ConfigCollapsibleItem({
+  items,
+  pathname,
+}: {
+  items: NavItem[];
+  pathname: string;
+}) {
+  const anySubActive = items.some((item) => isActive(pathname, item.href));
+  return (
+    <Collapsible defaultOpen={anySubActive} className="group/collapsible">
+      <SidebarMenuItem>
+        <CollapsibleTrigger asChild>
+          <SidebarMenuButton tooltip="Configuración">
+            <Settings className="size-4" />
+            <span>Configuración</span>
+            <ChevronDown className="ml-auto size-4 transition-transform duration-150 group-data-[state=open]/collapsible:rotate-180" />
+          </SidebarMenuButton>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <SidebarMenuSub>
+            {items.map((item) => {
+              const Icon = item.icon;
+              const active = isActive(pathname, item.href);
+              return (
+                <SidebarMenuSubItem key={item.href}>
+                  <SidebarMenuSubButton asChild isActive={active}>
+                    <Link href={item.href}>
+                      <Icon className="size-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              );
+            })}
+          </SidebarMenuSub>
+        </CollapsibleContent>
+      </SidebarMenuItem>
+    </Collapsible>
   );
 }
 

@@ -86,7 +86,8 @@ export function ScopeSwitcher({
   const onBackToAdminView = () => {
     startTransition(async () => {
       await stopImpersonating();
-      goCrossDomain('admin', `/admin/tenants/${tenantId}`);
+      // Volver al resumen general de agencia (no a la página del tenant impersonado).
+      goCrossDomain('admin', '/admin/dashboard');
     });
   };
 
