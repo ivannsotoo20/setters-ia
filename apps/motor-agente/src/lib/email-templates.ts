@@ -1,18 +1,19 @@
 import { env } from '../config/env.js';
+import { renderEmailShell, escapeHtml } from './email-shell.js';
 
 /**
- * Templates HTML para notificaciones email al trainer (Sprint Gamma 2.4).
+ * Templates HTML para notificaciones email al trainer.
  *
- * Estilo: minimalista, mobile-friendly, links inline al panel. Cero deps de
- * templating engine — solo template literals con escape básico.
+ * Hito 11 (2026-05-11): refactor para usar el shell común `email-shell.ts`,
+ * alineado visualmente con los emails del panel (Reset Password, Invite, etc.).
+ * Mismo logo Fyzon CDN, mismo footer, misma paleta light professional.
  *
  * Cada template recibe `{tenantName, payload}` y devuelve `{subject, html}`.
  * El payload es el JSONB de notification_events.payload, con campos esperados
  * según el event_type.
  */
 
-// Sprint 2.5b/A: `error_motor` removido del set público (canal admin separado
-// pendiente de definir en sprint posterior).
+// Sprint 2.5b/A: `error_motor` removido del set público.
 export type NotificationEventType =
   | 'handoff'
   | 'qualified'
@@ -29,75 +30,35 @@ export interface RenderArgs {
   tenantName: string;
   /** Contenido de notification_events.payload (estructura variable por event_type). */
   payload: Record<string, unknown>;
-  /** Nombre del trainer para saludo personalizado en el email (Sprint 2.5b/A). */
+  /** Nombre del trainer para saludo personalizado en el email. */
   trainerName?: string | null;
 }
 
-/** Escape HTML básico para evitar XSS en datos del payload. */
-function esc(value: unknown): string {
-  if (value == null) return '';
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+const esc = escapeHtml;
 
 function panelUrl(path: string): string {
   const base = env.PANEL_PUBLIC_URL.replace(/\/$/, '');
   return `${base}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-/** Wrapper común con header + footer del email. */
-function wrap(args: { tenantName: string; title: string; bodyHtml: string; trainerName?: string | null }): string {
-  const greeting = args.trainerName
-    ? `<p style="margin:0 0 16px;font-size:15px;color:#444;">Hola ${esc(args.trainerName)},</p>`
-    : '';
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${esc(args.title)}</title>
-</head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;">
-  <div style="max-width:560px;margin:0 auto;padding:24px 16px;">
-    <div style="background:#fff;border-radius:12px;padding:28px 24px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-      <div style="font-size:11px;color:#888;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">
-        Fyzon Setters · ${esc(args.tenantName)}
-      </div>
-      <h1 style="margin:0 0 16px;font-size:20px;font-weight:600;line-height:1.3;color:#0a0a0a;">
-        ${esc(args.title)}
-      </h1>
-      ${greeting}
-      ${args.bodyHtml}
-    </div>
-    <div style="text-align:center;margin-top:16px;font-size:12px;color:#999;">
-      Este email se envía automáticamente desde el setter IA.
-      <br>
-      Configura qué eventos recibir en
-      <a href="${panelUrl('/settings/preferences')}" style="color:#10b981;text-decoration:none;">/settings/preferences</a>.
-    </div>
-  </div>
-</body>
-</html>`;
-}
-
-function ctaButton(label: string, href: string): string {
-  return `<div style="margin:20px 0;">
-    <a href="${esc(href)}" style="display:inline-block;background:#10b981;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:14px;font-weight:600;">
-      ${esc(label)}
-    </a>
-  </div>`;
-}
-
+/** Bloque "field" reutilizable: `Label: value` con tipografía secundaria. */
 function field(label: string, value: unknown): string {
   if (value == null || value === '') return '';
-  return `<div style="margin:8px 0;">
-    <span style="color:#666;font-size:13px;">${esc(label)}:</span>
-    <strong style="margin-left:6px;font-size:14px;">${esc(value)}</strong>
-  </div>`;
+  return `<p style="margin:6px 0;font-size:14px;color:#374151;">
+      <span style="color:#6b7280;">${esc(label)}:</span>
+      <strong style="margin-left:6px;color:#0f172a;">${esc(value)}</strong>
+    </p>`;
+}
+
+/** Greeting block: "Hola Iván," — vacío si no hay trainerName. */
+function greeting(trainerName?: string | null): string {
+  if (!trainerName) return '';
+  return `<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">Hola ${esc(trainerName)},</p>`;
+}
+
+/** Tag pequeña arriba del título con el nombre del tenant. */
+function tenantContext(tenantName: string, eventLabel: string): string {
+  return `Aviso del setter · ${eventLabel} · ${tenantName}`;
 }
 
 // =============================================================================
@@ -111,16 +72,27 @@ function renderHandoff(args: RenderArgs): RenderedEmail {
   const handoffCause = (p.handoff_cause as string | undefined) ?? '(no especificada)';
   const lastMessage = (p.last_message_excerpt as string | undefined) ?? '';
 
-  const subject = `🤝 Handoff a humano · ${leadName}`;
-  const body = `
-    <p style="font-size:15px;line-height:1.5;margin:0 0 12px;">
-      La IA ha pasado la conversación con <strong>${esc(leadName)}</strong> a ti.
-    </p>
-    ${field('Causa del handoff', handoffCause)}
-    ${lastMessage ? `<div style="margin:12px 0;padding:12px;background:#f5f5f5;border-radius:8px;font-size:13px;color:#444;font-style:italic;">"${esc(lastMessage)}"</div>` : ''}
-    ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
-  `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
+  const subject = `Handoff a humano · ${leadName}`;
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">La IA ha pasado la conversación con <strong style="color:#0f172a;">${esc(leadName)}</strong> a ti.</p>
+${field('Causa del handoff', handoffCause)}
+${lastMessage ? `<div style="margin:14px 0;padding:14px;background:#f8fafc;border-left:3px solid #10b981;border-radius:4px;font-size:14px;color:#374151;font-style:italic;line-height:1.5;">"${esc(lastMessage)}"</div>` : ''}`;
+
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'trainer',
+      variant: 'notification',
+      preheader: `${leadName} necesita tu atención — handoff de la IA.`,
+      badge: tenantContext(args.tenantName, 'Handoff'),
+      title: `Handoff: ${leadName}`,
+      body,
+      cta: conversationId
+        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Ver conversación' }
+        : undefined,
+      showCopyUrl: false,
+      manageNotificationsUrl: panelUrl('/settings/preferences'),
+    }),
+  };
 }
 
 function renderQualified(args: RenderArgs): RenderedEmail {
@@ -130,16 +102,27 @@ function renderQualified(args: RenderArgs): RenderedEmail {
   const phone = p.lead_phone as string | undefined;
   const phase = p.conversation_phase as number | undefined;
 
-  const subject = `✅ Lead cualificado · ${leadName}`;
-  const body = `
-    <p style="font-size:15px;line-height:1.5;margin:0 0 12px;">
-      <strong>${esc(leadName)}</strong> acaba de cualificar.
-    </p>
-    ${field('Teléfono', phone)}
-    ${field('Fase', phase != null ? `F${phase}` : '')}
-    ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
-  `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
+  const subject = `Lead cualificado · ${leadName}`;
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;"><strong style="color:#0f172a;">${esc(leadName)}</strong> acaba de cualificar como lead caliente.</p>
+${field('Teléfono', phone)}
+${field('Fase alcanzada', phase != null ? `F${phase}` : '')}`;
+
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'trainer',
+      variant: 'notification',
+      preheader: `${leadName} ha cualificado — revisa la conversación.`,
+      badge: tenantContext(args.tenantName, 'Lead cualificado'),
+      title: `Lead cualificado: ${leadName}`,
+      body,
+      cta: conversationId
+        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Ver conversación' }
+        : undefined,
+      showCopyUrl: false,
+      manageNotificationsUrl: panelUrl('/settings/preferences'),
+    }),
+  };
 }
 
 function renderAppointmentBooked(args: RenderArgs): RenderedEmail {
@@ -149,16 +132,27 @@ function renderAppointmentBooked(args: RenderArgs): RenderedEmail {
   const appointmentLink = p.appointment_link as string | undefined;
   const appointmentTime = p.appointment_time as string | undefined;
 
-  const subject = `📅 Cita agendada · ${leadName}`;
-  const body = `
-    <p style="font-size:15px;line-height:1.5;margin:0 0 12px;">
-      <strong>${esc(leadName)}</strong> ha agendado una llamada contigo.
-    </p>
-    ${field('Cuándo', appointmentTime)}
-    ${field('Enlace', appointmentLink)}
-    ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
-  `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
+  const subject = `Cita agendada · ${leadName}`;
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;"><strong style="color:#0f172a;">${esc(leadName)}</strong> ha agendado una llamada contigo.</p>
+${field('Cuándo', appointmentTime)}
+${field('Enlace de la cita', appointmentLink)}`;
+
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'trainer',
+      variant: 'notification',
+      preheader: `${leadName} agendó una cita.`,
+      badge: tenantContext(args.tenantName, 'Cita agendada'),
+      title: `Cita agendada con ${leadName}`,
+      body,
+      cta: conversationId
+        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Ver conversación' }
+        : undefined,
+      showCopyUrl: false,
+      manageNotificationsUrl: panelUrl('/settings/preferences'),
+    }),
+  };
 }
 
 function renderDescalified(args: RenderArgs): RenderedEmail {
@@ -167,15 +161,26 @@ function renderDescalified(args: RenderArgs): RenderedEmail {
   const leadName = (p.lead_first_name as string | undefined) ?? 'Lead sin nombre';
   const cause = p.descalification_cause as string | undefined;
 
-  const subject = `⛔ Lead descalificado · ${leadName}`;
-  const body = `
-    <p style="font-size:15px;line-height:1.5;margin:0 0 12px;">
-      La IA ha descalificado a <strong>${esc(leadName)}</strong> (cierre cálido).
-    </p>
-    ${field('Causa', cause)}
-    ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
-  `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
+  const subject = `Lead descalificado · ${leadName}`;
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">La IA ha descalificado a <strong style="color:#0f172a;">${esc(leadName)}</strong> con un cierre cálido.</p>
+${field('Causa', cause)}`;
+
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'trainer',
+      variant: 'notification',
+      preheader: `${leadName} no califica — cierre cálido.`,
+      badge: tenantContext(args.tenantName, 'Lead descalificado'),
+      title: `Lead descalificado: ${leadName}`,
+      body,
+      cta: conversationId
+        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Ver conversación' }
+        : undefined,
+      showCopyUrl: false,
+      manageNotificationsUrl: panelUrl('/settings/preferences'),
+    }),
+  };
 }
 
 function renderPausedByRule(args: RenderArgs): RenderedEmail {
@@ -184,23 +189,28 @@ function renderPausedByRule(args: RenderArgs): RenderedEmail {
   const leadName = (p.lead_first_name as string | undefined) ?? 'Lead sin nombre';
   const reason = (p.reason as string | undefined) ?? 'mensaje manual del trainer';
 
-  const subject = `⏸ IA pausada · ${leadName}`;
-  const body = `
-    <p style="font-size:15px;line-height:1.5;margin:0 0 12px;">
-      La IA dejó de responder en la conversación con <strong>${esc(leadName)}</strong>.
-    </p>
-    ${field('Motivo', reason)}
-    <p style="font-size:13px;color:#666;margin:12px 0;">
-      Para reactivar, ve al panel y pulsa "Reactivar IA" en la conversación.
-    </p>
-    ${conversationId ? ctaButton('Ver conversación', panelUrl(`/conversations/${conversationId}`)) : ''}
-  `;
-  return { subject, html: wrap({ tenantName: args.tenantName, title: subject, bodyHtml: body, trainerName: args.trainerName }) };
-}
+  const subject = `IA pausada · ${leadName}`;
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">La IA dejó de responder en la conversación con <strong style="color:#0f172a;">${esc(leadName)}</strong>.</p>
+${field('Motivo', reason)}
+<p style="margin:14px 0 0 0;font-size:13px;color:#6b7280;line-height:1.55;">Para reactivar, abre la conversación en el panel y pulsa <em>"Reactivar IA"</em>.</p>`;
 
-// Sprint 2.5b/A: `renderErrorMotor` removido. Los errores técnicos del motor
-// no se notifican al trainer — quedarán en un canal admin separado (sprint
-// posterior cuando se defina email a Iván / Slack webhook / tabla `admin_alerts`).
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'trainer',
+      variant: 'notification',
+      preheader: `La IA dejó de responder en la conversación con ${leadName}.`,
+      badge: tenantContext(args.tenantName, 'IA pausada'),
+      title: `IA pausada: ${leadName}`,
+      body,
+      cta: conversationId
+        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Ver conversación' }
+        : undefined,
+      showCopyUrl: false,
+      manageNotificationsUrl: panelUrl('/settings/preferences'),
+    }),
+  };
+}
 
 // =============================================================================
 // Dispatcher

@@ -185,7 +185,13 @@ export async function inviteMember(args: {
   }
 
   // No existe profile — usar Supabase admin invite (crea auth.users + envía email).
-  const baseUrl = process.env.NEXT_PUBLIC_PANEL_BASE_URL ?? 'http://localhost:3000';
+  // Hito 11 fix: usar PANEL_PUBLIC_URL canónico (antes fallback localhost en prod).
+  // Los invitados de tenant siempre van a panel.fyzon.es (no admin.fyzon.es).
+  const baseUrl =
+    process.env.PANEL_PUBLIC_URL ??
+    process.env.NEXT_PUBLIC_PANEL_BASE_URL ??
+    process.env.NEXT_PUBLIC_PANEL_ORIGIN ??
+    'http://localhost:3000';
   const { data: invited, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
     email,
     {

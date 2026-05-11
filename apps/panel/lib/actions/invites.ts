@@ -262,6 +262,7 @@ export async function inviteUserAction(input: InviteInput): Promise<InviteAction
     roleLabel: roleLabel(input.isAgencyAdmin ? 'admin' : input.role, input.isAgencyAdmin),
     acceptUrl: `${inviteOrigin(input.isAgencyAdmin)}/accept-invite?token=${token}`,
     expiresAtLabel: formatExpiresLabel(expiresAt),
+    audience: input.isAgencyAdmin ? 'admin' : 'trainer',
   };
   const emailResult = await sendEmail({
     to: email,
@@ -556,6 +557,7 @@ export async function resendInviteEmailAction(inviteId: number): Promise<RevokeI
     roleLabel: roleLabel(invite.role as 'owner' | 'admin' | 'viewer', invite.is_agency_admin),
     acceptUrl: `${inviteOrigin(invite.is_agency_admin)}/accept-invite?token=${invite.token}`,
     expiresAtLabel: formatExpiresLabel(new Date(invite.token_expires_at)),
+    audience: invite.is_agency_admin ? 'admin' : 'trainer',
   };
   const result = await sendEmail({
     to: invite.email,
