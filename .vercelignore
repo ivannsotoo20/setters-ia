@@ -1,0 +1,51 @@
+# Vercel ignore — repo root level (aplica con "Include files outside Root Directory")
+# Crítico: sin esto, Vercel sube node_modules de todo el monorepo (~8GB).
+
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build outputs
+.next
+.turbo
+dist
+build
+out
+.cache
+coverage
+*.tsbuildinfo
+
+# Subpaths del monorepo
+apps/*/node_modules
+apps/*/.next
+apps/*/.turbo
+apps/*/dist
+apps/*/coverage
+packages/*/node_modules
+packages/*/dist
+packages/*/.turbo
+
+# Env files (Vercel usa sus propias env vars)
+.env
+.env.local
+.env.*.local
+
+# Tunneling / logs / OS / IDE
+*.cloudflared.log
+*.log
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+.tmp
+
+# Docs / Claude / IDE configs locales
+.claude
+.idea
+.vscode
+
+# Motor / Docker / scripts (vive en VPS, no en Vercel)
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+.dockerignore
