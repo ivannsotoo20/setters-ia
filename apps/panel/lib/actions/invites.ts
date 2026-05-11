@@ -61,7 +61,21 @@ function generateToken(): string {
   return randomBytes(TOKEN_BYTES).toString('hex');
 }
 
-function panelOrigin(): string {
+/**
+ * Origin para el link `/accept-invite` en el email:
+ *  - Admin agency invite → admin.fyzon.es (ADMIN_PUBLIC_URL).
+ *  - Trainer/tenant member invite → panel.fyzon.es (PANEL_PUBLIC_URL).
+ *  - Si no hay env var específica, cae al genérico o a localhost (dev).
+ */
+function inviteOrigin(isAgencyAdmin: boolean): string {
+  if (isAgencyAdmin) {
+    return (
+      process.env.ADMIN_PUBLIC_URL ??
+      process.env.PANEL_PUBLIC_URL ??
+      process.env.NEXT_PUBLIC_PANEL_ORIGIN ??
+      'http://localhost:3000'
+    );
+  }
   return (
     process.env.PANEL_PUBLIC_URL ??
     process.env.NEXT_PUBLIC_PANEL_ORIGIN ??
@@ -246,7 +260,7 @@ export async function inviteUserAction(input: InviteInput): Promise<InviteAction
     fullNameHint: input.fullNameHint?.trim() ?? '',
     contextLabel,
     roleLabel: roleLabel(input.isAgencyAdmin ? 'admin' : input.role, input.isAgencyAdmin),
-    acceptUrl: `${panelOrigin()}/accept-invite?token=${token}`,
+    acceptUrl: `${inviteOrigin(input.isAgencyAdmin)}/accept-invite?token=${token}`,
     expiresAtLabel: formatExpiresLabel(expiresAt),
   };
   const emailResult = await sendEmail({
@@ -540,7 +554,7 @@ export async function resendInviteEmailAction(inviteId: number): Promise<RevokeI
     fullNameHint: invite.full_name_hint ?? '',
     contextLabel,
     roleLabel: roleLabel(invite.role as 'owner' | 'admin' | 'viewer', invite.is_agency_admin),
-    acceptUrl: `${panelOrigin()}/accept-invite?token=${invite.token}`,
+    acceptUrl: `${inviteOrigin(invite.is_agency_admin)}/accept-invite?token=${invite.token}`,
     expiresAtLabel: formatExpiresLabel(new Date(invite.token_expires_at)),
   };
   const result = await sendEmail({
