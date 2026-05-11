@@ -40,3 +40,5 @@ coverage/
 
 # Tunneling local (cloudflared / ngrok)
 *.cloudflared.log
+
+.vercel
