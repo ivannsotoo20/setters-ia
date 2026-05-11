@@ -80,6 +80,7 @@ function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
 const NAV_AGENCY: NavItem[] = [
   { href: '/admin/dashboard', label: 'Resumen agencia', icon: Building2 },
   { href: '/admin/tenants', label: 'Sub-cuentas', icon: Users },
+  { href: '/admin/admins', label: 'Admins Fyzon', icon: ShieldCheck },
   { href: '/admin/cerebro', label: 'Cerebro (prompt)', icon: Brain },
 ];
 

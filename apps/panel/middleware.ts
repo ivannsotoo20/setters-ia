@@ -18,7 +18,10 @@ interface CookieToSet {
  */
 
 const PROTECTED_PREFIXES = ['/dashboard', '/conversations', '/settings', '/keywords', '/admin'];
-const AUTH_ONLY_PATHS = ['/login', '/signup'];
+/** Rutas que SOLO se muestran cuando NO hay sesión (login/signup-like). */
+const AUTH_ONLY_PATHS = ['/login', '/admin/login', '/forgot-password'];
+/** Rutas siempre accesibles sin auth (token-based o post-click email). */
+const ALWAYS_PUBLIC_PATHS = ['/accept-invite', '/reset-password'];
 /** Rutas accesibles SOLO para owner del tenant o agency admin. */
 const OWNER_ONLY_PREFIXES = ['/settings/integrations', '/settings/preferences'];
 
@@ -58,9 +61,13 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isProtected = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isAlwaysPublic = ALWAYS_PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const isAuthOnly = AUTH_ONLY_PATHS.some((p) => pathname === p);
-  const isAdminRoute = pathname.startsWith('/admin');
+  // /admin/login NO debe contar como ruta protegida — entra en isAuthOnly antes que en isProtected.
+  const isAdminLogin = pathname === '/admin/login';
+  const isProtected = !isAuthOnly && !isAlwaysPublic && !isAdminLogin
+    && PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const isAdminRoute = !isAdminLogin && pathname.startsWith('/admin');
 
   if (isProtected && !user) {
     const redirectUrl = request.nextUrl.clone();

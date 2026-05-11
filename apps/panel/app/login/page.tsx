@@ -1,28 +1,43 @@
 import Link from 'next/link';
-import { LoginForm } from './login-form';
+import { AuthShell } from '@/components/auth/AuthShell';
+import { PasswordLoginForm } from '@/components/auth/PasswordLoginForm';
 
 interface LoginPageProps {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; error?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const next = params.next ?? '/dashboard';
+  const next = params.next ?? '';
+
+  let banner: string | null = null;
+  if (params.error === 'inactive') {
+    banner = 'Tu cuenta está desactivada. Contacta con un admin de Fyzon.';
+  } else if (params.error === 'owner_only') {
+    banner = 'Esa zona es solo para owners del tenant.';
+  } else if (params.error === 'missing_code' || params.error === 'invalid_code') {
+    banner = 'El enlace ha expirado o no es válido. Pide uno nuevo.';
+  }
 
   return (
-    <main className="auth-shell">
-      <div className="auth-card">
-        <h1 className="auth-title">Entrar a Fyzon Setters</h1>
-        <p className="auth-subtitle">
-          Te enviamos un enlace magico al email. Sin contrasenas.
+    <AuthShell
+      title="Entrar a Fyzon Setters"
+      subtitle="Accede a tu panel con tu email y contraseña."
+      footer={
+        <>
+          ¿Acceso interno?{' '}
+          <Link href="/admin/login" style={{ color: 'var(--color-accent)' }}>
+            Login admin Fyzon
+          </Link>
+        </>
+      }
+    >
+      {banner && (
+        <p className="auth-message auth-message--error" role="alert">
+          {banner}
         </p>
-
-        <LoginForm next={next} intent="login" />
-
-        <p className="auth-footer">
-          Aun no tienes cuenta? <Link href="/signup">Registrate</Link>
-        </p>
-      </div>
-    </main>
+      )}
+      <PasswordLoginForm next={next} />
+    </AuthShell>
   );
 }

@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
   const next = url.searchParams.get('next') ?? '/dashboard';
+  const type = url.searchParams.get('type'); // 'recovery' para reset password
 
   if (!code) {
     const errUrl = new URL('/login', url.origin);
@@ -30,6 +31,12 @@ export async function GET(request: NextRequest) {
     const errUrl = new URL('/login', url.origin);
     errUrl.searchParams.set('error', 'invalid_code');
     return NextResponse.redirect(errUrl);
+  }
+
+  // Recovery (reset password) — Supabase setea una sesión temporal y queremos
+  // que el user aterrice en /reset-password para definir nueva contraseña.
+  if (type === 'recovery') {
+    return NextResponse.redirect(new URL('/reset-password', url.origin));
   }
 
   // next puede ser /dashboard, /onboarding, /dashboard/conversations/123, etc.
