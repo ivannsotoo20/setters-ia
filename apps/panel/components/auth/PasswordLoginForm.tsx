@@ -23,7 +23,7 @@ export function PasswordLoginForm({ next, hideInviteHint = false }: PasswordLogi
     <form action={formAction} className="auth-form">
       <input type="hidden" name="next" value={next} />
 
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="email">
           Email
         </label>
@@ -39,27 +39,12 @@ export function PasswordLoginForm({ next, hideInviteHint = false }: PasswordLogi
         />
       </div>
 
-      <div>
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.5rem',
-            marginBottom: '0.25rem',
-          }}
-        >
+      <div className="auth-field">
+        <div className="auth-field-row">
           <label className="auth-label" htmlFor="password">
             Contraseña
           </label>
-          <Link
-            href="/forgot-password"
-            style={{
-              color: 'var(--color-muted-foreground)',
-              textDecoration: 'none',
-              fontSize: '0.8rem',
-            }}
-          >
+          <Link href="/forgot-password" className="auth-link-muted">
             ¿Olvidaste la contraseña?
           </Link>
         </div>
@@ -92,9 +77,10 @@ export function PasswordLoginForm({ next, hideInviteHint = false }: PasswordLogi
             fontSize: '0.8rem',
             color: 'var(--color-muted-foreground)',
             margin: 0,
-            paddingTop: '0.5rem',
+            paddingTop: '0.85rem',
             borderTop: '1px solid var(--color-border)',
             textAlign: 'center',
+            lineHeight: 1.45,
           }}
         >
           ¿Tienes invitación? Abre el enlace que recibiste por email.

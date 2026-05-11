@@ -27,7 +27,7 @@ export function ResetPasswordForm() {
 
   return (
     <form action={formAction} className="auth-form">
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="password">
           Nueva contraseña
         </label>
@@ -44,7 +44,7 @@ export function ResetPasswordForm() {
         />
       </div>
 
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="password_confirm">
           Repite la contraseña
         </label>

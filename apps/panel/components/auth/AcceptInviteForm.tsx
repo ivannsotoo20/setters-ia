@@ -39,21 +39,19 @@ export function AcceptInviteForm({
           padding: '0.875rem 1rem',
           display: 'flex',
           flexDirection: 'column',
-          gap: '0.25rem',
+          gap: '0.3rem',
         }}
       >
-        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-muted-foreground)' }}>
-          Invitación a <strong style={{ color: 'var(--color-foreground)' }}>{contextLabel}</strong>
+        <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-muted-foreground)', letterSpacing: '0.01em' }}>
+          Invitación a <strong style={{ color: 'var(--color-foreground)', fontWeight: 600 }}>{contextLabel}</strong>
         </p>
-        <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-foreground)' }}>
-          {email}
-        </p>
-        <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-accent)' }}>
+        <p style={{ margin: 0, fontSize: '0.95rem', color: 'var(--color-foreground)' }}>{email}</p>
+        <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-accent)', fontWeight: 500 }}>
           Rol: {roleLabel}
         </p>
       </div>
 
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="full_name">
           Nombre completo
         </label>
@@ -70,7 +68,7 @@ export function AcceptInviteForm({
         />
       </div>
 
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="password">
           Crea tu contraseña
         </label>
@@ -87,7 +85,7 @@ export function AcceptInviteForm({
         />
       </div>
 
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="password_confirm">
           Repite la contraseña
         </label>

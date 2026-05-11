@@ -17,7 +17,7 @@ export function ForgotPasswordForm() {
 
   return (
     <form action={formAction} className="auth-form">
-      <div>
+      <div className="auth-field">
         <label className="auth-label" htmlFor="email">
           Email
         </label>
@@ -53,12 +53,12 @@ export function ForgotPasswordForm() {
           fontSize: '0.875rem',
           color: 'var(--color-muted-foreground)',
           margin: 0,
-          paddingTop: '0.5rem',
+          paddingTop: '0.85rem',
           borderTop: '1px solid var(--color-border)',
           textAlign: 'center',
         }}
       >
-        <Link href="/login" style={{ color: 'var(--color-accent)', textDecoration: 'underline' }}>
+        <Link href="/login" style={{ color: 'var(--color-accent)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
           Volver a iniciar sesión
         </Link>
       </p>
