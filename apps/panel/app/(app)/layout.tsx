@@ -3,7 +3,6 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
-import { ImpersonateBanner } from '@/components/impersonate-banner';
 import { ScopeSwitcher } from '@/components/scope-switcher';
 import { getImpersonateTenantId } from '@/lib/impersonate';
 
@@ -84,9 +83,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             impersonatingTenantName={impersonatingTenantName}
           />
         </header>
-        {impersonatingTenantName ? (
-          <ImpersonateBanner tenantName={impersonatingTenantName} />
-        ) : null}
+        {/*
+          Banner de impersonate eliminado a petición del usuario (Hito 11.1).
+          La señal visual de que está impersonando ya está en:
+            - Badge del ScopeSwitcher en el header.
+            - Subtítulo "Viendo: <tenant>" del sidebar.
+          Para salir del modo viendo: ScopeSwitcher → "Vista admin", o ir a /admin/tenants.
+        */}
         <main className="flex-1 min-w-0 p-6 md:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
