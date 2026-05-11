@@ -139,8 +139,10 @@ export async function requestPasswordResetAction(
   const supabase = await createSupabaseServerClient();
   const origin = await getOriginFromHeaders();
 
+  // Pasamos por /auth/callback para intercambiar el code por sesión recovery,
+  // luego el callback redirige a /reset-password con sesión activa.
   await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/reset-password`,
+    redirectTo: `${origin}/auth/callback?type=recovery`,
   });
 
   // Audit log via service_role (best effort — no bloquear UX si falla).
