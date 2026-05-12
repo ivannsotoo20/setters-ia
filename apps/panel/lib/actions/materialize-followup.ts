@@ -241,6 +241,11 @@ export async function materializeFollowupSequenceForConv(
   const startHour = Number(cfg.window_start_hour);
   const endHour = Number(cfg.window_end_hour);
   const created: number[] = [];
+  // Sprint Iota.3 — garantizar scheduled_at estrictamente monotónico para que
+  // el window-adjustment no colapse dos intervals al mismo segundo (causaba el
+  // bug de 2 mensajes simultáneos del 12/5 07:21).
+  let lastScheduledMs = 0;
+  const MIN_GAP_MS = 5 * 60 * 1000; // 5 min mínimo entre FUs consecutivos
 
   for (let idx = sent; idx < Math.min(intervals.length, maxFromConfig); idx++) {
     const intervalHours = intervals[idx]!;
@@ -272,6 +277,15 @@ export async function materializeFollowupSequenceForConv(
     // tanto tiempo entre la respuesta del lead y el followup automático no
     // tiene sentido conversacional).
     if (scheduledAt.getTime() > lastLeadMs + HOURS_24_MS) continue;
+
+    // Sprint Iota.3 — forzar gap mínimo respecto al schedule anterior creado
+    // en esta misma secuencia. Si dos intervals colapsaron al mismo punto por
+    // el window-adjustment, separamos al menos MIN_GAP_MS para evitar que
+    // outbound-sender los pesque juntos y los envíe duplicados.
+    if (lastScheduledMs > 0 && scheduledAt.getTime() <= lastScheduledMs) {
+      scheduledAt = new Date(lastScheduledMs + MIN_GAP_MS);
+      if (scheduledAt.getTime() > lastLeadMs + HOURS_24_MS) continue;
+    }
 
     // Sprint Iota.1.e — pre-generar el mensaje IA AHORA (no esperar al envío)
     // para que el panel del chat lo muestre como preview real, no placeholder.
@@ -316,8 +330,15 @@ export async function materializeFollowupSequenceForConv(
       })
       .select('id')
       .single();
-    if (error || !data) continue; // best-effort
+    if (error || !data) {
+      // Sprint Iota.3 — 23505 (unique_violation) por índice
+      // uq_followup_unique_scheduled_per_conv significa que ya existe un
+      // pending/processing para esta conv + scheduled_at exacto. Skip silencioso.
+      // Otros errores: best-effort, continuamos con el siguiente interval.
+      continue;
+    }
     created.push(Number(data.id));
+    lastScheduledMs = scheduledAt.getTime();
   }
 
   if (created.length === 0) {

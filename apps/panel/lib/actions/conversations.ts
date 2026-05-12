@@ -297,33 +297,11 @@ export async function listConversationNotes(
   };
 }
 
-// ---- delete (soft: state=closed + is_blocked) ----------------------------
-
-export async function deleteConversation(
-  conversationId: number,
-): Promise<ConversationActionResult> {
-  const auth = await requireConvAccess(conversationId);
-  if (!auth.ok) return auth;
-  if (!auth.ctx.isAgencyAdmin && auth.ctx.role !== 'owner') {
-    return { ok: false, error: 'forbidden — solo el owner puede eliminar' };
-  }
-
-  const supabase = getServiceRoleClient();
-  const { error } = await supabase
-    .from('conversations')
-    .update({
-      state: 'closed',
-      is_blocked: true,
-      ai_paused_until: 'infinity',
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', conversationId)
-    .eq('tenant_id', auth.ctx.tenantId);
-
-  if (error) return { ok: false, error: error.message };
-  revalidateConv(conversationId);
-  return { ok: true };
-}
+// NOTA: `deleteConversation` (soft-delete) eliminada en Sprint Iota.3
+// (2026-05-12). El botón papelera de la conversación dispara ahora hard-delete
+// del lead completo vía `deleteContactDataAction` (apps/panel/lib/actions/gdpr.ts).
+// Doctrina Iván: no hay opción de soft-delete desde la UI — quien quiera
+// archivar usa el toggle de Pausar IA + Bloquear contacto por separado.
 
 // ---- sendManualMessage (envío manual desde el composer del panel) ---------
 

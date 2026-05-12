@@ -135,7 +135,6 @@ import {
   addConversationNote,
   deleteConversationNote,
   listConversationNotes,
-  deleteConversation,
 } from '@/lib/actions/conversations';
 
 describe('Sprint Zeta server actions', () => {
@@ -290,22 +289,7 @@ describe('Sprint Zeta server actions', () => {
     });
   });
 
-  describe('deleteConversation (soft)', () => {
-    it('owner soft-elimina: state=closed, blocked, paused', async () => {
-      const result = await deleteConversation(10);
-      expect(result.ok).toBe(true);
-      const updateCall = updateCalls.find((c) => c.table === 'conversations');
-      expect(updateCall?.payload).toMatchObject({
-        state: 'closed',
-        is_blocked: true,
-        ai_paused_until: 'infinity',
-      });
-    });
-
-    it('collaborator NO puede eliminar', async () => {
-      mockEffectiveTenant = { ...mockEffectiveTenant!, role: 'admin' };
-      const result = await deleteConversation(10);
-      expect(result.ok).toBe(false);
-    });
-  });
+  // Tests de `deleteConversation` (soft) eliminados en Sprint Iota.3
+  // (2026-05-12) — la función ya no existe. El botón papelera dispara hard-delete
+  // del lead vía `deleteContactDataAction` (cubierto por `gdpr.test.ts`).
 });
