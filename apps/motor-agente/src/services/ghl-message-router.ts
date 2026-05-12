@@ -24,6 +24,7 @@ import type {
 } from '@fyzon/channel-adapters';
 import { GhlClient } from '@fyzon/ghl-client';
 import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { isAiPausedFromDb } from '../lib/ai-pause.js';
 import { logger } from '../lib/logger.js';
 import {
   getOrCreateChannel,
@@ -356,21 +357,24 @@ export async function routeGhlInbound(
     }
   }
 
-  // 6) Verificar si IA está pausada en esta conversación
+  // 6) Verificar si IA está pausada en esta conversación.
+  //    Bug fix (2026-05-12): usar `isAiPausedFromDb` que maneja correctamente
+  //    `'infinity'` literal de PostgreSQL (antes `new Date('infinity')` daba
+  //    Invalid Date y la pausa se ignoraba silenciosamente).
   const { data: convCheck } = await supabase
     .from('conversations')
     .select('ai_paused_until')
     .eq('id', conversationId)
     .maybeSingle();
-  const pausedUntil = convCheck?.ai_paused_until ? new Date(convCheck.ai_paused_until) : null;
-  const isAiPaused = pausedUntil !== null && pausedUntil.getTime() > Date.now();
+  const rawPausedUntil = (convCheck?.ai_paused_until as string | null | undefined) ?? null;
+  const isAiPaused = isAiPausedFromDb(rawPausedUntil);
 
   // 7) Enqueue debounce solo si IA NO está pausada
   if (!isAiPaused) {
     await enqueueDebounce(redis, conversationId, ctx.debounceWindowSeconds);
   } else {
     logger.info(
-      { conversationId, tenantId: inbound.tenantId, pausedUntil: pausedUntil?.toISOString() },
+      { conversationId, tenantId: inbound.tenantId, pausedUntil: rawPausedUntil },
       'routeGhlInbound: IA pausada, no se encola debounce',
     );
   }

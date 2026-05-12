@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
+import { isAiPausedFromDb } from '../lib/ai-pause.js';
 import { enrichMediaMessages, type EnrichMediaResult } from './enrich-media-messages.js';
 import {
   computeScheduledTimes,
@@ -72,23 +73,26 @@ export async function processDebounced(
   const currentPhase = Number(conv.phase_number) || 1;
 
   // 1.5. Gate: si IA está pausada (humano se hizo cargo via OutboundMessage GHL
-  // sin ZWSP, o pausa manual desde el panel), no ejecutar pipeline.
-  // ai_paused_until = NULL → IA activa. Fecha futura o 'infinity' → pausada.
-  if (conv.ai_paused_until) {
-    const pausedUntil = new Date(conv.ai_paused_until);
-    if (Number.isFinite(pausedUntil.getTime()) && pausedUntil.getTime() > Date.now()) {
-      return {
-        conversationId,
-        scheduleIds: [],
-        parts: [],
-        totalCostUsd: 0,
-        totalLatencyMs: 0,
-        pipelineStatus: 'skipped',
-        phase: currentPhase,
-        skipped: true,
-        reason: `IA pausada hasta ${pausedUntil.toISOString()} (humano se hizo cargo)`,
-      };
-    }
+  // sin ZWSP, pausa manual desde panel, o gate `ghl_inbound_mode=classified_only`
+  // por conversación sin source clasificada), no ejecutar pipeline.
+  //
+  // Bug fix (2026-05-12): usar `isAiPausedFromDb` que maneja correctamente el
+  // string literal `'infinity'` que PostgreSQL devuelve. Antes `new Date('infinity')`
+  // daba Invalid Date (NaN) → la pausa se ignoraba silenciosamente → IA seguía
+  // respondiendo aunque conversaciones tuvieran ai_paused_until='infinity'.
+  const rawPausedUntil = (conv.ai_paused_until as string | null | undefined) ?? null;
+  if (isAiPausedFromDb(rawPausedUntil)) {
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: 0,
+      totalLatencyMs: 0,
+      pipelineStatus: 'skipped',
+      phase: currentPhase,
+      skipped: true,
+      reason: `IA pausada (ai_paused_until=${rawPausedUntil}) — humano se hizo cargo o conv sin source clasificada`,
+    };
   }
 
   // 2. Cargar lead (para subscriber_id externo, requerido por el outbound luego)
