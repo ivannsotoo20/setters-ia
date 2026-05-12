@@ -19,8 +19,33 @@ import { personalizeFollowupMessage } from './personalize-followup.js';
 import { getAnthropic } from '../lib/anthropic.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
+import { isAiPausedFromDb } from '../lib/ai-pause.js';
 
 type SupportedProvider = 'manychat' | 'ycloud' | 'ghl';
+
+export type ConvState = {
+  id: number;
+  state: string;
+  is_blocked: boolean;
+  ai_paused_until: string | null;
+};
+
+/**
+ * Sprint Iota.3 hotfix — decide si un outbound schedule debe enviarse o cancelarse
+ * en función del estado de su conversación. Doctrina: "IA pausada/bloqueada/cerrada
+ * = motor NO envía". Si devuelve string → razón de cancelación. Si null → enviar.
+ *
+ * Aplica a CUALQUIER tipo de schedule outbound (follow_up, message, resource).
+ * Antes solo se evaluaba en inbound (pipeline Generator); los FUs programados
+ * salían aunque el trainer hubiera pausado la IA.
+ */
+export function outboundGateSkipReason(cv: ConvState | undefined): string | null {
+  if (!cv) return 'conv not found';
+  if (cv.state === 'closed') return 'conv state=closed';
+  if (cv.is_blocked) return 'conv is_blocked';
+  if (isAiPausedFromDb(cv.ai_paused_until)) return 'ai paused';
+  return null;
+}
 
 export interface SendBatchDeps {
   supabase: SupabaseClient;
@@ -85,8 +110,55 @@ export async function sendNextBatch(
   const ids = candidates.map((c) => Number(c.id));
   await supabase.from('message_schedules').update({ status: 'processing' }).in('id', ids);
 
-  // 3. Procesar uno a uno
+  // 2.5 Sprint Iota.3 hotfix CRÍTICO (2026-05-12) — gate IA pausada en outbound.
+  //
+  // BUG previo: outbound-sender pescaba schedules pending y los enviaba SIN
+  // mirar `conversations.ai_paused_until`, `is_blocked` ni `state`. Resultado:
+  // si el trainer pausaba la IA después de que el panel materializara un FU,
+  // el motor enviaba el mensaje pausado igual. Violación del contrato
+  // "IA pausada = IA no escribe". Confirmado en prod 2026-05-12:
+  // schedules 143/141/146 enviados a Celebraciones, francisco, Jony con
+  // ai_paused_until='9999-12-31'.
+  //
+  // Fix: cargar estado de cada conv del batch en una sola query, y para los
+  // schedules cuyas convs estén pausadas/bloqueadas/cerradas, marcarlos
+  // 'cancelled' con last_error y saltarlos del envío.
+  const convIds = Array.from(new Set(candidates.map((c) => Number(c.conversation_id))));
+  const { data: convStatesRaw } = await supabase
+    .from('conversations')
+    .select('id, state, is_blocked, ai_paused_until')
+    .in('id', convIds);
+  const convMap = new Map<number, ConvState>();
+  for (const r of (convStatesRaw ?? []) as ConvState[]) {
+    convMap.set(Number(r.id), r);
+  }
+
+  const cancelledIds: number[] = [];
+  const sendableCandidates: typeof candidates = [];
   for (const row of candidates) {
+    const cv = convMap.get(Number(row.conversation_id));
+    const reason = outboundGateSkipReason(cv);
+    if (reason) {
+      cancelledIds.push(Number(row.id));
+      result.skipped++;
+      result.details.push({ scheduleId: Number(row.id), status: 'skipped', error: reason });
+      continue;
+    }
+    sendableCandidates.push(row);
+  }
+
+  if (cancelledIds.length > 0) {
+    await supabase
+      .from('message_schedules')
+      .update({
+        status: 'cancelled',
+        last_error: 'outbound gate: conv paused/blocked/closed',
+      })
+      .in('id', cancelledIds);
+  }
+
+  // 3. Procesar uno a uno (solo los que pasaron el gate)
+  for (const row of sendableCandidates) {
     const scheduleId = Number(row.id);
     let messageText = String(row.message ?? '');
     const messageType = String(row.message_type ?? 'message');
