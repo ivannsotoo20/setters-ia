@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
-import { personalizeFollowupAtMaterialize } from '@/lib/personalize-followup';
 import type { ActionResult } from './followups';
 
 /**
@@ -287,27 +286,24 @@ export async function materializeFollowupSequenceForConv(
       if (scheduledAt.getTime() > lastLeadMs + HOURS_24_MS) continue;
     }
 
-    // Sprint Iota.1.e — pre-generar el mensaje IA AHORA (no esperar al envío)
-    // para que el panel del chat lo muestre como preview real, no placeholder.
+    // Sprint Iota.3 hotfix — NO pre-generar Haiku al materializar (doctrina
+    // 2026-05-12). Razón: el trainer abre conversaciones múltiples veces y cada
+    // entrada disparaba 1 Haiku por interval → gasto desproporcionado vs valor.
     //
-    // Fallback Iota.1.f: si pre-gen falla (no hay ANTHROPIC_API_KEY en env del
-    // panel, timeout, etc.) usamos `default_followup_text` como body literal
-    // para que el panel SIEMPRE muestre algo concreto, nunca un placeholder.
-    let preGenerated: string | null = null;
-    if (tpl.aiPersonalize && tpl.aiGuide) {
-      const result = await personalizeFollowupAtMaterialize({
-        supabase,
-        conversationId,
-        aiGuide: tpl.aiGuide,
-      });
-      if (result.ok) {
-        preGenerated = result.message;
-      } else if (cfg.default_followup_text) {
-        // Fallback: texto fijo del trainer (lo ve el lead literal — mejor que nada).
-        preGenerated = String(cfg.default_followup_text);
-      }
-      // Si tampoco hay default: schedule queda con message=null y el motor regenera.
-    }
+    // Doctrina nueva:
+    //   - Preview en el panel = `default_followup_text` literal (lo que el
+    //     trainer ya configuró en /settings/followup-templates).
+    //   - El motor `outbound-sender.ts:101-117` regenera con Haiku JUSTO antes
+    //     de enviar si `message` está vacío y `ai_personalize=true`. Mensaje
+    //     enviado = personalizado con contexto FRESCO.
+    //   - Botón "Regenerar" del panel sigue funcionando: el trainer pide preview
+    //     real bajo demanda (regenerateFollowupMessage action). 1 Haiku por click.
+    //
+    // Resultado: 0 Haiku por apertura de conv; 1 Haiku por FU realmente enviado;
+    // +1 Haiku opcional por cada click "Regenerar".
+    const previewMessage = tpl.aiPersonalize
+      ? (cfg.default_followup_text ? String(cfg.default_followup_text) : null)
+      : tpl.body;
 
     const { data, error } = await supabase
       .from('message_schedules')
@@ -316,7 +312,7 @@ export async function materializeFollowupSequenceForConv(
         conversation_id: conversationId,
         integration_account_id: Number(ia.id),
         message_type: 'follow_up',
-        message: tpl.aiPersonalize ? preGenerated : tpl.body,
+        message: previewMessage,
         has_attachment: false,
         scheduled_at: scheduledAt.toISOString(),
         status: 'pending',

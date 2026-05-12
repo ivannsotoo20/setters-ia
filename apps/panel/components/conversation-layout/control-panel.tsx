@@ -13,6 +13,21 @@ interface Props {
   lastLeadMessageAt: string | null;
 }
 
+// Sprint Iota.3 hotfix — patrón simplificado: el aside hace su propio
+// `h-full + overflow-y-auto` directamente. El wrapper anterior (`relative`
+// + `absolute inset-0`) era frágil porque dependía de que el grid cell padre
+// propagase altura concreta vía `h-full`, y en flex-column eso falla.
+// Ahora el aside es el scroll container directo. Requiere que el padre tenga
+// altura definida (lo garantiza `conversation-shell.tsx` con `h-full
+// overflow-hidden` en cada celda).
+const ASIDE_BASE =
+  'h-full w-full overflow-y-auto flex flex-col gap-4 p-4 pb-8 border-l border-border bg-card/30 ' +
+  '[scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 ' +
+  '[&::-webkit-scrollbar-track]:bg-transparent ' +
+  '[&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 ' +
+  '[&::-webkit-scrollbar-thumb]:rounded-full ' +
+  '[&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/60';
+
 export function ControlPanel({
   detail,
   followups,
@@ -22,36 +37,26 @@ export function ControlPanel({
 }: Props) {
   if (!detail) {
     return (
-      <div className="relative h-full w-full hidden lg:block">
-        <aside
-          className="absolute inset-0 flex flex-col gap-4 p-4 border-l border-border bg-card/30 overflow-y-auto items-center justify-center text-center text-sm text-muted-foreground"
-          aria-label="Panel de control"
-        >
-          <p>Selecciona una conversación para ver el panel de control.</p>
-        </aside>
-      </div>
+      <aside
+        className={`${ASIDE_BASE} items-center justify-center text-center text-sm text-muted-foreground`}
+        aria-label="Panel de control"
+      >
+        <p>Selecciona una conversación para ver el panel de control.</p>
+      </aside>
     );
   }
 
-  // Sprint Iota.2 — wrapper relative + aside absolute inset-0 fuerza altura
-  // concreta y scroll robusto en cualquier viewport (mobile/tablet/desktop).
-  // Antes con flex/grid sólo a veces el aside expandía con el contenido.
   return (
-    <div className="relative h-full w-full">
-      <aside
-        className="absolute inset-0 flex flex-col gap-4 p-4 pb-8 border-l border-border bg-card/30 overflow-y-auto [scrollbar-gutter:stable] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-muted-foreground/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb:hover]:bg-muted-foreground/60"
-        aria-label="Panel de control"
-      >
-        <LeadInfoCard detail={detail} />
-        <FunnelPhaseIndicator detail={detail} />
-        <AIControlPanel
-          detail={detail}
-          followups={followups}
-          followupConfig={followupConfig}
-          canManageFollowups={canManageFollowups}
-          lastLeadMessageAt={lastLeadMessageAt}
-        />
-      </aside>
-    </div>
+    <aside className={ASIDE_BASE} aria-label="Panel de control">
+      <LeadInfoCard detail={detail} />
+      <FunnelPhaseIndicator detail={detail} />
+      <AIControlPanel
+        detail={detail}
+        followups={followups}
+        followupConfig={followupConfig}
+        canManageFollowups={canManageFollowups}
+        lastLeadMessageAt={lastLeadMessageAt}
+      />
+    </aside>
   );
 }

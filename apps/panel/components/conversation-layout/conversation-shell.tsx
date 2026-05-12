@@ -66,16 +66,16 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
         {thread}
       </div>
 
-      {/* Panel pane (lg+ only) — Sprint Iota.3: clamp explícito de altura
-          (overflow-hidden + flex-col) para que el grid no expanda la celda al
-          contenido natural del aside. Sin esto, en algunos viewports el wrapper
-          relative del aside no encontraba altura concreta y `absolute inset-0
-          overflow-y-auto` no activaba scroll. */}
-      <div className="hidden lg:flex lg:flex-col min-w-0 min-h-0 h-full max-h-full overflow-hidden">
+      {/* Panel pane (lg+ only) — Sprint Iota.3 hotfix: wrapper simple
+          `block + h-full + overflow-hidden`. El aside hijo
+          (control-panel.tsx) hace su propio `h-full overflow-y-auto`. */}
+      <div className="hidden lg:block min-w-0 min-h-0 h-full overflow-hidden">
         {panel}
       </div>
 
-      {/* Tablet (md only): Sheet derecho disparado por botón flotante */}
+      {/* Tablet (md only): Sheet derecho disparado por botón flotante.
+          El SheetContent es `flex flex-col` para que el aside hijo con
+          `h-full overflow-y-auto` controle su propio scroll sin doble barra. */}
       <div className="hidden md:flex lg:hidden fixed right-4 bottom-4 z-20">
         <Sheet>
           <SheetTrigger asChild>
@@ -84,7 +84,7 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
               Detalle
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:max-w-md p-0 overflow-y-auto">
+          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
             {panel}
           </SheetContent>
         </Sheet>
@@ -122,12 +122,12 @@ export function ConversationShell({ list, thread, panel, hasSelection }: Props) 
       </nav>
 
       {/* Mobile panel pane (renderizado solo cuando esa tab está activa).
-          Sprint Iota.3 — añadido overflow-hidden + flex-col por simetría con el
-          panel lg+ y consistencia de scroll en mobile. */}
+          Sprint Iota.3 hotfix — wrapper simple block + h-full + overflow-hidden.
+          El aside hijo controla su propio scroll. */}
       <div
         className={cn(
-          'md:hidden min-w-0 min-h-0 h-full max-h-full overflow-hidden',
-          mobileView === 'panel' ? 'flex flex-col' : 'hidden',
+          'md:hidden min-w-0 min-h-0 h-full overflow-hidden',
+          mobileView === 'panel' ? 'block' : 'hidden',
         )}
       >
         {panel}
