@@ -49,7 +49,7 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
   const listPromise = supabase
     .from('conversations')
     .select(
-      `id, lead_id, channel_id, phase_number, state, conversation_source,
+      `id, lead_id, channel_id, phase_number, state, conversation_source, direction,
        ai_paused_until, last_message_at, created_at, updated_at,
        is_qualified, is_handoff_to_human, is_unread, is_blocked, assigned_user_id,
        leads(first_name, last_name, username, external_id),

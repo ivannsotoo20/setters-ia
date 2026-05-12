@@ -42,6 +42,37 @@ export function formatChannelShort(channel: ConversationListChannel | null | und
   return channel.channel_type;
 }
 
+/**
+ * Sprint A (2026-05-12) — Devuelve etiqueta corta del direction de la
+ * conversación:
+ *   - `'inbound'` → `'IN'` (lead escribió primero a la página).
+ *   - `'outbound'` → `'OT'` (trainer/IA inició la conv: bienvenida, lm, etc.).
+ *   - `'untagged'` o null/undefined → `'—'`.
+ */
+export function formatDirection(
+  direction: 'inbound' | 'outbound' | 'untagged' | string | null | undefined,
+): string {
+  if (direction === 'inbound') return 'IN';
+  if (direction === 'outbound') return 'OT';
+  return '—';
+}
+
+/**
+ * Sprint A (2026-05-12) — Combina channel + direction para el badge compacto:
+ *   - `IG-IN`, `IG-OT`, `WA-IN`, `WA-OT`, `FB-IN`, `FB-OT`.
+ *   - Si direction no clasificada, devuelve solo el canal corto (sin sufijo).
+ */
+export function formatChannelDirectionShort(
+  channel: ConversationListChannel | null | undefined,
+  direction: 'inbound' | 'outbound' | 'untagged' | string | null | undefined,
+): string {
+  const ch = formatChannelShort(channel);
+  if (ch === '—') return '—';
+  const dir = formatDirection(direction);
+  if (dir === '—') return ch;
+  return `${ch}-${dir}`;
+}
+
 export function isAiPaused(rawUntil: string | null | undefined): boolean {
   if (!rawUntil) return false;
   if (rawUntil === 'infinity') return true;

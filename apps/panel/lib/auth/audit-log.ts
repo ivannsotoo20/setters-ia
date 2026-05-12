@@ -6,7 +6,9 @@ export type AuditAction =
   | 'member.role_changed'
   | 'member.removed'
   | 'member.reactivated'
-  | 'tenant.impersonated';
+  | 'tenant.impersonated'
+  | 'gdpr.exported'
+  | 'gdpr.deleted';
 
 export interface LogAuditEventArgs {
   tenantId: number;

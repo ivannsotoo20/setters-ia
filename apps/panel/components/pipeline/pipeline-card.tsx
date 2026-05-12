@@ -10,7 +10,7 @@ import { LabelChip } from '@/components/labels/label-chip';
 import {
   formatLeadName,
   leadInitials,
-  formatChannelShort,
+  formatChannelDirectionShort,
   formatRelative,
   isAiPaused,
 } from '@/components/conversation-layout/format-helpers';
@@ -69,7 +69,7 @@ export function PipelineCard({ card, columnId, canDrag, assigneeLabel }: Props) 
           </Link>
           <div className="flex items-center gap-1 flex-wrap">
             <Badge variant="outline" className="h-3.5 text-[8px] px-1 font-normal shrink-0">
-              {formatChannelShort(channel)}
+              {formatChannelDirectionShort(channel, card.direction)}
             </Badge>
             <Badge variant="secondary" className="h-3.5 text-[8px] px-1 font-mono shrink-0">
               F{card.phaseNumber}

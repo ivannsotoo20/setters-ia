@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   formatLeadName,
   leadInitials,
-  formatChannelShort,
+  formatChannelDirectionShort,
   formatRelative,
   isAiPaused,
 } from './format-helpers';
@@ -76,7 +76,7 @@ export function ConversationListItem({ row, isSelected, assigneeLabel }: Props) 
           </div>
           <div className="flex items-center gap-1.5 flex-wrap">
             <Badge variant="outline" className="h-4 text-[9px] px-1.5 font-normal shrink-0">
-              {formatChannelShort(channel)}
+              {formatChannelDirectionShort(channel, row.direction)}
             </Badge>
             <Badge variant="secondary" className="h-4 text-[9px] px-1.5 font-mono shrink-0">
               F{row.phase_number}

@@ -60,7 +60,9 @@ export async function processDebounced(
   // 1. Cargar conversación + tenant
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
-    .select('id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until')
+    .select(
+      'id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until, conversation_source',
+    )
     .eq('id', conversationId)
     .maybeSingle();
   if (convErr) throw new Error(`processDebounced: ${convErr.message}`);
@@ -252,7 +254,19 @@ export async function processDebounced(
   });
 
   // 9. Actualizar fase de la conversación según el setter
-  const newPhase = pipelineOut.generator.setterOutput.phase_decision;
+  const generatorPhase = pipelineOut.generator.setterOutput.phase_decision;
+  const convSource = (conv.conversation_source as string | null | undefined) ?? null;
+  const newPhase = computeAutoPromotedPhase({
+    currentPhase,
+    generatorPhase,
+    conversationSource: convSource,
+  });
+  if (newPhase !== generatorPhase) {
+    console.log(
+      `[auto-phase] conv=${conversationId} source=${convSource} generatorPhase=${generatorPhase} → F${newPhase}`,
+    );
+  }
+
   const newStatus = mapConversationStatus(pipelineOut.generator.setterOutput.conversation_status);
   await supabase
     .from('conversations')
@@ -390,4 +404,34 @@ function mapStatusToEventType(
     case 'paused':
       return null;
   }
+}
+
+/**
+ * Sprint C (2026-05-12) — Auto-promotion F1→F2 cuando un lead responde a una
+ * conv outbound clasificada (bienvenida / lm / inbound).
+ *
+ * Reglas:
+ *  - Solo aplica si `conversationSource` está en `AUTO_PROMOTE_SOURCES`.
+ *  - Solo si la fase actual es 1 (lead respondió a la bienvenida, aún no
+ *    se progresó).
+ *  - Respeta la decisión del Generator si ya sube más alto (≥2).
+ *
+ * El trigger DB `log_phase_change` (migration 025) registra automáticamente
+ * el evento en `pipeline_events` con `source='motor'`, lo que alimenta las
+ * métricas funnel `% bienvenidas convertidas` sin trabajo extra.
+ */
+export const AUTO_PROMOTE_SOURCES = new Set(['bienvenida', 'lm', 'inbound']);
+
+export function computeAutoPromotedPhase(args: {
+  currentPhase: number;
+  generatorPhase: number;
+  conversationSource: string | null | undefined;
+}): number {
+  const { currentPhase, generatorPhase, conversationSource } = args;
+  if (!conversationSource || !AUTO_PROMOTE_SOURCES.has(conversationSource)) {
+    return generatorPhase;
+  }
+  if (currentPhase !== 1) return generatorPhase;
+  if (generatorPhase >= 2) return generatorPhase;
+  return 2;
 }

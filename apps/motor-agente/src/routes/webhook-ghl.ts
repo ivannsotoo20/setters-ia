@@ -18,7 +18,10 @@ import {
   routeGhlInbound,
   routeGhlOutbound,
 } from '../services/ghl-message-router.js';
-import { resolveTenantByToken } from '../services/lead-ingest.js';
+import {
+  resolveTenantByOauthLocation,
+  resolveTenantByToken,
+} from '../services/lead-ingest.js';
 
 const DEFAULT_DEBOUNCE_SECONDS = 25;
 
@@ -426,34 +429,6 @@ async function loadExpectedLocationId(
   if (!ia) return null;
   const cfg = (ia.connection_config ?? {}) as Record<string, unknown>;
   return typeof cfg.locationId === 'string' ? cfg.locationId : null;
-}
-
-/**
- * Resolver tenant_id buscando un `integration_accounts` activo con
- * `provider='ghl'` + `connection_config.auth_type='oauth'` + `connection_config.locationId=<X>`.
- *
- * Usado por el handler `/integrations/webhook/oauth` (Bloque C.E) — los
- * webhooks de la App Marketplace no llevan token en URL, vienen identificados
- * por locationId del payload.
- */
-async function resolveTenantByOauthLocation(
-  supabase: ReturnType<typeof getSupabase>,
-  locationId: string,
-): Promise<number | null> {
-  if (!locationId) return null;
-  const { data, error } = await supabase
-    .from('integration_accounts')
-    .select('tenant_id, connection_config')
-    .eq('provider', 'ghl')
-    .eq('is_active', true);
-  if (error || !data) return null;
-  for (const row of data) {
-    const cc = (row.connection_config ?? {}) as { auth_type?: string; locationId?: string };
-    if (cc.auth_type === 'oauth' && cc.locationId === locationId) {
-      return Number(row.tenant_id);
-    }
-  }
-  return null;
 }
 
 async function loadDebounceWindow(

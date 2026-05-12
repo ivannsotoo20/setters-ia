@@ -39,6 +39,46 @@ export async function resolveTenantByToken(
   return { tenantId: Number(data.tenant_id), tokenId: Number(data.id) };
 }
 
+/**
+ * Resuelve el tenant_id a partir del `locationId` de un payload de la App
+ * Marketplace GHL (OAuth). Usado por `POST /integrations/webhook/oauth`, donde
+ * el webhook común a todas las sub-cuentas instaladas viene SIN token en path
+ * — el routing se hace exclusivamente por `connection_config.locationId`
+ * en la tabla `integration_accounts`.
+ *
+ * Filtra por:
+ *  - provider = 'ghl'
+ *  - is_active = true
+ *  - connection_config.auth_type = 'oauth' (excluye configs manuales/legacy
+ *    para evitar colisión con paths Workflow custom de Hito 9).
+ *  - connection_config.locationId = <input>
+ *
+ * Devuelve `null` si no hay match (caller debería ack 200 ignored para no
+ * romper retries del provider ni revelar info de tenants).
+ */
+export async function resolveTenantByOauthLocation(
+  supabase: SupabaseClient,
+  locationId: string,
+): Promise<number | null> {
+  if (!locationId) return null;
+  const { data, error } = await supabase
+    .from('integration_accounts')
+    .select('tenant_id, connection_config')
+    .eq('provider', 'ghl')
+    .eq('is_active', true);
+  if (error || !data) return null;
+  for (const row of data) {
+    const cc = (row.connection_config ?? {}) as {
+      auth_type?: string;
+      locationId?: string;
+    };
+    if (cc.auth_type === 'oauth' && cc.locationId === locationId) {
+      return Number(row.tenant_id);
+    }
+  }
+  return null;
+}
+
 interface GetOrCreateChannelParams {
   supabase: SupabaseClient;
   tenantId: number;

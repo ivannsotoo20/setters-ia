@@ -7,6 +7,7 @@ import { getContactDetail } from '@/lib/actions/contacts';
 import { listLabels } from '@/lib/actions/labels';
 import { listMembers } from '@/lib/actions/members';
 import { ContactDetail } from '@/components/contacts/contact-detail';
+import { ContactGdprActions } from '@/components/contacts/contact-gdpr-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,15 @@ export default async function ContactDetailPage({ params }: PageProps) {
     effective.isAgencyAdmin ||
     effective.role === 'owner' ||
     effective.role === 'admin';
+  const canManageGdpr = effective.isAgencyAdmin || effective.role === 'owner';
+
+  const lead = detailRes.data.lead;
+  const leadDisplayName =
+    [lead.first_name, lead.last_name].filter(Boolean).join(' ').trim() ||
+    lead.username ||
+    lead.phone ||
+    lead.email ||
+    `Lead #${lead.id}`;
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-background">
@@ -47,12 +57,12 @@ export default async function ContactDetailPage({ params }: PageProps) {
           </Link>
         </Button>
         <span className="h-5 w-px bg-border" aria-hidden />
-        <span className="text-sm text-muted-foreground">ID #{detailRes.data.lead.id}</span>
+        <span className="text-sm text-muted-foreground">ID #{lead.id}</span>
       </header>
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="mx-auto max-w-3xl">
           <ContactDetail
-            lead={detailRes.data.lead}
+            lead={lead}
             events={detailRes.data.events}
             notes={detailRes.data.notes}
             allLabels={allLabels}
@@ -61,6 +71,13 @@ export default async function ContactDetailPage({ params }: PageProps) {
             canWrite={canWrite}
             showOpenInPage={false}
           />
+          <div className="px-4 pb-8">
+            <ContactGdprActions
+              leadId={lead.id}
+              canManageGdpr={canManageGdpr}
+              leadDisplayName={leadDisplayName}
+            />
+          </div>
         </div>
       </div>
     </div>

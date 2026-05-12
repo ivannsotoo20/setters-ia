@@ -238,6 +238,41 @@ export async function routeGhlInbound(
       .eq('id', conversationId);
   }
 
+  // 4.7) Sprint B (Hito 9 + 2026-05-12) — Gate `ghl_inbound_mode='classified_only'`.
+  //      Si el tenant tiene el modo classified_only y la conv NO tiene origen
+  //      clasificado (ni el customData del webhook lo proporcionó), pausamos IA
+  //      ANTES de encolar debounce. Resultado: conv creada + lead persistido +
+  //      mensaje guardado, pero pipeline NO dispara. Trainer interviene a mano
+  //      desde panel si decide responder. Análogo a wa_inbound_mode form_only.
+  const ghlInboundMode = await loadGhlInboundMode(supabase, inbound.tenantId);
+  if (ghlInboundMode === 'classified_only') {
+    const { data: convSourceCheck } = await supabase
+      .from('conversations')
+      .select('conversation_source, ai_paused_until')
+      .eq('id', conversationId)
+      .maybeSingle();
+    const currentSource =
+      (convSourceCheck?.conversation_source as string | null | undefined) ?? null;
+    const alreadyPaused = Boolean(convSourceCheck?.ai_paused_until);
+    if (!currentSource && !alreadyPaused) {
+      await supabase
+        .from('conversations')
+        .update({
+          ai_paused_until: 'infinity',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', conversationId);
+      logger.info(
+        {
+          tenantId: inbound.tenantId,
+          conversationId,
+          mode: 'classified_only',
+        },
+        'routeGhlInbound: conv sin source clasificada — IA pausada (modo classified_only)',
+      );
+    }
+  }
+
   // 5) INSERT conversation_messages source='lead'.
   //    El Workflow webhook puede pasar texto + attachments a la vez. Insertamos
   //    1 row por cada parte (1 text si no vacío, 1 por cada URL adjunta) para
@@ -671,4 +706,41 @@ export function inferContentTypeFromUrl(url: string): 'audio' | 'image' | 'video
     return 'video';
   }
   return 'file';
+}
+
+// ============================================================================
+// loadGhlInboundMode — gate de IA para inbound GHL (Sprint B, migration 039)
+// ============================================================================
+
+export type GhlInboundMode = 'classified_only' | 'all';
+
+/**
+ * Carga `tenant_configs.ghl_inbound_mode` para un tenant.
+ *
+ * Default `'classified_only'` (doctrina 2026-05-12): IA solo dispara si la
+ * conversación tiene origen calificado (bienvenida, lm, inbound, manual).
+ *
+ * Si la columna no existe (BD desactualizada) o el valor está fuera del enum,
+ * devuelve 'classified_only' (fail-safe: doctrina actual por default).
+ */
+export async function loadGhlInboundMode(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<GhlInboundMode> {
+  const { data, error } = await supabase
+    .from('tenant_configs')
+    .select('ghl_inbound_mode')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+
+  if (error) {
+    logger.warn(
+      { tenantId, err: error.message },
+      'loadGhlInboundMode: error consultando tenant_configs — fallback classified_only',
+    );
+    return 'classified_only';
+  }
+  const raw = (data as { ghl_inbound_mode?: unknown } | null)?.ghl_inbound_mode;
+  if (raw === 'all') return 'all';
+  return 'classified_only';
 }

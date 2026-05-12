@@ -63,6 +63,9 @@ export interface ConversationListRow {
   ai_paused_until: string | null;
   last_message_at: string | null;
   conversation_source: string | null;
+  /** Sprint A (2026-05-12) — direction de la conv para badge IN/OT en UI.
+   *  Opcional para no romper tests legacy / queries antiguas que no la cargaban. */
+  direction?: 'inbound' | 'outbound' | 'untagged' | null;
   leads: ConversationListLead | null;
   channels: ConversationListChannel | null;
   // Sprint Eta — labels aplicadas (opcional para no romper tests legacy;
