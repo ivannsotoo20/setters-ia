@@ -99,6 +99,59 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
         message,
       });
 
+      // 4.7. Sprint Iota.3 (Iván 2026-05-12) — Gate manychat_inbound_mode
+      // análogo a `ghl_inbound_mode='classified_only'` (migration 039).
+      //
+      // Si conv NO tiene `conversation_source` clasificada (bienvenida/lm/
+      // inbound/manual) y el modo es 'classified_only', pausamos IA infinity
+      // ANTES de encolar debounce. Lead + mensaje quedan persistidos para que
+      // el trainer los vea en panel, pero pipeline NO dispara. Trainer activa
+      // IA manual si decide responder.
+      //
+      // Doctrina unificada: tras un GDPR delete + re-write del mismo
+      // subscriber_id, el motor crea lead+conv nuevos sin source → bajo este
+      // gate la IA queda pausada hasta intervención humana.
+      const { data: cfg } = await supabase
+        .from('tenant_configs')
+        .select('manychat_inbound_mode')
+        .eq('tenant_id', tenantId)
+        .maybeSingle();
+      const manychatMode =
+        ((cfg as { manychat_inbound_mode?: string } | null)?.manychat_inbound_mode) ??
+        'classified_only';
+      if (manychatMode === 'classified_only') {
+        const { data: convCheck } = await supabase
+          .from('conversations')
+          .select('conversation_source, ai_paused_until')
+          .eq('id', conversationId)
+          .maybeSingle();
+        const row = convCheck as
+          | { conversation_source: string | null; ai_paused_until: string | null }
+          | null;
+        if (row && row.conversation_source == null && row.ai_paused_until == null) {
+          await supabase
+            .from('conversations')
+            .update({ ai_paused_until: 'infinity' })
+            .eq('id', conversationId);
+          request.log.info(
+            { tenantId, conversationId, mode: manychatMode },
+            'webhook-manychat: conv sin source clasificada — IA pausada (classified_only)',
+          );
+          // 5b. Toca last_webhook_at + ack 200 sin encolar debounce.
+          await touchIntegrationLastWebhook(supabase, tenantId, 'manychat');
+          return reply.code(200).send({
+            ack: true,
+            deduped: false,
+            tenant_id: tenantId,
+            lead_id: leadId,
+            conversation_id: conversationId,
+            message_id: messageId,
+            skipped: 'manychat_inbound_classified_only',
+            received_at: new Date().toISOString(),
+          });
+        }
+      }
+
       // 5. Encolar/extender debounce: el cron levantará el pipeline al expirar.
       try {
         const debounceWindowSeconds = await loadDebounceWindow(supabase, tenantId);

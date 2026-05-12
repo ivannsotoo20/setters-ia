@@ -343,6 +343,15 @@ export async function runAutoFollowupCron(
         ai_guide: aiPersonalize ? tpl.ai_guide : null,
       });
       if (insErr) {
+        // Sprint Iota.3 — 23505 (unique_violation) del índice
+        // uq_followup_unique_scheduled_per_conv: ya existe pending/processing
+        // con MISMO (conv, scheduled_at). Race condition con otra instancia
+        // del cron o con materialize-followup que acaba de crearlo. Skip
+        // silencioso, sin contar como error.
+        const code = (insErr as { code?: string }).code;
+        if (code === '23505') {
+          continue;
+        }
         result.errors.push(
           `insert schedule conv ${conv.id}: ${insErr.message}`,
         );

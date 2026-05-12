@@ -122,7 +122,7 @@ export function ThreadTopbar({
             />
           ) : null}
           {canModerate ? (
-            <DeleteAction conversationId={detail.id} leadName={name} />
+            <DeleteAction leadId={detail.leadId} leadName={name} />
           ) : null}
         </div>
       </div>

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,35 +23,56 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { deleteConversation } from '@/lib/actions/conversations';
+import { deleteContactDataAction } from '@/lib/actions/gdpr';
 
 interface Props {
-  conversationId: number;
+  /** Lead a eliminar — borra TODO el lead, no solo la conversación. */
+  leadId: number;
+  /** Solo para mostrar el nombre en el dialog. */
   leadName: string;
 }
 
-const CONFIRM_WORD = 'eliminar';
+const CONFIRMATION_PHRASE = 'ELIMINAR DEFINITIVAMENTE';
 
-export function DeleteAction({ conversationId, leadName }: Props) {
+/**
+ * Sprint Iota.3 — Hard-delete del lead completo desde la conversación.
+ *
+ * Doctrina (Iván 2026-05-12): el botón papelera elimina TODO el lead
+ * (conversaciones, mensajes, llm_calls, pipeline_runs, notification_events).
+ * Sin rastro. Si el mismo contacto vuelve a escribir, motor crea lead nuevo
+ * sin source clasificada → bajo `*_inbound_mode='classified_only'` la IA
+ * queda pausada hasta intervención humana.
+ *
+ * Equivalente al GDPR delete (Art. 17) que ya existe en /contacts/[id].
+ */
+export function DeleteAction({ leadId, leadName }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [typed, setTyped] = useState('');
   const [pending, startTransition] = useTransition();
 
-  const canConfirm = typed.trim().toLowerCase() === CONFIRM_WORD && !pending;
+  const canConfirm = typed === CONFIRMATION_PHRASE && !pending;
 
   const onConfirm = () => {
     if (!canConfirm) return;
     startTransition(async () => {
-      const res = await deleteConversation(conversationId);
+      const res = await deleteContactDataAction({
+        leadId,
+        confirmation: CONFIRMATION_PHRASE,
+      });
       if (!res.ok) {
         toast.error(`Error: ${res.error}`);
-      } else {
-        toast.success('Conversación eliminada');
-        setOpen(false);
-        setTyped('');
-        router.replace('/conversations');
+        return;
       }
+      toast.success(
+        `Lead eliminado. ${res.data?.conversationsDeleted ?? 0} conversaciones, ` +
+          `${res.data?.messagesDeleted ?? 0} mensajes, ` +
+          `${res.data?.llmCallsDeleted ?? 0} llamadas IA, ` +
+          `${res.data?.pipelineRunsDeleted ?? 0} pipeline runs borrados.`,
+      );
+      setOpen(false);
+      setTyped('');
+      router.replace('/conversations');
     });
   };
 
@@ -71,35 +92,59 @@ export function DeleteAction({ conversationId, leadName }: Props) {
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="Eliminar conversación"
+                aria-label="Eliminar contacto"
                 className="text-destructive hover:text-destructive"
               >
                 <Trash2 className="size-4" />
               </Button>
             </AlertDialogTrigger>
           </TooltipTrigger>
-          <TooltipContent>Eliminar</TooltipContent>
+          <TooltipContent>Eliminar contacto</TooltipContent>
         </Tooltip>
       </TooltipProvider>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Eliminar conversación con {leadName}</AlertDialogTitle>
-          <AlertDialogDescription>
-            La conversación se cierra y bloquea (soft-delete). El lead deja de recibir
-            mensajes IA. Para confirmar escribe «{CONFIRM_WORD}» abajo.
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="size-5 text-destructive" />
+            Eliminar contacto {leadName}
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2 text-sm">
+              <p>
+                Se borrarán <strong>todas</strong> las conversaciones, mensajes,
+                llamadas a IA, pipeline runs y notificaciones de este lead.
+                Esta acción es <strong>irreversible</strong>.
+              </p>
+              <p className="text-muted-foreground">
+                Si el contacto vuelve a escribir, será tratado como un lead nuevo
+                sin historial y la IA quedará pausada hasta que la actives
+                manualmente o se cumpla una keyword.
+              </p>
+              <p>
+                Para confirmar, escribe{' '}
+                <code className="rounded bg-muted px-1.5 py-0.5 text-xs">
+                  {CONFIRMATION_PHRASE}
+                </code>{' '}
+                abajo.
+              </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="flex flex-col gap-2">
-          <Label htmlFor="confirm-delete" className="text-xs uppercase tracking-wider text-muted-foreground">
+          <Label
+            htmlFor="confirm-delete"
+            className="text-xs uppercase tracking-wider text-muted-foreground"
+          >
             Confirmación
           </Label>
           <Input
             id="confirm-delete"
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
-            placeholder={CONFIRM_WORD}
+            placeholder={CONFIRMATION_PHRASE}
             autoComplete="off"
             disabled={pending}
+            spellCheck={false}
           />
         </div>
         <AlertDialogFooter>
@@ -110,8 +155,12 @@ export function DeleteAction({ conversationId, leadName }: Props) {
             onClick={onConfirm}
             disabled={!canConfirm}
           >
-            {pending ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-            Eliminar
+            {pending ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="size-3.5" />
+            )}
+            Eliminar contacto
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
