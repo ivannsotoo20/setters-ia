@@ -117,6 +117,12 @@ function resolveListQuery(
   if (table === 'conversation_messages') {
     return { data: [{ id: 1, content: 'hola' }, { id: 2, content: 'bien' }], error: null, count: 2 };
   }
+  if (table === 'llm_calls') {
+    return { data: [{ id: 11 }, { id: 12 }, { id: 13 }], error: null, count: 3 };
+  }
+  if (table === 'pipeline_runs') {
+    return { data: [{ id: 1 }, { id: 2 }], error: null, count: 2 };
+  }
   if (table === 'notification_events') {
     return {
       data: [
@@ -238,6 +244,11 @@ describe('deleteContactDataAction', () => {
     // notification_events delete con los IDs filtrados
     const notifDelete = deletedTables.find((d) => d.table === 'notification_events');
     expect(notifDelete).toBeDefined();
+    // llm_calls + pipeline_runs borrados ANTES del lead (sin PII residual)
+    const llmDelete = deletedTables.find((d) => d.table === 'llm_calls');
+    expect(llmDelete).toBeDefined();
+    const runsDelete = deletedTables.find((d) => d.table === 'pipeline_runs');
+    expect(runsDelete).toBeDefined();
     // leads delete
     const leadDelete = deletedTables.find((d) => d.table === 'leads');
     expect(leadDelete).toBeDefined();
@@ -248,8 +259,15 @@ describe('deleteContactDataAction', () => {
     const meta = auditEvent?.metadata as Record<string, unknown>;
     expect(meta.lead_id).toBe(42);
     expect(meta.lead_first_name).toBe('Carlos');
+    expect(meta.llm_calls_deleted).toBe(3);
+    expect(meta.pipeline_runs_deleted).toBe(2);
     // PII se hashea, NO se almacena en claro
     expect(meta.lead_phone_hash ?? null).not.toBe('claro');
+    // El resultado expone los nuevos contadores
+    if (res.ok && res.data) {
+      expect(res.data.llmCallsDeleted).toBe(3);
+      expect(res.data.pipelineRunsDeleted).toBe(2);
+    }
   });
 
   it('agency admin puede borrar lead de otro tenant', async () => {

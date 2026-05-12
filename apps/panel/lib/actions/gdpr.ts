@@ -211,6 +211,8 @@ export interface DeleteContactDataResult {
   conversationsDeleted: number;
   messagesDeleted: number;
   notificationEventsDeleted: number;
+  llmCallsDeleted: number;
+  pipelineRunsDeleted: number;
 }
 
 export async function deleteContactDataAction(input: {
@@ -259,28 +261,74 @@ export async function deleteContactDataAction(input: {
     .from('notification_events')
     .select('id, payload')
     .eq('tenant_id', ctx.tenantId);
-  const toDelete = (
+  const toDeleteNotif = (
     (notifs ?? []) as Array<{ id: number; payload: Record<string, unknown> }>
   )
     .filter((n) => belongsToLead(n.payload, input.leadId, convIds))
     .map((n) => n.id);
-  if (toDelete.length > 0) {
+  if (toDeleteNotif.length > 0) {
     const { error: delNotifErr } = await supabase
       .from('notification_events')
       .delete()
       .eq('tenant_id', ctx.tenantId)
-      .in('id', toDelete);
+      .in('id', toDeleteNotif);
     if (delNotifErr) {
       return { ok: false, error: `delete notification_events: ${delNotifErr.message}` };
     }
-    notifDeleted = toDelete.length;
+    notifDeleted = toDeleteNotif.length;
+  }
+
+  // 1b. Sprint Bugfix 2026-05-12 — limpiar `llm_calls` Y `pipeline_runs` antes
+  //     del DELETE de leads. Por defecto sus FKs a conversations tienen
+  //     `ON DELETE SET NULL`, lo cual deja el row vivo con `conversation_id=NULL`
+  //     pero `response_payload` contiene mensajes del lead (PII residual).
+  //     Para cumplir "borrado total" de GDPR Art. 17 los borramos primero.
+  //
+  //     Doctrina nueva (2026-05-12): si el mismo IG contact vuelve a escribir
+  //     tras un GDPR delete, el motor crea lead+conv NUEVA sin source
+  //     clasificada → bajo `ghl_inbound_mode='classified_only'` la IA NO
+  //     responde. Por tanto no queda ningún residuo del lead borrado.
+  let llmCallsDeleted = 0;
+  let pipelineRunsDeleted = 0;
+  if (convIds.length > 0) {
+    const { count: llmBefore } = await supabase
+      .from('llm_calls')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId)
+      .in('conversation_id', convIds);
+    const { error: delLlmErr } = await supabase
+      .from('llm_calls')
+      .delete()
+      .eq('tenant_id', ctx.tenantId)
+      .in('conversation_id', convIds);
+    if (delLlmErr) {
+      return { ok: false, error: `delete llm_calls: ${delLlmErr.message}` };
+    }
+    llmCallsDeleted = llmBefore ?? 0;
+
+    const { count: runsBefore } = await supabase
+      .from('pipeline_runs')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', ctx.tenantId)
+      .in('conversation_id', convIds);
+    const { error: delRunsErr } = await supabase
+      .from('pipeline_runs')
+      .delete()
+      .eq('tenant_id', ctx.tenantId)
+      .in('conversation_id', convIds);
+    if (delRunsErr) {
+      return { ok: false, error: `delete pipeline_runs: ${delRunsErr.message}` };
+    }
+    pipelineRunsDeleted = runsBefore ?? 0;
   }
 
   // 2. DELETE FROM leads → CASCADE limpia conversations + hijos
   //    (conversation_events, conversation_labels, conversation_messages,
   //     conversation_notes, message_schedules, pipeline_events).
-  //    pipeline_runs y llm_calls quedan con conversation_id=NULL (sin PII).
   //    lead_external_ids también CASCADE.
+  //    Tras este DELETE no queda NINGÚN residuo del lead en la BD —
+  //    si el mismo contact vuelve a escribir, motor crea lead+conv nuevos
+  //    sin source clasificada → bajo classified_only la IA NO dispara.
   const { error: delLeadErr } = await supabase
     .from('leads')
     .delete()
@@ -311,6 +359,8 @@ export async function deleteContactDataAction(input: {
       conversations_deleted: convIds.length,
       messages_deleted: messageCountBefore ?? 0,
       notification_events_deleted: notifDeleted,
+      llm_calls_deleted: llmCallsDeleted,
+      pipeline_runs_deleted: pipelineRunsDeleted,
       deleted_at: new Date().toISOString(),
     },
   });
@@ -326,6 +376,8 @@ export async function deleteContactDataAction(input: {
       conversationsDeleted: convIds.length,
       messagesDeleted: messageCountBefore ?? 0,
       notificationEventsDeleted: notifDeleted,
+      llmCallsDeleted,
+      pipelineRunsDeleted,
     },
   };
 }

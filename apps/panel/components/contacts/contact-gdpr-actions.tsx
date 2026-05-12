@@ -78,7 +78,7 @@ export function ContactGdprActions({
         return;
       }
       toast.success(
-        `Lead eliminado. ${res.data?.messagesDeleted ?? 0} mensajes, ${res.data?.conversationsDeleted ?? 0} conversaciones borradas.`,
+        `Lead eliminado. ${res.data?.messagesDeleted ?? 0} mensajes, ${res.data?.conversationsDeleted ?? 0} conversaciones, ${res.data?.llmCallsDeleted ?? 0} llamadas IA, ${res.data?.pipelineRunsDeleted ?? 0} pipeline runs borrados.`,
       );
       setDeleteOpen(false);
       router.push('/contacts');
@@ -151,7 +151,13 @@ export function ContactGdprActions({
                 <li>Todas las conversaciones + mensajes + notas</li>
                 <li>Eventos de pipeline + etiquetas aplicadas</li>
                 <li>Schedules de follow-up + notificaciones</li>
+                <li>Llamadas LLM + pipeline runs (costes/tokens históricos)</li>
               </ul>
+              <span className="block text-xs">
+                Si esta persona vuelve a escribirnos por Instagram, el motor la tratará como
+                lead nuevo sin clasificar. Bajo el modo <code>classified_only</code> la IA NO
+                responderá (a menos que la actives mediante keyword, lead magnet GHL o bienvenida).
+              </span>
               <span className="block text-destructive font-medium">
                 Esta acción es permanente. No se puede deshacer.
               </span>
