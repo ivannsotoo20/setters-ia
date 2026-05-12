@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Users } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, AlertTriangle, Users } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -11,16 +11,20 @@ import {
 } from '@/lib/actions/prompts';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getTenantHealth } from '@/lib/tenant-health';
 import { TenantPromptTabs } from './tenant-tabs';
 
 export const dynamic = 'force-dynamic';
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ just_created?: string }>;
 }
 
-export default async function TenantDetailPage({ params }: Props) {
+export default async function TenantDetailPage({ params, searchParams }: Props) {
   const { id } = await params;
+  const sp = await searchParams;
+  const justCreated = sp.just_created === '1';
   const tenantId = Number(id);
   if (!Number.isFinite(tenantId) || tenantId <= 0) notFound();
 
@@ -60,20 +64,28 @@ export default async function TenantDetailPage({ params }: Props) {
 
   const { tenant, coach, adminOverrides, trainerPrefs } = overviewResult;
 
-  // Cargas paralelas: contenido + versiones de cada bloque + prefs estructuradas
-  const [coachActive, coachVersions, overridesActive, overridesVersions, prefsResult, integrationsRows] =
-    await Promise.all([
-      loadActiveBlock({ blockKey: 'coach_v3', tenantId }),
-      listVersions({ blockKey: 'coach_v3', tenantId, limit: 50 }),
-      adminOverrides.isMissing
-        ? Promise.resolve({ ok: true as const, block: null, draft: null })
-        : loadActiveBlock({ blockKey: 'admin_overrides_v1', tenantId }),
-      adminOverrides.isMissing
-        ? Promise.resolve({ ok: true as const, versions: [] })
-        : listVersions({ blockKey: 'admin_overrides_v1', tenantId, limit: 50 }),
-      loadTrainerPreferences({ tenantId }),
-      loadTenantIntegrations(tenantId),
-    ]);
+  // Cargas paralelas: contenido + versiones de cada bloque + prefs estructuradas + health.
+  const [
+    coachActive,
+    coachVersions,
+    overridesActive,
+    overridesVersions,
+    prefsResult,
+    integrationsRows,
+    health,
+  ] = await Promise.all([
+    loadActiveBlock({ blockKey: 'coach_v3', tenantId }),
+    listVersions({ blockKey: 'coach_v3', tenantId, limit: 50 }),
+    adminOverrides.isMissing
+      ? Promise.resolve({ ok: true as const, block: null, draft: null })
+      : loadActiveBlock({ blockKey: 'admin_overrides_v1', tenantId }),
+    adminOverrides.isMissing
+      ? Promise.resolve({ ok: true as const, versions: [] })
+      : listVersions({ blockKey: 'admin_overrides_v1', tenantId, limit: 50 }),
+    loadTrainerPreferences({ tenantId }),
+    loadTenantIntegrations(tenantId),
+    getTenantHealth(tenantId),
+  ]);
 
   const tenantsForPreview = [
     { id: tenant.id, slug: tenant.slug, name: tenant.name, isActive: tenant.isActive },
@@ -112,6 +124,54 @@ export default async function TenantDetailPage({ params }: Props) {
           </div>
         </div>
       </div>
+
+      {justCreated ? (
+        <Card className="border-emerald-500/40 bg-emerald-500/5">
+          <CardContent className="p-4 flex gap-3 items-start">
+            <CheckCircle2 className="size-5 text-emerald-500 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">
+                Sub-cuenta creada. La invitación al owner ya está en camino.
+              </p>
+              <ol className="mt-2 space-y-0.5 list-decimal list-inside text-muted-foreground">
+                <li>
+                  Pega el prompt coach v3 personalizado en la tab{' '}
+                  <strong className="text-foreground">Coach</strong> (abajo).
+                </li>
+                <li>
+                  El trainer recibirá el email; cuando active, podrá entrar al
+                  panel y completar el wizard de integraciones.
+                </li>
+                <li>
+                  Si no le llega, reenvía la invitación desde la pestaña{' '}
+                  <Link href={`/admin/tenants/${tenantId}/members`} className="underline hover:text-foreground">
+                    Miembros
+                  </Link>
+                  .
+                </li>
+              </ol>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {health?.coachV3IsPlaceholder ? (
+        <Card className="border-amber-500/40 bg-amber-500/5">
+          <CardContent className="p-4 flex gap-3 items-start">
+            <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm">
+              <p className="font-medium text-foreground">
+                Coach v3 todavía es el placeholder vacío.
+              </p>
+              <p className="text-muted-foreground mt-1">
+                Edita el bloque Coach abajo con el prompt personalizado del
+                trainer antes de que llegue su primer lead real. Mientras siga
+                vacío, el motor responderá con un prompt incompleto.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <TenantPromptTabs
         tenant={tenant}

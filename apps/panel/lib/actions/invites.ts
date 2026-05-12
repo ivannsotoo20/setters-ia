@@ -10,7 +10,12 @@ import {
   renderInviteEmailHtml,
   renderInviteEmailSubject,
   type InviteEmailVars,
+  type InviteFlavor,
 } from '@/lib/email/templates/invite';
+import {
+  validatePassword,
+  passwordErrorMessage,
+} from '@/lib/auth/password-policy';
 
 /**
  * Server actions de invitaciones (Hito 10).
@@ -40,7 +45,6 @@ export type RevokeInviteResult =
   | { ok: false; error: string };
 
 const TOKEN_BYTES = 32; // 64 hex chars
-const MIN_PASSWORD_LENGTH = 10;
 const TOKEN_TTL_DAYS = 7;
 
 interface InviteInput {
@@ -51,6 +55,20 @@ interface InviteInput {
   /** null si isAgencyAdmin=true. */
   tenantId: number | null;
   isAgencyAdmin: boolean;
+  /**
+   * Sabor del email (copy + subject):
+   *   - 'agency_admin' (auto si isAgencyAdmin=true).
+   *   - 'new_tenant_owner' cuando la action viene de provisionTenantAction.
+   *   - 'tenant_member' (default para invites a tenants).
+   *
+   * Si se omite, se infiere desde isAgencyAdmin para retrocompat.
+   */
+  flavor?: InviteFlavor;
+}
+
+function resolveFlavor(input: { isAgencyAdmin: boolean; flavor?: InviteFlavor }): InviteFlavor {
+  if (input.flavor) return input.flavor;
+  return input.isAgencyAdmin ? 'agency_admin' : 'tenant_member';
 }
 
 function isValidEmail(email: string): boolean {
@@ -263,6 +281,7 @@ export async function inviteUserAction(input: InviteInput): Promise<InviteAction
     acceptUrl: `${inviteOrigin(input.isAgencyAdmin)}/accept-invite?token=${token}`,
     expiresAtLabel: formatExpiresLabel(expiresAt),
     audience: input.isAgencyAdmin ? 'admin' : 'trainer',
+    flavor: resolveFlavor(input),
   };
   const emailResult = await sendEmail({
     to: email,
@@ -326,19 +345,10 @@ export async function acceptInviteAction(
 
   if (!token) return { status: 'error', message: 'Token de invitación faltante.' };
   if (!fullName) return { status: 'error', message: 'Indica tu nombre completo.' };
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return {
-      status: 'error',
-      message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
-    };
-  }
-  if (password !== passwordConfirm) {
-    return { status: 'error', message: 'Las contraseñas no coinciden.' };
-  }
 
   const admin = getServiceRoleClient();
 
-  // 1) Lookup invite.
+  // 1) Lookup invite (pre-check para mensajes UX).
   const { data: invite } = await admin
     .from('pending_invites')
     .select('id, email, tenant_id, role, is_agency_admin, full_name_hint, token_expires_at, accepted_at, revoked_at, invited_by')
@@ -358,6 +368,38 @@ export async function acceptInviteAction(
     return { status: 'error', message: 'Esta invitación ha caducado. Pide una nueva.' };
   }
 
+  // 1.5) Validar password con policy centralizada (NIST: longitud + blacklist).
+  const policyResult = validatePassword(password, {
+    email: invite.email,
+    passwordConfirm,
+  });
+  if (!policyResult.ok) {
+    return { status: 'error', message: passwordErrorMessage(policyResult.error) };
+  }
+
+  // 1.6) CAS sobre accepted_at: marcamos como aceptado ANTES de crear el user
+  // para cerrar la ventana de race con un segundo accept simultáneo (doble click,
+  // pestaña duplicada, prefetch). Si returning vacío, otro request ya lo aceptó.
+  const acceptedAtIso = new Date().toISOString();
+  const { data: claimed, error: claimError } = await admin
+    .from('pending_invites')
+    .update({ accepted_at: acceptedAtIso })
+    .eq('id', invite.id)
+    .is('accepted_at', null)
+    .is('revoked_at', null)
+    .select('id')
+    .maybeSingle();
+
+  if (claimError) {
+    return { status: 'error', message: `BD: ${claimError.message}` };
+  }
+  if (!claimed) {
+    return {
+      status: 'error',
+      message: 'Esta invitación ya fue aceptada en otra pestaña. Entra desde /login.',
+    };
+  }
+
   // 2) Crear user en auth.users (con email_confirm=true para saltar verificación).
   const { data: createResult, error: createError } = await admin.auth.admin.createUser({
     email: invite.email,
@@ -367,6 +409,12 @@ export async function acceptInviteAction(
   });
   if (createError || !createResult?.user) {
     const msg = createError?.message ?? '';
+    // Revertir CAS: liberar el invite para que sea aceptable por la siguiente
+    // tentativa (típicamente con otro password). Best-effort.
+    await admin
+      .from('pending_invites')
+      .update({ accepted_at: null })
+      .eq('id', invite.id);
     if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('already exists')) {
       return {
         status: 'error',
@@ -402,20 +450,20 @@ export async function acceptInviteAction(
   };
   const { error: profileError } = await admin.from('profiles').insert(profileRow);
   if (profileError) {
-    // Rollback parcial: borrar el auth user creado para evitar zombies.
+    // Rollback parcial: borrar el auth user creado para evitar zombies + liberar invite.
     try {
       await admin.auth.admin.deleteUser(newUserId);
     } catch {
       // best effort
     }
+    await admin
+      .from('pending_invites')
+      .update({ accepted_at: null })
+      .eq('id', invite.id);
     return { status: 'error', message: `BD profile: ${profileError.message}` };
   }
 
-  // 4) Marcar invite accepted.
-  await admin
-    .from('pending_invites')
-    .update({ accepted_at: new Date().toISOString() })
-    .eq('id', invite.id);
+  // 4) accepted_at ya marcado por el CAS en paso 1.6 — no re-update.
 
   // 5) Audit log.
   await admin.from('tenant_audit_log').insert({
@@ -436,8 +484,26 @@ export async function acceptInviteAction(
   const supabase = await createSupabaseServerClient();
   await supabase.auth.signInWithPassword({ email: invite.email, password });
 
-  // 7) Redirect.
-  redirect(invite.is_agency_admin ? '/admin/dashboard' : '/dashboard');
+  // 7) Redirect onboarding-aware.
+  //    - Agency admin → /admin/dashboard (sin wizard).
+  //    - Trainer → si su tenant.onboarded_at IS NULL → /onboarding/integrations.
+  //                si está marcado → /dashboard normal.
+  if (invite.is_agency_admin) {
+    redirect('/admin/dashboard');
+  }
+
+  let redirectPath = '/dashboard';
+  if (invite.tenant_id != null) {
+    const { data: tenantRow } = await admin
+      .from('tenants')
+      .select('onboarded_at')
+      .eq('id', invite.tenant_id)
+      .maybeSingle();
+    if (tenantRow?.onboarded_at == null) {
+      redirectPath = '/onboarding/integrations';
+    }
+  }
+  redirect(redirectPath);
 }
 
 /**
@@ -558,6 +624,10 @@ export async function resendInviteEmailAction(inviteId: number): Promise<RevokeI
     acceptUrl: `${inviteOrigin(invite.is_agency_admin)}/accept-invite?token=${invite.token}`,
     expiresAtLabel: formatExpiresLabel(new Date(invite.token_expires_at)),
     audience: invite.is_agency_admin ? 'admin' : 'trainer',
+    // Resend usa siempre el flavor "neutro" (agency_admin o tenant_member).
+    // El copy de 'new_tenant_owner' ("tu cuenta acaba de crearse") solo encaja en
+    // el primer envío — a los X días el genérico "Has sido invitado" es mejor.
+    flavor: invite.is_agency_admin ? 'agency_admin' : 'tenant_member',
   };
   const result = await sendEmail({
     to: invite.email,

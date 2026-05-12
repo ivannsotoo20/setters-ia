@@ -8,6 +8,7 @@ import {
 } from '@/lib/auth/require-tenant-role';
 import { logAuditEvent } from '@/lib/auth/audit-log';
 import { getServiceRoleClient } from '@/lib/supabase/service-role';
+import { inviteUserAction } from './invites';
 
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -110,6 +111,75 @@ export async function listMembers(args: {
 }
 
 // ---------------------------------------------------------------------------
+// listTenantPendingInvites — agency admin O viewer+ del tenant.
+// ---------------------------------------------------------------------------
+
+export interface TenantPendingInvite {
+  id: number;
+  email: string;
+  fullNameHint: string | null;
+  role: TenantRole;
+  invitedByEmail: string | null;
+  invitedAt: string;
+  tokenExpiresAt: string;
+  isExpired: boolean;
+}
+
+export async function listTenantPendingInvites(args: {
+  tenantId: number;
+}): Promise<ActionResult<TenantPendingInvite[]>> {
+  try {
+    await requireTenantRoleAtLeast({ tenantId: args.tenantId, minRole: 'viewer' });
+  } catch (err) {
+    return handleAuthOrError(err);
+  }
+
+  const supabase = getServiceRoleClient();
+  const now = new Date();
+  const { data, error } = await supabase
+    .from('pending_invites')
+    .select(
+      'id, email, full_name_hint, role, invited_by, invited_at, token_expires_at',
+    )
+    .eq('tenant_id', args.tenantId)
+    .eq('is_agency_admin', false)
+    .is('accepted_at', null)
+    .is('revoked_at', null)
+    .order('invited_at', { ascending: false });
+
+  if (error) return { ok: false, error: error.message };
+
+  const rows = data ?? [];
+  const inviterIds = Array.from(
+    new Set(rows.map((r) => r.invited_by).filter((id): id is string => !!id)),
+  );
+  let inviterEmails: Record<string, string> = {};
+  if (inviterIds.length > 0) {
+    const { data: inviters } = await supabase
+      .from('profiles')
+      .select('id, email')
+      .in('id', inviterIds);
+    if (inviters) {
+      inviterEmails = Object.fromEntries(inviters.map((p) => [String(p.id), String(p.email)]));
+    }
+  }
+
+  return {
+    ok: true,
+    data: rows.map((r) => ({
+      id: Number(r.id),
+      email: String(r.email),
+      fullNameHint: (r.full_name_hint as string | null) ?? null,
+      role: (r.role ?? 'viewer') as TenantRole,
+      invitedByEmail: r.invited_by ? inviterEmails[String(r.invited_by)] ?? null : null,
+      invitedAt: String(r.invited_at),
+      tokenExpiresAt: String(r.token_expires_at),
+      isExpired: new Date(String(r.token_expires_at)) < now,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // inviteMember — owner del tenant O agency admin.
 // ---------------------------------------------------------------------------
 
@@ -184,47 +254,24 @@ export async function inviteMember(args: {
     };
   }
 
-  // No existe profile — usar Supabase admin invite (crea auth.users + envía email).
-  // Hito 11 fix: usar PANEL_PUBLIC_URL canónico (antes fallback localhost en prod).
-  // Los invitados de tenant siempre van a panel.fyzon.es (no admin.fyzon.es).
-  const baseUrl =
-    process.env.PANEL_PUBLIC_URL ??
-    process.env.NEXT_PUBLIC_PANEL_BASE_URL ??
-    process.env.NEXT_PUBLIC_PANEL_ORIGIN ??
-    'http://localhost:3000';
-  const { data: invited, error: inviteError } = await supabase.auth.admin.inviteUserByEmail(
-    email,
-    {
-      data: {
-        tenant_id: args.tenantId,
-        role: args.role,
-        invited_by: actor.userId,
-      },
-      redirectTo: `${baseUrl}/auth/callback?next=/dashboard`,
-    },
-  );
-
-  if (inviteError || !invited.user) {
-    return {
-      ok: false,
-      error: inviteError?.message ?? 'No se pudo enviar la invitación.',
-    };
-  }
-
-  // INSERT profile asociado.
-  const { error: insertError } = await supabase.from('profiles').insert({
-    id: invited.user.id,
-    tenant_id: args.tenantId,
+  // No existe profile — delegamos en `inviteUserAction` (ruta A unificada,
+  // Sprint Crear Sub-cuenta). Esto da:
+  //   - Email branded Resend (subject "Invitación a {tenant} — Fyzon Setters").
+  //   - Token /accept-invite + flujo de set-password (vs reset-password de antes).
+  //   - `pending_invites` row gestionado para reenvío/revocación.
+  // El INSERT en `profiles` lo hace `acceptInviteAction` al aceptar el invite,
+  // no aquí; por eso `userId` queda vacío al crear y `sent=true` indica que el
+  // email se mandó. Si más adelante hace falta el userId al invitar, se puede
+  // exponer el `pending_invites.id` o se queda como pending.
+  const inviteResult = await inviteUserAction({
     email,
     role: args.role,
-    is_active: true,
-    is_agency_admin: false,
-    invited_by: actor.userId,
-    invited_at: new Date().toISOString(),
+    tenantId: args.tenantId,
+    isAgencyAdmin: false,
+    flavor: 'tenant_member',
   });
-
-  if (insertError) {
-    return { ok: false, error: `Auth user creado pero profile falló: ${insertError.message}` };
+  if (!inviteResult.ok) {
+    return { ok: false, error: inviteResult.error };
   }
 
   await logAuditEvent({
@@ -232,14 +279,14 @@ export async function inviteMember(args: {
     actorUserId: actor.userId,
     actorEmail: actor.email,
     action: 'member.invited',
-    targetUserId: invited.user.id,
     targetEmail: email,
-    metadata: { role: args.role },
+    metadata: { role: args.role, invite_id: inviteResult.inviteId, route: 'flavor_tenant_member' },
   });
 
   revalidatePath(`/admin/tenants/${args.tenantId}/members`);
   revalidatePath('/settings/members');
-  return { ok: true, data: { userId: invited.user.id, sent: true } };
+  // userId = '' porque el profile aún no existe (se crea al accept-invite).
+  return { ok: true, data: { userId: '', sent: true } };
 }
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getServiceRoleClient } from '@/lib/supabase/service-role';
+import { requireAgencyAdmin } from '@/lib/auth/require-agency-admin';
 import {
   inviteUserAction,
   type InviteActionResult,
@@ -40,20 +40,11 @@ async function assertCallerIsAgencyAdmin(): Promise<{
   email: string;
   tenantId: number;
 }> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('unauthenticated');
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, email, tenant_id, is_agency_admin, is_active')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (!profile || profile.is_active === false || profile.is_agency_admin !== true) {
-    throw new Error('forbidden');
-  }
-  return { id: profile.id, email: profile.email, tenantId: profile.tenant_id };
+  // Wrapper retrocompatible — la implementación real vive en
+  // @/lib/auth/require-agency-admin. Mantengo este wrapper porque varias
+  // funciones de este archivo desestructuran `id` (no `userId`).
+  const caller = await requireAgencyAdmin();
+  return { id: caller.userId, email: caller.email, tenantId: caller.tenantId };
 }
 
 /**

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Circle, ExternalLink, Copy, Check, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, ExternalLink, Copy, Check, Loader2, Rocket } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -19,6 +19,7 @@ import {
   ensureLeadFormToken,
   type OnboardingStatus,
 } from '@/lib/actions/welcome-template';
+import { markOnboardingCompleteAction } from '@/lib/actions/tenants';
 
 interface CandidateTemplate {
   id: number;
@@ -44,6 +45,7 @@ export function OnboardingWizard({
   const router = useRouter();
   const [pendingWelcome, startWelcomeTransition] = useTransition();
   const [pendingToken, startTokenTransition] = useTransition();
+  const [pendingComplete, startCompleteTransition] = useTransition();
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(
     status.welcome.welcomeTemplateId,
   );
@@ -99,6 +101,25 @@ export function OnboardingWizard({
     status.welcome.welcomeTemplateId != null && status.welcome.leadFormToken != null,
   ];
   const totalCompleted = stepsCompleted.filter(Boolean).length;
+  const allComplete = totalCompleted === stepsCompleted.length;
+
+  const onMarkComplete = () => {
+    if (pendingComplete) return;
+    startCompleteTransition(async () => {
+      const res = await markOnboardingCompleteAction();
+      if (!res.ok) {
+        toast.error(`No se pudo cerrar el setup: ${res.error}`);
+        return;
+      }
+      if (res.alreadyComplete) {
+        toast.info('El setup ya estaba marcado como completo. Te llevamos al panel.');
+      } else {
+        toast.success('Setup marcado como completo. Ya puedes recibir leads.');
+      }
+      router.push('/dashboard');
+      router.refresh();
+    });
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -369,6 +390,46 @@ export function OnboardingWizard({
           ) : null}
         </div>
       </StepCard>
+
+      {/* CTA final — solo visible cuando los 4 steps están en verde. */}
+      <Card
+        className={cn(
+          'transition-colors',
+          allComplete
+            ? 'border-emerald-500/40 bg-emerald-500/5'
+            : 'border-dashed border-border bg-muted/20 opacity-70',
+        )}
+      >
+        <CardContent className="p-4 flex items-center gap-3 flex-wrap">
+          <Rocket
+            className={cn(
+              'size-5 shrink-0',
+              allComplete ? 'text-emerald-500' : 'text-muted-foreground',
+            )}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium">
+              {allComplete
+                ? 'Setup completo. Marca como terminado para activar tu panel.'
+                : `Completa los ${stepsCompleted.length - totalCompleted} pasos restantes para poder cerrar el setup.`}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {allComplete
+                ? 'Al hacer click, se marca tenants.onboarded_at y desaparecen los banners de configuración.'
+                : 'No vas a recibir leads automáticamente hasta entonces.'}
+            </p>
+          </div>
+          <Button
+            type="button"
+            onClick={onMarkComplete}
+            disabled={!allComplete || pendingComplete}
+            className="gap-1.5"
+          >
+            {pendingComplete ? <Loader2 className="size-3.5 animate-spin" /> : null}
+            Marcar setup como completo
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -4,7 +4,9 @@ import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ScopeSwitcher } from '@/components/scope-switcher';
-import { getImpersonateTenantId } from '@/lib/impersonate';
+import { OnboardingBanner } from '@/components/onboarding/onboarding-banner';
+import { getImpersonateTenantId, resolveEffectiveTenantId } from '@/lib/impersonate';
+import { getTenantHealth } from '@/lib/tenant-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +64,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  // Onboarding banner: cargamos el health del tenant efectivo para decidir si
+  // mostramos el aviso "estás en modo configuración". El client component
+  // OnboardingBanner se autosuprime en `/admin/*` y `/onboarding/*` (via usePathname).
+  let onboardingBannerMode: 'trainer' | 'admin_impersonating' | null = null;
+  let coachIsPlaceholder = false;
+  if (profile?.tenant_id) {
+    const { tenantId: effectiveId } = await resolveEffectiveTenantId({
+      profileTenantId: Number(profile.tenant_id),
+      isAgencyAdmin,
+    });
+    const health = await getTenantHealth(effectiveId);
+    if (health && health.onboardedAt == null) {
+      onboardingBannerMode = isAgencyAdmin ? 'admin_impersonating' : 'trainer';
+      coachIsPlaceholder = health.coachV3IsPlaceholder;
+    }
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -89,7 +108,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             - Badge del ScopeSwitcher en el header.
             - Subtítulo "Viendo: <tenant>" del sidebar.
           Para salir del modo viendo: ScopeSwitcher → "Vista admin", o ir a /admin/tenants.
+
+          Banner de onboarding (Sprint Crear Sub-cuenta): se muestra solo si
+          el tenant efectivo tiene onboarded_at IS NULL. El client component
+          decide en runtime si suprimirse según pathname (/admin/* y
+          /onboarding/* lo ocultan).
         */}
+        {onboardingBannerMode != null ? (
+          <OnboardingBanner
+            mode={onboardingBannerMode}
+            coachIsPlaceholder={coachIsPlaceholder}
+          />
+        ) : null}
         <main className="flex-1 min-w-0 p-6 md:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>

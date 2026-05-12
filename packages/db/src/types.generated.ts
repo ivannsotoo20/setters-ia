@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -50,6 +50,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "automation_keywords_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       channels: {
@@ -87,6 +94,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "channels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -132,6 +146,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "coach_ai_knowledge_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       conversation_events: {
@@ -173,6 +194,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -222,6 +250,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_labels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -277,6 +312,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conversation_messages_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       conversation_notes: {
@@ -321,6 +363,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_notes_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -470,6 +519,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       dashboard_widgets: {
@@ -510,6 +566,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dashboard_widgets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -558,6 +621,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "follow_ups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -630,6 +700,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "followup_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       ignored_users: {
@@ -671,6 +748,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ignored_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -732,6 +816,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "integration_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       label_automation_rules: {
@@ -779,6 +870,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "label_automation_rules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -831,6 +929,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_external_ids_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -900,6 +1005,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -973,6 +1085,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "llm_calls_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       llm_configs: {
@@ -1025,6 +1144,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "llm_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -1140,6 +1266,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "message_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       notification_events: {
@@ -1193,6 +1326,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "notification_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       pending_invites: {
@@ -1245,6 +1385,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_invites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -1314,6 +1461,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pipeline_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -1432,6 +1586,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pipeline_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       profiles: {
@@ -1491,6 +1652,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "profiles_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       prompt_block_drafts: {
@@ -1531,6 +1699,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompt_block_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -1623,6 +1798,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "prompt_blocks_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       resources: {
@@ -1670,6 +1852,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "resources_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       tenant_audit_log: {
@@ -1713,6 +1902,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_audit_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
         ]
       }
@@ -1769,6 +1965,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "tenants"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_configs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
           },
           {
             foreignKeyName: "tenant_configs_welcome_template_id_fkey"
@@ -1833,6 +2036,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_followup_config_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       tenant_labels: {
@@ -1889,6 +2099,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_labels_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       tenant_schedules: {
@@ -1930,7 +2147,35 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_schedules_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
+      }
+      tenant_templates: {
+        Row: {
+          content: string
+          description: string | null
+          key: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          description?: string | null
+          key: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          description?: string | null
+          key?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       tenant_tokens: {
         Row: {
@@ -1968,11 +2213,20 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "tenant_tokens_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       tenants: {
         Row: {
           created_at: string
+          created_by: string | null
+          created_by_email: string | null
           id: number
           is_active: boolean
           name: string
@@ -1983,6 +2237,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           id?: number
           is_active?: boolean
           name: string
@@ -1993,6 +2249,8 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
+          created_by_email?: string | null
           id?: number
           is_active?: boolean
           name?: string
@@ -2042,6 +2300,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trainer_custom_instructions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
       trainer_preferences: {
@@ -2074,13 +2339,58 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "trainer_preferences_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      v_tenant_health: {
+        Row: {
+          active_members: number | null
+          approved_wa_templates: number | null
+          coach_v3_is_placeholder: boolean | null
+          created_at: string | null
+          created_by: string | null
+          ghl_connected: boolean | null
+          has_coach_v3: boolean | null
+          has_config: boolean | null
+          has_keywords_bienvenida: boolean | null
+          has_keywords_leadmagnet: boolean | null
+          has_trainer_prefs: boolean | null
+          is_active: boolean | null
+          is_onboarding_complete: boolean | null
+          name: string | null
+          onboarded_at: string | null
+          slug: string | null
+          tenant_id: number | null
+          token_ghl: string | null
+          token_lead_form: string | null
+          token_manychat: string | null
+          token_ycloud: string | null
+          welcome_template_id: number | null
+          ycloud_connected: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      provision_tenant: {
+        Args: {
+          p_created_by?: string
+          p_created_by_email?: string
+          p_internal_notes?: string
+          p_name: string
+          p_slug: string
+          p_timezone?: string
+        }
+        Returns: Json
+      }
       tenant_id_for_user: { Args: never; Returns: number }
     }
     Enums: {

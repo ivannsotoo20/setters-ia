@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { LogIn, Settings2 } from 'lucide-react';
+import { LogIn, Plus, Settings2 } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   listAllTenants,
@@ -50,6 +50,12 @@ export default async function AdminTenantsPage() {
           </p>
           <h1 className="text-2xl font-semibold tracking-tight">Sub-cuentas</h1>
         </div>
+        <Button asChild className="gap-1.5">
+          <Link href="/admin/tenants/new">
+            <Plus className="size-3.5" />
+            Nueva sub-cuenta
+          </Link>
+        </Button>
       </div>
 
       <Card>

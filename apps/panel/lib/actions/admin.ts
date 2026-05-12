@@ -3,47 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getServiceRoleClient } from '@/lib/supabase/service-role';
+import { requireAgencyAdmin } from '@/lib/auth/require-agency-admin';
 import {
   clearImpersonateTenantId,
   setImpersonateTenantId,
 } from '@/lib/impersonate';
 
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
-
-function getServiceRoleClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceKey) {
-    throw new Error('SUPABASE_SERVICE_ROLE_KEY missing — required for admin Server Actions');
-  }
-  return createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-}
-
-/**
- * Verifica que el caller es agency admin. Lanza si no.
- */
-async function requireAgencyAdmin(): Promise<{ userId: string; profileTenantId: number }> {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('unauthenticated');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('tenant_id, is_agency_admin')
-    .eq('id', user.id)
-    .maybeSingle();
-
-  if (!profile || !profile.is_agency_admin) {
-    throw new Error('forbidden — requires is_agency_admin');
-  }
-  return { userId: user.id, profileTenantId: Number(profile.tenant_id) };
-}
 
 // ---------------------------------------------------------------------------
 // Listado de tenants con KPIs agregados

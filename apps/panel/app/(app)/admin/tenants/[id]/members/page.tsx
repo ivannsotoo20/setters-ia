@@ -3,6 +3,7 @@ import { UserCog } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { listMembers } from '@/lib/actions/members';
 import { MembersList } from '@/components/members-list';
+import { TenantPendingInvitesTable } from '@/components/admin/members/tenant-pending-invites-table';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,6 +44,8 @@ export default async function TenantMembersPage({ params }: Props) {
           (social media, asistentes). Cada uno entra con su propio email + contraseña.
         </p>
       </div>
+
+      <TenantPendingInvitesTable tenantId={tenantId} />
 
       {result.ok ? (
         <MembersList

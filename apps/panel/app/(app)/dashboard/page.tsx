@@ -1,5 +1,7 @@
 import { loadDashboardData, type ChannelFilter } from '@/lib/actions/dashboard';
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
+import { getTenantHealth } from '@/lib/tenant-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,12 +21,18 @@ function parseChannelKey(value: string | null | undefined): ChannelFilter {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-  const result = await loadDashboardData({
-    windowKey: sp.w ?? null,
-    channelKey: parseChannelKey(sp.ch),
-    customFrom: sp.from ?? null,
-    customTo: sp.to ?? null,
-  });
+
+  // Cargas en paralelo: dashboard snapshot + tenant health (para activation checklist).
+  const effective = await getEffectiveTenant();
+  const [result, tenantHealth] = await Promise.all([
+    loadDashboardData({
+      windowKey: sp.w ?? null,
+      channelKey: parseChannelKey(sp.ch),
+      customFrom: sp.from ?? null,
+      customTo: sp.to ?? null,
+    }),
+    effective ? getTenantHealth(effective.tenantId) : Promise.resolve(null),
+  ]);
 
   if (!result.ok) {
     return (
@@ -34,5 +42,5 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     );
   }
 
-  return <DashboardLayout snapshot={result.data} />;
+  return <DashboardLayout snapshot={result.data} tenantHealth={tenantHealth} />;
 }
