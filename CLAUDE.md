@@ -357,6 +357,57 @@ Plantilla en `.env.example`. `.env.local` es gitignored — Ivan lo rellena con 
 - Pasar `*_VERIFY_MODE` a `enforce` en producción tras smoke.
 - Docs operativos: `docs/ghl-trainer-setup.md` + `docs/lead-form-webhook.md`.
 
+## Hito 10 — Calendarios GHL + trazabilidad de bookings
+
+**Doctrina** (decidida 2026-05-14): el SaaS muestra y trackea las citas GHL. La fuente sigue siendo GHL (solo lectura este hito). Cuando un lead reserva en el calendario GHL del trainer, el SaaS lo detecta vía webhook AppointmentCreate, matchea al lead concreto (mecanismo híbrido `fyzon_lead_uuid` slug + phone prefilled), mueve la conversación a F7 + pausa IA + handoff causa A. Trainer ve lista + calendario mes en `/calendars` sin abrir GHL. Plan: `~/.claude/plans/ahora-me-gustar-a-avanzar-swift-feigenbaum.md`.
+
+**Tablas nuevas**:
+- `calendar_accounts` (migration 047, nombre MCP `035_calendar_accounts`): calendarios GHL vinculados por tenant. `is_default=TRUE` marca el que usa el setter en F6 (UNIQUE parcial garantiza solo uno por tenant). `widget_base_url` es la base del widget GHL.
+- `calendar_appointments` (migration 048, nombre MCP `036_calendar_appointments`): mirror local de citas GHL. Recibido vía webhook. `match_method` ∈ {`fyzon_uuid`, `phone`, `unmatched`} y `match_confidence` ∈ {100, 80, 0}. `lead_id NULL` = booking huérfano.
+- Columnas extra (migration 049, nombre MCP `037_calendars_misc`): `conversations.last_appointment_id`, `leads.tracking_uuid` (slug opaco 16 chars), `tenant_configs.ghl_fyzon_uuid_field_id` (cache del customFieldId GHL).
+
+**Endpoint motor nuevo** `POST /internal/calendars/sync` (`apps/motor-agente/src/routes/internal-calendars.ts`): bearer auth `INTERNAL_STATS_TOKEN`. Disparado por la server action del panel `/settings/calendars`. Carga OAuth GHL del tenant, ejecuta `ensureCustomField('fyzon_lead_uuid')` (idempotente — cachea el id en `tenant_configs.ghl_fyzon_uuid_field_id`), lista los calendars y los devuelve al panel.
+
+**Webhook handler calendar** (`apps/motor-agente/src/routes/webhook-ghl-calendar.ts`): NO expone ruta propia. Se invoca desde `webhook-ghl.ts` (endpoints `/integrations/webhook/oauth` y `/integrations/webhook/:tenant_token`) cuando `body.type` ∈ {`AppointmentCreate`, `AppointmentUpdate`, `AppointmentDelete`} — rama temprana ANTES de `parseGhlWebhookPayload` que solo conoce InboundMessage/OutboundMessage. Verify HMAC reusa el flow existente.
+
+**Services nuevos**:
+- `apps/motor-agente/src/services/appointment-matcher.ts` — `matchLeadFromAppointment` con orden: (1) custom field `fyzon_lead_uuid` en payload → leads.tracking_uuid, (2) custom field tras `getContactInfo`, (3) phone normalizado E.164 → leads.phone, (4) unmatched. Conflict tie-break por last_message_at + phase_number.
+- `apps/motor-agente/src/services/appointment-applier.ts` — `applyAppointmentToConversation`. UPSERT calendar_appointments + UPDATE conversations (phase=7, call_scheduled_at, handoff cause A, ai_paused_until='infinity', last_appointment_id) + INSERT pipeline_events row 'phase_change'. Idempotente.
+- `apps/motor-agente/src/services/tracked-calendar-url.ts` — `getTrackedCalendarUrl({supabase, tenantId, leadId})`. Carga calendar default + lead, lazy-genera `leads.tracking_uuid` si NULL, devuelve URL trackable. Caller (`process-debounced.ts`) lo invoca antes de runPipeline y pasa el resultado en `composeOverrides.trackedCalendarUrl`.
+
+**Libs nuevas**:
+- `apps/motor-agente/src/lib/tracking-uuid.ts` — `computeTrackingUuid(leadId)` con HMAC-SHA256(leadId, CREDENTIALS_ENCRYPTION_KEY) → 16 chars b64url. Determinístico.
+- `apps/motor-agente/src/lib/booking-url-builder.ts` — `buildTrackedBookingUrl({calendar, lead, trackingUuid})` añade query params `fyzon_lead_uuid`, `phone`, `prefill=true`, `firstName`.
+
+**Composer extendido** (`packages/prompt-composer/`):
+- `ComposeOptions.trackedCalendarUrl?: string | null` — opcional, caller (generator → process-debounced) lo construye y lo pasa.
+- `TrainerContext.trackedCalendarUrl?: string | null` — se inyecta para `interpolateTrainerPlaceholders`.
+- `interpolate.ts` añade placeholder `{{tracked_calendar_url|fallback}}` con fallback opcional (frase del Coach).
+- `builder.ts` `INTERPOLATABLE_BLOCK_KEYS` ahora incluye `fase_6_v4` (antes solo `handoff_v4`).
+- `index.ts` `composePrompt` mergea `options.trackedCalendarUrl` encima del auto-carga desde `trainer_preferences.closingResourceUrl` legacy.
+
+**Prompt block actualizado** `fase_6_v4` (version=2 en BD, snapshot v2 con cambios documentados): añade sección "Enlace de agenda a enviar" con `{{tracked_calendar_url|<fallback al closingResourceUrl del Coach>}}`. Reglas explícitas para el setter: pegar URL tal cual, NO modificar query params (rompe matching), si placeholder se ve literal → handoff causa D.
+
+**Panel nuevo**:
+- `/calendars` (`apps/panel/app/(app)/calendars/page.tsx` + components): Vista tabs Lista + Calendario mes. Sin react-big-calendar — grid Tailwind custom (decisión MVP: evita conflicto Tailwind 4 + dep extra). Filtros: estado, calendar, futuro/pasado, calendar. Click cita → Sheet con detalle lead + link a `/conversations`.
+- `/settings/calendars` (`apps/panel/app/(app)/settings/calendars/page.tsx`): Sincronizar desde GHL (botón llama motor `/internal/calendars/sync`), tabla de vinculados, designar default (UNIQUE parcial DB), desvincular (soft is_active=false).
+- Server actions `apps/panel/lib/actions/calendars.ts`: `listCalendarAccounts`, `syncCalendarsFromGhl` (fetch motor), `linkCalendar`, `setDefaultCalendar`, `unlinkCalendar`, `listAppointments`.
+- Sidebar (`apps/panel/components/app-sidebar.tsx`): entrada principal "Calendarios" + entrada en Configuración "Calendarios" (settings).
+
+**Docs**: `docs/ghl-calendar-setup.md` con flow operativo para el trainer (suscribir webhooks GHL, sync, smoke booking, troubleshooting).
+
+**Pendientes externos** (no bloquean cierre Hito 10, sí bloquean producción):
+- Suscribir el app Marketplace GHL a `AppointmentCreate`/`Update`/`Delete` desde panel developer.gohighlevel.com (config manual una vez por app, no por trainer).
+- Smoke E2E real con Pablo: reauth si OAuth original no tenía scopes calendars + crear calendar de prueba + agendar manualmente → verificar F7 en SaaS.
+- Pasar `GHL_WEBHOOK_VERIFY_MODE` a `enforce` en producción tras smoke.
+- Configurar `MOTOR_INTERNAL_URL` + `INTERNAL_STATS_TOKEN` en panel `.env.local` para que `/settings/calendars` pueda llamar al motor.
+
+**Lo que NO entregamos en Hito 10** (queda para sprints posteriores):
+- Bidireccional (crear/editar/cancelar citas desde el SaaS).
+- Coach v3 decide qué calendar enviar según contexto (multi-decisión LLM).
+- Recordatorios automáticos WA pre-llamada.
+- Dashboard show-rate / noshow-rate.
+
 ## Qué NO hacer
 
 - No añadir Prisma al motor sin conversación previa con Ivan.
