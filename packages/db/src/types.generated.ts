@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -52,6 +52,181 @@ export type Database = {
           },
           {
             foreignKeyName: "automation_keywords_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      calendar_accounts: {
+        Row: {
+          created_at: string
+          description: string | null
+          external_calendar_id: string
+          ghl_metadata: Json | null
+          id: number
+          integration_account_id: number
+          is_active: boolean
+          is_default: boolean
+          name: string
+          provider: string
+          slug: string | null
+          tenant_id: number
+          updated_at: string
+          widget_base_url: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          external_calendar_id: string
+          ghl_metadata?: Json | null
+          id?: number
+          integration_account_id: number
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          provider?: string
+          slug?: string | null
+          tenant_id: number
+          updated_at?: string
+          widget_base_url: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          external_calendar_id?: string
+          ghl_metadata?: Json | null
+          id?: number
+          integration_account_id?: number
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          provider?: string
+          slug?: string | null
+          tenant_id?: number
+          updated_at?: string
+          widget_base_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_accounts_integration_account_id_fkey"
+            columns: ["integration_account_id"]
+            isOneToOne: false
+            referencedRelation: "integration_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
+      calendar_appointments: {
+        Row: {
+          appointment_status: string
+          assigned_user_external_id: string | null
+          calendar_account_id: number
+          conversation_id: number | null
+          end_at: string
+          external_appointment_id: string
+          external_contact_id: string | null
+          id: number
+          lead_id: number | null
+          match_confidence: number | null
+          match_method: string | null
+          notes: string | null
+          payload: Json
+          received_at: string
+          source: string | null
+          start_at: string
+          tenant_id: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          appointment_status?: string
+          assigned_user_external_id?: string | null
+          calendar_account_id: number
+          conversation_id?: number | null
+          end_at: string
+          external_appointment_id: string
+          external_contact_id?: string | null
+          id?: number
+          lead_id?: number | null
+          match_confidence?: number | null
+          match_method?: string | null
+          notes?: string | null
+          payload: Json
+          received_at?: string
+          source?: string | null
+          start_at: string
+          tenant_id: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          appointment_status?: string
+          assigned_user_external_id?: string | null
+          calendar_account_id?: number
+          conversation_id?: number | null
+          end_at?: string
+          external_appointment_id?: string
+          external_contact_id?: string | null
+          id?: number
+          lead_id?: number | null
+          match_confidence?: number | null
+          match_method?: string | null
+          notes?: string | null
+          payload?: Json
+          received_at?: string
+          source?: string | null
+          start_at?: string
+          tenant_id?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_appointments_calendar_account_id_fkey"
+            columns: ["calendar_account_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_appointments_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_appointments_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_appointments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_appointments_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "v_tenant_health"
@@ -403,6 +578,7 @@ export type Database = {
           is_handoff_to_human: boolean
           is_qualified: boolean | null
           is_unread: boolean
+          last_appointment_id: number | null
           last_message_at: string | null
           lead_id: number
           next_action: string | null
@@ -444,6 +620,7 @@ export type Database = {
           is_handoff_to_human?: boolean
           is_qualified?: boolean | null
           is_unread?: boolean
+          last_appointment_id?: number | null
           last_message_at?: string | null
           lead_id: number
           next_action?: string | null
@@ -485,6 +662,7 @@ export type Database = {
           is_handoff_to_human?: boolean
           is_qualified?: boolean | null
           is_unread?: boolean
+          last_appointment_id?: number | null
           last_message_at?: string | null
           lead_id?: number
           next_action?: string | null
@@ -503,6 +681,13 @@ export type Database = {
             columns: ["channel_id"]
             isOneToOne: false
             referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_last_appointment_id_fkey"
+            columns: ["last_appointment_id"]
+            isOneToOne: false
+            referencedRelation: "calendar_appointments"
             referencedColumns: ["id"]
           },
           {
@@ -954,6 +1139,7 @@ export type Database = {
           phone: string | null
           source_channel: string | null
           tenant_id: number
+          tracking_uuid: string | null
           updated_at: string
           username: string | null
         }
@@ -971,6 +1157,7 @@ export type Database = {
           phone?: string | null
           source_channel?: string | null
           tenant_id: number
+          tracking_uuid?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -988,6 +1175,7 @@ export type Database = {
           phone?: string | null
           source_channel?: string | null
           tenant_id?: number
+          tracking_uuid?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -1918,6 +2106,7 @@ export type Database = {
           created_at: string
           debounce_window_seconds: number
           default_audio_language: string
+          ghl_fyzon_uuid_field_id: string | null
           ghl_inbound_mode: string
           idle_conversation_delay: string
           manychat_inbound_mode: string
@@ -1933,6 +2122,7 @@ export type Database = {
           created_at?: string
           debounce_window_seconds?: number
           default_audio_language?: string
+          ghl_fyzon_uuid_field_id?: string | null
           ghl_inbound_mode?: string
           idle_conversation_delay?: string
           manychat_inbound_mode?: string
@@ -1948,6 +2138,7 @@ export type Database = {
           created_at?: string
           debounce_window_seconds?: number
           default_audio_language?: string
+          ghl_fyzon_uuid_field_id?: string | null
           ghl_inbound_mode?: string
           idle_conversation_delay?: string
           manychat_inbound_mode?: string
