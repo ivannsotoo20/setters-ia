@@ -22,6 +22,10 @@ import {
   resolveTenantByOauthLocation,
   resolveTenantByToken,
 } from '../services/lead-ingest.js';
+import {
+  handleCalendarEvent,
+  isCalendarEventType,
+} from './webhook-ghl-calendar.js';
 
 const DEFAULT_DEBOUNCE_SECONDS = 25;
 
@@ -142,6 +146,27 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         },
         'webhook-ghl: payload received (raw)',
       );
+
+      // 3.6. Rama temprana: calendar events (Hito 10). Los Workflow webhooks no
+      //      suelen enviar Appointment{Create,Update,Delete}, pero por defensa
+      //      detectamos antes de pasar al parser InboundMessage/OutboundMessage
+      //      que rechazaría tipos desconocidos.
+      const rawType1 = (request.body as { type?: unknown } | null)?.type;
+      if (isCalendarEventType(rawType1)) {
+        const calResult = await handleCalendarEvent({
+          supabase,
+          ghlClient,
+          tenantId,
+          body: request.body,
+          log: request.log,
+        });
+        return reply.code(200).send({
+          ack: true,
+          type: rawType1,
+          tenant_id: tenantId,
+          ...calResult,
+        });
+      }
 
       // 4. Parsear payload + validar locationId
       let payload;
@@ -289,6 +314,40 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         },
         'webhook-ghl(oauth): payload received (raw)',
       );
+
+      // 2.5. Rama temprana: calendar events (Hito 10). Los marketplace apps
+      //      suelen recibir AppointmentCreate/Update/Delete por este endpoint.
+      //      Detectamos antes del parser InboundMessage/OutboundMessage que no los conoce.
+      const rawType2 = (request.body as { type?: unknown } | null)?.type;
+      if (isCalendarEventType(rawType2)) {
+        const rawLocationId = (request.body as { locationId?: unknown } | null)?.locationId;
+        const locationId = typeof rawLocationId === 'string' ? rawLocationId : '';
+        if (!locationId) {
+          return reply.code(400).send({ error: 'missing locationId in calendar event' });
+        }
+        const tenantId = await resolveTenantByOauthLocation(supabase, locationId);
+        if (tenantId == null) {
+          request.log.info(
+            { locationId, type: rawType2 },
+            'webhook-ghl(oauth)[calendar]: unknown locationId — ignoring',
+          );
+          return reply.code(200).send({ ack: true, ignored: true, reason: 'unknown_location' });
+        }
+        const ghlClient = await loadGhlClient(supabase, tenantId);
+        const calResult = await handleCalendarEvent({
+          supabase,
+          ghlClient,
+          tenantId,
+          body: request.body,
+          log: request.log,
+        });
+        return reply.code(200).send({
+          ack: true,
+          type: rawType2,
+          tenant_id: tenantId,
+          ...calResult,
+        });
+      }
 
       // 3. Parse payload
       let payload;

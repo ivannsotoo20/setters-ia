@@ -218,6 +218,23 @@ export async function processDebounced(
   // sean derivados del coach del tenant cuando exista la pieza que los extrae
   // del prompt_blocks (TODO post-Hito 9). Hoy el Judge funciona con sus
   // guardrails universales y el Validator usa defaults seguros sin whitelist.
+  // Hito 10 — Construir URL trackable del calendario default antes del pipeline.
+  // Si no hay calendar vinculado o falla, composer cae al closingResourceUrl legacy.
+  let trackedCalendarUrl: string | null = null;
+  try {
+    const { getTrackedCalendarUrl } = await import('./tracked-calendar-url.js');
+    trackedCalendarUrl = await getTrackedCalendarUrl({
+      supabase,
+      tenantId,
+      leadId: Number(lead.id),
+    });
+  } catch (err) {
+    console.warn(
+      'processDebounced: getTrackedCalendarUrl failed (non-fatal):',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
+
   let pipelineOut;
   try {
     pipelineOut = await runPipeline(
@@ -232,6 +249,9 @@ export async function processDebounced(
           channel: channelType,
           emojisWhitelist: null,
           isFirstAssistantMessage: lastAssistantIdx < 0,
+        },
+        composeOverrides: {
+          trackedCalendarUrl,
         },
       },
     );
