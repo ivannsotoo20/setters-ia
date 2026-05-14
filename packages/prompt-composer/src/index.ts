@@ -80,6 +80,14 @@ export async function composePrompt(
       ? prefs.handoffCustomMessage
       : null;
 
+    // Hito 10 — Fallback al closingResourceUrl legacy del trainer_preferences si
+    // el caller no pasó un trackedCalendarUrl construido con calendar_accounts.
+    // Cuando el caller (motor pipeline) sí lo pasa explícitamente (con lead context),
+    // éste prevalece via el spread `{ ...options, trainerContext }` final.
+    const legacyCalendarUrl = typeof prefs.closingResourceUrl === 'string'
+      ? prefs.closingResourceUrl.trim() || null
+      : null;
+
     trainerContext = {
       phone,
       handoff: {
@@ -88,6 +96,18 @@ export async function composePrompt(
         template: handoffTemplate,
         customMessage: handoffCustomMessage,
       },
+      trackedCalendarUrl: legacyCalendarUrl,
+    };
+  }
+
+  // Hito 10 — Si el caller pasa explícitamente trackedCalendarUrl en options,
+  // gana sobre el legacy auto-carga. Esto permite que el motor (pipeline) construya
+  // el URL con tracking del lead actual (calendar_accounts default + tracking_uuid)
+  // y se lo pase aquí. Si pasa null explícito → fuerza fallback al legacy del trainer_prefs.
+  if (options.trackedCalendarUrl !== undefined) {
+    trainerContext = {
+      ...trainerContext,
+      trackedCalendarUrl: options.trackedCalendarUrl ?? trainerContext.trackedCalendarUrl,
     };
   }
 

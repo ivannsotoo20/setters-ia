@@ -18,9 +18,14 @@ export function interpolateTrainerPlaceholders(
   ctx?: TrainerContext,
 ): string {
   const phone = ctx?.phone?.trim() || null;
+  const trackedUrl = ctx?.trackedCalendarUrl?.trim() || null;
   return text
     .replace(/\{\{trainer_phone(?:\|([^}]*))?\}\}/g, (_, fallback) => {
       if (phone) return phone;
+      return fallback ?? '';
+    })
+    .replace(/\{\{tracked_calendar_url(?:\|([^}]*))?\}\}/g, (_, fallback) => {
+      if (trackedUrl) return trackedUrl;
       return fallback ?? '';
     })
     .replace(/\{\{handoff_directive\}\}/g, () => renderHandoffDirective(ctx));

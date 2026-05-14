@@ -59,6 +59,8 @@ export async function runGenerator(
     includeObjections: input.composeOverrides?.includeObjections ?? true,
     includeDescualificacion: input.composeOverrides?.includeDescualificacion ?? true,
     includeOutputContract: input.composeOverrides?.includeOutputContract ?? true,
+    // Hito 10 — Inyecta URL trackable del calendario default para fase_6_v4.
+    trackedCalendarUrl: input.composeOverrides?.trackedCalendarUrl,
   });
 
   // 2. Construye messages[] para la API (history + último mensaje del lead)

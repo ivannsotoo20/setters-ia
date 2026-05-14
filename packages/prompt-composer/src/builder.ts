@@ -13,7 +13,7 @@ import { interpolateTrainerPlaceholders } from './interpolate.js';
  * no intencionados en otros bloques (p.ej. coach_v3 podría tener `{{` literal
  * por accidente del trainer).
  */
-const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['handoff_v4']);
+const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['handoff_v4', 'fase_6_v4']);
 
 /**
  * Lista de block_keys que se requieren siempre para una composición válida.

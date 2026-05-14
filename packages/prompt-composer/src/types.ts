@@ -80,6 +80,16 @@ export interface ComposeOptions {
    * Más detalle del trade-off económico en plan playful-petting-pine.md sección 3.5.
    */
   cacheTtl?: '5m' | '1h';
+  /**
+   * Hito 10 — URL trackable del calendario default. Si presente, se inyecta en
+   * `trainerContext.trackedCalendarUrl` antes de interpolar fase_6_v4. Si null
+   * o ausente, el placeholder `{{tracked_calendar_url|fallback}}` cae a
+   * `closingResourceUrl` legacy de trainer_preferences (compat MVP).
+   *
+   * El caller (motor pipeline) lo construye con `buildTrackedBookingUrl` antes
+   * de llamar a composePrompt. Composer no computa nada — solo interpola.
+   */
+  trackedCalendarUrl?: string | null;
 }
 
 /**
@@ -97,6 +107,13 @@ export interface TrainerContext {
    * Si `enabled=true`, se aplica `mode` + sub-config según modo.
    */
   handoff?: HandoffContext;
+  /**
+   * Hito 10 — URL trackable del calendario default para insertar en F6.
+   * El caller (motor pipeline) la construye con `buildTrackedBookingUrl({calendar, lead})`
+   * y la pasa aquí. Si null, `{{tracked_calendar_url|fallback}}` cae al fallback
+   * (closingResourceUrl legacy de trainer_preferences si está, sino frase genérica).
+   */
+  trackedCalendarUrl?: string | null;
 }
 
 export interface HandoffContext {

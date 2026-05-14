@@ -70,6 +70,13 @@ export interface GeneratorInput {
     includeObjections?: boolean;
     includeDescualificacion?: boolean;
     includeOutputContract?: boolean;
+    /**
+     * Hito 10 — URL trackable del calendario default ya construida por el caller
+     * (motor) con `getTrackedCalendarUrl`. Si se pasa, se inyecta en
+     * `trainerContext.trackedCalendarUrl` para resolver `{{tracked_calendar_url}}`
+     * en fase_6_v4. Si null/undefined, composer cae al fallback legacy.
+     */
+    trackedCalendarUrl?: string | null;
   };
 }
 
