@@ -27,6 +27,7 @@ import {
   MessageCircle,
   ChevronDown,
   User,
+  CalendarDays,
 } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
@@ -62,6 +63,7 @@ const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/conversations', label: 'Conversaciones', icon: MessageSquare },
   { href: '/contacts', label: 'Contactos', icon: ContactRound },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
+  { href: '/calendars', label: 'Calendarios', icon: CalendarDays },
 ];
 
 /** Entradas de configuración visibles según rol. */
@@ -78,6 +80,7 @@ function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
     items.push({ href: '/onboarding/integrations', label: 'Onboarding', icon: Rocket });
     items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
     items.push({ href: '/settings/integrations/health', label: 'Salud integraciones', icon: Activity });
+    items.push({ href: '/settings/calendars', label: 'Calendarios', icon: CalendarDays });
     items.push({ href: '/settings/preferences', label: 'Preferencias', icon: Sliders });
   }
   // Miembros visible para todos: collaborator ve la lista en read-only.
