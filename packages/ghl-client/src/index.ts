@@ -11,6 +11,14 @@
  * (a) tipar de un golpe lo expuesto a callers, (b) inyectar `fetchImpl` para tests.
  */
 
+import {
+  ensureCustomField,
+  getAppointment,
+  getCalendar,
+  listAppointmentsByCalendar,
+  listCalendars,
+  listLocationCustomFields,
+} from './calendars.js';
 import { getContactInfo, upsertContact, updateContactCustomFields } from './contacts.js';
 import {
   registerInboundMessage,
@@ -36,6 +44,12 @@ import type {
   GhlRegisterMessageInput,
   GhlRegisterMessageResult,
 } from './types.js';
+import type {
+  GhlAppointment,
+  GhlAppointmentWebhookEvent,
+  GhlCalendar,
+  GhlLocationCustomField,
+} from './types-calendar.js';
 
 export type {
   GhlConnectionConfig,
@@ -58,6 +72,22 @@ export type {
 export { GhlApiError } from './api-client.js';
 export { AI_ZWSP_TAG, appendZwspIfMissing, sendMessageViaChannel } from './messages.js';
 export type { GhlSendMessageInput } from './messages.js';
+export {
+  ensureCustomField,
+  getAppointment,
+  getCalendar,
+  listAppointmentsByCalendar,
+  listCalendars,
+  listLocationCustomFields,
+  createLocationCustomField,
+} from './calendars.js';
+export type {
+  GhlAppointment,
+  GhlAppointmentWebhookEvent,
+  GhlCalendar,
+  GhlLocationCustomField,
+} from './types-calendar.js';
+export { FYZON_LEAD_UUID_FIELD_KEY } from './types-calendar.js';
 
 export interface GhlClientOptions extends GhlCredentials {
   /** Override fetch (para tests). */
@@ -126,5 +156,47 @@ export class GhlClient {
 
   moveOpportunityStage(input: GhlMoveOpportunityInput): Promise<GhlOpportunity> {
     return moveOpportunityStage(this.apiToken, input, this.fetchImpl);
+  }
+
+  // ----- Calendars (Hito 10) -----
+
+  listCalendars(): Promise<GhlCalendar[]> {
+    return listCalendars(this.apiToken, this.locationId, this.fetchImpl);
+  }
+
+  getCalendar(calendarId: string): Promise<GhlCalendar | null> {
+    return getCalendar(this.apiToken, calendarId, this.fetchImpl);
+  }
+
+  getAppointment(appointmentId: string): Promise<GhlAppointment | null> {
+    return getAppointment(this.apiToken, appointmentId, this.fetchImpl);
+  }
+
+  listAppointmentsByCalendar(
+    calendarId: string,
+    startTime: string,
+    endTime: string,
+  ): Promise<GhlAppointment[]> {
+    return listAppointmentsByCalendar(
+      this.apiToken,
+      this.locationId,
+      calendarId,
+      startTime,
+      endTime,
+      this.fetchImpl,
+    );
+  }
+
+  listLocationCustomFields(): Promise<GhlLocationCustomField[]> {
+    return listLocationCustomFields(this.apiToken, this.locationId, this.fetchImpl);
+  }
+
+  ensureCustomField(opts?: {
+    fieldKey?: string;
+    name?: string;
+    dataType?: 'TEXT' | 'LARGE_TEXT' | 'NUMERICAL' | 'PHONE' | 'EMAIL' | 'DATE';
+    model?: 'contact' | 'opportunity';
+  }): Promise<GhlLocationCustomField> {
+    return ensureCustomField(this.apiToken, this.locationId, opts, this.fetchImpl);
   }
 }
