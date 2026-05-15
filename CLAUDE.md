@@ -37,6 +37,15 @@ scripts/                  build-core-v3-seed.mjs, generate-db-types.mjs
 5. **Fixtures C1/C2/C3 son bloqueantes**. Las 3 conversaciones 10/10 (C1 difícil, C2 cualificable, C3 no cualifica) son el golden set. Cuando exista pipeline funcional, cualquier PR debe pasar la regresión contra las 3 antes de mergear.
 6. **Prompt caching**. El motor usa `cache_control: { type: 'ephemeral' }` por bloque compuesto: core_v3 (cacheado), fase activa (cacheado), coach_v3 (cacheado por tenant), historial (no). Sin caching no entramos en economía viable.
 7. **No inventar estructura**. Si hace falta un nuevo package o app, confirmar con Ivan antes de crear.
+8. **Seguridad - reglas duras (Hardening audit 2026-05-15)**:
+   - Cualquier nueva tabla en `schema/v1/migrations/` con `tenant_id` DEBE incluir `ALTER TABLE ... ENABLE ROW LEVEL SECURITY` + policies para SELECT/INSERT/UPDATE/DELETE (o un policy `FOR ALL` que cubra los 4 cmd).
+   - Cualquier `request.log.info({ body: ... })` en motor DEBE usar `safeLogBody(body)` (`apps/motor-agente/src/lib/log-redact.ts`). Nunca loggear payload raw que pueda contener `accessToken`, `refreshToken`, `apiKey`, `webhook_secret`, `credentials`.
+   - Cualquier comparison de tokens (bearer / shared secret / webhook secret) DEBE usar `isValidBearer` (`apps/motor-agente/src/lib/timing-safe-bearer.ts`) o `crypto.timingSafeEqual` directo. NUNCA `===`.
+   - Cualquier funcion `SECURITY DEFINER` nueva DEBE incluir `SET search_path = public, pg_temp` y `REVOKE EXECUTE FROM PUBLIC, anon, authenticated` (mantener `GRANT EXECUTE TO service_role` o `authenticated` si aplica).
+   - Cualquier URL externa que entre del usuario (panel server action o input) DEBE pasar por `assertHttpsUrl` (`apps/panel/lib/validators/url.ts`) antes de persistir.
+   - Tras tocar migrations / RLS / funciones `SECURITY DEFINER`, ejecutar `node apps/motor-agente/test/security/test-rls-anon-leaks.mjs` y verificar 0 fail.
+   - Modos de verify webhooks (`*_VERIFY_MODE`): default `warn` en dev, `enforce` OBLIGATORIO en produccion. Documentar al trainer como configurar `webhook_secret` antes de cambiar a enforce.
+   - `apps/panel/app/api/dev-login/route.ts`: SOLO activo con `NODE_ENV='development'` + no Vercel/Railway + host=localhost + `ENABLE_DEV_LOGIN=1` + email en whitelist. Antes de deploy a prod confirmar que devuelve 404.
 
 ## Decisiones técnicas cerradas (ver plan maestro para el resto)
 
