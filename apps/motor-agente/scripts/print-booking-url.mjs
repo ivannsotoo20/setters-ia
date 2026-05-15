@@ -19,17 +19,30 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-// ---- Load .env.local from apps/motor-agente
+// ---- Load .env.local — prueba apps/motor-agente/.env.local primero, luego raíz del repo
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const envPath = resolve(__dirname, '../.env.local');
-try {
-  const txt = readFileSync(envPath, 'utf8');
-  for (const line of txt.split(/\r?\n/)) {
-    const m = /^([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
-    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+const envCandidates = [
+  resolve(__dirname, '../.env.local'),      // apps/motor-agente/.env.local
+  resolve(__dirname, '../../../.env.local'), // raíz del repo
+  resolve(process.cwd(), '.env.local'),     // cwd al ejecutar
+];
+let envLoaded = false;
+for (const envPath of envCandidates) {
+  try {
+    const txt = readFileSync(envPath, 'utf8');
+    for (const line of txt.split(/\r?\n/)) {
+      const m = /^([A-Z_][A-Z0-9_]*)=(.*)$/.exec(line.trim());
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+    }
+    console.log(`-> Loaded env from ${envPath}`);
+    envLoaded = true;
+    break;
+  } catch {
+    /* try next */
   }
-} catch {
-  console.error(`WARN: no se pudo cargar ${envPath} — asumiendo env vars ya seteadas`);
+}
+if (!envLoaded) {
+  console.error('WARN: no se pudo cargar .env.local — asumiendo env vars ya seteadas');
 }
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
