@@ -27,11 +27,10 @@ Lista que Iván debe completar antes de exponer el SaaS a clientes reales (más 
 - [x] Dedup TTL extendido a 10min en webhook calendar (anti-replay)
 - [x] appointment-applier idempotente en pipeline_events (check pre-INSERT)
 - [x] URL builder de booking NO incluye PII (phone/firstName) por defecto
-- [ ] **PRODUCCIÓN**: GHL_WEBHOOK_VERIFY_MODE=enforce en .env del motor (default warn en dev/staging)
-- [ ] **PRODUCCIÓN**: YCLOUD_WEBHOOK_VERIFY_MODE=enforce
-- [ ] **PRODUCCIÓN**: LEAD_FORM_VERIFY_MODE=enforce
-- [ ] **PRODUCCIÓN**: INTERNAL_STATS_TOKEN 32+ bytes random (verificar openssl rand -hex 32)
-- [ ] Verificar que TODOS los tenants activos tienen integration_accounts.webhook_secret poblado ANTES de pasar a enforce
+- [x] **Smoke E2E Hito 10 OK** (2026-05-15): URL trackeable generada (lead 6 Pablo), reserva real en widget GHL, webhook AppointmentCreate llego al motor produccion, calendar_appointments id=16 INSERT correcto, conv 6 paso F1->F7, ai_paused_until=infinity, handoff_cause=A_agenda. Match cayo por phone fallback (confidence 80) porque el widget GHL publico no propaga el query param ?fyzon_lead_uuid al custom field por defecto -> deuda menor: configurar widget GHL builder para mapear query->custom field.
+- [x] integration_accounts.webhook_secret poblado en todos los tenants activos: tenant 2 manychat x2 + tenant 3 ghl + tenant 3 ycloud. Verificado via MCP 2026-05-15.
+- [ ] **PRODUCCIÓN PENDIENTE** (deuda, low risk): pasar GHL_WEBHOOK_VERIFY_MODE / YCLOUD_WEBHOOK_VERIFY_MODE / LEAD_FORM_VERIFY_MODE de `warn` a `enforce` en .env del motor VPS Contabo (156.67.29.126). Procedure documentado abajo en seccion "Procedure pasar a enforce". Bloqueante actual: SSH desde Windows requiere reset password Contabo (deuda del 11-may aun no resuelta). No urgente: tenant_tokens son UUID v4 (128 bits entropy), solo Pablo en staging, riesgo real bajo.
+- [ ] **PRODUCCIÓN**: INTERNAL_STATS_TOKEN 32+ bytes random (verificar openssl rand -hex 32 cuando se entre al VPS)
 
 ## Panel (apps/panel)
 
@@ -69,3 +68,48 @@ Lista que Iván debe completar antes de exponer el SaaS a clientes reales (más 
 ## Cuando algo va mal
 
 -> Ver docs/security-incidents.md (playbook de respuesta a incidentes).
+
+---
+
+## Procedure pasar a enforce (para sprint futuro)
+
+Cuando recuperes SSH operativo al VPS Contabo (156.67.29.126):
+
+```bash
+# 1. SSH al VPS
+ssh root@156.67.29.126
+
+# 2. Localiza el .env del motor
+find /root /opt /home /var/www -maxdepth 5 -name ".env.local" -path "*setters*" 2>/dev/null
+
+# 3. Backup .env por si acaso
+cp /ruta/.env.local /ruta/.env.local.bak-pre-enforce
+
+# 4. Verifica que GHL_WEBHOOK_PUBLIC_KEY_PEM esta cargada (sino enforce rompe todo)
+grep -E "^(GHL_WEBHOOK_PUBLIC_KEY_PEM|GHL_OAUTH_SHARED_SECRET)=" /ruta/.env.local
+
+# 5. Edita 3 verify modes a enforce
+sed -i 's/^GHL_WEBHOOK_VERIFY_MODE=warn/GHL_WEBHOOK_VERIFY_MODE=enforce/' /ruta/.env.local
+sed -i 's/^YCLOUD_WEBHOOK_VERIFY_MODE=warn/YCLOUD_WEBHOOK_VERIFY_MODE=enforce/' /ruta/.env.local
+sed -i 's/^LEAD_FORM_VERIFY_MODE=warn/LEAD_FORM_VERIFY_MODE=enforce/' /ruta/.env.local
+
+# 6. Reinicia motor (segun deploy):
+# Si docker:
+docker compose -f /ruta/docker-compose.yml restart motor
+docker compose logs -f motor --tail 60
+# Si pm2:
+pm2 restart motor && pm2 logs motor --lines 60
+
+# 7. Smoke verificacion: hacer reserva test desde URL trackeable.
+#    Verificar que cita llega + match + conv F7.
+
+# 8. Rollback si algo falla:
+cp /ruta/.env.local.bak-pre-enforce /ruta/.env.local
+docker compose restart motor  # o pm2 restart motor
+```
+
+Bloqueante actual: SSH desde Windows. Para desbloquear:
+1. Login en my.contabo.com -> VPS 156.67.29.126 -> Manage menu -> "I can't connect to this server" wizard. O alternativa: usar VNC Console via "Control".
+2. Reset password root via wizard. Llega password nuevo por email.
+3. SSH con password nuevo funciona.
+4. Una vez dentro, opcionalmente subir tu pubkey RSA a ~/.ssh/authorized_keys + deshabilitar password auth para futuro.
