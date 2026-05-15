@@ -37,11 +37,15 @@ export function ContactGdprActions({
   const [exporting, startExport] = useTransition();
   const [deleting, startDelete] = useTransition();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [confirmInput, setConfirmInput] = useState('');
 
   if (!canManageGdpr) return null;
 
-  const handleExport = () => {
+  // Hardening 2026-05-15 (audit security HIGH H-7): exportar GDPR descarga PII
+  // completa del lead (phone, mensajes, eventos). Pedimos confirmación
+  // explícita antes para evitar descargas accidentales en screen-shares.
+  const handleExportConfirmed = () => {
     startExport(async () => {
       const res = await exportContactDataAction({ leadId });
       if (!res.ok) {
@@ -59,6 +63,7 @@ export function ContactGdprActions({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      setExportOpen(false);
       toast.success('Exportación GDPR descargada');
     });
   };
@@ -101,7 +106,7 @@ export function ContactGdprActions({
             <Button
               variant="outline"
               size="sm"
-              onClick={handleExport}
+              onClick={() => setExportOpen(true)}
               disabled={exporting}
               className="gap-1.5"
             >
@@ -125,6 +130,65 @@ export function ContactGdprActions({
           </div>
         </div>
       </div>
+
+      <Dialog
+        open={exportOpen}
+        onOpenChange={(open) => {
+          if (!exporting) setExportOpen(open);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="size-5 text-amber-400" />
+              Exportar datos personales (GDPR Art. 15)
+            </DialogTitle>
+            <DialogDescription className="pt-2 space-y-2 text-sm">
+              <span className="block">
+                Descargarás un JSON con <strong>toda la PII</strong> de{' '}
+                <strong>{leadDisplayName}</strong> (#{leadId}):
+              </span>
+              <ul className="list-disc list-inside text-xs space-y-0.5 ml-2">
+                <li>Phone, email, nombre, identidades externas</li>
+                <li>Mensajes históricos (texto completo de cada mensaje)</li>
+                <li>Eventos de pipeline y cambios de fase</li>
+                <li>Citas agendadas + URL trackeable</li>
+              </ul>
+              <span className="block text-xs text-amber-200">
+                Trátalo según LOPD/RGPD: cifrado en tránsito al usuario solicitante, borrado
+                local tras el envío, NO compartir en chats no cifrados ni screen-share público.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setExportOpen(false)}
+              disabled={exporting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="default"
+              onClick={handleExportConfirmed}
+              disabled={exporting}
+              className="gap-1.5"
+            >
+              {exporting ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  Exportando…
+                </>
+              ) : (
+                <>
+                  <Download className="size-3.5" />
+                  Descargar JSON
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={deleteOpen}

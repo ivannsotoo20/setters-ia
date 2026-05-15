@@ -38,6 +38,16 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -115,7 +125,16 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
 
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [changeSummary, setChangeSummary] = useState('');
+  const [sharedConfirmPhrase, setSharedConfirmPhrase] = useState('');
+  const [discardOpen, setDiscardOpen] = useState(false);
   const [applying, startApply] = useTransition();
+
+  // Hardening 2026-05-15 (audit security CRITICAL C-5): bloques con
+  // tenant_id IS NULL afectan a TODOS los tenants productivos. Requerimos
+  // typing del block_key como confirmation phrase explícita antes de aplicar.
+  const isSharedBlock = props.tenantId == null;
+  const sharedConfirmOk =
+    !isSharedBlock || sharedConfirmPhrase.trim() === props.blockKey;
 
   const isDirty = content !== props.activeContent;
   const tenantsAffected =
@@ -213,7 +232,11 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
 
   function handleDiscard() {
     if (!hasDraft && !isDirty) return;
-    if (!confirm('¿Descartar borrador y volver a la versión activa?')) return;
+    setDiscardOpen(true);
+  }
+
+  function performDiscard() {
+    setDiscardOpen(false);
     startApply(async () => {
       const r = await discardDraft({ blockKey: props.blockKey, tenantId: props.tenantId });
       if (r.ok) {
@@ -285,6 +308,7 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
         );
         setApplyDialogOpen(false);
         setChangeSummary('');
+        setSharedConfirmPhrase('');
         router.refresh();
       } else {
         toast.error(`Guardar falló: ${r.error}`);
@@ -444,7 +468,30 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
               <Trash2 className="size-3.5" />
               Descartar borrador
             </Button>
-            <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
+            <AlertDialog open={discardOpen} onOpenChange={setDiscardOpen}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Descartar borrador</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Vas a perder los cambios no aplicados del borrador en{' '}
+                    <code className="text-xs font-mono">{props.blockKey}</code>. El bloque
+                    productivo (v{props.activeVersion}) NO se toca. Esta acción no se puede
+                    deshacer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={performDiscard}>Descartar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <Dialog
+              open={applyDialogOpen}
+              onOpenChange={(open) => {
+                setApplyDialogOpen(open);
+                if (!open) setSharedConfirmPhrase('');
+              }}
+            >
               <DialogTrigger asChild>
                 <Button type="button" size="sm" disabled={!isDirty || applying}>
                   <Save className="size-3.5" />
@@ -459,6 +506,24 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                     <code className="text-xs font-mono">{props.blockKey}</code>.
                   </DialogDescription>
                 </DialogHeader>
+                {isSharedBlock ? (
+                  <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="size-4 mt-0.5 text-amber-400 shrink-0" />
+                      <div className="space-y-1">
+                        <p className="font-medium text-amber-200">
+                          Este bloque es <strong>compartido</strong>.
+                        </p>
+                        <p className="text-amber-100/80 text-xs">
+                          Afectará a <strong>{tenantsAffected} tenant(s) activo(s)</strong> en el
+                          siguiente turno del motor. No hay rollback automático: la versión
+                          anterior queda en histórico pero el motor pasa a usar la nueva al
+                          instante.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="space-y-3 py-2">
                   <div className="space-y-1.5">
                     <Label htmlFor="changeSummary">Resumen del cambio (opcional)</Label>
@@ -470,16 +535,38 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                       maxLength={140}
                     />
                   </div>
+                  {isSharedBlock ? (
+                    <div className="space-y-1.5">
+                      <Label htmlFor="sharedConfirmPhrase">
+                        Escribe <code className="font-mono text-xs">{props.blockKey}</code> para
+                        confirmar
+                      </Label>
+                      <Input
+                        id="sharedConfirmPhrase"
+                        value={sharedConfirmPhrase}
+                        onChange={(e) => setSharedConfirmPhrase(e.target.value)}
+                        placeholder={props.blockKey}
+                        autoComplete="off"
+                      />
+                    </div>
+                  ) : null}
                 </div>
                 <DialogFooter>
                   <Button
                     variant="outline"
-                    onClick={() => setApplyDialogOpen(false)}
+                    onClick={() => {
+                      setApplyDialogOpen(false);
+                      setSharedConfirmPhrase('');
+                    }}
                     disabled={applying}
                   >
                     Cancelar
                   </Button>
-                  <Button onClick={handleApply} disabled={applying}>
+                  <Button
+                    onClick={handleApply}
+                    disabled={applying || !sharedConfirmOk}
+                    variant={isSharedBlock ? 'destructive' : 'default'}
+                  >
                     {applying ? (
                       <>
                         <Loader2 className="size-3.5 animate-spin" />
@@ -488,7 +575,7 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                     ) : (
                       <>
                         <Save className="size-3.5" />
-                        Confirmar
+                        {isSharedBlock ? 'Aplicar a todos los tenants' : 'Confirmar'}
                       </>
                     )}
                   </Button>

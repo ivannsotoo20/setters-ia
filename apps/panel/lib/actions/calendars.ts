@@ -155,6 +155,16 @@ export async function linkCalendar(input: {
     return { ok: false, error: 'externalCalendarId, name y widgetBaseUrl son requeridos' };
   }
 
+  // Hardening 2026-05-15 audit MEDIUM M-4: validar widget_base_url es https://.
+  // El widget URL proviene de GHL sync (motor) o input del trainer; defensivo
+  // rechazar protocols peligrosos (javascript:, data:) antes de persistir.
+  try {
+    const { assertHttpsUrl } = await import('@/lib/validators/url');
+    assertHttpsUrl(input.widgetBaseUrl, 'widgetBaseUrl');
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+
   const supabase = getServiceRoleClient();
 
   // Resolver integration_account_id GHL del tenant
@@ -257,12 +267,41 @@ export async function unlinkCalendar(calendarAccountId: number): Promise<ActionR
   }
 
   const supabase = getServiceRoleClient();
+
+  // Hardening 2026-05-15 (audit MEDIUM M-9): registrar en audit log antes del
+  // soft-delete para trazabilidad. Si el UPDATE falla, el audit log también
+  // queda y permite forense.
+  const { data: target } = await supabase
+    .from('calendar_accounts')
+    .select('name, external_calendar_id, is_default')
+    .eq('id', calendarAccountId)
+    .eq('tenant_id', eff.tenantId)
+    .maybeSingle();
+
+  if (!target) {
+    return { ok: false, error: 'calendar no encontrado o no pertenece a este tenant' };
+  }
+
   const { error } = await supabase
     .from('calendar_accounts')
     .update({ is_active: false, is_default: false, updated_at: new Date().toISOString() })
     .eq('id', calendarAccountId)
     .eq('tenant_id', eff.tenantId);
   if (error) return { ok: false, error: error.message };
+
+  // Audit log (best-effort, non-fatal si falla)
+  await supabase.from('tenant_audit_log').insert({
+    tenant_id: eff.tenantId,
+    actor_user_id: eff.userId,
+    action: 'calendar.unlink',
+    metadata: {
+      calendar_account_id: calendarAccountId,
+      external_calendar_id: target.external_calendar_id,
+      name: target.name,
+      was_default: target.is_default,
+    },
+  });
+
   revalidatePath('/settings/calendars');
   revalidatePath('/calendars');
   return { ok: true };

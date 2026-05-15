@@ -7,6 +7,16 @@ import { Star, StarOff, Unlink, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   setDefaultCalendar,
   unlinkCalendar,
   type CalendarAccountRow,
@@ -19,6 +29,7 @@ interface Props {
 export function CalendarsTable({ calendars }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<number | null>(null);
+  const [unlinkTarget, setUnlinkTarget] = useState<{ id: number; name: string } | null>(null);
   const [_, startTransition] = useTransition();
 
   async function handleSetDefault(id: number) {
@@ -36,10 +47,11 @@ export function CalendarsTable({ calendars }: Props) {
     }
   }
 
-  async function handleUnlink(id: number, name: string) {
-    if (!confirm(`¿Desvincular "${name}"? Las citas históricas se mantienen.`)) {
-      return;
-    }
+  // Hardening 2026-05-15 (audit UX): AlertDialog en lugar de window.confirm() — consistencia UI + accesibilidad.
+  async function performUnlink() {
+    if (!unlinkTarget) return;
+    const id = unlinkTarget.id;
+    setUnlinkTarget(null);
     setPendingId(id);
     try {
       const r = await unlinkCalendar(id);
@@ -111,7 +123,7 @@ export function CalendarsTable({ calendars }: Props) {
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => handleUnlink(cal.id, cal.name)}
+                onClick={() => setUnlinkTarget({ id: cal.id, name: cal.name })}
                 disabled={pendingId === cal.id}
                 title="Desvincular del SaaS (no borra del GHL)"
               >
@@ -121,6 +133,33 @@ export function CalendarsTable({ calendars }: Props) {
           </div>
         </div>
       ))}
+      <AlertDialog
+        open={unlinkTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setUnlinkTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Desvincular calendario</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vas a desvincular <strong>{unlinkTarget?.name ?? ''}</strong>. Esto:
+              <ul className="list-disc list-inside text-xs mt-2 space-y-0.5">
+                <li>Detiene la recepción de nuevas citas en este calendar.</li>
+                <li>Las citas históricas <strong>se mantienen visibles</strong>.</li>
+                <li>El calendar SIGUE existiendo en GHL — solo se rompe la vinculación con el SaaS.</li>
+                <li>Puedes re-vincular el mismo calendar después sin duplicar datos.</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={performUnlink}>
+              Desvincular
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
