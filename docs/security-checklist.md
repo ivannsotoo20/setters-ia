@@ -15,7 +15,8 @@ Lista que Iván debe completar antes de exponer el SaaS a clientes reales (más 
 - [x] prompt_block_versions denies INSERT/UPDATE/DELETE desde anon/authenticated (migration 055)
 - [x] **Auth Email Provider hardened** (2026-05-15 manual): minimum password length 10, password requirements "Lowercase, uppercase, digits and symbols (recommended)", secure password change ON, require current password when updating ON. Ruta: Dashboard -> Authentication -> Sign In/Providers -> Email -> Save.
 - [ ] **Leaked Password Protection** (toggle HaveIBeenPwned): DEUDA ASUMIDA — gated por Supabase plan Pro ($25/mes). Proyecto actual en Free. Mitigado parcialmente por las 4 configs anteriores (length 10 + symbols obligatorios + reauth en change). Reactivar cuando se justifique upgrade a Pro (siguiente cliente facturable o publicación pública del SaaS).
-- [ ] **Backup CREDENTIALS_ENCRYPTION_KEY** offline en password manager (32 bytes hex). Si se pierde, todas las credenciales encriptadas dejan de descifrarse.
+- [x] **Backup CREDENTIALS_ENCRYPTION_KEY** offline en password manager (2026-05-15): copiada de .env.local (raiz del repo) al password manager personal de Ivan. Verificado via `scripts/verify-encryption-key.mjs --tenant 3` que dev y prod comparten la MISMA key (descifra OK credentials YCloud de prod).
+- [ ] **(Deuda futura)** Rotar encryption key prod a una distinta de dev. Hoy comparten key (un compromiso de la maquina local de Ivan compromete cifrado prod). Sprint hardening futuro: generar key prod nueva, re-cifrar `integration_accounts.credentials_encrypted` de todos los tenants con la nueva key, actualizar .env del VPS, smoke.
 
 ## Motor (apps/motor-agente)
 
