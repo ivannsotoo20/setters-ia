@@ -13,7 +13,8 @@ Lista que Iván debe completar antes de exponer el SaaS a clientes reales (más 
 - [x] Bucket avatars sin policy SELECT amplia (migration 053)
 - [x] prompt_block_drafts policy valida tenant_id además de owner (migration 054)
 - [x] prompt_block_versions denies INSERT/UPDATE/DELETE desde anon/authenticated (migration 055)
-- [ ] **Habilitar Leaked Password Protection** en Supabase Dashboard -> Auth -> Settings (requiere acción manual UI)
+- [x] **Auth Email Provider hardened** (2026-05-15 manual): minimum password length 10, password requirements "Lowercase, uppercase, digits and symbols (recommended)", secure password change ON, require current password when updating ON. Ruta: Dashboard -> Authentication -> Sign In/Providers -> Email -> Save.
+- [ ] **Leaked Password Protection** (toggle HaveIBeenPwned): DEUDA ASUMIDA — gated por Supabase plan Pro ($25/mes). Proyecto actual en Free. Mitigado parcialmente por las 4 configs anteriores (length 10 + symbols obligatorios + reauth en change). Reactivar cuando se justifique upgrade a Pro (siguiente cliente facturable o publicación pública del SaaS).
 - [ ] **Backup CREDENTIALS_ENCRYPTION_KEY** offline en password manager (32 bytes hex). Si se pierde, todas las credenciales encriptadas dejan de descifrarse.
 
 ## Motor (apps/motor-agente)
