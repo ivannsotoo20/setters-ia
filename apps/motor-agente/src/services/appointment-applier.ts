@@ -155,16 +155,31 @@ export async function applyAppointmentToConversation(input: ApplyInput): Promise
     throw new Error(`applyAppointment: conversation update failed: ${updErr.message}`);
   }
 
-  // 4. pipeline_events log (idempotente: comprobar no existe igual reciente)
-  await supabase.from('pipeline_events').insert({
-    tenant_id: tenantId,
-    conversation_id: match.conversationId,
-    event_type: 'phase_change',
-    from_value: previousPhase != null ? `F${previousPhase}` : null,
-    to_value: `F${F7_PHASE_NUMBER}`,
-    source: 'calendar_webhook',
-    occurred_at: new Date().toISOString(),
-  });
+  // 4. pipeline_events log — idempotente. Hardening 2026-05-15 audit MEDIUM
+  //    M-12: si el webhook se repite en <5min (ej. backfill + webhook simultáneo,
+  //    o reconciliation re-aplicando), NO duplicar el row de phase_change.
+  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data: existingEvent } = await supabase
+    .from('pipeline_events')
+    .select('id')
+    .eq('conversation_id', match.conversationId)
+    .eq('event_type', 'phase_change')
+    .eq('to_value', `F${F7_PHASE_NUMBER}`)
+    .gte('occurred_at', fiveMinAgo)
+    .limit(1)
+    .maybeSingle();
+
+  if (!existingEvent) {
+    await supabase.from('pipeline_events').insert({
+      tenant_id: tenantId,
+      conversation_id: match.conversationId,
+      event_type: 'phase_change',
+      from_value: previousPhase != null ? `F${previousPhase}` : null,
+      to_value: `F${F7_PHASE_NUMBER}`,
+      source: 'calendar_webhook',
+      occurred_at: new Date().toISOString(),
+    });
+  }
 
   return {
     appointmentLocalId,

@@ -20,6 +20,7 @@ import { env } from '../config/env.js';
 import { getValidAccessToken } from '../lib/ghl-oauth.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { getSupabase } from '../lib/supabase.js';
+import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
 import { backfillCalendarAppointments } from '../services/backfill-appointments.js';
 
 const bodySchema = z.object({
@@ -50,12 +51,11 @@ export async function internalCalendarsRoutes(app: FastifyInstance): Promise<voi
       if (!expected) {
         return reply.code(503).send({ error: 'INTERNAL_STATS_TOKEN not configured' });
       }
-      const auth = request.headers['authorization'];
-      if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) {
+      const provided = extractBearer(request.headers['authorization']);
+      if (!provided) {
         return reply.code(401).send({ error: 'missing Bearer token' });
       }
-      const provided = auth.slice('Bearer '.length).trim();
-      if (provided.length !== expected.length || provided !== expected) {
+      if (!isValidBearer(provided, expected)) {
         return reply.code(401).send({ error: 'invalid token' });
       }
 
@@ -196,12 +196,11 @@ export async function internalCalendarsRoutes(app: FastifyInstance): Promise<voi
     async (request: FastifyRequest<{ Body: unknown }>, reply: FastifyReply) => {
       const expected = env.INTERNAL_STATS_TOKEN;
       if (!expected) return reply.code(503).send({ error: 'INTERNAL_STATS_TOKEN not configured' });
-      const auth = request.headers['authorization'];
-      if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) {
+      const provided = extractBearer(request.headers['authorization']);
+      if (!provided) {
         return reply.code(401).send({ error: 'missing Bearer token' });
       }
-      const provided = auth.slice('Bearer '.length).trim();
-      if (provided.length !== expected.length || provided !== expected) {
+      if (!isValidBearer(provided, expected)) {
         return reply.code(401).send({ error: 'invalid token' });
       }
 

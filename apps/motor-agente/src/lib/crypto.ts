@@ -94,6 +94,19 @@ export function decryptWithDefault(blob: string): string {
   return decrypt(blob, getDefaultKey());
 }
 
+/**
+ * Valida al boot que CREDENTIALS_ENCRYPTION_KEY existe y tiene el formato
+ * correcto. Lanza CryptoError si falla — el motor debe abortar el arranque en
+ * ese caso (NO permitir queue webhooks que luego fallan en runtime).
+ *
+ * (Hardening 2026-05-15 audit HIGH H-5)
+ */
+export function assertEncryptionKey(): void {
+  const _key = getDefaultKey(); // throws CryptoError si falta o malformada
+  // No expongas la key. Solo confirmamos la carga.
+  void _key;
+}
+
 function constantTimeStringEqual(a: string, b: string): boolean {
   const aBuf = Buffer.from(a, 'utf8');
   const bBuf = Buffer.from(b, 'utf8');

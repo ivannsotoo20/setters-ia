@@ -19,6 +19,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z, ZodError } from 'zod';
 import { env } from '../config/env.js';
 import { getSupabase } from '../lib/supabase.js';
+import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
@@ -48,12 +49,11 @@ export async function internalWelcomeRoutes(app: FastifyInstance): Promise<void>
         });
       }
 
-      const auth = request.headers['authorization'];
-      if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) {
+      const provided = extractBearer(request.headers['authorization']);
+      if (!provided) {
         return reply.code(401).send({ error: 'missing Bearer token' });
       }
-      const provided = auth.slice('Bearer '.length).trim();
-      if (provided.length !== expected.length || provided !== expected) {
+      if (!isValidBearer(provided, expected)) {
         return reply.code(401).send({ error: 'invalid token' });
       }
 

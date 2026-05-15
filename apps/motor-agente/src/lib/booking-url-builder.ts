@@ -9,6 +9,15 @@
  *  - `?phone=<E.164>` + `?prefill=true` → GHL pre-rellena el form con el phone normalizado. Fallback de match con `confidence=80`.
  *  - `?firstName=<x>` → cosmético, mejora UX.
  *
+ * Hardening 2026-05-15 (audit security HIGH H-8): `phone` y `firstName` son PII.
+ * Si van en query string, leak en logs de proxy GHL, historial browser del
+ * lead, referer headers, analytics third-party. Por defecto (modo `minimal`)
+ * NO los incluimos. El matching sigue funcionando vía `fyzon_lead_uuid`
+ * (confidence=100). El lead debe escribir su phone manualmente en el widget.
+ *
+ * Para habilitar prefill PII opt-in (trainer acepta riesgo GDPR), setear
+ * env `BOOKING_URL_PREFILL_PII=true` y documentar al trainer.
+ *
  * La URL base viene de `calendar_accounts.widget_base_url`.
  */
 
@@ -25,6 +34,12 @@ export interface BookingUrlInput {
   };
   /** Override del slug (si ya está computado y se quiere ahorrar el HMAC). */
   trackingUuid?: string;
+  /**
+   * Opt-in para incluir phone/firstName en query params. Default false (PII
+   * fuera de la URL). Si true, EL CALLER debe documentar al trainer el riesgo
+   * GDPR (logs proxy + historial browser).
+   */
+  prefillPii?: boolean;
 }
 
 export function buildTrackedBookingUrl(input: BookingUrlInput): string {
@@ -37,18 +52,28 @@ export function buildTrackedBookingUrl(input: BookingUrlInput): string {
 
   const url = new URL(input.calendar.widget_base_url);
 
+  // Validación de protocol: solo HTTPS. http: queda permitido en localhost dev.
+  if (url.protocol !== 'https:' && !/^(localhost|127\.0\.0\.1)$/i.test(url.hostname)) {
+    throw new Error(`buildTrackedBookingUrl: widget_base_url debe ser https (got ${url.protocol})`);
+  }
+
   const slug = input.trackingUuid ?? computeTrackingUuid(input.lead.id);
   url.searchParams.set('fyzon_lead_uuid', slug);
 
-  const phone = input.lead.phone?.trim();
-  if (phone) {
-    url.searchParams.set('phone', phone);
-    url.searchParams.set('prefill', 'true');
-  }
+  // Opt-in PII prefill (default false = ningún PII en query).
+  const prefillPii =
+    input.prefillPii ?? process.env.BOOKING_URL_PREFILL_PII === 'true';
 
-  const firstName = input.lead.first_name?.trim();
-  if (firstName) {
-    url.searchParams.set('firstName', firstName);
+  if (prefillPii) {
+    const phone = input.lead.phone?.trim();
+    if (phone) {
+      url.searchParams.set('phone', phone);
+      url.searchParams.set('prefill', 'true');
+    }
+    const firstName = input.lead.first_name?.trim();
+    if (firstName) {
+      url.searchParams.set('firstName', firstName);
+    }
   }
 
   return url.toString();

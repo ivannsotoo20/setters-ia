@@ -14,6 +14,7 @@ import { getSupabase } from '../lib/supabase.js';
 import { verifyGhlSignature } from '../lib/webhook-verify-ghl.js';
 import { verifyMarketplaceWebhook } from '../lib/webhook-verify-marketplace.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
+import { safeLogBody } from '../lib/log-redact.js';
 import {
   routeGhlInbound,
   routeGhlOutbound,
@@ -142,7 +143,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         {
           tenantId,
           bodyKeys: Object.keys((request.body ?? {}) as Record<string, unknown>),
-          body: request.body,
+          body: safeLogBody(request.body),
         },
         'webhook-ghl: payload received (raw)',
       );
@@ -157,7 +158,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           supabase,
           ghlClient,
           tenantId,
-          body: request.body,
+          body: safeLogBody(request.body),
           log: request.log,
         });
         return reply.code(200).send({
@@ -175,14 +176,14 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
       } catch (err) {
         if (err instanceof GhlParseError) {
           request.log.warn(
-            { tenantId, issues: err.issues, body: request.body },
+            { tenantId, issues: err.issues, body: safeLogBody(request.body) },
             'webhook-ghl: payload rejected by Zod parser',
           );
           return reply.code(400).send({ error: 'invalid payload', issues: err.issues });
         }
         if (err instanceof ZodError) {
           request.log.warn(
-            { tenantId, issues: err.flatten(), body: request.body },
+            { tenantId, issues: err.flatten(), body: safeLogBody(request.body) },
             'webhook-ghl: payload rejected by Zod parser',
           );
           return reply.code(400).send({ error: 'invalid payload', issues: err.flatten() });
@@ -306,7 +307,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
       request.log.info(
         {
           bodyKeys: Object.keys((request.body ?? {}) as Record<string, unknown>),
-          body: request.body,
+          body: safeLogBody(request.body),
           headers: {
             'x-wh-signature': pickHeader(request, 'x-wh-signature'),
             'x-ghl-signature': pickHeader(request, 'x-ghl-signature'),
@@ -338,7 +339,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           supabase,
           ghlClient,
           tenantId,
-          body: request.body,
+          body: safeLogBody(request.body),
           log: request.log,
         });
         return reply.code(200).send({
@@ -356,14 +357,14 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
       } catch (err) {
         if (err instanceof GhlParseError) {
           request.log.warn(
-            { issues: err.issues, body: request.body },
+            { issues: err.issues, body: safeLogBody(request.body) },
             'webhook-ghl(oauth): payload rejected by Zod parser',
           );
           return reply.code(400).send({ error: 'invalid payload', issues: err.issues });
         }
         if (err instanceof ZodError) {
           request.log.warn(
-            { issues: err.flatten(), body: request.body },
+            { issues: err.flatten(), body: safeLogBody(request.body) },
             'webhook-ghl(oauth): payload rejected by Zod parser',
           );
           return reply.code(400).send({ error: 'invalid payload', issues: err.flatten() });

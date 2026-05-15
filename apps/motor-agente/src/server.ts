@@ -34,7 +34,12 @@ export async function buildServer(): Promise<FastifyInstance> {
   });
 
   await app.register(helmet, { global: true });
-  await app.register(cors, { origin: true });
+  // Hardening 2026-05-15 (audit security HIGH H-4): CORS cerrado.
+  // El motor SOLO recibe webhooks externos (no requieren CORS) y requests
+  // server-to-server desde el panel (no requieren CORS). origin:false rechaza
+  // cualquier preflight con Origin header. Si en el futuro el panel necesita
+  // hacer requests browser-side al motor, abrir un whitelist explícito.
+  await app.register(cors, { origin: false });
 
   // Preservar raw body para HMAC verification (Hardening 1.2).
   // Sustituye el JSON parser default: parsea como Buffer, lo guarda en

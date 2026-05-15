@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { env } from '../config/env.js';
 import { getSupabase } from '../lib/supabase.js';
 import { loadPipelineStats } from '../services/pipeline-stats.js';
+import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
 
 const querySchema = z.object({
   tenant_id: z
@@ -42,13 +43,12 @@ export async function internalStatsRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
-      // Bearer auth (constant-time enough — strings con length checks).
-      const auth = request.headers['authorization'];
-      if (typeof auth !== 'string' || !auth.startsWith('Bearer ')) {
+      // Bearer auth — constant-time compare (Hardening 2026-05-15 audit HIGH H-1).
+      const provided = extractBearer(request.headers['authorization']);
+      if (!provided) {
         return reply.code(401).send({ error: 'missing Bearer token' });
       }
-      const provided = auth.slice('Bearer '.length).trim();
-      if (provided.length !== expected.length || provided !== expected) {
+      if (!isValidBearer(provided, expected)) {
         return reply.code(401).send({ error: 'invalid token' });
       }
 

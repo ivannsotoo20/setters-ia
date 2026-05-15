@@ -124,9 +124,13 @@ export async function handleCalendarEvent(
   const appointment = event.appointment as GhlAppointment;
   const eventType = event.type;
 
-  // 2. Dedup Redis
+  // 2. Dedup Redis (Hardening 2026-05-15 audit MEDIUM M-3: GHL no firma con
+  //    timestamp, no hay anti-replay nativo. Extendemos TTL a 10min para
+  //    cubrir replay attacks de webhooks firmados válidos pero antiguos. La
+  //    dedup key incluye eventType porque la misma cita puede recibir
+  //    Create/Update/Delete legítimamente).
   const dedupKey = `ghl:appt:${tenantId}:${appointment.id}:${eventType}`;
-  const claimed = await tryClaimDedupKey(dedupKey, 60);
+  const claimed = await tryClaimDedupKey(dedupKey, 600);
   if (!claimed) {
     return { ok: true, deduped: true };
   }
