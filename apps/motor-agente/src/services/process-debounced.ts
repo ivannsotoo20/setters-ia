@@ -313,7 +313,14 @@ export async function processDebounced(
     reasoningUpdate.general_motivation = setterOut.general_motivation;
   }
 
-  await supabase
+  // Bug fix 2026-05-16: `is_handoff_to_human` es NOT NULL en BD (default false).
+  // El UPDATE intentaba poner `null` cuando conversation_status !== 'handoff', lo
+  // que Postgres rechazaba con NOT NULL violation → el UPDATE ENTERO fallaba
+  // silenciosamente (sin chequeo de error) → phase_number NO se actualizaba →
+  // conversación quedaba bloqueada en F1 aunque computeAutoPromotedPhase calculara
+  // F2. Detectado tras smoke real Hito 9 con lead 10016: 2 turnos IA, phase=1.
+  // Fix: usar `false` explícito + chequear error del UPDATE y loguear (no fatal).
+  const { error: updateErr } = await supabase
     .from('conversations')
     .update({
       phase_number: newPhase,
@@ -321,11 +328,16 @@ export async function processDebounced(
       is_qualified:
         pipelineOut.generator.setterOutput.conversation_status === 'qualified' ? true : null,
       is_handoff_to_human:
-        pipelineOut.generator.setterOutput.conversation_status === 'handoff' ? true : null,
+        pipelineOut.generator.setterOutput.conversation_status === 'handoff',
       updated_at: new Date().toISOString(),
       ...reasoningUpdate,
     })
     .eq('id', conversationId);
+  if (updateErr) {
+    console.warn(
+      `[process-debounced] UPDATE conversations conv=${conversationId} failed: ${updateErr.message}`,
+    );
+  }
 
   // 9.7. Sprint Eta — aplicar system labels (Hot Lead / Completado / Comprado)
   //      según el output del Generator. Best-effort: si falla, log warn pero
