@@ -95,11 +95,49 @@ export async function applyAppointmentToConversation(input: ApplyInput): Promise
     eventType === 'AppointmentCreate' &&
     (status === 'new' || status === 'confirmed');
 
-  // 2.b Update con cancelled → tocar appointment_status pero NO mover conv.
-  // 2.c Delete → mantener conv en F7 (la conversación queda con outcome cancelled aplicable manualmente).
+  // 2.b Update/Delete con cancelled/noshow/invalid → revocar handoff_cause='A_agenda'
+  //     si la conv lo tenía. Razón: la cita asociada ya no existe → el handoff
+  //     "lead reservó" pierde validez. Reactivamos la IA para que el lead pueda
+  //     reagendar sin intervención manual del trainer. Mantenemos phase_number
+  //     (no retrocedemos automáticamente; el trainer decide).
+  //     (Bug detectado 2026-05-16: webhook AppointmentDelete dejaba conversación
+  //      con is_handoff_to_human=true zombie aunque cita ya no existiera).
+  const isCancellationStatus =
+    status === 'cancelled' || status === 'noshow' || status === 'invalid';
 
   if (!shouldMoveToF7) {
-    // Solo actualizar conversations.last_appointment_id (link al mirror local)
+    if (isCancellationStatus) {
+      // Mirar si la conv tenía handoff por agenda; si sí, revocarlo.
+      const { data: convCurrent } = await supabase
+        .from('conversations')
+        .select('handoff_cause')
+        .eq('id', match.conversationId)
+        .maybeSingle();
+      const shouldRevokeHandoff = convCurrent?.handoff_cause === 'A_agenda';
+
+      if (shouldRevokeHandoff) {
+        await supabase
+          .from('conversations')
+          .update({
+            last_appointment_id: appointmentLocalId,
+            is_handoff_to_human: false,
+            handoff_cause: null,
+            handoff_at: null,
+            handoff_reason: null,
+            ai_paused_until: null,
+          })
+          .eq('id', match.conversationId);
+
+        return {
+          appointmentLocalId,
+          conversationMoved: false,
+          previousPhase: null,
+          newPhase: null,
+        };
+      }
+    }
+
+    // Caso fallback: solo actualizar conversations.last_appointment_id (link al mirror local)
     await supabase
       .from('conversations')
       .update({ last_appointment_id: appointmentLocalId })
