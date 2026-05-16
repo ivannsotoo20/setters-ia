@@ -1,6 +1,5 @@
 import { ConversationLayout } from '@/components/conversation-layout/conversation-layout';
 import {
-  parseTab,
   parseChannel,
   parseBoolFlag,
   parseLabelIds,
@@ -11,7 +10,6 @@ export const dynamic = 'force-dynamic';
 interface PageProps {
   searchParams: Promise<{
     selected?: string;
-    tab?: string;
     q?: string;
     channel?: string;
     unread?: string;
@@ -31,7 +29,6 @@ export default async function ConversationsPage({ searchParams }: PageProps) {
   return (
     <ConversationLayout
       selectedId={selectedId}
-      activeTab={parseTab(sp.tab)}
       filters={{
         q: sp.q ?? '',
         channel: parseChannel(sp.channel),

@@ -9,7 +9,7 @@ import type { LabelRow } from '@/lib/actions/labels';
 
 interface Props {
   q: string;
-  channel: 'all' | 'wa' | 'ig';
+  channel: 'all' | 'wa' | 'ig' | 'fb';
   unread: boolean;
   mine: boolean;
   labelIds: number[];
@@ -50,7 +50,7 @@ export function ConversationListFilters({
     }, 250);
   };
 
-  const toggleChannel = (next: 'all' | 'wa' | 'ig') => {
+  const toggleChannel = (next: 'all' | 'wa' | 'ig' | 'fb') => {
     setParam('channel', next === 'all' ? null : next);
   };
 
@@ -110,6 +110,7 @@ export function ConversationListFilters({
         />
         <FilterChip label="WA" active={channel === 'wa'} onClick={() => toggleChannel('wa')} />
         <FilterChip label="IG" active={channel === 'ig'} onClick={() => toggleChannel('ig')} />
+        <FilterChip label="FB" active={channel === 'fb'} onClick={() => toggleChannel('fb')} />
         <span className="w-px h-3 bg-border mx-0.5" aria-hidden />
         <FilterChip
           label="No leídos"

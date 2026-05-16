@@ -2,13 +2,6 @@
 
 import { Phone, Mail, AtSign, Calendar, Hash } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
   formatLeadName,
   leadInitials,
@@ -53,10 +46,6 @@ export function LeadInfoCard({ detail }: Props) {
             value={formatAbsoluteShort(detail.createdAt)}
           />
         </dl>
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
-          <FollowCard label="Te sigue" />
-          <FollowCard label="Le sigues" />
-        </div>
       </CardContent>
     </Card>
   );
@@ -83,25 +72,5 @@ function DataRow({
         {value}
       </dd>
     </div>
-  );
-}
-
-function FollowCard({ label }: { label: string }) {
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex flex-col items-center justify-center gap-0.5 rounded-md border border-dashed border-border bg-muted/20 p-2 cursor-help">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-              {label}
-            </span>
-            <Badge variant="outline" className="h-4 text-[9px] px-1.5 font-normal">
-              —
-            </Badge>
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>Próximamente Sprint Mu (Meta API directo)</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
   );
 }

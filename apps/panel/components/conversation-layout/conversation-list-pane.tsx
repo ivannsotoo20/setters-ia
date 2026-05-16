@@ -2,19 +2,15 @@ import { Inbox } from 'lucide-react';
 import {
   type ConversationListRow,
   type FilterParams,
-  type TabKey,
-  rowsForTab,
-  tabCountsByLabels,
+  applyFilters,
 } from '@/lib/conversation-list-query';
 import type { LabelRow } from '@/lib/actions/labels';
 import { ConversationListItem } from './conversation-list-item';
-import { ConversationListTabs } from './conversation-list-tabs';
 import { ConversationListFilters } from './conversation-list-filters';
 
 interface Props {
   rows: ConversationListRow[];
   selectedId: number | null;
-  activeTab: TabKey;
   filters: FilterParams;
   assigneeMap: Record<string, string>;
   allLabels: LabelRow[];
@@ -23,13 +19,14 @@ interface Props {
 export function ConversationListPane({
   rows,
   selectedId,
-  activeTab,
   filters,
   assigneeMap,
   allLabels,
 }: Props) {
-  const counts = tabCountsByLabels(rows);
-  const visible = rowsForTab(rows, activeTab, filters);
+  // Lista única "Chats" sin tabs Hot/Completados/Comprados (decisión 2026-05-16).
+  // Los filtros pills (canal, no leídos, asignados, etiquetas) y la búsqueda se
+  // aplican directamente sobre el set completo.
+  const visible = applyFilters(rows, filters);
 
   return (
     <aside
@@ -51,9 +48,6 @@ export function ConversationListPane({
           labelIds={filters.labelIds ?? []}
           allLabels={allLabels}
         />
-      </div>
-      <div className="shrink-0">
-        <ConversationListTabs active={activeTab} counts={counts} />
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto">
         {visible.length === 0 ? (

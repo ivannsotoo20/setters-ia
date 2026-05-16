@@ -17,7 +17,6 @@ import {
   type ConversationListRow,
   type ConversationListLabel,
   type FilterParams,
-  type TabKey,
 } from '@/lib/conversation-list-query';
 import { ConversationShell } from './conversation-shell';
 import { ConversationListPane } from './conversation-list-pane';
@@ -33,14 +32,13 @@ import type {
 
 interface Props {
   selectedId: number | null;
-  activeTab: TabKey;
   filters: FilterParams;
 }
 
 const LIST_LIMIT = 100;
 const MESSAGES_LIMIT = 200;
 
-export async function ConversationLayout({ selectedId, activeTab, filters }: Props) {
+export async function ConversationLayout({ selectedId, filters }: Props) {
   const supabase = await createSupabaseServerClient();
   const effective = await getEffectiveTenant();
   if (!effective) notFound();
@@ -272,7 +270,6 @@ export async function ConversationLayout({ selectedId, activeTab, filters }: Pro
         <ConversationListPane
           rows={rows}
           selectedId={selectedDetail?.id ?? null}
-          activeTab={activeTab}
           filters={filters}
           assigneeMap={assigneeMap}
           allLabels={allLabels}

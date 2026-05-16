@@ -77,7 +77,7 @@ export interface ConversationListRow {
 
 export interface FilterParams {
   q?: string;
-  channel?: 'all' | 'wa' | 'ig';
+  channel?: 'all' | 'wa' | 'ig' | 'fb';
   unread?: boolean;
   mine?: boolean;
   viewerId?: string | null;
@@ -129,9 +129,10 @@ export function tabCountsByLabels(rows: ConversationListRow[]): Record<TabKey, n
   return counts;
 }
 
-function normalizeChannelType(channelType: string | null | undefined): 'wa' | 'ig' | 'other' {
+function normalizeChannelType(channelType: string | null | undefined): 'wa' | 'ig' | 'fb' | 'other' {
   if (channelType === 'whatsapp') return 'wa';
   if (channelType === 'instagram_dm') return 'ig';
+  if (channelType === 'facebook_messenger') return 'fb';
   return 'other';
 }
 
@@ -200,8 +201,8 @@ export function parseTab(value: string | null | undefined): TabKey {
   return 'chats';
 }
 
-export function parseChannel(value: string | null | undefined): 'all' | 'wa' | 'ig' {
-  if (value === 'wa' || value === 'ig' || value === 'all') return value;
+export function parseChannel(value: string | null | undefined): 'all' | 'wa' | 'ig' | 'fb' {
+  if (value === 'wa' || value === 'ig' || value === 'fb' || value === 'all') return value;
   return 'all';
 }
 
