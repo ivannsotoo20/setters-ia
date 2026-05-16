@@ -36,13 +36,22 @@ let mockProfileByEmail: ProfileRow | null = null;
 let mockProfileById: ProfileRow | null = null;
 
 const insertedProfiles: Array<Record<string, unknown>> = [];
+const insertedPendingInvites: Array<Record<string, unknown>> = [];
 const updatedProfiles: Array<{ id: string; patch: Record<string, unknown> }> = [];
 const auditLogInserts: Array<Record<string, unknown>> = [];
 const inviteUserCalls: Array<{ email: string; data?: unknown; redirectTo?: string }> = [];
 const resetPasswordCalls: Array<{ email: string; redirectTo?: string }> = [];
+const sendEmailCalls: Array<{ to: string; subject: string }> = [];
 
 vi.mock('next/cache', () => ({
   revalidatePath: () => {},
+}));
+
+vi.mock('@/lib/email', () => ({
+  sendEmail: async (args: { to: string; subject: string; html: string }) => {
+    sendEmailCalls.push({ to: args.to, subject: args.subject });
+    return { ok: true as const };
+  },
 }));
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -85,6 +94,39 @@ vi.mock('@/lib/supabase/service-role', () => ({
           },
         };
       }
+      if (table === 'pending_invites') {
+        // SELECT chain: .is().is().gt().eq().eq().maybeSingle() → null (no pending invite)
+        // INSERT chain: .insert().select('id').single() → fake row.
+        const selectChain = {
+          is: (_col: string, _val: unknown) => selectChain,
+          gt: (_col: string, _val: unknown) => selectChain,
+          eq: (_col: string, _val: unknown) => selectChain,
+          maybeSingle: async () => ({ data: null, error: null }),
+        };
+        return {
+          select: (_cols: string) => selectChain,
+          insert: (payload: Record<string, unknown>) => {
+            insertedPendingInvites.push(payload);
+            return {
+              select: (_cols: string) => ({
+                single: async () => ({
+                  data: { id: 9999 },
+                  error: null,
+                }),
+              }),
+            };
+          },
+        };
+      }
+      if (table === 'tenants') {
+        return {
+          select: (_cols: string) => ({
+            eq: (_col: string, _val: unknown) => ({
+              maybeSingle: async () => ({ data: { name: 'Tenant Test' }, error: null }),
+            }),
+          }),
+        };
+      }
       // profiles table
       return {
         select: (_cols: string) => {
@@ -99,8 +141,16 @@ vi.mock('@/lib/supabase/service-role', () => ({
                 };
               }
               if (col === 'email') {
+                // Dual API: si caller usa .maybeSingle() → devuelve mockProfileByEmail
+                //          si caller hace await directo → devuelve array (vacío o con el mock).
+                const arrayResult = {
+                  data: mockProfileByEmail ? [mockProfileByEmail] : [],
+                  error: null,
+                };
                 return {
                   maybeSingle: async () => ({ data: mockProfileByEmail }),
+                  then: (resolve: (v: typeof arrayResult) => unknown) =>
+                    Promise.resolve(arrayResult).then(resolve),
                 };
               }
               if (col === 'id') {
@@ -154,38 +204,48 @@ describe('members actions', () => {
     mockProfileByEmail = null;
     mockProfileById = null;
     insertedProfiles.length = 0;
+    insertedPendingInvites.length = 0;
     updatedProfiles.length = 0;
     auditLogInserts.length = 0;
     inviteUserCalls.length = 0;
     resetPasswordCalls.length = 0;
+    sendEmailCalls.length = 0;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake-service-role';
     process.env.NEXT_PUBLIC_PANEL_BASE_URL = 'https://panel.test';
   });
 
   describe('inviteMember', () => {
-    it('owner invita nuevo miembro: crea auth user + profile + audit', async () => {
+    it('owner invita nuevo miembro: crea pending_invite + envía email branded + audit', async () => {
+      // Sprint Crear Sub-cuenta — inviteMember delega en inviteUserAction (ruta A unificada).
+      // El profile se INSERTA en acceptInviteAction al aceptar el invite, no aquí.
       const result = await inviteMember({
         tenantId: 5,
         email: 'NEW@test.com',
         role: 'admin',
       });
       expect(result.ok).toBe(true);
-      expect(inviteUserCalls).toHaveLength(1);
-      expect(inviteUserCalls[0]?.email).toBe('new@test.com');
-      expect(insertedProfiles).toHaveLength(1);
-      expect(insertedProfiles[0]).toMatchObject({
-        id: 'new-invited-uuid',
-        tenant_id: 5,
+      // Ya NO se llama auth.admin.inviteUserByEmail (email branded vía Resend).
+      expect(inviteUserCalls).toHaveLength(0);
+      // El profile se crea al accept-invite, no aquí.
+      expect(insertedProfiles).toHaveLength(0);
+      // SÍ se crea row en pending_invites con el invite token.
+      expect(insertedPendingInvites).toHaveLength(1);
+      expect(insertedPendingInvites[0]).toMatchObject({
         email: 'new@test.com',
+        tenant_id: 5,
         role: 'admin',
-        is_active: true,
+        is_agency_admin: false,
       });
-      expect(auditLogInserts).toHaveLength(1);
-      expect(auditLogInserts[0]).toMatchObject({
-        action: 'member.invited',
-        target_email: 'new@test.com',
-      });
+      // Email branded enviado vía sendEmail (Resend).
+      expect(sendEmailCalls).toHaveLength(1);
+      expect(sendEmailCalls[0]?.to).toBe('new@test.com');
+      // 2 audit log entries: invite.created (inviteUserAction) + member.invited (inviteMember).
+      const actions = auditLogInserts.map((row) => row.action);
+      expect(actions).toContain('invite.created');
+      expect(actions).toContain('member.invited');
+      const memberInvitedRow = auditLogInserts.find((row) => row.action === 'member.invited');
+      expect(memberInvitedRow).toMatchObject({ target_email: 'new@test.com' });
     });
 
     it('rechaza email inválido', async () => {
@@ -232,6 +292,12 @@ describe('members actions', () => {
         role: 'admin',
       });
       expect(result.ok).toBe(true);
+      expect(insertedPendingInvites).toHaveLength(1);
+      expect(insertedPendingInvites[0]).toMatchObject({
+        email: 'ok@test.com',
+        tenant_id: 99,
+        is_agency_admin: false,
+      });
     });
 
     it('reactiva profile soft-removed con mismo email + tenant', async () => {
