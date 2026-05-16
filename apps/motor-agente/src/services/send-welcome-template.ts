@@ -182,11 +182,19 @@ export async function sendWelcomeTemplate(
   }
   const integrationAccountId = Number(ia.id);
   const credentials = decodeCredentialsRow(ia, integrationAccountId);
-  const apiKey = typeof credentials.api_key === 'string' ? credentials.api_key : '';
+  // Hito 9 Parche 2.5 (2026-05-15) — el panel persiste `apiKey` (camelCase, ver
+  // apps/panel/lib/actions/integrations.ts:115) mientras el motor históricamente
+  // ha leído `api_key` (snake_case). Mismo fallback que apps/panel/lib/manual-send.ts:113-119.
+  const apiKey =
+    typeof credentials.apiKey === 'string' && credentials.apiKey.length > 0
+      ? credentials.apiKey
+      : typeof credentials.api_key === 'string'
+        ? credentials.api_key
+        : '';
   if (!apiKey) {
     throw new WelcomeTemplateError(
       'no_api_key',
-      `integration_account ${integrationAccountId} (ycloud) sin api_key`,
+      `integration_account ${integrationAccountId} (ycloud) sin api_key/apiKey en credentials`,
       422,
     );
   }
@@ -201,15 +209,15 @@ export async function sendWelcomeTemplate(
     );
   }
 
-  // 4) bodyVariables: por defecto rellenar con `sample` de cada variable.
-  //    El trainer puede registrar variables con sample = primer_nombre, etc. En
-  //    sub-fase futura, opcionalmente sustituir samples por datos reales del lead.
+  // 4) bodyVariables: mapear cada variable de la plantilla al campo correspondiente
+  //    del lead según su `name` (case-insensitive). Fallback al `sample` registrado
+  //    en la plantilla si el lead no tiene el campo. Soporta nombres en español
+  //    (nombre, apellido) y en inglés (first_name, last_name, etc.) — el sync
+  //    YCloud (extractTemplateVariables) preserva el placeholder original.
   const variables = Array.isArray(template.variables)
-    ? (template.variables as Array<{ sample?: string | null }>)
+    ? (template.variables as Array<{ name?: string | null; sample?: string | null }>)
     : [];
-  const bodyVariables = variables
-    .map((v) => v?.sample ?? '')
-    .filter((s): s is string => typeof s === 'string');
+  const bodyVariables = variables.map((v) => resolveTemplateVariable(v, lead));
 
   // 5) Send via YCloud.
   let sendResult;
@@ -238,10 +246,16 @@ export async function sendWelcomeTemplate(
 
   // 6) Persistir mensaje + actualizar conversation a F1 outbound bienvenida + activar IA.
   const sentAt = new Date().toISOString();
-  const bodyText =
+  // Parche Hito 9 2.1 (2026-05-15) — el body persistido en conversation_messages
+  // debe estar interpolado con datos reales (lo que el lead realmente ve por WA)
+  // y NO el body raw con `{{nombre}}` literal. La WA enviada por Meta usa
+  // bodyVariables (cubierto en paso 4), pero el panel `/conversations` lee
+  // conversation_messages.content para mostrar la conv al trainer.
+  const rawBody =
     typeof template.body === 'string' && template.body.trim().length > 0
       ? template.body
       : `[template:${providerTemplateId}]`;
+  const bodyText = interpolateTemplateBody(rawBody, variables, lead);
 
   const { error: insertErr } = await supabase.from('conversation_messages').insert({
     tenant_id: tenantId,
@@ -298,4 +312,96 @@ export async function sendWelcomeTemplate(
     templateName: providerTemplateId,
     bodyText,
   };
+}
+
+interface TemplateVariableInput {
+  name?: string | null;
+  sample?: string | null;
+}
+
+interface LeadFieldsForTemplate {
+  first_name?: string | null;
+  last_name?: string | null;
+  phone?: string | null;
+  external_id?: string | null;
+}
+
+/**
+ * Sustituye los placeholders `{{name}}` y `{{N}}` (posicional 1-indexed) en el
+ * body de la plantilla por los valores reales del lead. Se usa solo para
+ * persistir el mensaje en `conversation_messages.content` (la WA enviada por
+ * Meta interpola via bodyVariables, no por nuestro body raw).
+ *
+ * Idempotente: si un placeholder no tiene match, se deja literal (mejor que
+ * persistir vacío y perder contexto). Si el body no tiene placeholders, se
+ * devuelve tal cual.
+ */
+export function interpolateTemplateBody(
+  body: string,
+  variables: TemplateVariableInput[],
+  lead: LeadFieldsForTemplate,
+): string {
+  let out = body;
+  variables.forEach((v, idx) => {
+    const resolved = resolveTemplateVariable(v, lead);
+    const positional = String(idx + 1);
+    out = out.replace(
+      new RegExp(`\\{\\{\\s*${escapeRegex(positional)}\\s*\\}\\}`, 'g'),
+      resolved,
+    );
+    if (v?.name) {
+      out = out.replace(
+        new RegExp(`\\{\\{\\s*${escapeRegex(v.name)}\\s*\\}\\}`, 'g'),
+        resolved,
+      );
+    }
+  });
+  return out;
+}
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Mapea una variable de plantilla (`{name, sample}`) al campo correspondiente
+ * del lead. Si la variable no tiene `name` o el campo no existe en el lead,
+ * cae al `sample` registrado en la plantilla. Si no hay sample, cadena vacía.
+ *
+ * Soporta nombres comunes en español e inglés porque YCloud preserva el
+ * placeholder original de Meta — el trainer puede haber escrito `{{nombre}}`
+ * o `{{first_name}}`.
+ */
+export function resolveTemplateVariable(
+  v: TemplateVariableInput,
+  lead: LeadFieldsForTemplate,
+): string {
+  const name = (v?.name ?? '').toLowerCase().trim();
+  const sample = v?.sample ?? '';
+  if (!name) return sample;
+
+  switch (name) {
+    case 'first_name':
+    case 'firstname':
+    case 'nombre':
+    case '1': // {{1}} posicional clásico Meta
+      return lead.first_name ?? sample;
+    case 'last_name':
+    case 'lastname':
+    case 'apellido':
+    case 'apellidos':
+    case '2':
+      return lead.last_name ?? sample;
+    case 'phone':
+    case 'telefono':
+    case 'teléfono':
+    case 'tel':
+      return lead.phone ?? lead.external_id ?? sample;
+    case 'full_name':
+    case 'fullname':
+    case 'nombre_completo':
+      return [lead.first_name, lead.last_name].filter(Boolean).join(' ') || sample;
+    default:
+      return sample;
+  }
 }

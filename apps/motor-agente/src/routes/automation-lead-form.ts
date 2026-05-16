@@ -31,6 +31,7 @@ import { ZodError, z } from 'zod';
 import { env } from '../config/env.js';
 import { tryClaimDedupKey } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
+import { isValidBearer } from '../lib/timing-safe-bearer.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
@@ -110,7 +111,7 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
             if (verifyMode === 'enforce') {
               return reply.code(401).send({ error: 'missing_secret' });
             }
-          } else if (provided !== expected) {
+          } else if (!isValidBearer(provided, expected)) {
             request.log.warn({ tenantId, verifyMode }, 'lead-form: secret mismatch');
             if (verifyMode === 'enforce') {
               return reply.code(401).send({ error: 'invalid_secret' });

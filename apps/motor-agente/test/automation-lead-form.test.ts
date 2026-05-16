@@ -535,4 +535,54 @@ describe('POST /automations/lead-form/:tenant_token', () => {
     // Cleanup
     delete process.env.LEAD_FORM_VERIFY_MODE;
   });
+
+  it('401 si X-Form-Secret incorrecto pero de misma longitud (timing-safe compare)', async () => {
+    // Hardening 2026-05-15 / Parche Hito 9: la comparación de X-Form-Secret debe
+    // usar isValidBearer (crypto.timingSafeEqual) en vez de !==. Este test fuerza
+    // misma longitud + diferente contenido para garantizar que el chequeo se hace
+    // a través del helper constant-time (caso que un `===` plain también
+    // rechazaría, pero queremos blindar contra regresiones futuras al patrón).
+    process.env.LEAD_FORM_VERIFY_MODE = 'enforce';
+    vi.resetModules();
+    const { automationLeadFormRoutes: fresh } = await import(
+      '../src/routes/automation-lead-form.js'
+    );
+    const app2 = Fastify({ logger: false });
+    await app2.register(fresh);
+    await app2.ready();
+
+    const expected = 'expected-secret-32-chars-padding!';
+    const provided = 'expected-secret-32-chars-DIFFERR!'; // misma longitud
+    expect(provided.length).toBe(expected.length); // sanity-check
+
+    mocks.state.tenantTokens.push({
+      token: 'good-token',
+      tenant_id: 2,
+      purpose: 'lead_form_webhook',
+      is_active: true,
+      revoked_at: null,
+    });
+    mocks.state.integrationAccounts.push({
+      id: 7,
+      tenant_id: 2,
+      provider: 'ycloud',
+      is_active: true,
+      credentials: { api_key: 'ycloud-test' },
+      credentials_encrypted: null,
+      connection_config: { business_phone: '+34611223344' },
+      webhook_secret: expected,
+    });
+
+    const res = await app2.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      headers: { 'X-Form-Secret': provided },
+      payload: { phone: '+34600123456' },
+    });
+    expect(res.statusCode).toBe(401);
+    expect(JSON.parse(res.body).error).toBe('invalid_secret');
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+
+    delete process.env.LEAD_FORM_VERIFY_MODE;
+  });
 });

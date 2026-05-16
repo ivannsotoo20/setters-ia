@@ -1,18 +1,23 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
+  interpolateTemplateBody,
+  resolveTemplateVariable,
   sendWelcomeTemplate,
   WelcomeTemplateError,
 } from '../src/services/send-welcome-template.js';
 
 /**
- * Tests del service send-welcome-template (Hito 9 sub-fase 2).
+ * Tests del service send-welcome-template (Hito 9 sub-fase 2 + Parche Hito 9).
  *
- * 4 escenarios:
+ * Escenarios:
  *   1. Happy path: template OK + ycloud OK + lead OK → llama ycloudSendTemplate,
  *      INSERT message source='ai', UPDATE conversation a F1 outbound bienvenida.
  *   2. Template no existe → throws reason='template_not_found' httpStatus=404.
  *   3. No integration_account ycloud → throws reason='no_ycloud_account' httpStatus=409.
  *   4. YCloud responde 401 → throws reason='send_failed' httpStatus=502.
+ *   5. Variable con name='nombre' + lead.first_name='Iván' → bodyVariable='Iván'.
+ *   6. Variable sin name (solo sample) → fallback al sample registrado.
+ *   7. resolveTemplateVariable unit tests (mapping name → campo lead).
  */
 
 interface TemplateRow {
@@ -196,13 +201,16 @@ describe('sendWelcomeTemplate', () => {
     expect(sentBody.template.language.code).toBe('es');
     expect(sentBody.template.components[0].parameters[0].text).toBe('Juan');
 
-    // INSERT conversation_messages
+    // INSERT conversation_messages — body INTERPOLADO (Parche Hito 9 2.1).
+    // El template raw es "Hola {{1}}, bienvenido a Montefit", el lead.first_name='Juan',
+    // así que en BD debe persistirse "Hola Juan, bienvenido a Montefit" (sin {{1}} literal).
     const msgInsert = inserts.find((i) => i.table === 'conversation_messages');
     expect(msgInsert).toBeDefined();
     expect(msgInsert!.payload.tenant_id).toBe(2);
     expect(msgInsert!.payload.conversation_id).toBe(555);
     expect(msgInsert!.payload.source).toBe('ai');
-    expect(msgInsert!.payload.content).toContain('Hola');
+    expect(msgInsert!.payload.content).toBe('Hola Juan, bienvenido a Montefit');
+    expect(msgInsert!.payload.content).not.toContain('{{');
 
     // UPDATE conversations a F1 outbound bienvenida
     const convUpdate = updates.find((u) => u.table === 'conversations');
@@ -354,5 +362,219 @@ describe('sendWelcomeTemplate', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     // No INSERT message en este caso (failed antes de persistir)
     expect(inserts).toHaveLength(0);
+  });
+
+  it('variable name=nombre + lead.first_name interpolado en bodyVariables (no sample literal)', async () => {
+    // Parche Hito 9 — antes el code mapeaba `bodyVariables = variables.map(v => v.sample)`
+    // por lo que el lead siempre recibía el sample (ej. "Pepe") en vez de su nombre real.
+    // Este test fuerza el caso plantilla `{{nombre}}` y verifica que el bodyVariable
+    // enviado a YCloud es el `first_name` del lead, no el sample.
+    templates.push({
+      id: 10,
+      tenant_id: 2,
+      name: 'bienvenidas.es',
+      channel_kind: 'whatsapp',
+      provider: 'ycloud',
+      body: 'Hola {{nombre}}, bienvenido a Fyzon',
+      provider_template_id: 'bienvenidas',
+      language: 'es',
+      variables: [{ name: 'nombre', sample: 'Pepe' }],
+      status: 'approved',
+    });
+    leads.push({
+      id: 100,
+      tenant_id: 2,
+      external_id: '+34600123456',
+      phone: '+34600123456',
+      first_name: 'Iván',
+      last_name: 'Soto',
+    });
+    integrationAccounts.push({
+      id: 7,
+      tenant_id: 2,
+      provider: 'ycloud',
+      is_active: true,
+      credentials: { api_key: 'ycloud-test' },
+      credentials_encrypted: null,
+      connection_config: { business_phone: '+34611223344' },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'accepted', wamid: 'wamid.parche2' }),
+    } as Response);
+
+    const supabase = makeSupabaseStub() as unknown as Parameters<typeof sendWelcomeTemplate>[0]['supabase'];
+    await sendWelcomeTemplate({
+      supabase,
+      tenantId: 2,
+      leadId: 100,
+      conversationId: 555,
+      templateId: 10,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [, init] = fetchMock.mock.calls[0]!;
+    const sentBody = JSON.parse(String((init as RequestInit).body));
+    expect(sentBody.template.components[0].parameters[0].text).toBe('Iván');
+    expect(sentBody.template.components[0].parameters[0].text).not.toBe('Pepe');
+  });
+
+  it('variable sin name cae al sample (regresión)', async () => {
+    // Si la plantilla en BD viene con variables sin `name` (legacy o sync defectuoso),
+    // el helper debe usar el sample. No debe romper.
+    templates.push({
+      id: 11,
+      tenant_id: 2,
+      name: 'legacy.es',
+      channel_kind: 'whatsapp',
+      provider: 'ycloud',
+      body: 'Hola {{1}}',
+      provider_template_id: 'legacy',
+      language: 'es',
+      variables: [{ name: null as unknown as string, sample: 'FALLBACK' }],
+      status: 'approved',
+    });
+    leads.push({
+      id: 101,
+      tenant_id: 2,
+      external_id: '+34600999888',
+      phone: '+34600999888',
+      first_name: 'Iván',
+      last_name: null,
+    });
+    integrationAccounts.push({
+      id: 8,
+      tenant_id: 2,
+      provider: 'ycloud',
+      is_active: true,
+      credentials: { api_key: 'ycloud-test' },
+      credentials_encrypted: null,
+      connection_config: { business_phone: '+34611223344' },
+    });
+
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ status: 'accepted', wamid: 'wamid.fallback' }),
+    } as Response);
+
+    const supabase = makeSupabaseStub() as unknown as Parameters<typeof sendWelcomeTemplate>[0]['supabase'];
+    await sendWelcomeTemplate({
+      supabase,
+      tenantId: 2,
+      leadId: 101,
+      conversationId: 556,
+      templateId: 11,
+      fetchImpl: fetchMock as unknown as typeof fetch,
+    });
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const sentBody = JSON.parse(String((init as RequestInit).body));
+    expect(sentBody.template.components[0].parameters[0].text).toBe('FALLBACK');
+  });
+});
+
+describe('resolveTemplateVariable (unit)', () => {
+  const lead = {
+    first_name: 'Iván',
+    last_name: 'Soto',
+    phone: '+34600123456',
+    external_id: '+34600123456',
+  };
+
+  it('mapea name=nombre → first_name', () => {
+    expect(resolveTemplateVariable({ name: 'nombre', sample: 'Pepe' }, lead)).toBe('Iván');
+  });
+
+  it('mapea name=first_name → first_name (case-insensitive)', () => {
+    expect(resolveTemplateVariable({ name: 'First_Name', sample: 'X' }, lead)).toBe('Iván');
+  });
+
+  it('mapea name=1 (placeholder posicional Meta) → first_name', () => {
+    expect(resolveTemplateVariable({ name: '1', sample: 'X' }, lead)).toBe('Iván');
+  });
+
+  it('mapea name=apellido → last_name', () => {
+    expect(resolveTemplateVariable({ name: 'apellido', sample: 'X' }, lead)).toBe('Soto');
+  });
+
+  it('mapea name=full_name → first + last', () => {
+    expect(resolveTemplateVariable({ name: 'full_name', sample: 'X' }, lead)).toBe('Iván Soto');
+  });
+
+  it('si name no matchea ningún campo, cae al sample', () => {
+    expect(resolveTemplateVariable({ name: 'producto', sample: 'Curso A' }, lead)).toBe('Curso A');
+  });
+
+  it('si lead no tiene first_name y name=nombre, cae al sample', () => {
+    expect(
+      resolveTemplateVariable(
+        { name: 'nombre', sample: 'Amigo' },
+        { first_name: null, last_name: null, phone: null, external_id: null },
+      ),
+    ).toBe('Amigo');
+  });
+
+  it('variable sin name → sample', () => {
+    expect(resolveTemplateVariable({ sample: 'X' }, lead)).toBe('X');
+  });
+
+  it('variable sin name ni sample → cadena vacía', () => {
+    expect(resolveTemplateVariable({}, lead)).toBe('');
+  });
+});
+
+describe('interpolateTemplateBody (unit)', () => {
+  const lead = {
+    first_name: 'Iván',
+    last_name: 'Soto',
+    phone: '+34659487594',
+    external_id: '+34659487594',
+  };
+
+  it('sustituye {{nombre}} por first_name del lead', () => {
+    const out = interpolateTemplateBody(
+      'Buenas {{nombre}}, bienvenido',
+      [{ name: 'nombre', sample: 'Pepe' }],
+      lead,
+    );
+    expect(out).toBe('Buenas Iván, bienvenido');
+  });
+
+  it('sustituye placeholder posicional {{1}} por la primera variable resuelta', () => {
+    const out = interpolateTemplateBody(
+      'Hola {{1}}!',
+      [{ name: '1', sample: 'Default' }],
+      lead,
+    );
+    expect(out).toBe('Hola Iván!');
+  });
+
+  it('múltiples variables {{nombre}} {{apellido}}', () => {
+    const out = interpolateTemplateBody(
+      'Hola {{nombre}} {{apellido}}',
+      [
+        { name: 'nombre', sample: 'X' },
+        { name: 'apellido', sample: 'Y' },
+      ],
+      lead,
+    );
+    expect(out).toBe('Hola Iván Soto');
+  });
+
+  it('placeholder sin variable matcheada se queda literal (no rompe)', () => {
+    const out = interpolateTemplateBody(
+      'Hola {{producto}}',
+      [{ name: 'nombre', sample: 'X' }],
+      lead,
+    );
+    expect(out).toBe('Hola {{producto}}');
+  });
+
+  it('body sin placeholders se devuelve tal cual', () => {
+    expect(interpolateTemplateBody('Hola amigo', [], lead)).toBe('Hola amigo');
   });
 });
