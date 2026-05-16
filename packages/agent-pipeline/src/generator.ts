@@ -241,5 +241,15 @@ export function validateSetterOutput(raw: unknown): SetterToolOutput {
         ? (r.handoff_cause as SetterToolOutput['handoff_cause'])
         : undefined,
     reasoning: typeof r.reasoning === 'string' ? r.reasoning : undefined,
+    // Razonamiento estructurado por turno (opcional). Cualquier campo no string
+    // queda undefined y persiste como NULL en BD (sin regresión).
+    emotion: typeof r.emotion === 'string' ? r.emotion : undefined,
+    problem: typeof r.problem === 'string' ? r.problem : undefined,
+    goal: typeof r.goal === 'string' ? r.goal : undefined,
+    urgency: typeof r.urgency === 'string' ? r.urgency : undefined,
+    next_action: typeof r.next_action === 'string' ? r.next_action : undefined,
+    general_context: typeof r.general_context === 'string' ? r.general_context : undefined,
+    general_motivation:
+      typeof r.general_motivation === 'string' ? r.general_motivation : undefined,
   };
 }

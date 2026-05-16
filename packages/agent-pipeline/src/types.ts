@@ -41,6 +41,24 @@ export interface SetterToolOutput {
     | 'E_error';
   /** Razonamiento corto del modelo (debug). No se envía al lead. */
   reasoning?: string;
+  // Razonamiento estructurado por turno — se persiste en columnas
+  // conversations.{emotion,problem,goal,urgency,next_action,
+  // general_context,general_motivation}. Mostrado al trainer en el panel
+  // /conversations → FunnelPhaseIndicator. Opcionales.
+  /** Emoción dominante del lead en este turno. */
+  emotion?: string;
+  /** Dolor / problema concreto detectado. */
+  problem?: string;
+  /** Outcome / objetivo que el lead busca. */
+  goal?: string;
+  /** Nivel de urgencia + contexto. */
+  urgency?: string;
+  /** Próximo paso del setter. */
+  next_action?: string;
+  /** Contexto histórico acumulado (diferente del current_context por-turno). */
+  general_context?: string;
+  /** Motivación profunda / driver del lead. */
+  general_motivation?: string;
 }
 
 /** Input al Generator: todo lo que necesita para producir un turno. */

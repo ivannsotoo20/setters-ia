@@ -88,6 +88,48 @@ export const respondAsSetterTool: AnthropicTool = {
           'Razonamiento corto (≤200 chars) de por qué tomas esta decisión. NO se envía al lead. Solo para debug.',
         maxLength: 500,
       },
+      // Razonamiento estructurado del Generator — campos opcionales que rellenan
+      // las columnas conversations.{current_context,emotion,problem,goal,urgency,
+      // next_action,general_context,general_motivation}. Se muestran al trainer
+      // en el panel /conversations → ControlPanel → FunnelPhaseIndicator.
+      // Opcionales por compatibilidad con turnos donde el LLM no los rellene
+      // (en ese caso quedan NULL en BD). El prompt del Generator se ampliará
+      // por separado para forzar su llenado en cada turno.
+      emotion: {
+        type: 'string',
+        description: 'Emoción dominante del lead en este turno (1-4 palabras, ej: "frustrado", "ilusionado", "escéptico", "agotado"). Opcional.',
+        maxLength: 60,
+      },
+      problem: {
+        type: 'string',
+        description: 'Dolor / problema concreto detectado en el lead (≤120 chars). Ej: "no consigue cerrar leads de IG, lleva 6 meses pagando ads sin retorno". Opcional.',
+        maxLength: 200,
+      },
+      goal: {
+        type: 'string',
+        description: 'Outcome / objetivo que el lead busca (≤120 chars). Ej: "facturar 5k/mes con su agencia de contenidos". Opcional.',
+        maxLength: 200,
+      },
+      urgency: {
+        type: 'string',
+        description: 'Nivel de urgencia ("alta" / "media" / "baja") + 1 frase de contexto si aplica. Ej: "alta — quiere arrancar antes de mes que viene". Opcional.',
+        maxLength: 120,
+      },
+      next_action: {
+        type: 'string',
+        description: 'Próximo paso del setter en el próximo turno (≤100 chars). Ej: "preguntar por presupuesto de marketing actual". Opcional.',
+        maxLength: 200,
+      },
+      general_context: {
+        type: 'string',
+        description: 'Contexto histórico acumulado del lead a lo largo de la conversación (≤300 chars, se acumula turno a turno). Diferente de current_context (que es del turno actual). Opcional.',
+        maxLength: 500,
+      },
+      general_motivation: {
+        type: 'string',
+        description: 'Motivación profunda / driver del lead (≤200 chars). Ej: "quiere dejar el trabajo por cuenta ajena en 12 meses". Opcional.',
+        maxLength: 300,
+      },
     },
     additionalProperties: false,
   },

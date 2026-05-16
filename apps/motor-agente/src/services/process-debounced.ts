@@ -292,6 +292,27 @@ export async function processDebounced(
   }
 
   const newStatus = mapConversationStatus(pipelineOut.generator.setterOutput.conversation_status);
+  const setterOut = pipelineOut.generator.setterOutput;
+  // Razonamiento estructurado por turno — campos opcionales del Generator.
+  // Si llegan como string, se persisten; si llegan undefined, no se tocan
+  // (preservan valor anterior — solo el nuevo turno re-evalúa). Excepción:
+  // current_context que se mapea desde user_summary y SIEMPRE se actualiza
+  // (puede ser null si el LLM no devuelve user_summary).
+  const reasoningUpdate: Record<string, string | null> = {
+    current_context: typeof setterOut.user_summary === 'string' ? setterOut.user_summary : null,
+  };
+  if (typeof setterOut.emotion === 'string') reasoningUpdate.emotion = setterOut.emotion;
+  if (typeof setterOut.problem === 'string') reasoningUpdate.problem = setterOut.problem;
+  if (typeof setterOut.goal === 'string') reasoningUpdate.goal = setterOut.goal;
+  if (typeof setterOut.urgency === 'string') reasoningUpdate.urgency = setterOut.urgency;
+  if (typeof setterOut.next_action === 'string') reasoningUpdate.next_action = setterOut.next_action;
+  if (typeof setterOut.general_context === 'string') {
+    reasoningUpdate.general_context = setterOut.general_context;
+  }
+  if (typeof setterOut.general_motivation === 'string') {
+    reasoningUpdate.general_motivation = setterOut.general_motivation;
+  }
+
   await supabase
     .from('conversations')
     .update({
@@ -302,6 +323,7 @@ export async function processDebounced(
       is_handoff_to_human:
         pipelineOut.generator.setterOutput.conversation_status === 'handoff' ? true : null,
       updated_at: new Date().toISOString(),
+      ...reasoningUpdate,
     })
     .eq('id', conversationId);
 
