@@ -110,17 +110,22 @@ async function loadChannelContext(
   const provider = normalizeProvider(typeof ia.provider === 'string' ? ia.provider : '');
   // GHL guarda el PIT en `credentials.apiToken`. ManyChat/YCloud usan
   // `credentials.api_key`. Mismo mapeo que el motor en outbound-sender.ts.
+  // Hito 9 (2026-05-16) — fallback `apiKey` (camelCase) antes de `api_key`
+  // (snake_case) para alinear con lo que el panel persiste vía wizard onboarding
+  // (lib/actions/integrations.ts). Mismo patrón que motor send-welcome-template.ts.
   const apiKey =
     provider === 'ghl'
       ? typeof credentials.apiToken === 'string'
         ? credentials.apiToken
         : ''
-      : typeof credentials.api_key === 'string'
-        ? credentials.api_key
-        : '';
+      : typeof credentials.apiKey === 'string' && credentials.apiKey.length > 0
+        ? credentials.apiKey
+        : typeof credentials.api_key === 'string'
+          ? credentials.api_key
+          : '';
   if (!apiKey) {
     throw new Error(
-      `integration_account ${integrationAccountId} (${provider}) sin token configurado`,
+      `integration_account ${integrationAccountId} (${provider}) sin token configurado (api_key/apiKey/apiToken)`,
     );
   }
 

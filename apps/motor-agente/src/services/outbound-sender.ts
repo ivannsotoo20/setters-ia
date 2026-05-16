@@ -347,17 +347,22 @@ async function loadSendContext(
   const provider = normalizeProvider(typeof ia.provider === 'string' ? ia.provider : 'manychat');
   // GHL usa `apiToken` (PIT), ManyChat/YCloud usan `api_key`. Ambos se mapean
   // al mismo campo SendContext.apiKey para uniformidad del adapter switch.
+  // Hito 9 (2026-05-16) — fallback `apiKey` (camelCase) antes de `api_key`
+  // (snake_case) para alinear con lo que el panel persiste vía wizard onboarding
+  // (apps/panel/lib/actions/integrations.ts). Mismo patrón que send-welcome-template.ts:188.
   const apiKey =
     provider === 'ghl'
       ? typeof credentials.apiToken === 'string'
         ? credentials.apiToken
         : ''
-      : typeof credentials.api_key === 'string'
-        ? credentials.api_key
-        : '';
+      : typeof credentials.apiKey === 'string' && credentials.apiKey.length > 0
+        ? credentials.apiKey
+        : typeof credentials.api_key === 'string'
+          ? credentials.api_key
+          : '';
   if (!apiKey) {
     throw new Error(
-      `integration_account ${params.integrationAccountId} (${provider}) sin token (api_key/apiToken)`,
+      `integration_account ${params.integrationAccountId} (${provider}) sin token (api_key/apiKey/apiToken)`,
     );
   }
 
