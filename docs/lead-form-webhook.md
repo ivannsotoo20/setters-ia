@@ -70,14 +70,31 @@ Content-Type: application/json
 X-Form-Secret: <webhook_secret>   (opcional según LEAD_FORM_VERIFY_MODE)
 ```
 
-El `webhook_secret` es el mismo de la cuenta YCloud del tenant (`integration_accounts.webhook_secret`). El trainer puede verlo desde el panel YCloud o pedirlo al admin Fyzon.
+### Sobre `X-Form-Secret`
 
-Modos:
-- `LEAD_FORM_VERIFY_MODE=disabled`: el header se ignora.
-- `LEAD_FORM_VERIFY_MODE=warn` (default): si el header llega y no matchea, log warn pero continúa.
-- `LEAD_FORM_VERIFY_MODE=enforce`: si el header falta o no matchea → `401`.
+El `webhook_secret` es un secreto compartido del tenant que autentica el origen del POST. **NO es el secret de YCloud** (que firma sus webhooks salientes). Es un secret nuestro que se autogenera con `gen_random_bytes(32)` cuando se crea la cuenta YCloud en BD (columna `integration_accounts.webhook_secret`).
 
-Recomendado en producción: `enforce`. En dev/staging: `warn`.
+**Dónde obtenerlo:**
+
+- **Trainer**: el panel Fyzon lo muestra en `/settings/integrations` → ficha YCloud → botón "Mostrar webhook secret" (si tu instalación tiene el botón). Si no, pide al admin Fyzon que te lo lea.
+- **Admin Fyzon** (vía MCP `supabase-fyzon`):
+  ```sql
+  SELECT webhook_secret
+  FROM integration_accounts
+  WHERE tenant_id = <X> AND provider = 'ycloud' AND is_active = true;
+  ```
+
+Trátalo como una contraseña: guárdalo en el Vault de tu n8n / GHL / Zapier y úsalo solo desde el lado servidor de la automation.
+
+### Modos de verificación (`LEAD_FORM_VERIFY_MODE`)
+
+| Modo | Comportamiento |
+|---|---|
+| `disabled` | El header se ignora completamente. Solo el `tenant_token` de la URL autentica. |
+| `warn` (default dev) | Si el header llega y no matchea, log warn pero continúa. Útil mientras configuras la automation. |
+| `enforce` (producción) | Si el header falta o no matchea → 401. Comparación timing-safe (`crypto.timingSafeEqual`). |
+
+Recomendado en producción: `enforce`. En dev/staging: `warn`. La comparación interna es constant-time para evitar timing-oracle attacks (Hardening 2026-05-15).
 
 ---
 
