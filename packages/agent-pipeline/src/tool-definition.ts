@@ -130,6 +130,22 @@ export const respondAsSetterTool: AnthropicTool = {
         description: 'Motivación profunda / driver del lead (≤200 chars). Ej: "quiere dejar el trabajo por cuenta ajena en 12 meses". Opcional.',
         maxLength: 300,
       },
+      // Hito 10.6 — API Booking. Solo rellenar cuando el lead confirma EXPLÍCITAMENTE
+      // un slot de los que se le propusieron en el turno anterior. El motor lee este
+      // campo tras el Generator output y llama POST /calendars/events/appointments a
+      // GHL con el contactId real del lead (sin pasar por widget). Eso garantiza
+      // trazabilidad lead bot → cita 100%.
+      proposed_booking_slot: {
+        type: 'string',
+        description:
+          'Si el lead confirma EXPLÍCITAMENTE un slot de los que le propusiste en el turno anterior, ' +
+          'rellena con la fecha/hora EXACTA en ISO 8601 con offset, copiada literalmente del listado de slots ' +
+          'que tienes en el system prompt (entre paréntesis junto a la etiqueta humana). Ejemplo: "2026-05-19T17:00:00+02:00". ' +
+          'CUÁNDO RELLENAR: solo cuando el lead diga claramente "sí, ese me viene", "el lunes 17h va bien", "agéndame ese". ' +
+          'CUÁNDO NO RELLENAR (omitir el campo): si el lead pregunta, duda, negocia, pide otro día, o aún no confirma. ' +
+          'NO inventes slots — copia EXACTAMENTE uno de los que tienes en el system prompt. ' +
+          'El motor reservará la cita automáticamente al detectar este campo.',
+      },
     },
     additionalProperties: false,
   },

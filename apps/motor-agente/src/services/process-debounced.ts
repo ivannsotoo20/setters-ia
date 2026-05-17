@@ -19,6 +19,7 @@ import { enqueueNotification } from './notify-trainer.js';
 import { applySystemLabels } from './labels/index.js';
 import { loadAvailableSlots, type AvailableSlot } from './load-available-slots.js';
 import { loadGhlClientByTenant } from '../lib/load-ghl-client.js';
+import { bookAppointmentFromSlot } from './book-appointment-from-slot.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -243,22 +244,23 @@ export async function processDebounced(
   // availableSlots queda null y el composer cae al fallback del placeholder
   // (= el bot improvisa con el flow legacy de URL widget).
   let availableSlots: AvailableSlot[] | null = null;
+  let ghlClient: Awaited<ReturnType<typeof loadGhlClientByTenant>> = null;
   const useApiBooking = await loadUseApiBookingFlag(supabase, tenantId);
-  if (useApiBooking && currentPhase >= 5) {
-    try {
-      const ghlClient = await loadGhlClientByTenant(supabase, tenantId);
-      if (ghlClient) {
+  if (useApiBooking) {
+    ghlClient = await loadGhlClientByTenant(supabase, tenantId);
+    if (ghlClient && currentPhase >= 5) {
+      try {
         availableSlots = await loadAvailableSlots({
           supabase,
           ghlClient,
           tenantId,
         });
+      } catch (err) {
+        console.warn(
+          'processDebounced: loadAvailableSlots failed (non-fatal):',
+          err instanceof Error ? err.message : String(err),
+        );
       }
-    } catch (err) {
-      console.warn(
-        'processDebounced: loadAvailableSlots failed (non-fatal):',
-        err instanceof Error ? err.message : String(err),
-      );
     }
   }
 
@@ -291,6 +293,41 @@ export async function processDebounced(
       error: err,
     });
     throw err;
+  }
+
+  // 7.5. Hito 10.6 — API Booking action: si el setter rellenó proposed_booking_slot
+  //      Y el tenant tiene useApiBooking=true, reservar la cita en GHL vía API.
+  //      Best-effort: si falla (slot conflict, GHL down, conv sin ghl_contact_id),
+  //      log y continúa. El bot ya generó el mensaje de confirmación al lead — si
+  //      no se reservó, siguiente turno detectará y re-propondrá.
+  const proposedSlot = pipelineOut.generator.setterOutput.proposed_booking_slot;
+  if (useApiBooking && ghlClient && typeof proposedSlot === 'string' && proposedSlot.trim() !== '') {
+    try {
+      const tenantNameRow = await supabase
+        .from('tenants')
+        .select('name')
+        .eq('id', tenantId)
+        .maybeSingle();
+      const result = await bookAppointmentFromSlot({
+        supabase,
+        ghlClient,
+        tenantId,
+        conversationId,
+        slotIso: proposedSlot.trim(),
+        leadFirstName: (lead.first_name as string | null | undefined) ?? null,
+        tenantName: (tenantNameRow.data?.name as string | null | undefined) ?? null,
+      });
+      if (!result.ok) {
+        console.warn(
+          `[api-booking] conv=${conversationId} slot=${proposedSlot} failed: ${result.reason}${result.error ? ` (${result.error})` : ''}`,
+        );
+      }
+    } catch (err) {
+      console.error(
+        `[api-booking] conv=${conversationId} unexpected error:`,
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   // 8. Calcular tiempos y programar las partes

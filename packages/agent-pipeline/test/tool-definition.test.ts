@@ -104,4 +104,51 @@ describe('validateSetterOutput', () => {
     });
     expect(out.handoff_cause).toBeUndefined();
   });
+
+  // Hito 10.6 — proposed_booking_slot (API booking)
+  it('preserva proposed_booking_slot cuando es string ISO 8601 no vacío', () => {
+    const out = validateSetterOutput({
+      message_raw: 'Listo, te apunto para el lunes 17h.',
+      conversation_status: 'qualified',
+      phase_decision: 6,
+      proposed_booking_slot: '2026-05-19T17:00:00+02:00',
+    });
+    expect(out.proposed_booking_slot).toBe('2026-05-19T17:00:00+02:00');
+  });
+
+  it('trim whitespace en proposed_booking_slot', () => {
+    const out = validateSetterOutput({
+      message_raw: 'ok',
+      conversation_status: 'qualified',
+      phase_decision: 6,
+      proposed_booking_slot: '  2026-05-19T17:00:00+02:00  ',
+    });
+    expect(out.proposed_booking_slot).toBe('2026-05-19T17:00:00+02:00');
+  });
+
+  it('descarta proposed_booking_slot si es string vacío o no-string', () => {
+    const out1 = validateSetterOutput({
+      message_raw: 'ok',
+      conversation_status: 'active',
+      phase_decision: 6,
+      proposed_booking_slot: '',
+    });
+    expect(out1.proposed_booking_slot).toBeUndefined();
+
+    const out2 = validateSetterOutput({
+      message_raw: 'ok',
+      conversation_status: 'active',
+      phase_decision: 6,
+      proposed_booking_slot: '   ',
+    });
+    expect(out2.proposed_booking_slot).toBeUndefined();
+
+    const out3 = validateSetterOutput({
+      message_raw: 'ok',
+      conversation_status: 'active',
+      phase_decision: 6,
+      proposed_booking_slot: 12345,
+    });
+    expect(out3.proposed_booking_slot).toBeUndefined();
+  });
 });

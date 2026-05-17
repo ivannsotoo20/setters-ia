@@ -59,6 +59,14 @@ export interface SetterToolOutput {
   general_context?: string;
   /** Motivación profunda / driver del lead. */
   general_motivation?: string;
+  /**
+   * Hito 10.6 — API Booking. Si presente y no vacío, el motor reservará la cita
+   * vía GHL API tras este turno. Debe ser un ISO 8601 con offset (ej:
+   * "2026-05-19T17:00:00+02:00") copiado de los slots que el setter tenía en
+   * el system prompt. Si está vacío, undefined o el slot no matchea con uno
+   * disponible, no se reserva nada (flow legacy de URL widget).
+   */
+  proposed_booking_slot?: string;
 }
 
 /** Input al Generator: todo lo que necesita para producir un turno. */

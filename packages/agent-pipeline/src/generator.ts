@@ -253,5 +253,11 @@ export function validateSetterOutput(raw: unknown): SetterToolOutput {
     general_context: typeof r.general_context === 'string' ? r.general_context : undefined,
     general_motivation:
       typeof r.general_motivation === 'string' ? r.general_motivation : undefined,
+    // Hito 10.6 — API booking. Solo aceptamos string no vacío. Validación de
+    // formato ISO 8601 la hace el caller (motor → bookAppointmentFromSlot).
+    proposed_booking_slot:
+      typeof r.proposed_booking_slot === 'string' && r.proposed_booking_slot.trim() !== ''
+        ? r.proposed_booking_slot.trim()
+        : undefined,
   };
 }

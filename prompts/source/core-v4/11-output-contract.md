@@ -1,14 +1,15 @@
 ---
 block_key: output_contract_v4
 status: clean
-version: 1
+version: 2
 tenant_id: NULL
 sort_order: 100
 contains_tags:
   - output_contract
 recommended_by: Robert (reunión 2026-05-06, l.483)
 recommended_for: OpenAI 4.5 / 5.4 + Anthropic SDK con tool_choice forzado
-approved: 2026-05-07
+approved: 2026-05-17
+hito_10_6: true
 ---
 
 <output_contract>
@@ -34,6 +35,7 @@ El setter genera en cada turno una respuesta estructurada con los siguientes cam
 
 - **`reasoning`** (string) — texto interno breve con el porqué del movimiento del setter. NO se envía al lead, se guarda para auditoría en `llm_calls`.
 - **`resources_to_send`** (array de strings/IDs) — recursos (PDFs, links) que el setter quiere adjuntar. Solo aplica si el Coach lo permite y el lead está cualificado.
+- **`proposed_booking_slot`** (string ISO 8601 con offset) — **solo en F6 Modo A (API booking)**. Copiar EXACTAMENTE uno de los slots del listado `{{available_slots}}` del system prompt. El motor reservará la cita en GHL al detectar este campo no vacío. NO inventar, NO modificar el ISO. NO rellenar si el lead no ha confirmado claramente un slot específico.
 
 ## Restricciones del `message_raw`
 
