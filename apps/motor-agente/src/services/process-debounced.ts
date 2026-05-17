@@ -534,8 +534,13 @@ export async function processDebounced(
       tenantId,
       eventType,
       payload: {
+        // Hito 10.6.1 fix — los templates renderXxx en email-templates.ts leen
+        // `lead_first_name` y `lead_phone`. Mantener "first_name" / "phone"
+        // como alias por compat con consumers viejos.
         lead_id: Number(lead.id),
+        lead_first_name: lead.first_name ?? null,
         first_name: lead.first_name ?? null,
+        lead_phone: lead.phone ?? null,
         phone: lead.phone ?? null,
         conversation_id: conversationId,
         channel_type: channelType,

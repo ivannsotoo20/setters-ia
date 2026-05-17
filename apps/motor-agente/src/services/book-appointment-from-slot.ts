@@ -215,6 +215,32 @@ export async function bookAppointmentFromSlot(
     );
   }
 
+  // 9. Hito 10.6.1 — Cancelar follow-ups pendientes (auto_inactivity y manual)
+  //    porque el lead ya agendó. Sin esto, mañana llegarían recordatorios
+  //    tipo "¿pudiste leer mi mensaje?" cuando la cita ya está cerrada.
+  try {
+    const { data: cancelled } = await supabase
+      .from('message_schedules')
+      .update({
+        status: 'cancelled',
+        last_error: 'auto-cancelled: appointment booked',
+      })
+      .eq('conversation_id', conversationId)
+      .eq('status', 'pending')
+      .select('id');
+    if (cancelled && cancelled.length > 0) {
+      logger.info(
+        { conversationId, cancelledCount: cancelled.length },
+        'bookAppointmentFromSlot: follow-ups pendientes cancelados tras booking',
+      );
+    }
+  } catch (err) {
+    logger.warn(
+      { tenantId, conversationId, err: err instanceof Error ? err.message : String(err) },
+      'bookAppointmentFromSlot: cancelar follow-ups falló (non-fatal)',
+    );
+  }
+
   return {
     ok: true,
     appointmentId,

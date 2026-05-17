@@ -120,6 +120,11 @@ export async function insertScheduledParts({
     scheduled_at: scheduledAt[i]!.toISOString(),
     status: 'pending' as const,
     attempts: 0,
+    // Hito 10.6.1 fix — marcar partes del bot del turno actual. El outbound-gate
+    // las deja pasar aunque la IA se haya pausado durante el mismo turno (caso
+    // típico: API booking inline pausa IA infinity tras crear cita, pero las
+    // partes "Listo te apunto..." aún tienen que enviarse al lead).
+    triggered_by: 'ai_turn' as const,
   }));
 
   const { data, error } = await supabase

@@ -39,11 +39,18 @@ export type ConvState = {
  * Antes solo se evaluaba en inbound (pipeline Generator); los FUs programados
  * salían aunque el trainer hubiera pausado la IA.
  */
-export function outboundGateSkipReason(cv: ConvState | undefined): string | null {
+export function outboundGateSkipReason(
+  cv: ConvState | undefined,
+  opts?: { skipPauseCheck?: boolean },
+): string | null {
   if (!cv) return 'conv not found';
   if (cv.state === 'closed') return 'conv state=closed';
   if (cv.is_blocked) return 'conv is_blocked';
-  if (isAiPausedFromDb(cv.ai_paused_until)) return 'ai paused';
+  // Hito 10.6.1 — si el schedule pertenece al turno actual del bot ('ai_turn')
+  // o es manual del trainer, NO bloquear por ai_paused_until. Esto permite que
+  // las partes ya generadas se envíen aunque la IA se haya pausado durante el
+  // mismo turno (caso típico: API booking inline pausa IA tras crear cita).
+  if (!opts?.skipPauseCheck && isAiPausedFromDb(cv.ai_paused_until)) return 'ai paused';
   return null;
 }
 
@@ -85,7 +92,7 @@ export async function sendNextBatch(
     .from('message_schedules')
     .select(
       `id, tenant_id, conversation_id, integration_account_id, message, attempts, scheduled_at,
-       message_type, template_id, ai_personalize, ai_guide`,
+       message_type, template_id, ai_personalize, ai_guide, triggered_by`,
     )
     .eq('status', 'pending')
     .lte('scheduled_at', nowIso)
@@ -137,7 +144,15 @@ export async function sendNextBatch(
   const sendableCandidates: typeof candidates = [];
   for (const row of candidates) {
     const cv = convMap.get(Number(row.conversation_id));
-    const reason = outboundGateSkipReason(cv);
+    const triggeredBy = (row.triggered_by as string | null | undefined) ?? null;
+    // Hito 10.6.1 fix — partes del turno del bot (triggered_by='ai_turn') NO
+    // se cancelan aunque la IA esté pausada. Caso típico: API booking inline
+    // pausa IA infinity tras crear cita, pero las partes "Listo te apunto..."
+    // aún tienen que enviarse al lead. Igual aplica a partes manuales
+    // ('manual') que el trainer puede haber enviado desde panel — esas las
+    // dejamos siempre.
+    const isImmediateTurnPart = triggeredBy === 'ai_turn' || triggeredBy === 'manual';
+    const reason = outboundGateSkipReason(cv, { skipPauseCheck: isImmediateTurnPart });
     if (reason) {
       cancelledIds.push(Number(row.id));
       result.skipped++;
