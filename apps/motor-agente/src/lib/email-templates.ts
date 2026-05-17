@@ -127,32 +127,87 @@ ${field('Fase alcanzada', phase != null ? `F${phase}` : '')}`;
 
 function renderAppointmentBooked(args: RenderArgs): RenderedEmail {
   const p = args.payload;
-  const conversationId = p.conversation_id as number | undefined;
+  const conversationId = p.conversation_id as number | null | undefined;
   const leadName = (p.lead_first_name as string | undefined) ?? 'Lead sin nombre';
-  const appointmentLink = p.appointment_link as string | undefined;
   const appointmentTime = p.appointment_time as string | undefined;
+  const calendarName = p.calendar_name as string | undefined;
+  const channelKind = p.channel_kind as string | null | undefined;
+  const channelHandle = p.channel_handle as string | null | undefined;
+  const leadPhone = p.lead_phone as string | null | undefined;
+  const contactEmail = p.contact_email as string | null | undefined;
+  const isUnmatched = p.unmatched === true;
 
-  const subject = `Cita agendada · ${leadName}`;
-  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;"><strong style="color:#0f172a;">${esc(leadName)}</strong> ha agendado una llamada contigo.</p>
-${field('Cuándo', appointmentTime)}
-${field('Enlace de la cita', appointmentLink)}`;
+  const channelLabel = formatChannelLabel(channelKind ?? undefined, channelHandle ?? undefined);
+  const formattedTime = formatAppointmentTime(appointmentTime);
+  const channelSuffix = channelKind ? ` · ${labelForKind(channelKind)}` : '';
+
+  const subject = isUnmatched
+    ? `Cita agendada (sin matchear) · revisar`
+    : `Cita agendada · ${leadName}${channelSuffix}`;
+
+  const intro = isUnmatched
+    ? `Alguien ha agendado en tu calendario pero <strong style="color:#0f172a;">no hemos podido matchearlo a ningún lead de tu pipeline</strong>. Revisa los datos:`
+    : `<strong style="color:#0f172a;">${esc(leadName)}</strong> ha agendado una llamada contigo.`;
+
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">${intro}</p>
+${field('Cuándo', formattedTime)}
+${field('Calendario', calendarName)}
+${channelLabel ? field('Canal', channelLabel) : ''}
+${isUnmatched && leadPhone ? field('Teléfono GHL', leadPhone) : ''}
+${isUnmatched && contactEmail ? field('Email GHL', contactEmail) : ''}`;
+
+  const ctaUrl = conversationId
+    ? panelUrl(`/conversations/${conversationId}`)
+    : panelUrl('/calendars');
+  const ctaLabel = conversationId ? 'Ver conversación' : 'Ver en Calendarios';
 
   return {
     subject,
     html: renderEmailShell({
       audience: 'trainer',
       variant: 'notification',
-      preheader: `${leadName} agendó una cita.`,
-      badge: tenantContext(args.tenantName, 'Cita agendada'),
-      title: `Cita agendada con ${leadName}`,
+      preheader: isUnmatched
+        ? `Booking huérfano — revisa quién agendó.`
+        : `${leadName} agendó una cita${channelKind ? ` desde ${labelForKind(channelKind)}` : ''}.`,
+      badge: tenantContext(args.tenantName, isUnmatched ? 'Booking sin matchear' : 'Cita agendada'),
+      title: isUnmatched ? 'Cita agendada (sin matchear)' : `Cita agendada con ${leadName}`,
       body,
-      cta: conversationId
-        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Ver conversación' }
-        : undefined,
+      cta: { url: ctaUrl, label: ctaLabel },
       showCopyUrl: false,
       manageNotificationsUrl: panelUrl('/settings/preferences'),
     }),
   };
+}
+
+const CHANNEL_LABEL_MAP: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  instagram_dm: 'Instagram',
+  facebook_messenger: 'Facebook',
+};
+
+function labelForKind(kind: string): string {
+  return CHANNEL_LABEL_MAP[kind] ?? kind;
+}
+
+function formatChannelLabel(kind?: string, handle?: string): string | null {
+  if (!kind) return null;
+  const k = labelForKind(kind);
+  return handle ? `${k} · ${handle}` : k;
+}
+
+function formatAppointmentTime(iso?: string): string | undefined {
+  if (!iso) return undefined;
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('es-ES', {
+      timeZone: 'Europe/Madrid',
+      dateStyle: 'full',
+      timeStyle: 'short',
+    }).format(d);
+  } catch {
+    return iso;
+  }
 }
 
 function renderDescalified(args: RenderArgs): RenderedEmail {

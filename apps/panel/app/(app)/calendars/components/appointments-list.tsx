@@ -3,6 +3,9 @@
 import { ChevronRight } from 'lucide-react';
 import type { AppointmentRow } from '@/lib/actions/calendars';
 import {
+  channelBadgeClasses,
+  channelHandleForRow,
+  channelLabel,
   formatLeadName,
   formatTime,
   matchColor,
@@ -13,12 +16,6 @@ interface Props {
   appointments: AppointmentRow[];
   onSelect: (a: AppointmentRow) => void;
 }
-
-const CHANNEL_LABELS: Record<string, string> = {
-  whatsapp: 'WhatsApp',
-  instagram_dm: 'Instagram',
-  facebook_messenger: 'Facebook',
-};
 
 const MATCH_LABELS: Record<string, string> = {
   fyzon_uuid: 'UUID',
@@ -65,8 +62,23 @@ export function AppointmentsList({ appointments, onSelect }: Props) {
             <td className="px-4 py-3 text-muted-foreground">{a.calendarName}</td>
             <td className="px-4 py-3 font-mono text-xs tabular-nums">{formatTime(a.startAt)}</td>
             <td className="px-4 py-3">{statusBadge(a.appointmentStatus)}</td>
-            <td className="px-4 py-3 text-xs text-muted-foreground">
-              {a.channelType ? CHANNEL_LABELS[a.channelType] ?? a.channelType : '—'}
+            <td className="px-4 py-3">
+              {a.channelType ? (
+                <div className="flex flex-col gap-0.5">
+                  <span
+                    className={`inline-flex w-fit items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ${channelBadgeClasses(a.channelType)}`}
+                  >
+                    {channelLabel(a.channelType)}
+                  </span>
+                  {channelHandleForRow(a) && (
+                    <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[160px]">
+                      {channelHandleForRow(a)}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-xs text-muted-foreground">—</span>
+              )}
             </td>
             <td className="px-4 py-3">
               <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">

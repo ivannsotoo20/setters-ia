@@ -12,7 +12,15 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { AppointmentRow } from '@/lib/actions/calendars';
-import { formatLeadName, formatTime, matchColor, statusBadge } from './appointments-view';
+import {
+  channelBadgeClasses,
+  channelHandleForRow,
+  channelLabel,
+  formatLeadName,
+  formatTime,
+  matchColor,
+  statusBadge,
+} from './appointments-view';
 
 interface Props {
   appointment: AppointmentRow | null;
@@ -100,7 +108,25 @@ export function AppointmentSheet({ appointment, onClose }: Props) {
                   Origen GHL
                 </p>
                 <Row label="Source" value={appointment.source ?? '—'} />
-                <Row label="Canal" value={appointment.channelType ?? '—'} />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Canal</span>
+                  {appointment.channelType ? (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium ${channelBadgeClasses(appointment.channelType)}`}
+                      >
+                        {channelLabel(appointment.channelType)}
+                      </span>
+                      {channelHandleForRow(appointment) && (
+                        <span className="text-xs font-mono text-muted-foreground">
+                          {channelHandleForRow(appointment)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="font-medium">—</span>
+                  )}
+                </div>
               </div>
             </div>
           </>

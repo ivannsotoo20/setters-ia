@@ -67,7 +67,7 @@ Tras matchear, el motor:
 
 ## 5. Vistas del trainer
 
-- **`/calendars`** (sidebar principal): tabs Lista + Calendario. Filtros por estado, calendar, futuro/pasado. Click en una cita abre Sheet con detalle del lead y link a la conversación.
+- **`/calendars`** (sidebar principal): tabs Lista + Calendario. Columnas: Lead · Calendario · Inicio · Estado · **Canal** · Origen. La columna Canal muestra badge de color (verde WhatsApp, rosa Instagram, azul Facebook) + handle (`+34xxx` o `@user`). Filtros por estado, calendar, futuro/pasado. Click en una cita abre Sheet con detalle del lead, canal con handle, y link a la conversación.
 - **`/settings/calendars`**: gestión de qué calendarios están vinculados, designación de default, desvinculación.
 - **`/pipeline`**: columna **F7 · Cita agendada** ya existente (Sprint Kappa) — ahora se llena automáticamente.
 
@@ -81,7 +81,36 @@ Tras matchear, el motor:
 6. Verificar `/pipeline`: la conversación está en la columna **F7 · Cita agendada**.
 7. Verificar en la ficha del lead que `is_handoff_to_human=TRUE`, `handoff_cause='A_agenda'`.
 
-## 7. Troubleshooting
+## 7. Aviso por email al trainer cuando agenden
+
+Cuando llega un `AppointmentCreate` al motor (Hito 10.5, cableado en `webhook-ghl-calendar.ts`), tras aplicar el cambio de fase a F7 se encola una notificación email tipo `appointment_booked` en `notification_events`. El cron `notify-tick` (10s) la procesa: lee `trainer_preferences`, comprueba que `notificationSubscriptions` incluye `'appointment_booked'`, renderiza la plantilla con Resend y envía al `trainerEmail`.
+
+**Cuándo se dispara**:
+- ✅ Cada `AppointmentCreate` que llega del webhook GHL (matched y unmatched ambos).
+- ❌ `AppointmentUpdate` (reschedule) y `AppointmentDelete` NO disparan email — evitan ruido. Deuda futura: añadir `appointment_rescheduled` y `appointment_cancelled` como event_types separados.
+
+**Contenido del email**:
+- Matched: `Cita agendada · Pepito · Instagram` (subject) + nombre + canal + handle + fecha completa en es-ES Europe/Madrid + nombre del calendario + CTA "Ver conversación".
+- Unmatched: `Cita agendada (sin matchear) · revisar` (subject) + nombre/phone/email del contacto GHL + calendar + CTA "Ver en Calendarios".
+
+**Configuración necesaria del trainer**:
+1. `/settings/preferences` → Card **Notificaciones por email**.
+2. Configurar `trainerEmail` (si está vacío, todas las notificaciones se skipean con `last_error="trainer sin email configurado"`).
+3. Tener marcado el toggle `appointment_booked` (default ON para tenants nuevos).
+
+**Verificación rápida**:
+```sql
+-- Última notificación encolada
+SELECT id, event_type, status, attempts, sent_at, last_error,
+       payload->>'channel_kind' AS canal, payload->>'lead_first_name' AS nombre
+FROM notification_events
+WHERE tenant_id = <X> AND event_type='appointment_booked'
+ORDER BY id DESC LIMIT 1;
+```
+
+`status='sent'` con `sent_at` no nulo y `resend_message_id` poblado → email entregado a Resend.
+
+## 8. Troubleshooting
 
 ### Booking huérfano (sin asociar)
 - Verifica que el custom field `fyzon_lead_uuid` existe en GHL del trainer (Settings → Custom Fields). Si no → vuelve a sincronizar desde `/settings/calendars`.
@@ -96,6 +125,17 @@ Tras matchear, el motor:
 ### Calendar no aparece en sync
 - Verifica que el OAuth tiene scopes `calendars.readonly` y `calendars.events.readonly`. Si el OAuth se completó antes del Hito 10, el trainer debe **reautorizar** la app.
 - Verifica que el calendar está activo en GHL.
+
+### El email al trainer no llega
+- Comprueba `notification_events.status`. Si `skipped` con `last_error="trainer sin email configurado"` → falta `trainerEmail` en `trainer_preferences.preferences`.
+- Si `skipped` con `last_error="no suscrito a 'appointment_booked'"` → toggle off en `/settings/preferences`. Activar.
+- Si `status='pending'` y `attempts >= 1` → cron `notify-tick` no procesó (revisar logs del motor, Resend API key).
+- Si `status='failed'` → leer `last_error` (rate-limit, DNS bounce, key inválida, etc.).
+- Verificar que `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `RESEND_FROM_NAME` están en `.env.local` del motor.
+
+### El email llega pero sin canal/handle (sale "Cita agendada · Pepito" sin sufijo)
+- El lead matched no tenía `conversations.channel_id` resoluble o el `channel_type` no estaba en `{whatsapp, instagram_dm, facebook_messenger}`. Verifica `SELECT id, channel_type FROM channels WHERE id = <conv.channel_id>`.
+- Si IG/FB sin handle: el lead no tenía `username` ni `external_id` poblados. Comportamiento esperado — el email omite el handle pero sigue mostrando el canal.
 
 ### El setter no usa la URL trackable
 - Verifica que existe un `calendar_accounts` con `is_default=TRUE AND is_active=TRUE` para el tenant.

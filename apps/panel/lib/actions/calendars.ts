@@ -417,6 +417,7 @@ export interface AppointmentRow {
   leadId: number | null;
   leadFirstName: string | null;
   leadPhone: string | null;
+  leadUsername: string | null;
   conversationId: number | null;
   channelType: string | null;
   matchMethod: string | null;
@@ -450,7 +451,7 @@ export async function listAppointments(input: {
       source,
       match_method,
       calendar_accounts:calendar_account_id(name),
-      leads:lead_id(first_name, phone),
+      leads:lead_id(first_name, phone, username),
       conversations:conversation_id(channel_id, channels:channel_id(channel_type))
     `,
     )
@@ -478,7 +479,7 @@ export async function listAppointments(input: {
     source: string | null;
     match_method: string | null;
     calendar_accounts: { name: string } | null;
-    leads: { first_name: string | null; phone: string | null } | null;
+    leads: { first_name: string | null; phone: string | null; username: string | null } | null;
     conversations: { channels: { channel_type: string } | null } | null;
   }
 
@@ -494,6 +495,7 @@ export async function listAppointments(input: {
     leadId: r.lead_id != null ? Number(r.lead_id) : null,
     leadFirstName: r.leads?.first_name ?? null,
     leadPhone: r.leads?.phone ?? null,
+    leadUsername: r.leads?.username ?? null,
     conversationId: r.conversation_id != null ? Number(r.conversation_id) : null,
     channelType: r.conversations?.channels?.channel_type ?? null,
     matchMethod: r.match_method,

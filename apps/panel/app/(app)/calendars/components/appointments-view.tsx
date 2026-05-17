@@ -314,3 +314,45 @@ export function formatTime(iso: string): string {
     return iso;
   }
 }
+
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  instagram_dm: 'Instagram',
+  facebook_messenger: 'Facebook',
+};
+
+/** Label legible para channel_type. Fallback al enum crudo si no está mapeado. */
+export function channelLabel(channelType: string | null | undefined): string {
+  if (!channelType) return '—';
+  return CHANNEL_LABELS[channelType] ?? channelType;
+}
+
+/** Clases Tailwind para badge de canal según kind. Coherente con la paleta del email. */
+export function channelBadgeClasses(channelType: string | null | undefined): string {
+  switch (channelType) {
+    case 'whatsapp':
+      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300';
+    case 'instagram_dm':
+      return 'bg-pink-100 text-pink-800 dark:bg-pink-950/50 dark:text-pink-300';
+    case 'facebook_messenger':
+      return 'bg-sky-100 text-sky-800 dark:bg-sky-950/50 dark:text-sky-300';
+    default:
+      return 'bg-muted text-muted-foreground';
+  }
+}
+
+/**
+ * Handle visible junto al canal en la lista:
+ *  - WhatsApp           → phone (E.164)
+ *  - Instagram/Facebook → @username (fallback sin @ si no tiene)
+ *  - Sin canal/unmatched → null
+ */
+export function channelHandleForRow(a: AppointmentRow): string | null {
+  if (!a.channelType) return null;
+  if (a.channelType === 'whatsapp') return a.leadPhone ?? null;
+  if (a.channelType === 'instagram_dm' || a.channelType === 'facebook_messenger') {
+    if (!a.leadUsername) return null;
+    return a.leadUsername.startsWith('@') ? a.leadUsername : `@${a.leadUsername}`;
+  }
+  return null;
+}

@@ -31,6 +31,8 @@ import {
   applyAppointmentToConversation,
   type AppointmentEventType,
 } from '../services/appointment-applier.js';
+import { buildAppointmentBookedPayload } from '../services/build-appointment-notification-payload.js';
+import { enqueueNotification } from '../services/notify-trainer.js';
 
 export const CALENDAR_EVENT_TYPES = new Set<AppointmentEventType>([
   'AppointmentCreate',
@@ -176,6 +178,40 @@ export async function handleCalendarEvent(
     match,
     rawPayload: body,
   });
+
+  // 5.5. Notificación email al trainer (Hito 10.5 — cierre del gap reconocido
+  //      en process-debounced.ts:448-449). Solo AppointmentCreate dispara email
+  //      para evitar ruido en Update/Delete; matched y unmatched ambos notifican
+  //      (decisión Iván 2026-05-17). Si falla → log y seguir (no rompe el ack).
+  if (eventType === 'AppointmentCreate') {
+    try {
+      const notificationPayload = await buildAppointmentBookedPayload({
+        supabase,
+        ghlClient,
+        tenantId,
+        calendarAccountId,
+        appointment,
+        match,
+      });
+      const enq = await enqueueNotification({
+        supabase: supabase as unknown as Parameters<typeof enqueueNotification>[0]['supabase'],
+        tenantId,
+        eventType: 'appointment_booked',
+        payload: notificationPayload as unknown as Record<string, unknown>,
+      });
+      if (!enq.ok) {
+        log.warn(
+          { tenantId, appointmentId: appointment.id, error: enq.error },
+          'webhook-ghl-calendar: enqueue notification failed (non-fatal)',
+        );
+      }
+    } catch (err) {
+      log.warn(
+        { err, tenantId, appointmentId: appointment.id },
+        'webhook-ghl-calendar: build/enqueue notification threw (non-fatal)',
+      );
+    }
+  }
 
   // 6. Touch last_webhook_at
   try {
