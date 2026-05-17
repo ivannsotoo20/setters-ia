@@ -102,7 +102,7 @@ export default async function CerebroBlockPage({ params }: Props) {
               {blockResult.draft ? (
                 <Badge
                   variant="outline"
-                  className="border-amber-500/40 text-amber-400 bg-amber-500/5 text-xs"
+                  className="border-warning/40 text-warning bg-warning/5 text-xs"
                 >
                   Borrador en curso
                 </Badge>

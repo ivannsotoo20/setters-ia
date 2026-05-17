@@ -94,7 +94,7 @@ function KeywordRowItem({ keyword }: { keyword: KeywordRow }) {
       </TableCell>
       <TableCell>
         {keyword.isActive ? (
-          <Badge variant="outline" className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5">
+          <Badge variant="outline" className="border-success/40 text-success bg-success/5">
             activa
           </Badge>
         ) : (
@@ -165,10 +165,10 @@ function KeywordRowItem({ keyword }: { keyword: KeywordRow }) {
 
 function TypeBadge({ type }: { type: 'bienvenida' | 'lm' | 'inbound' | 'wa_open' }) {
   const styles: Record<typeof type, string> = {
-    bienvenida: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/5',
+    bienvenida: 'border-success/40 text-success bg-success/5',
     lm: 'border-violet-500/40 text-violet-400 bg-violet-500/5',
-    inbound: 'border-sky-500/40 text-sky-400 bg-sky-500/5',
-    wa_open: 'border-amber-500/40 text-amber-400 bg-amber-500/5',
+    inbound: 'border-primary/40 text-primary bg-primary/5',
+    wa_open: 'border-warning/40 text-warning bg-warning/5',
   };
   return (
     <Badge variant="outline" className={`font-normal ${styles[type]}`}>

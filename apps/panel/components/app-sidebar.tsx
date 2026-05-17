@@ -9,8 +9,6 @@ import {
   Sparkles,
   Settings,
   Sliders,
-  LogOut,
-  Bot,
   Brain,
   Users,
   ShieldCheck,
@@ -22,13 +20,11 @@ import {
   Kanban,
   Clock,
   ContactRound,
-  Activity,
-  Rocket,
-  MessageCircle,
   ChevronDown,
   User,
   CalendarDays,
 } from 'lucide-react';
+import { FyzonLogo } from '@/components/branding/fyzon-logo';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   Sidebar,
@@ -48,12 +44,18 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
-import { logout } from '@/lib/actions/auth';
+import { cn } from '@/lib/utils';
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavGroup {
+  /** Label visible como sub-header. Undefined = items sueltos sin agrupar. */
+  label?: string;
+  items: NavItem[];
 }
 
 type SidebarMode = 'agency' | 'tenant-admin' | 'trainer';
@@ -66,26 +68,62 @@ const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/calendars', label: 'Calendarios', icon: CalendarDays },
 ];
 
-/** Entradas de configuración visibles según rol. */
-function buildTrainerConfigNav(canManageTenant: boolean): NavItem[] {
-  // Perfil siempre primero — accesible para todos los roles.
-  const items: NavItem[] = [
+/**
+ * Entradas de Configuración agrupadas por sección.
+ *
+ * Reorganización 2026-05-16: pasamos de 11 entradas planas a 8 entradas (o 5
+ * para collaborator) agrupadas en hasta 5 secciones con sub-headers visuales.
+ *   - "Onboarding" eliminado: el banner sticky ya guía al trainer cuando aplica.
+ *   - "Salud integraciones" fusionado como tab interna dentro de `/settings/integrations`.
+ *   - "Miembros" renombrado visualmente al grupo "Equipo".
+ */
+function buildTrainerConfigGroups(canManageTenant: boolean): NavGroup[] {
+  const groups: NavGroup[] = [];
+
+  // Perfil + Integraciones — items sueltos top. Integraciones absorbe WhatsApp
+  // y Salud como tabs internas (eliminamos header "Canales" — solo había 2 items).
+  const topItems: NavItem[] = [
     { href: '/settings/profile', label: 'Perfil', icon: User },
-    { href: '/keywords', label: 'Keywords', icon: Sparkles },
-    { href: '/labels', label: 'Etiquetas', icon: Tag },
-    { href: '/settings/followup-templates', label: 'Followups', icon: Clock },
   ];
   if (canManageTenant) {
-    items.push({ href: '/settings/whatsapp', label: 'WhatsApp', icon: MessageCircle });
-    items.push({ href: '/onboarding/integrations', label: 'Onboarding', icon: Rocket });
-    items.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
-    items.push({ href: '/settings/integrations/health', label: 'Salud integraciones', icon: Activity });
-    items.push({ href: '/settings/calendars', label: 'Calendarios', icon: CalendarDays });
-    items.push({ href: '/settings/preferences', label: 'Preferencias', icon: Sliders });
+    topItems.push({ href: '/settings/integrations', label: 'Integraciones', icon: Settings });
   }
-  // Miembros visible para todos: collaborator ve la lista en read-only.
-  items.push({ href: '/settings/members', label: 'Miembros', icon: UserCog });
-  return items;
+  groups.push({ items: topItems });
+
+  // Automatización — visible para todos: viewer/collaborator ven read-only.
+  // "Plantillas" → "Seguimientos" (las plantillas WA migraron al tab WhatsApp
+  // de Integraciones; aquí solo queda la config de seguimientos automáticos).
+  groups.push({
+    label: 'Automatización',
+    items: [
+      { href: '/keywords', label: 'Keywords', icon: Sparkles },
+      { href: '/labels', label: 'Etiquetas', icon: Tag },
+      { href: '/settings/followup-templates', label: 'Seguimientos', icon: Clock },
+    ],
+  });
+
+  // Agenda — solo si puede gestionar (calendar OAuth + matching config).
+  if (canManageTenant) {
+    groups.push({
+      label: 'Agenda',
+      items: [{ href: '/settings/calendars', label: 'Calendarios', icon: CalendarDays }],
+    });
+  }
+
+  // Equipo — Miembros bajo header "Equipo" (collaborator ve read-only).
+  groups.push({
+    label: 'Equipo',
+    items: [{ href: '/settings/members', label: 'Miembros', icon: UserCog }],
+  });
+
+  // Preferencias — solo si puede gestionar (toggles del setter).
+  if (canManageTenant) {
+    groups.push({
+      items: [{ href: '/settings/preferences', label: 'Preferencias', icon: Sliders }],
+    });
+  }
+
+  return groups;
 }
 
 const NAV_AGENCY: NavItem[] = [
@@ -149,7 +187,7 @@ export function AppSidebar({
   const pathname = usePathname();
   const mode = deriveMode(pathname, isAgencyAdmin === true);
   const tenantIdInUrl = extractTenantId(pathname);
-  const trainerConfigNav = buildTrainerConfigNav(canManageTenant);
+  const trainerConfigGroups = buildTrainerConfigGroups(canManageTenant);
 
   const homeHref =
     mode === 'agency' || mode === 'tenant-admin'
@@ -170,17 +208,15 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href={homeHref}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-md bg-primary text-primary-foreground shrink-0">
-                  <Bot className="size-4" />
-                </div>
+                <FyzonLogo variant="mark" className="size-8" />
                 <div className="flex flex-col gap-0.5 leading-none min-w-0 flex-1">
-                  <span className="font-semibold truncate">Fyzon Setters</span>
+                  <span className="font-semibold truncate tracking-tight">Fyzon Setters</span>
                   <span className="text-xs text-muted-foreground truncate">
                     {subtitle}
                   </span>
                 </div>
                 {isAgencyAdmin ? (
-                  <ShieldCheck className="size-4 text-emerald-400 shrink-0" />
+                  <ShieldCheck className="size-4 text-primary shrink-0" />
                 ) : null}
               </Link>
             </SidebarMenuButton>
@@ -260,7 +296,7 @@ export function AppSidebar({
               <SidebarGroupContent>
                 <SidebarMenu>
                   <ConfigCollapsibleItem
-                    items={trainerConfigNav}
+                    groups={trainerConfigGroups}
                     pathname={pathname}
                   />
                 </SidebarMenu>
@@ -281,23 +317,15 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter>
-        <SidebarMenu>
-          {userEmail ? (
-            <SidebarMenuItem>
-              <div className="px-2 py-1 text-xs text-muted-foreground truncate group-data-[collapsible=icon]:hidden">
-                {userEmail}
-              </div>
-            </SidebarMenuItem>
-          ) : null}
-          <SidebarMenuItem>
-            <form action={logout} className="w-full">
-              <SidebarMenuButton type="submit" tooltip="Cerrar sesión" className="w-full justify-start">
-                <LogOut className="size-4" />
-                <span>Cerrar sesión</span>
-              </SidebarMenuButton>
-            </form>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center justify-center gap-2 px-2 py-2 group-data-[collapsible=icon]:px-0">
+          <FyzonLogo variant="mark" className="size-6 shrink-0" />
+          <div className="flex flex-col leading-none group-data-[collapsible=icon]:hidden">
+            <span className="text-xs font-semibold tracking-tight">Fyzon</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">
+              Setters · v0.1
+            </span>
+          </div>
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
@@ -313,7 +341,7 @@ function AgencyBadge() {
   if (state === 'collapsed') {
     return (
       <div className="flex justify-center pt-1" aria-label="Modo Agencia">
-        <ShieldCheck className="size-4 text-emerald-400" aria-hidden />
+        <ShieldCheck className="size-4 text-primary" aria-hidden />
       </div>
     );
   }
@@ -321,7 +349,7 @@ function AgencyBadge() {
     <div className="px-2 pt-1">
       <Badge
         variant="outline"
-        className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5 text-[10px]"
+        className="border-primary/30 text-primary bg-primary/5 text-[10px]"
       >
         <ShieldCheck className="size-2.5 mr-1" />
         Agencia
@@ -348,15 +376,19 @@ function NavItemRow({ item, active }: { item: NavItem; active: boolean }) {
  * Item colapsable "Configuración" — agrupa todos los settings del trainer
  * detrás de un único click. Inicialmente cerrado, pero si la ruta actual
  * pertenece al submenu lo abrimos automáticamente.
+ *
+ * Cada `NavGroup` con `label` renderiza un sub-header visual sobre sus items
+ * (estilo "CANALES", "AUTOMATIZACIÓN"). Grupos sin label van como items sueltos.
  */
 function ConfigCollapsibleItem({
-  items,
+  groups,
   pathname,
 }: {
-  items: NavItem[];
+  groups: NavGroup[];
   pathname: string;
 }) {
-  const anySubActive = items.some((item) => isActive(pathname, item.href));
+  const allItems = groups.flatMap((g) => g.items);
+  const anySubActive = allItems.some((item) => isActive(pathname, item.href));
   return (
     <Collapsible defaultOpen={anySubActive} className="group/collapsible">
       <SidebarMenuItem>
@@ -369,24 +401,58 @@ function ConfigCollapsibleItem({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub>
-            {items.map((item) => {
-              const Icon = item.icon;
-              const active = isActive(pathname, item.href);
-              return (
-                <SidebarMenuSubItem key={item.href}>
-                  <SidebarMenuSubButton asChild isActive={active}>
-                    <Link href={item.href}>
-                      <Icon className="size-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              );
-            })}
+            {groups.map((group, gIdx) => (
+              <ConfigGroupBlock
+                key={group.label ?? `_g${gIdx}`}
+                group={group}
+                pathname={pathname}
+                isFirst={gIdx === 0}
+              />
+            ))}
           </SidebarMenuSub>
         </CollapsibleContent>
       </SidebarMenuItem>
     </Collapsible>
+  );
+}
+
+function ConfigGroupBlock({
+  group,
+  pathname,
+  isFirst,
+}: {
+  group: NavGroup;
+  pathname: string;
+  isFirst: boolean;
+}) {
+  return (
+    <>
+      {group.label ? (
+        <li
+          className={cn(
+            'px-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 select-none',
+            isFirst ? 'pt-1' : 'pt-3',
+          )}
+          aria-hidden
+        >
+          {group.label}
+        </li>
+      ) : null}
+      {group.items.map((item) => {
+        const Icon = item.icon;
+        const active = isActive(pathname, item.href);
+        return (
+          <SidebarMenuSubItem key={item.href}>
+            <SidebarMenuSubButton asChild isActive={active}>
+              <Link href={item.href}>
+                <Icon className="size-4" />
+                <span>{item.label}</span>
+              </Link>
+            </SidebarMenuSubButton>
+          </SidebarMenuSubItem>
+        );
+      })}
+    </>
   );
 }
 

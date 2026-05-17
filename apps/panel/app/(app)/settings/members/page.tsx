@@ -34,9 +34,9 @@ export default async function SettingsMembersPage() {
       <div>
         <p className="text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
           <UserCog className="size-3.5" />
-          Miembros
+          Equipo
         </p>
-        <h1 className="text-2xl font-semibold tracking-tight">Usuarios de tu cuenta</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Miembros de tu cuenta</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {canManage
             ? 'Invita a tu equipo (social media, asistentes) y gestiona sus accesos. Cada persona entra con su propio email.'

@@ -140,7 +140,7 @@ export function ContactGdprActions({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Download className="size-5 text-amber-400" />
+              <Download className="size-5 text-warning" />
               Exportar datos personales (GDPR Art. 15)
             </DialogTitle>
             <DialogDescription className="pt-2 space-y-2 text-sm">
@@ -154,7 +154,7 @@ export function ContactGdprActions({
                 <li>Eventos de pipeline y cambios de fase</li>
                 <li>Citas agendadas + URL trackeable</li>
               </ul>
-              <span className="block text-xs text-amber-200">
+              <span className="block text-xs text-warning">
                 Trátalo según LOPD/RGPD: cifrado en tránsito al usuario solicitante, borrado
                 local tras el envío, NO compartir en chats no cifrados ni screen-share público.
               </span>

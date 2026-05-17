@@ -3,8 +3,9 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart, ChevronDown, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
@@ -151,6 +152,17 @@ export function PreferencesForm({ tenantId, initial }: Props) {
     setHandoffCustomMsgRaw('');
   }
 
+  /** Revierte el form al snapshot guardado en server (cancela los cambios sin tocar lo persistido). */
+  function handleDiscardChanges() {
+    setPrefs(initial);
+    setEmailRaw(initial.trainerEmail ?? '');
+    setPhoneRaw(initial.trainerPhone ?? '');
+    setNameRaw(initial.trainerName ?? '');
+    setCalendarUrlRaw(initial.closingResourceUrl ?? '');
+    setCalendarClosingRaw(initial.calendarClosingMessage ?? '');
+    setHandoffCustomMsgRaw(initial.handoffCustomMessage ?? '');
+  }
+
   function handleSave() {
     startSave(async () => {
       const r = await saveTrainerPreferences({ tenantId, preferences: finalPrefs });
@@ -166,11 +178,11 @@ export function PreferencesForm({ tenantId, initial }: Props) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* CARD 1 — Estilo */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Estilo</CardTitle>
-          <CardDescription>Cómo se ve el mensaje del setter en pantalla.</CardDescription>
-        </CardHeader>
+      <CollapsibleCard
+        title="Estilo"
+        description="Cómo se ve el mensaje del setter en pantalla."
+        defaultOpen
+      >
         <CardContent className="flex flex-col gap-6">
           {/* Sprint 2.5b/B — Slider longitud de mensajes */}
           <div className="flex flex-col gap-3">
@@ -228,20 +240,15 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             </p>
           </div>
         </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       {/* CARD EMOTICONOS (Sprint Gamma 2.5b/E) — full width */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Smile className="size-4" />
-            Emoticonos
-          </CardTitle>
-          <CardDescription>
-            Decide si el setter usa emojis, con qué frecuencia, cuántos por conversación y qué emojis
-            concretos. Si no configuras nada, el setter usa los del Coach con criterio normal.
-          </CardDescription>
-        </CardHeader>
+      <CollapsibleCard
+        title="Emoticonos"
+        description="Decide si el setter usa emojis, con qué frecuencia, cuántos por conversación y qué emojis concretos. Si no configuras nada, el setter usa los del Coach con criterio normal."
+        icon={<Smile className="size-4" />}
+        fullWidth
+      >
         <CardContent className="flex flex-col gap-6">
           {/* Toggle on/off */}
           <div className="flex items-start justify-between gap-4">
@@ -343,17 +350,14 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             </div>
           )}
         </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       {/* CARD 2 — Datos de contacto (Sprint Gamma 2.1) */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Datos de contacto</CardTitle>
-          <CardDescription>
-            Información tuya que el setter puede usar en handoff y para alertarte por email.
-            Todos los campos son opcionales.
-          </CardDescription>
-        </CardHeader>
+      <CollapsibleCard
+        title="Datos de contacto"
+        description="Información tuya que el setter puede usar en handoff y para alertarte por email. Todos los campos son opcionales."
+        icon={<User className="size-4" />}
+      >
         <CardContent className="flex flex-col gap-5">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="trainerName" className="text-xs flex items-center gap-1.5">
@@ -409,7 +413,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               className={!phoneValid && phoneRaw !== '' ? 'border-destructive' : ''}
             />
             {phoneRaw !== '' && phoneValid && phoneNormalized ? (
-              <p className="text-xs text-emerald-400">
+              <p className="text-xs text-success">
                 Normalizado: <code className="font-mono">{phoneNormalized}</code>
               </p>
             ) : !phoneValid && phoneRaw !== '' ? (
@@ -425,21 +429,15 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             )}
           </div>
         </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       {/* CARD HANDOFF (Sprint Gamma 2.6b) — full width */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <HandHeart className="size-4" />
-            Comportamiento en handoff
-          </CardTitle>
-          <CardDescription>
-            Qué hace el setter cuando el lead pide hablar con humano, detecta que es bot, o aparece
-            una situación delicada (Causa B). Distinto del cierre cualificado de la sección de
-            abajo — esto cubre las salidas REACTIVAS del flujo.
-          </CardDescription>
-        </CardHeader>
+      <CollapsibleCard
+        title="Comportamiento en handoff"
+        description="Qué hace el setter cuando el lead pide hablar con humano, detecta que es bot, o aparece una situación delicada (Causa B). Distinto del cierre cualificado de la sección de abajo — esto cubre las salidas REACTIVAS del flujo."
+        icon={<HandHeart className="size-4" />}
+        fullWidth
+      >
         <CardContent className="flex flex-col gap-6">
           {/* Toggle Card-level */}
           <div className="flex items-start justify-between gap-4">
@@ -505,7 +503,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
                       , una sola vez por conversación.
                     </p>
                   ) : (
-                    <p className="text-xs text-amber-400">
+                    <p className="text-xs text-warning">
                       ⚠ Tienes este modo activo pero NO has configurado tu teléfono en
                       &quot;Datos de contacto&quot; arriba. El setter degradará automáticamente a
                       modo silencioso (no compartirá nada). Configura un teléfono o cambia de modo.
@@ -593,7 +591,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
                           ni links que no menciones tú.
                         </p>
                         <span
-                          className={`tabular-nums ${handoffCustomMsgRaw.length > 220 ? 'text-amber-400' : 'text-muted-foreground'}`}
+                          className={`tabular-nums ${handoffCustomMsgRaw.length > 220 ? 'text-warning' : 'text-muted-foreground'}`}
                         >
                           {handoffCustomMsgRaw.length}/250
                         </span>
@@ -605,22 +603,17 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             </div>
           )}
         </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       {/* CARD 3 — Instrucciones libres movido a componente separado (custom-instructions-list.tsx) */}
 
       {/* CARD 4 — Cualificación + propuesta de llamada (Sprint 2.5b/B + 2.5b/C) */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <CalendarClock className="size-4" />
-            Cualificación + propuesta de llamada
-          </CardTitle>
-          <CardDescription>
-            Cómo cualifica el setter y cómo cierra la conversación (calendario, formulario o
-            derivación humana).
-          </CardDescription>
-        </CardHeader>
+      <CollapsibleCard
+        title="Cualificación + propuesta de llamada"
+        description="Cómo cualifica el setter y cómo cierra la conversación (calendario, formulario o derivación humana)."
+        icon={<CalendarClock className="size-4" />}
+        fullWidth
+      >
         <CardContent className="flex flex-col gap-8">
           {/* Bloque 1 — Preguntas extra (toggle ON/OFF + botones si ON) */}
           <div className="flex flex-col gap-3">
@@ -760,7 +753,7 @@ export function PreferencesForm({ tenantId, initial }: Props) {
                   <p className="text-muted-foreground">
                     Vacío = el setter decide.
                   </p>
-                  <span className={`tabular-nums ${calendarClosingRaw.length > 180 ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                  <span className={`tabular-nums ${calendarClosingRaw.length > 180 ? 'text-warning' : 'text-muted-foreground'}`}>
                     {calendarClosingRaw.length}/200
                   </span>
                 </div>
@@ -770,8 +763,8 @@ export function PreferencesForm({ tenantId, initial }: Props) {
 
           {/* Bloque 4 — Nota explicativa cuando modo handoff */}
           {prefs.callProposalMode === 'human_handoff' && (
-            <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-              <p className="font-medium text-amber-200 mb-1">Modo derivación humana</p>
+            <div className="rounded-md border border-warning/30 bg-warning/5 p-4 text-sm">
+              <p className="font-medium text-warning/90 mb-1">Modo derivación humana</p>
               <p className="text-xs text-muted-foreground">
                 El setter cualificará al lead y, en lugar de proponer llamada o enviar enlace, marcará
                 la conversación como handoff. La IA pausará tras ese turno y tú atenderás manualmente.
@@ -780,25 +773,25 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             </div>
           )}
         </CardContent>
-      </Card>
+      </CollapsibleCard>
 
       {/* CARD 5 — Notificaciones email (Sprint Gamma 2.5) */}
-      <Card className="lg:col-span-2">
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Bell className="size-4" />
-            Notificaciones por email
-          </CardTitle>
-          <CardDescription>
+      <CollapsibleCard
+        title="Notificaciones por email"
+        description={
+          <>
             Elige qué eventos del motor te llegan por email a{' '}
             <code className="font-mono text-xs">{finalPrefs.trainerEmail ?? '(sin email configurado)'}</code>.
             {finalPrefs.trainerEmail == null && (
-              <span className="block mt-1 text-amber-400">
+              <span className="block mt-1 text-warning">
                 ⚠ Configura tu email en &quot;Datos de contacto&quot; arriba para activar las notificaciones.
               </span>
             )}
-          </CardDescription>
-        </CardHeader>
+          </>
+        }
+        icon={<Bell className="size-4" />}
+        fullWidth
+      >
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {NOTIFICATION_EVENT_TYPES.map((eventType) => {
             const meta = NOTIFICATION_EVENT_LABELS[eventType];
@@ -835,57 +828,79 @@ export function PreferencesForm({ tenantId, initial }: Props) {
             );
           })}
         </CardContent>
-      </Card>
+      </CollapsibleCard>
 
-      {/* Acciones (full width) */}
-      <Card className="lg:col-span-2">
-        <CardContent className="p-4 flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 text-xs">
-            {isAllDefault ? (
-              <Badge variant="outline" className="text-muted-foreground">
-                Todos los valores en defecto
-              </Badge>
-            ) : (
-              <Badge
+      {/*
+        Footer adaptativo:
+          - isDirty=true  → barra sticky bottom con CTA prominente "Guardar cambios"
+            + "Descartar" (revierte al snapshot guardado). El sticky evita que el
+            usuario tenga que scrollear al final tras editar.
+          - isDirty=false + custom  → línea discreta confirmando que las prefs
+            están activas, con link ghost "Volver a defectos".
+          - isDirty=false + isAllDefault  → nada (panel sin ruido cuando todo
+            está en valores por defecto).
+      */}
+      {isDirty ? (
+        <div className="lg:col-span-2 sticky bottom-4 z-20">
+          <div className="rounded-xl border border-primary/40 bg-card/95 backdrop-blur-md shadow-2xl shadow-primary/20 p-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <Save className="size-4" />
+              </span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-sm font-semibold text-foreground">
+                  Tienes cambios sin guardar
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  El setter aplicará tu nueva configuración en el próximo turno tras guardar.
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
                 variant="outline"
-                className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5"
+                size="sm"
+                onClick={handleDiscardChanges}
+                disabled={saving}
               >
-                Personalizado
-              </Badge>
-            )}
-            {isDirty ? (
-              <span className="text-amber-400">⚠ Cambios sin guardar</span>
-            ) : (
-              <span className="text-muted-foreground">Sin cambios pendientes</span>
-            )}
+                Descartar
+              </Button>
+              <Button type="button" size="sm" onClick={handleSave} disabled={saving || !canSave}>
+                {saving ? (
+                  <>
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Guardando…
+                  </>
+                ) : (
+                  <>
+                    <Save className="size-3.5" />
+                    Guardar cambios
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleResetDefaults}
-              disabled={saving || isAllDefault}
-            >
-              <RotateCcw className="size-3.5" />
-              Volver a defectos
-            </Button>
-            <Button type="button" size="sm" onClick={handleSave} disabled={saving || !canSave}>
-              {saving ? (
-                <>
-                  <Loader2 className="size-3.5 animate-spin" />
-                  Guardando…
-                </>
-              ) : (
-                <>
-                  <Save className="size-3.5" />
-                  Guardar preferencias
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      ) : !isAllDefault ? (
+        <div className="lg:col-span-2 flex items-center justify-between gap-3 px-1 py-2 text-xs flex-wrap">
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <CheckCircle2 className="size-3.5 text-success" />
+            Tus preferencias están activas. El setter las aplica en cada conversación.
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleResetDefaults}
+            disabled={saving}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <RotateCcw className="size-3.5" />
+            Volver a defectos
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -1010,7 +1025,7 @@ function CustomEmojiList({ items, onChange }: CustomEmojiListProps) {
           </Button>
         </div>
       ) : (
-        <p className="text-xs text-amber-400">
+        <p className="text-xs text-warning">
           Has llegado al máximo de {MAX} emojis. Elimina alguno para añadir otro.
         </p>
       )}

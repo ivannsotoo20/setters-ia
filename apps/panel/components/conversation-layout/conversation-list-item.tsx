@@ -43,29 +43,35 @@ export function ConversationListItem({ row, isSelected, assigneeLabel }: Props) 
         type="button"
         onClick={onSelect}
         className={cn(
-          'w-full text-left flex gap-3 px-3 py-2.5 border-b border-border/50 transition-colors',
-          'hover:bg-muted/40 focus:outline-none focus:bg-muted/60',
-          isSelected && 'bg-muted/70 hover:bg-muted/70',
+          'group/conv-item w-full text-left flex gap-3 px-3 py-3 border-b border-border/40 transition-colors relative',
+          'hover:bg-muted/50 focus:outline-none focus:bg-muted/60',
+          isSelected && 'bg-primary/8 hover:bg-primary/10 dark:bg-primary/15 dark:hover:bg-primary/20',
         )}
         aria-current={isSelected ? 'true' : undefined}
       >
+        {isSelected ? (
+          <span
+            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-primary"
+            aria-hidden
+          />
+        ) : null}
         <div className="relative shrink-0">
-          <div className="size-9 rounded-full bg-muted flex items-center justify-center text-xs font-medium uppercase">
+          <div className="size-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold uppercase">
             {leadInitials(lead)}
           </div>
           {row.is_unread ? (
             <span
-              className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-emerald-500 ring-2 ring-background"
+              className="absolute -top-0.5 -right-0.5 size-2.5 rounded-full bg-success ring-2 ring-background"
               aria-label="No leído"
             />
           ) : null}
         </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
           <div className="flex items-center justify-between gap-2">
             <span
               className={cn(
                 'truncate text-sm',
-                row.is_unread ? 'font-semibold' : 'font-medium',
+                row.is_unread ? 'font-semibold text-foreground' : 'font-medium text-foreground/90',
               )}
             >
               {formatLeadName(lead)}
@@ -82,15 +88,12 @@ export function ConversationListItem({ row, isSelected, assigneeLabel }: Props) 
               F{row.phase_number}
             </Badge>
             {row.is_handoff_to_human ? (
-              <Badge
-                variant="outline"
-                className="h-4 text-[9px] px-1.5 font-normal border-rose-500/40 text-rose-400 bg-rose-500/5 shrink-0"
-              >
+              <Badge variant="destructive" className="h-4 text-[9px] px-1.5 font-normal shrink-0">
                 handoff
               </Badge>
             ) : null}
             {paused ? (
-              <Pause className="size-3 text-amber-400 shrink-0" aria-label="IA pausada" />
+              <Pause className="size-3 text-warning shrink-0" aria-label="IA pausada" />
             ) : null}
             {assigneeLabel ? (
               <span className="text-[10px] text-muted-foreground truncate">

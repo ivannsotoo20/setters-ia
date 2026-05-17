@@ -202,7 +202,7 @@ export function RulesForm({ labelId }: Props) {
                       {!r.isActive ? (
                         <Badge
                           variant="outline"
-                          className="text-[10px] font-normal border-amber-500/40 text-amber-400 bg-amber-500/5"
+                          className="text-[10px] font-normal border-warning/40 text-warning bg-warning/5"
                         >
                           Pausada
                         </Badge>
@@ -223,9 +223,9 @@ export function RulesForm({ labelId }: Props) {
                       title={r.isActive ? 'Pausar regla' : 'Reactivar regla'}
                     >
                       {r.isActive ? (
-                        <Power className="size-3.5 text-emerald-400" />
+                        <Power className="size-3.5 text-success" />
                       ) : (
-                        <PowerOff className="size-3.5 text-amber-400" />
+                        <PowerOff className="size-3.5 text-warning" />
                       )}
                     </Button>
                     <Button

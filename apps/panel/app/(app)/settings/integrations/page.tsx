@@ -8,6 +8,9 @@ import {
 } from '@/components/ui/card';
 import { IntegrationsList } from './integrations-list';
 import { AddIntegrationDialog } from './add-integration-dialog';
+import { IntegrationsTabs } from './integrations-tabs';
+import { HealthSection } from './health-section';
+import { WhatsAppSection } from './whatsapp-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,18 +18,8 @@ export default async function IntegrationsPage() {
   const result = await listIntegrations();
   const integrations = result.ok ? result.data ?? [] : [];
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">
-            Configuración
-          </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Integraciones</h1>
-        </div>
-        <AddIntegrationDialog />
-      </div>
-
+  const listSection = (
+    <>
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
@@ -77,6 +70,26 @@ export default async function IntegrationsPage() {
           </p>
         </CardContent>
       </Card>
+    </>
+  );
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-end justify-between gap-4 flex-wrap">
+        <div>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">
+            Configuración
+          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Integraciones</h1>
+        </div>
+        <AddIntegrationDialog />
+      </div>
+
+      <IntegrationsTabs
+        listSection={listSection}
+        whatsappSection={<WhatsAppSection />}
+        healthSection={<HealthSection />}
+      />
     </div>
   );
 }

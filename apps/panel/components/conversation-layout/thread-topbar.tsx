@@ -61,7 +61,7 @@ export function ThreadTopbar({
               {detail.isHandoffToHuman ? (
                 <Badge
                   variant="outline"
-                  className="h-4 text-[9px] px-1.5 border-rose-500/40 text-rose-400 bg-rose-500/5"
+                  className="h-4 text-[9px] px-1.5 border-destructive/40 text-destructive bg-destructive/5"
                 >
                   handoff{detail.handoffCause ? ` · ${detail.handoffCause}` : ''}
                 </Badge>
@@ -69,7 +69,7 @@ export function ThreadTopbar({
               {detail.isBlocked ? (
                 <Badge
                   variant="outline"
-                  className="h-4 text-[9px] px-1.5 border-amber-500/40 text-amber-400 bg-amber-500/5"
+                  className="h-4 text-[9px] px-1.5 border-warning/40 text-warning bg-warning/5"
                 >
                   bloqueada
                 </Badge>
@@ -77,7 +77,7 @@ export function ThreadTopbar({
               {paused && !detail.isBlocked ? (
                 <Badge
                   variant="outline"
-                  className="h-4 text-[9px] px-1.5 border-amber-500/40 text-amber-400 bg-amber-500/5"
+                  className="h-4 text-[9px] px-1.5 border-warning/40 text-warning bg-warning/5"
                 >
                   IA pausada
                 </Badge>

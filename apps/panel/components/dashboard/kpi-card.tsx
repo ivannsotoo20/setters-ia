@@ -41,18 +41,20 @@ export function KpiCard(props: Props) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <Card className="bg-muted/20 border-border/50">
-        <CardContent className="p-3 flex flex-col gap-1">
-          <div className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <Card className="bg-card hover:shadow-md hover:border-primary/30 transition-all duration-200">
+        <CardContent className="p-4 flex flex-col gap-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide font-medium text-muted-foreground">
             <span className="truncate">{label}</span>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Info className="size-3 cursor-help shrink-0" />
+                <Info className="size-3 cursor-help shrink-0 text-muted-foreground/60 hover:text-foreground" />
               </TooltipTrigger>
               <TooltipContent className="max-w-[280px] text-xs">{tooltip}</TooltipContent>
             </Tooltip>
           </div>
-          <div className="text-2xl font-semibold tabular-nums leading-none">{displayValue}</div>
+          <div className="text-3xl font-bold tabular-nums leading-none tracking-tight text-foreground">
+            {displayValue}
+          </div>
           <div className="flex items-center gap-1 text-[10px] tabular-nums">
             {value.hasInsufficientData ? (
               <span className="text-muted-foreground/70">datos insuficientes</span>
@@ -61,16 +63,17 @@ export function KpiCard(props: Props) {
             ) : (
               <>
                 {deltaSign === 'up' ? (
-                  <ArrowUpRight className="size-3 text-emerald-500" />
+                  <ArrowUpRight className="size-3 text-success" />
                 ) : deltaSign === 'down' ? (
-                  <ArrowDownRight className="size-3 text-rose-500" />
+                  <ArrowDownRight className="size-3 text-destructive" />
                 ) : (
                   <Minus className="size-3 text-muted-foreground" />
                 )}
                 <span
                   className={cn(
-                    deltaSign === 'up' && 'text-emerald-500',
-                    deltaSign === 'down' && 'text-rose-500',
+                    'font-medium',
+                    deltaSign === 'up' && 'text-success',
+                    deltaSign === 'down' && 'text-destructive',
                     deltaSign === 'flat' && 'text-muted-foreground',
                   )}
                 >

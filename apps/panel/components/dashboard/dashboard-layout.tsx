@@ -41,7 +41,9 @@ export function DashboardLayout({ snapshot, tenantHealth }: Props) {
         {!showActivationChecklist ? (
           <>
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-xs uppercase tracking-wide text-muted-foreground">Métricas</h2>
+              <h2 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Métricas
+              </h2>
               {canEditWidgets ? <AddWidgetDialog /> : null}
             </div>
             <WidgetsGrid widgets={widgets} values={widgetValues} canEdit={canEditWidgets} />

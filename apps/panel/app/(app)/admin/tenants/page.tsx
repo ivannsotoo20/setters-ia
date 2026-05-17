@@ -105,7 +105,7 @@ export default async function AdminTenantsPage() {
                         {t.isActive ? (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5"
+                            className="border-success/40 text-success bg-success/5"
                           >
                             activa
                           </Badge>

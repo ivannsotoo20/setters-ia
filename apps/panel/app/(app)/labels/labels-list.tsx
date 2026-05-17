@@ -85,12 +85,12 @@ export function LabelsList({ labels, members }: Props) {
                 <TableCell>
                   <div className="flex flex-wrap gap-1.5">
                     {l.pauseAiOnApply ? (
-                      <Badge variant="outline" className="font-normal text-[10px] border-amber-500/40 text-amber-400 bg-amber-500/5">
+                      <Badge variant="outline" className="font-normal text-[10px] border-warning/40 text-warning bg-warning/5">
                         Pausa IA
                       </Badge>
                     ) : null}
                     {l.resumeAiOnApply ? (
-                      <Badge variant="outline" className="font-normal text-[10px] border-emerald-500/40 text-emerald-400 bg-emerald-500/5">
+                      <Badge variant="outline" className="font-normal text-[10px] border-success/40 text-success bg-success/5">
                         Reactiva IA
                       </Badge>
                     ) : null}

@@ -413,6 +413,12 @@ async function requireConvAndLabelAccess(
 export async function applyLabel(input: {
   conversationId: number;
   labelId: number;
+  /**
+   * Si true, no llama `revalidatePath` — usado por batchers (p.ej. pipeline
+   * outcome que aplica varias labels y revalida 1 vez al final). Evita cascada
+   * de revalidates en operaciones multi-label.
+   */
+  skipRevalidate?: boolean;
 }): Promise<ActionResult> {
   const auth = await requireConvAndLabelAccess(input.conversationId, input.labelId);
   if (!auth.ok) return auth;
@@ -460,14 +466,18 @@ export async function applyLabel(input: {
       .eq('tenant_id', auth.tenantId);
   }
 
-  revalidatePath('/conversations');
-  revalidatePath(`/conversations/${input.conversationId}`);
+  if (!input.skipRevalidate) {
+    revalidatePath('/conversations');
+    revalidatePath(`/conversations/${input.conversationId}`);
+  }
   return { ok: true };
 }
 
 export async function removeLabel(input: {
   conversationId: number;
   labelId: number;
+  /** Si true, no llama revalidatePath — ver `applyLabel` para contexto. */
+  skipRevalidate?: boolean;
 }): Promise<ActionResult> {
   const auth = await requireConvAndLabelAccess(input.conversationId, input.labelId);
   if (!auth.ok) return auth;
@@ -484,7 +494,9 @@ export async function removeLabel(input: {
     .eq('tenant_id', auth.tenantId);
   if (error) return { ok: false, error: error.message };
 
-  revalidatePath('/conversations');
-  revalidatePath(`/conversations/${input.conversationId}`);
+  if (!input.skipRevalidate) {
+    revalidatePath('/conversations');
+    revalidatePath(`/conversations/${input.conversationId}`);
+  }
   return { ok: true };
 }

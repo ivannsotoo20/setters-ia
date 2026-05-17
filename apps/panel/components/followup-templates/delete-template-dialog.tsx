@@ -41,7 +41,7 @@ export function DeleteTemplateDialog({ templateId, templateName, isYCloud }: Pro
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-rose-500 hover:text-rose-600">
+        <Button variant="ghost" size="sm" className="h-7 px-2 text-destructive hover:text-destructive/80">
           <Trash2 className="size-3.5" />
         </Button>
       </AlertDialogTrigger>
@@ -61,7 +61,7 @@ export function DeleteTemplateDialog({ templateId, templateName, isYCloud }: Pro
           <AlertDialogAction
             onClick={onConfirm}
             disabled={isPending}
-            className="bg-rose-500 hover:bg-rose-600"
+            className="bg-destructive hover:bg-destructive/90"
           >
             {isPending ? 'Eliminando…' : 'Eliminar'}
           </AlertDialogAction>

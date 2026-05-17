@@ -288,6 +288,7 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
       panel={
         <ControlPanel
           detail={selectedDetail}
+          messages={messages}
           followups={followups}
           followupConfig={followupConfig}
           canManageFollowups={canManageFollowups}

@@ -98,7 +98,7 @@ export function WaModeForm({ currentMode, waOpenKeywordCount }: Props) {
               <p className="text-sm text-muted-foreground">{mode.description}</p>
               <p className="mt-1 text-xs italic text-muted-foreground/70">{mode.tradeoff}</p>
               {disabled && (
-                <p className="mt-1 text-xs text-amber-300">
+                <p className="mt-1 text-xs text-warning/95">
                   Necesitas crear al menos 1 keyword wa_open en{' '}
                   <Link href="/keywords" className="underline">
                     /keywords

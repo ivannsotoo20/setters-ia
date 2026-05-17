@@ -4,125 +4,235 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+   Tailwind 4 + shadcn theme bridge.
+   `@theme` no admite override por selector (`@theme dark { … }` no existe), así
+   que los color tokens semánticos del bloque @theme apuntan a vars primitivas
+   (--background, --primary, etc.) que sí se redefinen en :root (light) y .dark.
+   Patrón canónico del starter shadcn 4 oficial.
+   --------------------------------------------------------------------------- */
+
 @theme {
-  --color-background: #0a0a0a;
-  --color-foreground: #fafafa;
-  --color-muted: #262626;
-  --color-muted-foreground: #a3a3a3;
-  --color-border: #2d2d2d;
-  --color-accent: #10b981;
-  --color-accent-hover: #059669;
-  --color-error: #f87171;
-  --color-error-bg: #2a0e0e;
-  --color-success: #10b981;
-  --color-success-bg: #0e2a1e;
+  /* Colors — semantic tokens shadcn (apuntan a vars primitivas debajo) */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 
-  /* Tokens shadcn que faltaban — sin esto los componentes que usan
-     bg-popover/bg-card/bg-primary etc caen a transparente o blanco
-     (síntoma observado: dropdown de versiones translúcido). Todos opacos. */
-  --color-popover: #161616;
-  --color-popover-foreground: #fafafa;
-  --color-card: #141414;
-  --color-card-foreground: #fafafa;
-  --color-primary: #10b981;
-  --color-primary-foreground: #021810;
-  --color-secondary: #262626;
-  --color-secondary-foreground: #fafafa;
-  --color-accent-foreground: #021810;
-  --color-destructive: #f87171;
-  --color-destructive-foreground: #fafafa;
-  --color-input: #2d2d2d;
-  --color-ring: #10b981;
-  --color-sidebar: #0a0a0a;
-  --color-sidebar-foreground: #fafafa;
-  --color-sidebar-primary: #10b981;
-  --color-sidebar-primary-foreground: #021810;
-  --color-sidebar-accent: #1a1a1a;
-  --color-sidebar-accent-foreground: #fafafa;
-  --color-sidebar-border: #2d2d2d;
-  --color-sidebar-ring: #10b981;
+  /* Status colors */
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
 
-  --radius: 0.5rem;
+  /* Sidebar palette */
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Chart palette (recharts) */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Radius scale — base 12px (Fyzon) */
+  --radius: 0.75rem;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  /* Typography — Inter (configurada en next/font via --font-sans) */
+  --font-sans: var(--font-sans, 'Inter'), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Shadows — paleta Fyzon (suaves, sombra en 2 capas) */
+  --shadow-fz-sm: 0 1px 2px rgba(10, 10, 10, 0.04);
+  --shadow-fz: 0 1px 3px rgba(10, 10, 10, 0.06), 0 4px 16px rgba(10, 10, 10, 0.04);
+  --shadow-fz-lg: 0 8px 32px rgba(10, 10, 10, 0.08);
+  --shadow-fz-xl: 0 16px 48px rgba(10, 10, 10, 0.12);
 }
 
-/* ----------------------------------------------------------------------- */
-/* :root mirror — Tailwind 4 lee tokens de @theme pero algunos componentes
-   shadcn referencian las variables CSS directamente (bg-popover compila a
-   `background-color: var(--color-popover)`). Sin esto en :root, el browser
-   pintaba transparente. Repetir aquí garantiza que toda la app las vea.    */
-/* ----------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   LIGHT MODE — default. Paleta Fyzon canónica extraída del logo + propuestas.
+   Primary: #1E3A8A (azul Fyzon), background off-white, cards puros.
+   --------------------------------------------------------------------------- */
 :root {
-  --color-background: #0a0a0a;
-  --color-foreground: #fafafa;
-  --color-muted: #262626;
-  --color-muted-foreground: #a3a3a3;
-  --color-border: #2d2d2d;
-  --color-accent: #10b981;
-  --color-accent-hover: #059669;
-  --color-error: #f87171;
-  --color-error-bg: #2a0e0e;
-  --color-success: #10b981;
-  --color-success-bg: #0e2a1e;
+  --background: #f8f8f6;
+  --foreground: #0a0a0a;
 
-  --color-popover: #161616;
-  --color-popover-foreground: #fafafa;
-  --color-card: #141414;
-  --color-card-foreground: #fafafa;
-  --color-primary: #10b981;
-  --color-primary-foreground: #021810;
-  --color-secondary: #262626;
-  --color-secondary-foreground: #fafafa;
-  --color-accent-foreground: #021810;
-  --color-destructive: #f87171;
-  --color-destructive-foreground: #fafafa;
-  --color-input: #2d2d2d;
-  --color-ring: #10b981;
-  --color-sidebar: #0a0a0a;
-  --color-sidebar-foreground: #fafafa;
-  --color-sidebar-primary: #10b981;
-  --color-sidebar-primary-foreground: #021810;
-  --color-sidebar-accent: #1a1a1a;
-  --color-sidebar-accent-foreground: #fafafa;
-  --color-sidebar-border: #2d2d2d;
-  --color-sidebar-ring: #10b981;
-  --radius: 0.5rem;
+  --card: #ffffff;
+  --card-foreground: #0a0a0a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0a0a0a;
+
+  --primary: #1e3a8a;
+  --primary-foreground: #ffffff;
+
+  --secondary: #f3f4f6;
+  --secondary-foreground: #111827;
+
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
+
+  --accent: #eef2ff;
+  --accent-foreground: #162d6b;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #1e3a8a;
+
+  --success: #059669;
+  --success-foreground: #ffffff;
+  --warning: #d97706;
+  --warning-foreground: #ffffff;
+
+  --chart-1: #1e3a8a;
+  --chart-2: #059669;
+  --chart-3: #d97706;
+  --chart-4: #dc2626;
+  --chart-5: #6b7280;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #111827;
+  --sidebar-primary: #1e3a8a;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2ff;
+  --sidebar-accent-foreground: #162d6b;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #1e3a8a;
+
+  color-scheme: light;
+}
+
+/* ---------------------------------------------------------------------------
+   DARK MODE — applied vía .dark class por next-themes (attribute="class").
+   Primary se aclara a #3B5BC9 para contraste sobre fondo casi-negro.
+   --------------------------------------------------------------------------- */
+.dark {
+  --background: #0a0a0a;
+  --foreground: #f8f8f6;
+
+  --card: #111827;
+  --card-foreground: #f8f8f6;
+
+  --popover: #111827;
+  --popover-foreground: #f8f8f6;
+
+  --primary: #3b5bc9;
+  --primary-foreground: #ffffff;
+
+  --secondary: #1f2937;
+  --secondary-foreground: #f8f8f6;
+
+  --muted: #1f2937;
+  --muted-foreground: #9ca3af;
+
+  --accent: #1e3a8a;
+  --accent-foreground: #eef2ff;
+
+  --destructive: #f87171;
+  --destructive-foreground: #0a0a0a;
+
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #3b5bc9;
+
+  --success: #10b981;
+  --success-foreground: #062019;
+  --warning: #f59e0b;
+  --warning-foreground: #1c1410;
+
+  --chart-1: #3b5bc9;
+  --chart-2: #10b981;
+  --chart-3: #f59e0b;
+  --chart-4: #f87171;
+  --chart-5: #9ca3af;
+
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #f8f8f6;
+  --sidebar-primary: #3b5bc9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #161616;
+  --sidebar-accent-foreground: #f8f8f6;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #3b5bc9;
 
   color-scheme: dark;
 }
 
-/* ----------------------------------------------------------------------- */
-/* <select> nativo del navegador: las <option> en Chrome/Edge usan los
-   estilos del SO y no respetan dark mode → texto blanco sobre blanco hasta
-   que pasas el ratón por encima. Forzamos colores opacos del theme.        */
-/* ----------------------------------------------------------------------- */
-select {
-  color-scheme: dark;
-}
-select option {
-  background-color: #0a0a0a !important;
-  color: #fafafa !important;
-  padding: 0.4rem 0.6rem;
-}
-select option:checked {
-  background-color: #262626 !important;
-  color: #fafafa !important;
-}
-select option:hover,
-select option:focus {
-  background-color: #262626 !important;
+/* ---------------------------------------------------------------------------
+   Base layer — aplica border/outline default y bg/text en body.
+   --------------------------------------------------------------------------- */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1, 'cv02' 1, 'cv03' 1, 'cv04' 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html {
+    @apply font-sans;
+  }
 }
 
 html,
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
   font-size: 16px;
   line-height: 1.5;
 }
 
-/* ----------------------------------------------------------------------- */
-/* Auth (login / signup) — fuera del shell shadcn (no usa sidebar)         */
-/* ----------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   <select> nativo: Chrome/Edge usan estilos del SO en las <option>. Forzamos
+   colores del theme — funciona en ambos modos porque referencia tokens.
+   --------------------------------------------------------------------------- */
+select option {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.4rem 0.6rem;
+}
+select option:checked {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+select option:hover,
+select option:focus {
+  background-color: var(--accent);
+}
+
+/* ---------------------------------------------------------------------------
+   Auth pages (login / signup) — fuera del shell shadcn. Reescritas con tokens
+   semánticos para soportar light/dark automáticamente.
+   --------------------------------------------------------------------------- */
 
 .auth-shell {
   min-height: 100dvh;
@@ -133,48 +243,54 @@ body {
   background:
     radial-gradient(
       ellipse 80% 50% at 50% -10%,
-      color-mix(in srgb, var(--color-accent) 12%, transparent),
+      color-mix(in srgb, var(--primary) 10%, transparent),
       transparent 70%
     ),
-    var(--color-background);
+    var(--background);
 }
 
 .auth-card {
   width: 100%;
-  max-width: 25rem;
-  background: var(--color-muted);
-  border: 1px solid var(--color-border);
-  border-radius: 1rem;
-  padding: 2.25rem 2rem;
+  max-width: 26rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 2.5rem 2.25rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
-  box-shadow:
-    0 10px 30px -10px rgba(0, 0, 0, 0.5),
-    0 1px 0 0 rgba(255, 255, 255, 0.02) inset;
+  box-shadow: var(--shadow-fz-lg);
 }
 
 @media (max-width: 480px) {
   .auth-card {
     padding: 1.75rem 1.25rem;
     gap: 1rem;
-    border-radius: 0.875rem;
+    border-radius: var(--radius-lg);
   }
 }
 
+.auth-logo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
 .auth-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  letter-spacing: -0.015em;
+  font-size: 1.625rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   margin: 0;
-  color: var(--color-foreground);
+  color: var(--foreground);
+  text-align: center;
 }
 
 .auth-subtitle {
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
   font-size: 0.9rem;
   line-height: 1.5;
   margin: 0;
+  text-align: center;
 }
 
 .auth-form {
@@ -195,16 +311,16 @@ body {
   font-size: 0.825rem;
   font-weight: 500;
   letter-spacing: 0.005em;
-  color: var(--color-muted-foreground);
+  color: var(--foreground);
 }
 
 .auth-input {
   width: 100%;
   box-sizing: border-box;
-  background: var(--color-background);
-  color: var(--color-foreground);
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   padding: 0.75rem 0.9rem;
   font-size: 0.95rem;
   line-height: 1.4;
@@ -218,42 +334,41 @@ body {
 }
 
 .auth-input::placeholder {
-  color: color-mix(in srgb, var(--color-muted-foreground) 75%, transparent);
+  color: color-mix(in srgb, var(--muted-foreground) 75%, transparent);
 }
 
 .auth-input:hover:not(:disabled):not(:focus) {
-  border-color: color-mix(in srgb, var(--color-border) 70%, var(--color-foreground));
+  border-color: color-mix(in srgb, var(--border) 50%, var(--foreground));
 }
 
 .auth-input:focus {
-  border-color: var(--color-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 20%, transparent);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 20%, transparent);
 }
 
 .auth-input:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  background: color-mix(in srgb, var(--color-background) 80%, transparent);
+  background: color-mix(in srgb, var(--background) 80%, transparent);
 }
 
-/* Autofill: en Chromium el fondo amarillento por defecto se ve fatal en dark.
-   Forzamos transparente con la sombra interna trick. */
+/* Autofill: forzar colores del theme también en autofill chromium */
 .auth-input:-webkit-autofill,
 .auth-input:-webkit-autofill:hover,
 .auth-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--color-foreground);
-  -webkit-box-shadow: 0 0 0 1000px var(--color-background) inset;
-  caret-color: var(--color-foreground);
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0 1000px var(--background) inset;
+  caret-color: var(--foreground);
   transition: background-color 9999s ease-in-out 0s;
 }
 
 .auth-button {
   width: 100%;
-  background: var(--color-accent);
-  color: #021810;
+  background: var(--primary);
+  color: var(--primary-foreground);
   border: none;
-  border-radius: 0.5rem;
-  padding: 0.8rem 1rem;
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem;
   font-size: 0.95rem;
   font-weight: 600;
   letter-spacing: 0.01em;
@@ -262,12 +377,12 @@ body {
     background-color 140ms ease,
     transform 80ms ease,
     box-shadow 140ms ease;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--shadow-fz-sm);
 }
 
 .auth-button:hover:not(:disabled) {
-  background: var(--color-accent-hover);
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--color-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--primary) 88%, #000);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent);
 }
 
 .auth-button:active:not(:disabled) {
@@ -281,45 +396,45 @@ body {
 
 .auth-message {
   font-size: 0.875rem;
-  padding: 0.7rem 0.9rem;
-  border-radius: 0.5rem;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--radius-md);
   margin: 0;
   line-height: 1.4;
 }
 
 .auth-message--ok {
-  background: var(--color-success-bg);
-  color: var(--color-success);
-  border: 1px solid var(--color-success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  border: 1px solid color-mix(in srgb, var(--success) 40%, transparent);
 }
 
 .auth-message--error {
-  background: var(--color-error-bg);
-  color: var(--color-error);
-  border: 1px solid var(--color-error);
+  background: color-mix(in srgb, var(--destructive) 12%, transparent);
+  color: var(--destructive);
+  border: 1px solid color-mix(in srgb, var(--destructive) 40%, transparent);
 }
 
 .auth-footer {
   font-size: 0.875rem;
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
   margin: 0;
-  padding-top: 0.85rem;
-  border-top: 1px solid var(--color-border);
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--border);
   text-align: center;
 }
 
 .auth-footer a {
-  color: var(--color-accent);
+  color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 3px;
   text-decoration-thickness: 1px;
+  font-weight: 500;
 }
 
 .auth-footer a:hover {
-  color: var(--color-accent-hover);
+  color: color-mix(in srgb, var(--primary) 80%, #000);
 }
 
-/* Auxiliar: fila label + link a la derecha (ej. "Contraseña … ¿Olvidaste?") */
 .auth-field-row {
   display: flex;
   align-items: baseline;
@@ -328,12 +443,12 @@ body {
 }
 
 .auth-link-muted {
-  color: var(--color-muted-foreground);
+  color: var(--muted-foreground);
   text-decoration: none;
   font-size: 0.78rem;
   transition: color 120ms ease;
 }
 
 .auth-link-muted:hover {
-  color: var(--color-foreground);
+  color: var(--foreground);
 }

@@ -162,12 +162,12 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Clock className="size-4 text-amber-400" />
+          <Clock className="size-4 text-warning" />
           Configuración global de seguimientos
           {enabled ? (
             <Badge
               variant="outline"
-              className="text-[10px] font-normal text-emerald-500 border-emerald-500/40"
+              className="text-[10px] font-normal text-success border-success/40"
             >
               activo
             </Badge>
@@ -250,7 +250,7 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
         <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2.5">
           <div className="flex flex-col">
             <Label htmlFor="auto-personalize" className="text-sm cursor-pointer flex items-center gap-1.5">
-              <Sparkles className="size-3.5 text-amber-500" />
+              <Sparkles className="size-3.5 text-warning" />
               Personalizar Instagram + Facebook con IA
             </Label>
             <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -295,7 +295,7 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
         {/* Sprint Iota.2 — Voice tuning: ejemplos del trainer (lista) */}
         <div className="flex flex-col gap-2 rounded-md border border-border/40 bg-muted/10 px-3 py-2.5">
           <Label className="text-sm flex items-center gap-1.5">
-            <MessageCircle className="size-3.5 text-sky-400" />
+            <MessageCircle className="size-3.5 text-primary" />
             Ejemplos de tu voz{' '}
             <span className="text-[10px] text-muted-foreground font-normal">
               (opcional · {examples.length}/{MAX_EXAMPLES})
@@ -413,7 +413,7 @@ export function FollowupConfigBlock({ initial, canEdit }: Props) {
                               size="sm"
                               variant="ghost"
                               onClick={() => handleDelete(idx)}
-                              className="h-6 w-6 p-0 text-muted-foreground hover:text-rose-500"
+                              className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
                               title="Eliminar"
                             >
                               <Trash2 className="size-3" />

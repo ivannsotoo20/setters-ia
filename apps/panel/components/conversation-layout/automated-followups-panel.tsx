@@ -139,11 +139,11 @@ export function AutomatedFollowupsPanel({
           variant="outline"
           className={cn(
             'h-4 text-[9px] px-1.5 font-normal',
-            badge.tone === 'active' && 'border-emerald-500/40 text-emerald-400 bg-emerald-500/5',
+            badge.tone === 'active' && 'border-success/40 text-success bg-success/5',
             badge.tone === 'off' && 'border-muted-foreground/30 text-muted-foreground',
-            badge.tone === 'waiting' && 'border-sky-500/40 text-sky-400 bg-sky-500/5',
-            badge.tone === 'done' && 'border-amber-500/40 text-amber-400 bg-amber-500/5',
-            badge.tone === 'wa-blocked' && 'border-rose-500/40 text-rose-400 bg-rose-500/5',
+            badge.tone === 'waiting' && 'border-primary/40 text-primary bg-primary/5',
+            badge.tone === 'done' && 'border-warning/40 text-warning bg-warning/5',
+            badge.tone === 'wa-blocked' && 'border-destructive/40 text-destructive bg-destructive/5',
             badge.tone === 'out-of-window' && 'border-muted-foreground/40 text-muted-foreground bg-muted/30',
           )}
         >
@@ -210,7 +210,7 @@ function Body({
     const isOver24h = !lastMs || Date.now() - lastMs > 24 * 3600 * 1000;
     if (isOver24h && pending.length === 0) {
       return (
-        <div className="rounded-md border border-rose-500/30 bg-rose-500/5 p-3 flex flex-col gap-2">
+        <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 flex flex-col gap-2">
           <p className="text-xs text-foreground/80">
             <strong>WhatsApp pasadas 24h:</strong> Meta solo permite plantillas aprobadas
             YCloud. Sincroniza tus plantillas en Configuración para programar seguimientos.
@@ -232,7 +232,7 @@ function Body({
   // Empty state 3: max alcanzado
   if (sentCount >= maxFollowups && pending.length === 0) {
     return (
-      <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-foreground/80">
+      <div className="rounded-md border border-warning/30 bg-warning/5 p-3 text-xs text-foreground/80">
         Secuencia completa enviada ({sentCount}/{maxFollowups}). El lead no respondió a
         los seguimientos.
       </div>
@@ -264,7 +264,7 @@ function Body({
     const minutesSince = (Date.now() - Date.parse(lastLeadMessageAt)) / 60000;
     if (minutesSince < 60) {
       return (
-        <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-3 text-xs text-foreground/80">
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs text-foreground/80">
           El lead escribió hace {Math.round(minutesSince)}min. Los seguimientos
           automáticos se preparan cuando pasen las primeras horas configuradas.
         </div>
@@ -349,16 +349,16 @@ function FollowupCard({
     <div
       className={cn(
         'rounded-md border px-2.5 py-2 text-xs flex flex-col gap-1.5',
-        variant === 'pending' && 'border-amber-500/30 bg-amber-500/5',
-        variant === 'sent' && 'border-emerald-500/30 bg-emerald-500/5',
+        variant === 'pending' && 'border-warning/30 bg-warning/5',
+        variant === 'sent' && 'border-success/30 bg-success/5',
       )}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
           {variant === 'pending' ? (
-            <Clock className="size-3 text-amber-500 shrink-0" />
+            <Clock className="size-3 text-warning shrink-0" />
           ) : (
-            <CheckCircle2 className="size-3 text-emerald-500 shrink-0" />
+            <CheckCircle2 className="size-3 text-success shrink-0" />
           )}
           <span className="font-medium text-foreground/90">
             {seqLabel} ·{' '}
@@ -377,7 +377,7 @@ function FollowupCard({
                 <TooltipTrigger asChild>
                   <Badge
                     variant="outline"
-                    className="h-3.5 text-[8px] px-1 font-normal text-amber-500 border-amber-500/40 cursor-help"
+                    className="h-3.5 text-[8px] px-1 font-normal text-warning border-warning/40 cursor-help"
                   >
                     <Sparkles className="size-2 mr-0.5" />
                     Personalizado
@@ -407,7 +407,7 @@ function FollowupCard({
           {followup.body}
         </div>
       ) : followup.aiPersonalize && variant === 'pending' ? (
-        <p className="text-amber-500/80 italic text-[11px] leading-snug">
+        <p className="text-warning/80 italic text-[11px] leading-snug">
           Generando mensaje con IA…  Si tarda, se reintentará al enviar usando
           los últimos mensajes de la conversación.
         </p>
@@ -443,7 +443,7 @@ function FollowupCard({
             variant="ghost"
             onClick={onCancel}
             disabled={isPending}
-            className="h-6 text-[10px] px-2 text-muted-foreground hover:text-rose-500"
+            className="h-6 text-[10px] px-2 text-muted-foreground hover:text-destructive"
           >
             <X className="size-2.5 mr-1" />
             Cancelar
@@ -452,7 +452,7 @@ function FollowupCard({
       ) : null}
 
       {variant === 'pending' && followup.status === 'failed' ? (
-        <div className="flex items-center gap-1 text-[10px] text-rose-500">
+        <div className="flex items-center gap-1 text-[10px] text-destructive">
           <AlertCircle className="size-2.5" />
           {followup.lastError ?? 'falló'}
         </div>

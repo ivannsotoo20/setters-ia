@@ -18,9 +18,9 @@ interface Props {
 
 /**
  * Timeline cronológico estilo chat.
- *   - lead   → izquierda, fondo card (gris).
- *   - ai     → derecha, fondo primary (verde Fyzon).
- *   - human  → derecha, fondo amber (intervención manual trainer).
+ *   - lead   → izquierda, fondo card neutro.
+ *   - ai     → derecha, fondo primary (azul Fyzon).
+ *   - human  → derecha, fondo warning suave (intervención manual trainer).
  *   - system → centro, italic (auto-bienvenida/lm/inbound).
  *
  * Media inline:
@@ -42,6 +42,10 @@ export function MessagesTimeline({ messages }: Props) {
 function MessageBubble({ msg }: { msg: TimelineMessage }) {
   const align = alignFor(msg.source);
   const Icon = sourceIcon(msg.source);
+  const isLead = msg.source === 'lead';
+  const isAi = msg.source === 'ai';
+  const isHuman = msg.source === 'human';
+  const isSystem = msg.source === 'system';
 
   return (
     <li
@@ -53,46 +57,68 @@ function MessageBubble({ msg }: { msg: TimelineMessage }) {
     >
       <div
         className={cn(
-          'max-w-[80%] rounded-lg border px-3.5 py-2.5 flex flex-col gap-1.5',
-          msg.source === 'lead' && 'bg-card border-border rounded-bl-sm',
-          msg.source === 'ai' && 'bg-emerald-950/40 border-emerald-900/60 rounded-br-sm',
-          msg.source === 'human' && 'bg-amber-950/30 border-amber-900/60 rounded-br-sm',
-          msg.source === 'system' &&
-            'bg-muted/40 border-border italic text-muted-foreground max-w-[90%]',
+          'max-w-[80%] rounded-2xl border px-3.5 py-2.5 flex flex-col gap-1.5 shadow-xs',
+          isLead && 'bg-card border-border rounded-bl-sm',
+          isAi && 'bg-primary border-primary text-primary-foreground rounded-br-sm',
+          isHuman && 'bg-warning/12 border-warning/30 rounded-br-sm dark:bg-warning/20',
+          isSystem && 'bg-muted/60 border-border italic text-muted-foreground max-w-[90%]',
         )}
       >
         <div className="flex items-center gap-2">
-          <Icon className="size-3 text-muted-foreground" />
+          <Icon className={cn('size-3', isAi ? 'text-primary-foreground/80' : 'text-muted-foreground')} />
           <span
             className={cn(
-              'text-[10px] uppercase tracking-wider font-medium',
-              msg.source === 'lead' && 'text-muted-foreground',
-              msg.source === 'ai' && 'text-emerald-400',
-              msg.source === 'human' && 'text-amber-400',
-              msg.source === 'system' && 'text-muted-foreground',
+              'text-[10px] uppercase tracking-wider font-semibold',
+              isLead && 'text-muted-foreground',
+              isAi && 'text-primary-foreground/90',
+              isHuman && 'text-warning',
+              isSystem && 'text-muted-foreground',
             )}
           >
             {sourceLabel(msg.source)}
           </span>
           {msg.content_type !== 'text' ? (
-            <Badge variant="outline" className="h-4 text-[9px] px-1.5 font-normal">
+            <Badge
+              variant={isAi ? 'secondary' : 'outline'}
+              className={cn(
+                'h-4 text-[9px] px-1.5 font-normal',
+                isAi && 'bg-primary-foreground/15 text-primary-foreground border-primary-foreground/20',
+              )}
+            >
               {msg.content_type}
             </Badge>
           ) : null}
         </div>
 
         {msg.content && msg.content.length > 0 ? (
-          <div className="text-sm whitespace-pre-wrap break-words">{msg.content}</div>
+          <div className="text-sm whitespace-pre-wrap break-words leading-relaxed">{msg.content}</div>
         ) : null}
 
         {msg.media_url ? <MediaPreview url={msg.media_url} type={msg.content_type} /> : null}
 
         {msg.transcription && msg.transcription.length > 0 && msg.content_type !== 'text' ? (
-          <details className="text-xs text-muted-foreground border-t border-border/50 pt-1.5 mt-1">
-            <summary className="cursor-pointer select-none hover:text-foreground">
+          <details
+            className={cn(
+              'text-xs border-t pt-1.5 mt-1',
+              isAi
+                ? 'text-primary-foreground/70 border-primary-foreground/15'
+                : 'text-muted-foreground border-border/50',
+            )}
+          >
+            <summary
+              className={cn(
+                'cursor-pointer select-none',
+                isAi ? 'hover:text-primary-foreground' : 'hover:text-foreground',
+              )}
+            >
               Transcripción raw
             </summary>
-            <pre className="mt-1.5 whitespace-pre-wrap break-words font-sans bg-background/40 p-2 rounded-sm">
+            <pre
+              className={cn(
+                'mt-1.5 whitespace-pre-wrap break-words font-sans p-2 rounded-md',
+                isAi ? 'bg-primary-foreground/10' : 'bg-background/40',
+              )}
+            >
               {msg.transcription}
             </pre>
           </details>
@@ -100,7 +126,8 @@ function MessageBubble({ msg }: { msg: TimelineMessage }) {
 
         <time
           className={cn(
-            'text-[10px] tabular-nums text-muted-foreground',
+            'text-[10px] tabular-nums',
+            isAi ? 'text-primary-foreground/70' : 'text-muted-foreground',
             align === 'right' ? 'self-end' : align === 'center' ? 'self-center' : 'self-start',
           )}
           dateTime={msg.sent_at}

@@ -140,7 +140,7 @@ export function OnboardingWizard({
               key={i}
               className={cn(
                 'size-2 rounded-full',
-                done ? 'bg-emerald-500' : 'bg-muted-foreground/30',
+                done ? 'bg-success' : 'bg-muted-foreground/30',
               )}
             />
           ))}
@@ -155,7 +155,7 @@ export function OnboardingWizard({
         completed={status.ghl.connected}
       >
         {status.ghl.connected ? (
-          <p className="text-sm text-emerald-500 mb-3">
+          <p className="text-sm text-success mb-3">
             ✓ Conectado{' '}
             {status.ghl.locationId ? (
               <span className="text-muted-foreground font-mono text-xs">
@@ -196,7 +196,7 @@ export function OnboardingWizard({
             {status.keywords.hasLeadMagnet ? '✓ lead magnet' : '✗ falta lead magnet'}
           </p>
         </div>
-        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 mb-3 text-xs text-muted-foreground space-y-1.5">
+        <div className="rounded-md border border-warning/30 bg-warning/5 p-3 mb-3 text-xs text-muted-foreground space-y-1.5">
           <p>
             <strong className="text-foreground">⚠️ No confundir con &quot;Etiquetas&quot;.</strong>
           </p>
@@ -229,7 +229,7 @@ export function OnboardingWizard({
           <p>
             Estado:{' '}
             {status.ycloud.connected ? (
-              <span className="text-emerald-500">✓ YCloud conectado</span>
+              <span className="text-success">✓ YCloud conectado</span>
             ) : (
               <span>✗ YCloud no conectado</span>
             )}{' '}
@@ -267,7 +267,7 @@ export function OnboardingWizard({
             Plantilla bienvenida (WhatsApp)
           </label>
           {candidateTemplates.length === 0 ? (
-            <p className="text-sm text-amber-500">
+            <p className="text-sm text-warning">
               No hay plantillas WhatsApp aprobadas. Completa el paso 3 primero.
             </p>
           ) : (
@@ -299,7 +299,7 @@ export function OnboardingWizard({
                 Guardar plantilla bienvenida
               </Button>
               {status.welcome.welcomeTemplateName ? (
-                <p className="text-xs text-emerald-500">
+                <p className="text-xs text-success">
                   ✓ Actualmente: <strong>{status.welcome.welcomeTemplateName}</strong>
                 </p>
               ) : null}
@@ -313,7 +313,7 @@ export function OnboardingWizard({
             URL del webhook /automations/lead-form
           </label>
           {!motorOrigin ? (
-            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200 space-y-1.5">
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-3 text-xs text-warning/90 space-y-1.5">
               <p className="font-medium">⚠️ Falta configurar la URL del motor.</p>
               <p>
                 Añade esta línea al fichero <code>.env.local</code> del panel
@@ -340,7 +340,7 @@ export function OnboardingWizard({
                 </code>
                 <Button size="sm" variant="outline" onClick={onCopyUrl} className="gap-1">
                   {copied ? (
-                    <Check className="size-3.5 text-emerald-400" />
+                    <Check className="size-3.5 text-success" />
                   ) : (
                     <Copy className="size-3.5" />
                   )}
@@ -396,7 +396,7 @@ export function OnboardingWizard({
         className={cn(
           'transition-colors',
           allComplete
-            ? 'border-emerald-500/40 bg-emerald-500/5'
+            ? 'border-success/40 bg-success/5'
             : 'border-dashed border-border bg-muted/20 opacity-70',
         )}
       >
@@ -404,7 +404,7 @@ export function OnboardingWizard({
           <Rocket
             className={cn(
               'size-5 shrink-0',
-              allComplete ? 'text-emerald-500' : 'text-muted-foreground',
+              allComplete ? 'text-success' : 'text-muted-foreground',
             )}
           />
           <div className="flex-1 min-w-0">
@@ -451,7 +451,7 @@ function StepCard({
     <Card>
       <CardHeader className="flex-row items-start gap-3 space-y-0">
         {completed ? (
-          <CheckCircle2 className="size-5 text-emerald-500 shrink-0 mt-0.5" />
+          <CheckCircle2 className="size-5 text-success shrink-0 mt-0.5" />
         ) : (
           <Circle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
         )}

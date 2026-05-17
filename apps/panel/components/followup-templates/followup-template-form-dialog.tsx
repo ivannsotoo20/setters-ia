@@ -149,7 +149,7 @@ export function FollowupTemplateFormDialog(props: Props) {
               {CHANNEL_LABELS[channelKind]}
             </Badge>
             {isYCloudSynced ? (
-              <Badge variant="outline" className="text-[10px] font-normal text-emerald-500 border-emerald-500/40">
+              <Badge variant="outline" className="text-[10px] font-normal text-success border-success/40">
                 YCloud
               </Badge>
             ) : null}
@@ -193,7 +193,7 @@ export function FollowupTemplateFormDialog(props: Props) {
           {!isWA ? (
             <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-2.5 py-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="size-3.5 text-amber-500" />
+                <Sparkles className="size-3.5 text-warning" />
                 <Label htmlFor="ai-personalize" className="text-xs cursor-pointer">
                   Personalizar con IA al enviar
                 </Label>
@@ -210,7 +210,7 @@ export function FollowupTemplateFormDialog(props: Props) {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="guide" className="text-xs flex items-center gap-1">
                 Guía para la IA{' '}
-                <span className={guideLeft < 0 ? 'text-rose-500' : 'text-muted-foreground'}>
+                <span className={guideLeft < 0 ? 'text-destructive' : 'text-muted-foreground'}>
                   ({guideLeft} restantes)
                 </span>
               </Label>
@@ -231,7 +231,7 @@ export function FollowupTemplateFormDialog(props: Props) {
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="body" className="text-xs">
                 Mensaje{' '}
-                <span className={charsLeft < 0 ? 'text-rose-500' : 'text-muted-foreground'}>
+                <span className={charsLeft < 0 ? 'text-destructive' : 'text-muted-foreground'}>
                   ({charsLeft} restantes)
                 </span>
               </Label>

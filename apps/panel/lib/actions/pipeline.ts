@@ -127,6 +127,9 @@ export async function applyPipelineOutcome(input: {
   const targetLabelId = Number(targetLabel.id);
 
   // Mutual exclusion: remueve outcome labels previas (excepto la target si ya estaba).
+  // skipRevalidate=true en el loop: consolidamos en UN solo revalidate al final.
+  // Antes esto disparaba cascada de 3-5 revalidates por mover una card con N labels
+  // previas, lo cual hacía el drag&drop tardar 8-15s. Ahora 1 sola invalidación.
   const previousIds = await listActiveOutcomeLabelIds(
     input.conversationId,
     access.tenantId,
@@ -134,15 +137,26 @@ export async function applyPipelineOutcome(input: {
   );
   for (const lid of previousIds) {
     if (lid === targetLabelId) continue;
-    const r = await removeLabel({ conversationId: input.conversationId, labelId: lid });
+    const r = await removeLabel({
+      conversationId: input.conversationId,
+      labelId: lid,
+      skipRevalidate: true,
+    });
     if (!r.ok) return r;
   }
 
   // Aplica la nueva (idempotente).
-  const r = await applyLabel({ conversationId: input.conversationId, labelId: targetLabelId });
+  const r = await applyLabel({
+    conversationId: input.conversationId,
+    labelId: targetLabelId,
+    skipRevalidate: true,
+  });
   if (!r.ok) return r;
 
+  // Único revalidate consolidado: pipeline + conversations + detail.
   revalidatePath('/pipeline');
+  revalidatePath('/conversations');
+  revalidatePath(`/conversations/${input.conversationId}`);
   return { ok: true };
 }
 
@@ -154,10 +168,16 @@ export async function removePipelineOutcome(input: {
 
   const labelIds = await listActiveOutcomeLabelIds(input.conversationId, access.tenantId);
   for (const lid of labelIds) {
-    const r = await removeLabel({ conversationId: input.conversationId, labelId: lid });
+    const r = await removeLabel({
+      conversationId: input.conversationId,
+      labelId: lid,
+      skipRevalidate: true,
+    });
     if (!r.ok) return r;
   }
 
   revalidatePath('/pipeline');
+  revalidatePath('/conversations');
+  revalidatePath(`/conversations/${input.conversationId}`);
   return { ok: true };
 }

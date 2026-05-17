@@ -59,14 +59,20 @@ export function ContactsListItem({ row, isSelected, assigneeLabel }: Props) {
         type="button"
         onClick={onSelect}
         className={cn(
-          'w-full flex items-center gap-3 px-3 py-2.5 border-b border-border text-left transition-colors',
+          'group/contact-item relative w-full flex items-center gap-3 px-3 py-3 border-b border-border/40 text-left transition-colors',
           'hover:bg-muted/50',
-          isSelected && 'bg-muted',
+          isSelected && 'bg-primary/8 hover:bg-primary/10 dark:bg-primary/15 dark:hover:bg-primary/20',
         )}
       >
+        {isSelected ? (
+          <span
+            className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-primary"
+            aria-hidden
+          />
+        ) : null}
         {/* Avatar */}
         <span
-          className="size-9 rounded-full bg-muted text-foreground/80 flex items-center justify-center text-xs font-semibold shrink-0"
+          className="size-9 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold shrink-0"
           aria-hidden
         >
           {leadInitials(leadFor)}
@@ -83,7 +89,7 @@ export function ContactsListItem({ row, isSelected, assigneeLabel }: Props) {
             ) : null}
             {aiPaused ? (
               <span
-                className="shrink-0 text-[10px] font-medium border border-amber-500/40 bg-amber-500/10 text-amber-500 rounded px-1.5 py-px"
+                className="shrink-0 text-[10px] font-medium border border-warning/40 bg-warning/10 text-warning rounded px-1.5 py-px"
                 title="IA pausada (handoff o manual)"
               >
                 IA off

@@ -126,9 +126,9 @@ export default async function TenantDetailPage({ params, searchParams }: Props) 
       </div>
 
       {justCreated ? (
-        <Card className="border-emerald-500/40 bg-emerald-500/5">
+        <Card className="border-success/40 bg-success/5">
           <CardContent className="p-4 flex gap-3 items-start">
-            <CheckCircle2 className="size-5 text-emerald-500 shrink-0 mt-0.5" />
+            <CheckCircle2 className="size-5 text-success shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">
                 Sub-cuenta creada. La invitación al owner ya está en camino.
@@ -156,9 +156,9 @@ export default async function TenantDetailPage({ params, searchParams }: Props) 
       ) : null}
 
       {health?.coachV3IsPlaceholder ? (
-        <Card className="border-amber-500/40 bg-amber-500/5">
+        <Card className="border-warning/40 bg-warning/5">
           <CardContent className="p-4 flex gap-3 items-start">
-            <AlertTriangle className="size-5 text-amber-500 shrink-0 mt-0.5" />
+            <AlertTriangle className="size-5 text-warning shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">
                 Coach v3 todavía es el placeholder vacío.

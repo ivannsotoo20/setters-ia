@@ -78,7 +78,7 @@ export function NotesAction({ conversationId, notes: initialNotes, viewer }: Pro
                 {initialNotes.length > 0 ? (
                   <Badge
                     variant="outline"
-                    className="absolute -top-1 -right-1 size-4 p-0 text-[9px] tabular-nums border-amber-500/40 text-amber-400 bg-amber-500/10 flex items-center justify-center"
+                    className="absolute -top-1 -right-1 size-4 p-0 text-[9px] tabular-nums border-warning/40 text-warning bg-warning/10 flex items-center justify-center"
                   >
                     {initialNotes.length}
                   </Badge>

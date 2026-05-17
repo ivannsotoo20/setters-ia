@@ -29,7 +29,7 @@ export function TemplatesTabs({ templates, canEdit }: Props) {
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3 rounded-md border border-border/40 bg-muted/20 px-3 py-2">
         <div className="flex items-center gap-2 min-w-0">
-          <MessageCircle className="size-4 text-emerald-500 shrink-0" />
+          <MessageCircle className="size-4 text-success shrink-0" />
           <span className="text-sm font-semibold">WhatsApp</span>
           <Badge variant="secondary" className="h-4 text-[9px]">
             {whatsappTemplates.length}
@@ -78,7 +78,7 @@ function ChannelGrid({
                   {t.provider !== 'manual' ? (
                     <Badge
                       variant="outline"
-                      className="h-3.5 text-[8px] px-1 text-emerald-500 border-emerald-500/40"
+                      className="h-3.5 text-[8px] px-1 text-success border-success/40"
                     >
                       {t.provider}
                     </Badge>
@@ -96,7 +96,7 @@ function ChannelGrid({
                   {t.aiPersonalize ? (
                     <Badge
                       variant="outline"
-                      className="h-3.5 text-[8px] px-1 text-amber-500 border-amber-500/40"
+                      className="h-3.5 text-[8px] px-1 text-warning border-warning/40"
                     >
                       <Sparkles className="size-2 mr-0.5" />
                       AI
@@ -105,7 +105,7 @@ function ChannelGrid({
                   {t.status !== 'approved' ? (
                     <Badge
                       variant="outline"
-                      className="h-3.5 text-[8px] px-1 text-rose-500 border-rose-500/40"
+                      className="h-3.5 text-[8px] px-1 text-destructive border-destructive/40"
                     >
                       {t.status}
                     </Badge>
@@ -129,7 +129,7 @@ function ChannelGrid({
               ) : null}
             </div>
             {t.aiPersonalize ? (
-              <p className="text-[10px] text-amber-500/90 italic line-clamp-3">
+              <p className="text-[10px] text-warning/90 italic line-clamp-3">
                 Guía IA: {t.aiGuide}
               </p>
             ) : t.body ? (

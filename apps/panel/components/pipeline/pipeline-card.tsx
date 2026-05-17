@@ -48,20 +48,21 @@ export function PipelineCard({ card, columnId, canDrag, assigneeLabel }: Props) 
       {...attributes}
       {...listeners}
       className={cn(
-        'group relative rounded-md border border-border/60 bg-card p-2.5 shadow-sm',
-        'hover:border-border transition-colors',
+        'group relative rounded-lg border border-border/60 bg-card p-2.5 shadow-xs',
+        'transition-[transform,box-shadow,border-color] duration-150',
+        'hover:border-primary/40 hover:shadow-md hover:-translate-y-px',
         canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-not-allowed',
       )}
       aria-label={`Card de ${formatLeadName(lead)}`}
     >
-      <div className="flex gap-2 items-start min-w-0">
-        <div className="size-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-medium uppercase shrink-0">
+      <div className="flex gap-2.5 items-start min-w-0">
+        <div className="size-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-semibold uppercase shrink-0">
           {leadInitials(lead)}
         </div>
-        <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+        <div className="flex-1 min-w-0 flex flex-col gap-1">
           <Link
             href={`/conversations?selected=${card.id}`}
-            className="truncate text-xs font-medium hover:underline"
+            className="truncate text-xs font-semibold text-foreground hover:text-primary transition-colors"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           >
@@ -75,7 +76,7 @@ export function PipelineCard({ card, columnId, canDrag, assigneeLabel }: Props) 
               F{card.phaseNumber}
             </Badge>
             {paused ? (
-              <Pause className="size-2.5 text-amber-400 shrink-0" aria-label="IA pausada" />
+              <Pause className="size-2.5 text-warning shrink-0" aria-label="IA pausada" />
             ) : null}
             <span className="ml-auto text-[9px] tabular-nums text-muted-foreground">
               {formatRelative(card.lastMessageAt ?? null)}

@@ -60,11 +60,16 @@ export function PipelineLayout({
 
   return (
     <div className="flex flex-col h-full min-h-0 min-w-0 bg-background">
-      <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border/40 shrink-0">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/60 shrink-0">
         <PipelineSelector active={pipelineKey} />
-        <span className="text-xs text-muted-foreground tabular-nums shrink-0">
-          {totalCards} {totalCards === 1 ? 'lead' : 'leads'}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">
+            Total
+          </span>
+          <span className="inline-flex items-center justify-center rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-semibold tabular-nums min-w-[2rem]">
+            {totalCards}
+          </span>
+        </div>
       </div>
       <div className="shrink-0">
         <PipelineFilters

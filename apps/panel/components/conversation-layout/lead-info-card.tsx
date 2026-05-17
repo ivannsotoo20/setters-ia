@@ -1,7 +1,8 @@
 'use client';
 
-import { Phone, Mail, AtSign, Calendar, Hash } from 'lucide-react';
+import { Phone, Mail, AtSign, Calendar, Hash, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   formatLeadName,
   leadInitials,
@@ -21,32 +22,45 @@ export function LeadInfoCard({ detail }: Props) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-center gap-3 space-y-0">
-        <div className="size-12 rounded-full bg-muted flex items-center justify-center text-base font-medium uppercase">
-          {initials}
-        </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="text-base font-semibold truncate leading-tight">{name}</h3>
-          <p className="text-xs text-muted-foreground truncate">
-            {formatChannelLong(detail.channel)}
-          </p>
-        </div>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
-        <dl className="grid grid-cols-1 gap-2">
-          {lead.username ? (
-            <DataRow icon={AtSign} label="Usuario" value={`@${lead.username}`} />
-          ) : null}
-          <DataRow icon={Hash} label="ID externo" value={lead.external_id} mono />
-          {lead.phone ? <DataRow icon={Phone} label="Teléfono" value={lead.phone} /> : null}
-          {lead.email ? <DataRow icon={Mail} label="Email" value={lead.email} /> : null}
-          <DataRow
-            icon={Calendar}
-            label="Creada"
-            value={formatAbsoluteShort(detail.createdAt)}
-          />
-        </dl>
-      </CardContent>
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="group/coll-trig w-full text-left rounded-t-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            aria-label={`Información del lead ${name}`}
+          >
+            <CardHeader className="flex-row items-center gap-3 space-y-0 cursor-pointer select-none hover:bg-muted/30 transition-colors rounded-t-xl">
+              <div className="size-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-base font-semibold uppercase shrink-0">
+                {initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-semibold truncate leading-tight">{name}</h3>
+                <p className="text-xs text-muted-foreground truncate">
+                  {formatChannelLong(detail.channel)}
+                </p>
+              </div>
+              <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/coll-trig:rotate-180" />
+            </CardHeader>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0">
+          <CardContent className="flex flex-col gap-3 text-sm">
+            <dl className="grid grid-cols-1 gap-2">
+              {lead.username ? (
+                <DataRow icon={AtSign} label="Usuario" value={`@${lead.username}`} />
+              ) : null}
+              <DataRow icon={Hash} label="ID externo" value={lead.external_id} mono />
+              {lead.phone ? <DataRow icon={Phone} label="Teléfono" value={lead.phone} /> : null}
+              {lead.email ? <DataRow icon={Mail} label="Email" value={lead.email} /> : null}
+              <DataRow
+                icon={Calendar}
+                label="Creada"
+                value={formatAbsoluteShort(detail.createdAt)}
+              />
+            </dl>
+          </CardContent>
+        </CollapsibleContent>
+      </Collapsible>
     </Card>
   );
 }

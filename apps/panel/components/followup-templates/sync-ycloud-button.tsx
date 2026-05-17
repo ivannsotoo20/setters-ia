@@ -42,9 +42,9 @@ export function SyncYCloudButton() {
       {last ? (
         <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
           {last.errors.length === 0 ? (
-            <CheckCircle2 className="size-3 text-emerald-500" />
+            <CheckCircle2 className="size-3 text-success" />
           ) : (
-            <AlertCircle className="size-3 text-amber-500" />
+            <AlertCircle className="size-3 text-warning" />
           )}
           {last.added}+ {last.updated}~ {last.skipped}=
         </div>

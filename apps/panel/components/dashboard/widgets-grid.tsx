@@ -62,19 +62,29 @@ export function WidgetsGrid({ widgets: initialWidgets, values, canEdit }: Props)
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
       <SortableContext items={widgets.map((w) => w.id)} strategy={rectSortingStrategy}>
         <div className="grid gap-2 sm:gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {widgets.map((w) => {
+          {widgets.map((w, idx) => {
             const def = getWidgetDef(w.metricKey);
             if (!def) return null;
             const computed = values[w.id];
             if (!computed) return null;
+            // Stagger CSS-puro (tw-animate-css). NO usamos motion aquí para no
+            // pelearnos con @dnd-kit/sortable, que controla `transform` del nodo
+            // sortable. El delay incremental cascadea la primera pintura; los
+            // re-renders posteriores no re-disparan la animación (la clase ya
+            // está aplicada, CSS animations no se repiten al re-render).
             return (
-              <WidgetCard
+              <div
                 key={w.id}
-                widget={w}
-                def={def}
-                computed={computed}
-                canEdit={canEdit}
-              />
+                className="animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-300"
+                style={{ animationDelay: `${Math.min(idx, 8) * 40}ms` }}
+              >
+                <WidgetCard
+                  widget={w}
+                  def={def}
+                  computed={computed}
+                  canEdit={canEdit}
+                />
+              </div>
             );
           })}
         </div>

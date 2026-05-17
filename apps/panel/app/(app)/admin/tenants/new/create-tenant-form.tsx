@@ -237,7 +237,7 @@ export function CreateTenantForm() {
                     <Loader2 className="size-3 animate-spin" /> Comprobando…
                   </span>
                 ) : emailCheck.state === 'ok' ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
+                  <span className="inline-flex items-center gap-1 text-xs text-success">
                     <Check className="size-3" /> Disponible
                   </span>
                 ) : null
@@ -311,7 +311,7 @@ export function CreateTenantForm() {
                     <Loader2 className="size-3 animate-spin" /> Comprobando…
                   </span>
                 ) : slugCheck.state === 'available' ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-500">
+                  <span className="inline-flex items-center gap-1 text-xs text-success">
                     <Check className="size-3" /> Disponible
                   </span>
                 ) : null
@@ -461,7 +461,7 @@ export function CreateTenantForm() {
             <div
               className={cn(
                 'rounded-md border p-3 text-xs',
-                'border-amber-500/40 bg-amber-500/5 text-amber-200',
+                'border-warning/40 bg-warning/5 text-warning/90',
               )}
             >
               <p className="font-medium text-foreground flex items-center gap-1.5">

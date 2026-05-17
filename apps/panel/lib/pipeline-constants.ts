@@ -61,19 +61,24 @@ export const COLUMN_LABELS: Record<ColumnKey, string> = {
   lost: 'Cierre perdido',
 };
 
+/**
+ * Paleta Fyzon: fases F1→F6 progresan del slate-azul al azul Fyzon profundo
+ * (calor del lead aumenta = color más saturado), F7 verde (cita conseguida),
+ * outcomes en colores semánticos.
+ */
 export const COLUMN_COLORS: Record<ColumnKey, string> = {
-  f1: '#94a3b8',
-  f2: '#64748b',
-  f3: '#3b82f6',
-  f4: '#6366f1',
-  f5: '#8b5cf6',
-  f6: '#a855f7',
-  f7: '#10b981',
-  cancelled: '#f59e0b',
-  no_show: '#dc2626',
-  recontact: '#0ea5e9',
-  bought: '#22c55e',
-  lost: '#64748b',
+  f1: '#94A3B8',  // slate — apertura fría
+  f2: '#7C8EAB',  // slate→blue
+  f3: '#5B7DC9',  // blue mid
+  f4: '#3B5BC9',  // Fyzon dark
+  f5: '#1E3A8A',  // Fyzon primary
+  f6: '#162D6B',  // Fyzon deep
+  f7: '#059669',  // success — cita agendada
+  cancelled: '#D97706',  // warning amber
+  no_show: '#DC2626',    // danger red
+  recontact: '#0EA5E9',  // sky — oportunidad recuperar
+  bought: '#059669',     // success — cierre ganado
+  lost: '#6B7280',       // neutral — cierre perdido
 };
 
 export const PIPELINE_LABELS: Record<PipelineKey, string> = {

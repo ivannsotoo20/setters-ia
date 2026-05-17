@@ -61,14 +61,14 @@ export function AssignAction({
           <UserPlus className="size-3.5" />
           Asignar a mí
           {currentAssigneeUserId === viewerUserId ? (
-            <Check className="size-3.5 ml-auto text-emerald-400" />
+            <Check className="size-3.5 ml-auto text-success" />
           ) : null}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => onAssign(null)} className="gap-2">
           <span className="size-3.5" />
           Sin asignar
           {currentAssigneeUserId == null ? (
-            <Check className="size-3.5 ml-auto text-emerald-400" />
+            <Check className="size-3.5 ml-auto text-success" />
           ) : null}
         </DropdownMenuItem>
         {members.length > 0 ? <DropdownMenuSeparator /> : null}
@@ -87,7 +87,7 @@ export function AssignAction({
               ) : null}
             </div>
             {currentAssigneeUserId === m.userId ? (
-              <Check className="size-3.5 ml-auto text-emerald-400" />
+              <Check className="size-3.5 ml-auto text-success" />
             ) : null}
           </DropdownMenuItem>
         ))}

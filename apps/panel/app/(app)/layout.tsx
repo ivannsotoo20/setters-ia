@@ -1,12 +1,15 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
 import { ScopeSwitcher } from '@/components/scope-switcher';
-import { OnboardingBanner } from '@/components/onboarding/onboarding-banner';
-import { getImpersonateTenantId, resolveEffectiveTenantId } from '@/lib/impersonate';
-import { getTenantHealth } from '@/lib/tenant-health';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { UserMenu } from '@/components/user-menu';
+import { AnimatedPageShell } from '@/components/animated-page-shell';
+import { OnboardingBannerSlot } from '@/components/onboarding/onboarding-banner-slot';
+import { getImpersonateTenantId } from '@/lib/impersonate';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,23 +67,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
-  // Onboarding banner: cargamos el health del tenant efectivo para decidir si
-  // mostramos el aviso "estás en modo configuración". El client component
-  // OnboardingBanner se autosuprime en `/admin/*` y `/onboarding/*` (via usePathname).
-  let onboardingBannerMode: 'trainer' | 'admin_impersonating' | null = null;
-  let coachIsPlaceholder = false;
-  if (profile?.tenant_id) {
-    const { tenantId: effectiveId } = await resolveEffectiveTenantId({
-      profileTenantId: Number(profile.tenant_id),
-      isAgencyAdmin,
-    });
-    const health = await getTenantHealth(effectiveId);
-    if (health && health.onboardedAt == null) {
-      onboardingBannerMode = isAgencyAdmin ? 'admin_impersonating' : 'trainer';
-      coachIsPlaceholder = health.coachV3IsPlaceholder;
-    }
-  }
-
   return (
     <SidebarProvider>
       <AppSidebar
@@ -92,7 +78,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         impersonatingTenantName={impersonatingTenantName}
       />
       <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur px-4">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="h-5" />
           <div className="flex-1" />
@@ -101,26 +87,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             impersonatingTenantId={impersonatingTenantId}
             impersonatingTenantName={impersonatingTenantName}
           />
+          <Separator orientation="vertical" className="h-5" />
+          <ThemeToggle />
+          <UserMenu userEmail={profile?.email ?? user.email ?? null} />
         </header>
         {/*
-          Banner de impersonate eliminado a petición del usuario (Hito 11.1).
-          La señal visual de que está impersonando ya está en:
-            - Badge del ScopeSwitcher en el header.
-            - Subtítulo "Viendo: <tenant>" del sidebar.
-          Para salir del modo viendo: ScopeSwitcher → "Vista admin", o ir a /admin/tenants.
-
-          Banner de onboarding (Sprint Crear Sub-cuenta): se muestra solo si
-          el tenant efectivo tiene onboarded_at IS NULL. El client component
-          decide en runtime si suprimirse según pathname (/admin/* y
-          /onboarding/* lo ocultan).
+          OnboardingBannerSlot va en Suspense para que los 2 awaits que necesita
+          (resolveEffectiveTenantId + getTenantHealth) NO bloqueen la primera
+          pintura del shell. Sidebar + header + main se sirven inmediato; el
+          banner aparece cuando el slot resuelve si aplica.
         */}
-        {onboardingBannerMode != null ? (
-          <OnboardingBanner
-            mode={onboardingBannerMode}
-            coachIsPlaceholder={coachIsPlaceholder}
+        <Suspense fallback={null}>
+          <OnboardingBannerSlot
+            profileTenantId={profile?.tenant_id ? Number(profile.tenant_id) : null}
+            isAgencyAdmin={isAgencyAdmin}
           />
-        ) : null}
-        <main className="flex-1 min-w-0 p-6 md:p-8">{children}</main>
+        </Suspense>
+        <main className="flex-1 min-w-0 flex flex-col p-6 md:p-8">
+          <AnimatedPageShell>{children}</AnimatedPageShell>
+        </main>
       </SidebarInset>
     </SidebarProvider>
   );

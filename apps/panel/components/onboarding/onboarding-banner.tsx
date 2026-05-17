@@ -33,10 +33,10 @@ export function OnboardingBanner({
     <div
       className={cn(
         'border-b px-4 py-2.5 flex items-center gap-3 flex-wrap text-sm',
-        'border-amber-500/40 bg-amber-500/5',
+        'border-warning/40 bg-warning/5',
       )}
     >
-      <AlertTriangle className="size-4 text-amber-500 shrink-0" />
+      <AlertTriangle className="size-4 text-warning shrink-0" />
       <div className="flex-1 min-w-0">
         {mode === 'trainer' ? (
           <p>
@@ -61,7 +61,7 @@ export function OnboardingBanner({
       </div>
       <Link
         href="/onboarding/integrations"
-        className="text-sm font-medium text-amber-300 hover:underline inline-flex items-center gap-1 shrink-0"
+        className="text-sm font-medium text-warning/95 hover:underline inline-flex items-center gap-1 shrink-0"
       >
         {mode === 'trainer' ? 'Continuar setup' : 'Ver wizard'}
         <ArrowRight className="size-3.5" />

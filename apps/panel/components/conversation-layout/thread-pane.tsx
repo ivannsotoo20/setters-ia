@@ -3,6 +3,7 @@ import { MessagesTimeline } from '@/app/(app)/conversations/[id]/messages-timeli
 import { ThreadTopbar } from './thread-topbar';
 import { ThreadComposer } from './thread-composer';
 import { ThreadAutoRefresh } from './thread-auto-refresh';
+import { ThreadScrollContainer } from './thread-scroll-container';
 import type {
   ConversationViewer,
   TenantMember,
@@ -32,16 +33,20 @@ export function ThreadPane({
   if (!detail) {
     return (
       <section
-        className="flex flex-col h-full min-h-0 items-center justify-center text-center gap-3 p-8 bg-background"
+        className="flex flex-col h-full min-h-0 items-center justify-center text-center gap-4 p-8 bg-background"
         aria-label="Conversación"
       >
-        <MessageSquare className="size-10 text-muted-foreground/40" />
-        <h3 className="text-sm font-medium text-muted-foreground">
-          Selecciona una conversación
-        </h3>
-        <p className="text-xs text-muted-foreground max-w-xs">
-          Elige un chat de la lista para ver los mensajes y el panel de control.
-        </p>
+        <div className="size-16 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+          <MessageSquare className="size-7" />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <h3 className="text-base font-semibold tracking-tight">
+            Selecciona una conversación
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Elige un chat de la lista para ver los mensajes y el panel de control.
+          </p>
+        </div>
       </section>
     );
   }
@@ -56,7 +61,7 @@ export function ThreadPane({
         members={members}
         allLabels={allLabels}
       />
-      <div className="flex-1 min-h-0 overflow-y-auto p-4">
+      <ThreadScrollContainer conversationId={detail.id} messageCount={messages.length}>
         {messages.length === 0 ? (
           <p className="text-sm text-muted-foreground italic text-center py-8">
             Sin mensajes todavía.
@@ -64,7 +69,7 @@ export function ThreadPane({
         ) : (
           <MessagesTimeline messages={messages} />
         )}
-      </div>
+      </ThreadScrollContainer>
       <ThreadComposer
         conversationId={detail.id}
         viewer={viewer}

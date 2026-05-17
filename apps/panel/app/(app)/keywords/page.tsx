@@ -91,7 +91,7 @@ export default async function KeywordsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-amber-500/30 bg-amber-500/5">
+      <Card className="border-warning/30 bg-warning/5">
         <CardHeader>
           <CardTitle className="text-base">
             Keywords vs Etiquetas — ¿en qué se diferencian?
@@ -124,7 +124,7 @@ export default async function KeywordsPage() {
               SaaS — no afectan al routing del motor.
             </p>
           </div>
-          <p className="text-xs italic pt-2 border-t border-amber-500/20">
+          <p className="text-xs italic pt-2 border-t border-warning/20">
             En resumen: keywords = quién es el lead que entra (origen). Etiquetas = qué pasa
             con el lead que ya tienes (estado). Configurar bien las dos cosas es independiente.
           </p>

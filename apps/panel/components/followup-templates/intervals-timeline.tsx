@@ -148,7 +148,7 @@ function IntervalRow({
       )}
     >
       <div className="flex items-center gap-1.5 min-w-0">
-        <span className="text-[10px] font-mono uppercase text-amber-500 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 shrink-0">
+        <span className="text-[10px] font-mono uppercase text-warning px-1.5 py-0.5 rounded bg-warning/10 border border-warning/30 shrink-0">
           FU#{index + 1}
         </span>
         <span className="text-xs text-muted-foreground">enviar a las</span>
@@ -183,7 +183,7 @@ function IntervalRow({
         variant="ghost"
         onClick={onRemove}
         disabled={disabled || isLast}
-        className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500"
+        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
         title={isLast ? 'Debe quedar al menos un seguimiento' : 'Eliminar este seguimiento'}
       >
         <X className="size-3.5" />

@@ -87,7 +87,7 @@ export function WidgetCard({ widget, def, computed, canEdit }: Props) {
               type="button"
               onClick={onDelete}
               disabled={isPending}
-              className="absolute top-1 right-1 p-1 opacity-0 group-hover:opacity-60 hover:opacity-100 hover:text-rose-500 transition-opacity"
+              className="absolute top-1 right-1 p-1 opacity-0 group-hover:opacity-60 hover:opacity-100 hover:text-destructive transition-opacity"
               aria-label="Eliminar widget"
             >
               <X className="size-3 text-muted-foreground" />
@@ -118,16 +118,16 @@ export function WidgetCard({ widget, def, computed, canEdit }: Props) {
             ) : (
               <>
                 {deltaSign === 'up' ? (
-                  <ArrowUpRight className="size-3 text-emerald-500" />
+                  <ArrowUpRight className="size-3 text-success" />
                 ) : deltaSign === 'down' ? (
-                  <ArrowDownRight className="size-3 text-rose-500" />
+                  <ArrowDownRight className="size-3 text-destructive" />
                 ) : (
                   <Minus className="size-3 text-muted-foreground" />
                 )}
                 <span
                   className={cn(
-                    deltaSign === 'up' && 'text-emerald-500',
-                    deltaSign === 'down' && 'text-rose-500',
+                    deltaSign === 'up' && 'text-success',
+                    deltaSign === 'down' && 'text-destructive',
                     deltaSign === 'flat' && 'text-muted-foreground',
                   )}
                 >

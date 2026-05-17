@@ -278,7 +278,7 @@ export function ContactDetail({
                           {m.fullName ?? m.email}
                           {m.userId === viewerId ? ' (yo)' : ''}
                         </span>
-                        {active ? <Check className="size-3 text-emerald-400 shrink-0" /> : null}
+                        {active ? <Check className="size-3 text-success shrink-0" /> : null}
                       </button>
                     );
                   })}
@@ -364,7 +364,7 @@ export function ContactDetail({
                         style={{ backgroundColor: l.color }}
                       />
                       <span className="flex-1 truncate">{l.name}</span>
-                      {active ? <Check className="size-3 text-emerald-400 shrink-0" /> : null}
+                      {active ? <Check className="size-3 text-success shrink-0" /> : null}
                     </button>
                   </li>
                 );
@@ -422,7 +422,7 @@ export function ContactDetail({
                           : ' · sin mensajes'}
                       </p>
                       {c.handoff_cause ? (
-                        <p className="text-[11px] text-amber-500 mt-0.5">
+                        <p className="text-[11px] text-warning mt-0.5">
                           Handoff: {c.handoff_cause}
                           {c.handoff_reason ? ` — ${c.handoff_reason}` : ''}
                         </p>
@@ -805,7 +805,7 @@ function DataRow({
           aria-label={`Copiar ${label}`}
         >
           {copied ? (
-            <Check className="size-3.5 text-emerald-400" />
+            <Check className="size-3.5 text-success" />
           ) : (
             <Copy className="size-3.5" />
           )}
@@ -833,11 +833,11 @@ function Badge({
 }) {
   const cls =
     tone === 'amber'
-      ? 'border-amber-500/40 bg-amber-500/10 text-amber-500'
+      ? 'border-warning/40 bg-warning/10 text-warning'
       : tone === 'emerald'
-        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-500'
+        ? 'border-success/40 bg-success/10 text-success'
         : tone === 'rose'
-          ? 'border-rose-500/40 bg-rose-500/10 text-rose-400'
+          ? 'border-destructive/40 bg-destructive/10 text-destructive'
           : tone === 'muted'
             ? 'border-border bg-muted text-muted-foreground'
             : 'border-primary/40 bg-primary/10 text-primary';

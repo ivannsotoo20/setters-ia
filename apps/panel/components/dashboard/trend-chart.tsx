@@ -11,18 +11,27 @@ import {
   Legend,
   CartesianGrid,
 } from 'recharts';
+import { useTheme } from 'next-themes';
 import type { TrendPoint } from '@/lib/dashboard-trend';
 
 interface Props {
   trend: TrendPoint[];
 }
 
+/**
+ * Paleta Fyzon para el chart — funciona en ambos modos (light/dark):
+ *   wa: azul Fyzon profundo (canal principal)
+ *   fb: azul Facebook
+ *   igIn: rosa Instagram
+ *   igOut: naranja Instagram
+ *   rate: verde success (línea cualificación)
+ */
 const COLORS = {
-  wa: '#22c55e',
-  fb: '#3b82f6',
-  igIn: '#a855f7',
-  igOut: '#ec4899',
-  rate: '#fbbf24',
+  wa: '#1E3A8A',
+  fb: '#1877F2',
+  igIn: '#E1306C',
+  igOut: '#F77737',
+  rate: '#059669',
 };
 
 const NAMES = {
@@ -50,9 +59,12 @@ function formatDate(date: string) {
 }
 
 export function TrendChart({ trend }: Props) {
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
   if (trend.length === 0 || trend.every((p) => p.total === 0)) {
     return (
-      <div className="rounded-lg border border-border/50 bg-muted/10 p-4 text-xs text-muted-foreground italic">
+      <div className="rounded-xl border border-border bg-card p-4 text-xs text-muted-foreground italic">
         No hay actividad en el periodo seleccionado para mostrar tendencia.
       </div>
     );
@@ -68,33 +80,49 @@ export function TrendChart({ trend }: Props) {
     qualifiedRate: p.qualifiedRate != null ? p.qualifiedRate * 100 : null,
   }));
 
+  // Colores tomados del theme para que el chart se integre en light + dark
+  const gridStroke = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(10,10,10,0.06)';
+  const axisStroke = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(10,10,10,0.18)';
+  const axisTextColor = isDark ? 'rgba(248,248,246,0.7)' : 'rgba(17,24,39,0.7)';
+  const tooltipBg = isDark ? 'rgba(17,24,39,0.96)' : 'rgba(255,255,255,0.98)';
+  const tooltipBorder = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(10,10,10,0.08)';
+  const tooltipLabelColor = isDark ? 'rgba(248,248,246,0.6)' : 'rgba(17,24,39,0.6)';
+  const tooltipTextColor = isDark ? '#F8F8F6' : '#0A0A0A';
+
   return (
-    <div className="rounded-lg border border-border/50 bg-muted/10 p-3">
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-2 px-1">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="text-[11px] uppercase tracking-wide font-medium text-muted-foreground mb-3 px-1">
         Tendencia · leads/día por canal + tasa cualificación
       </div>
       <div style={{ width: '100%', height: 280 }}>
         <ResponsiveContainer>
           <ComposedChart data={data} margin={{ top: 12, right: 12, left: 0, bottom: 4 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-            <XAxis dataKey="dateLabel" tick={{ fontSize: 10, fill: 'currentColor' }} stroke="rgba(255,255,255,0.2)" />
-            <YAxis yAxisId="left" tick={{ fontSize: 10, fill: 'currentColor' }} stroke="rgba(255,255,255,0.2)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis
+              dataKey="dateLabel"
+              tick={{ fontSize: 10, fill: axisTextColor }}
+              stroke={axisStroke}
+            />
+            <YAxis yAxisId="left" tick={{ fontSize: 10, fill: axisTextColor }} stroke={axisStroke} />
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 10, fill: 'currentColor' }}
-              stroke="rgba(255,255,255,0.2)"
+              tick={{ fontSize: 10, fill: axisTextColor }}
+              stroke={axisStroke}
               tickFormatter={(v) => `${v}%`}
               domain={[0, 100]}
             />
             <Tooltip
               contentStyle={{
-                backgroundColor: 'rgba(15,15,15,0.95)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 6,
+                backgroundColor: tooltipBg,
+                border: `1px solid ${tooltipBorder}`,
+                borderRadius: 8,
                 fontSize: 11,
+                color: tooltipTextColor,
+                boxShadow: '0 8px 24px rgba(10,10,10,0.12)',
               }}
-              labelStyle={{ color: 'rgba(255,255,255,0.6)' }}
+              labelStyle={{ color: tooltipLabelColor, fontWeight: 500 }}
+              cursor={{ fill: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(10,10,10,0.04)' }}
               formatter={((value: unknown, name: unknown) => {
                 const numValue = typeof value === 'number' ? value : 0;
                 const strName = typeof name === 'string' ? name : String(name ?? '');
@@ -104,20 +132,21 @@ export function TrendChart({ trend }: Props) {
               }) as never}
             />
             <Legend
-              wrapperStyle={{ fontSize: 10, paddingTop: 8 }}
+              wrapperStyle={{ fontSize: 10, paddingTop: 8, color: axisTextColor }}
               formatter={(name) => (name === 'qualifiedRate' ? 'Tasa cualif. (%)' : NAMES[name as keyof typeof NAMES] ?? name)}
             />
-            <Bar yAxisId="left" dataKey="wa" stackId="a" fill={COLORS.wa} />
-            <Bar yAxisId="left" dataKey="fb" stackId="a" fill={COLORS.fb} />
-            <Bar yAxisId="left" dataKey="igIn" stackId="a" fill={COLORS.igIn} />
-            <Bar yAxisId="left" dataKey="igOut" stackId="a" fill={COLORS.igOut} />
+            <Bar yAxisId="left" dataKey="wa" stackId="a" fill={COLORS.wa} radius={[2, 2, 0, 0]} />
+            <Bar yAxisId="left" dataKey="fb" stackId="a" fill={COLORS.fb} radius={[2, 2, 0, 0]} />
+            <Bar yAxisId="left" dataKey="igIn" stackId="a" fill={COLORS.igIn} radius={[2, 2, 0, 0]} />
+            <Bar yAxisId="left" dataKey="igOut" stackId="a" fill={COLORS.igOut} radius={[2, 2, 0, 0]} />
             <Line
               yAxisId="right"
               type="monotone"
               dataKey="qualifiedRate"
               stroke={COLORS.rate}
-              strokeWidth={2}
-              dot={{ r: 3 }}
+              strokeWidth={2.5}
+              dot={{ r: 3, fill: COLORS.rate }}
+              activeDot={{ r: 5 }}
               connectNulls
             />
           </ComposedChart>

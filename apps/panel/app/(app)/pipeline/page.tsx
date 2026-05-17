@@ -88,47 +88,52 @@ export default async function PipelinePage({ searchParams }: PageProps) {
   const rawConvs = (convsRes.data ?? []) as Array<Record<string, unknown>>;
   const convIds = rawConvs.map((r) => Number(r.id));
 
-  // Cargar conversation_labels para todas las convs en una sola query
-  const labelsByConvId = new Map<number, PipelineCard['labels']>();
-  if (convIds.length > 0) {
-    const { data: convLabelRows } = await supabase
-      .from('conversation_labels')
-      .select(
-        'conversation_id, tenant_labels(id, name, color, destination_bucket, is_system)',
-      )
-      .in('conversation_id', convIds)
-      .eq('tenant_id', effective.tenantId);
+  // Dispara conversation_labels INMEDIATAMENTE — se ejecuta en paralelo con el
+  // mapping sync que viene abajo, evitando el waterfall del await secuencial.
+  const convLabelsPromise =
+    convIds.length > 0
+      ? supabase
+          .from('conversation_labels')
+          .select(
+            'conversation_id, tenant_labels(id, name, color, destination_bucket, is_system)',
+          )
+          .in('conversation_id', convIds)
+          .eq('tenant_id', effective.tenantId)
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null });
 
-    for (const r of (convLabelRows ?? []) as Array<Record<string, unknown>>) {
-      const cid = Number(r.conversation_id);
-      const labelRel = r.tenant_labels as
-        | {
-            id: number;
-            name: string;
-            color: string;
-            destination_bucket: string | null;
-            is_system: boolean;
-          }
-        | {
-            id: number;
-            name: string;
-            color: string;
-            destination_bucket: string | null;
-            is_system: boolean;
-          }[]
-        | null;
-      const labelObj = Array.isArray(labelRel) ? labelRel[0] ?? null : labelRel;
-      if (!labelObj) continue;
-      const arr = labelsByConvId.get(cid) ?? [];
-      arr.push({
-        id: Number(labelObj.id),
-        name: String(labelObj.name),
-        color: String(labelObj.color),
-        destinationBucket: (labelObj.destination_bucket ?? null) as string | null,
-        isSystem: Boolean(labelObj.is_system),
-      });
-      labelsByConvId.set(cid, arr);
-    }
+  // Mientras la query vuela, await el resultado solo cuando lo necesitemos para
+  // inyectar labels al map de cards. El round-trip ya está consumido en paralelo.
+  const { data: convLabelRows } = await convLabelsPromise;
+  const labelsByConvId = new Map<number, PipelineCard['labels']>();
+  for (const r of (convLabelRows ?? []) as Array<Record<string, unknown>>) {
+    const cid = Number(r.conversation_id);
+    const labelRel = r.tenant_labels as
+      | {
+          id: number;
+          name: string;
+          color: string;
+          destination_bucket: string | null;
+          is_system: boolean;
+        }
+      | {
+          id: number;
+          name: string;
+          color: string;
+          destination_bucket: string | null;
+          is_system: boolean;
+        }[]
+      | null;
+    const labelObj = Array.isArray(labelRel) ? labelRel[0] ?? null : labelRel;
+    if (!labelObj) continue;
+    const arr = labelsByConvId.get(cid) ?? [];
+    arr.push({
+      id: Number(labelObj.id),
+      name: String(labelObj.name),
+      color: String(labelObj.color),
+      destinationBucket: (labelObj.destination_bucket ?? null) as string | null,
+      isSystem: Boolean(labelObj.is_system),
+    });
+    labelsByConvId.set(cid, arr);
   }
 
   // Map raw → PipelineCard[]

@@ -205,10 +205,10 @@ export function AppointmentsView({ appointments, calendars }: Props) {
             </span>
             <div className="flex items-center gap-2">
               <span>Estado:</span>
-              <LegendDot color="bg-emerald-500" label="confirmada" />
-              <LegendDot color="bg-sky-500" label="nueva" />
-              <LegendDot color="bg-amber-500" label="no-show" />
-              <LegendDot color="bg-rose-500" label="cancelada" />
+              <LegendDot color="bg-success" label="confirmada" />
+              <LegendDot color="bg-primary" label="nueva" />
+              <LegendDot color="bg-warning" label="no-show" />
+              <LegendDot color="bg-destructive" label="cancelada" />
             </div>
           </div>
 
@@ -282,24 +282,24 @@ export function formatLeadName(a: AppointmentRow): string {
 export function statusDotColor(s: AppointmentRow['appointmentStatus']): string {
   switch (s) {
     case 'confirmed':
-      return 'bg-emerald-500';
+      return 'bg-success';
     case 'new':
-      return 'bg-sky-500';
+      return 'bg-primary';
     case 'showed':
-      return 'bg-emerald-600';
+      return 'bg-success';
     case 'noshow':
-      return 'bg-amber-500';
+      return 'bg-warning';
     case 'cancelled':
-      return 'bg-rose-500';
+      return 'bg-destructive';
     default:
-      return 'bg-slate-400';
+      return 'bg-muted-foreground/40';
   }
 }
 
 export function matchColor(method: string | null): string {
-  if (method === 'fyzon_uuid') return 'bg-emerald-500';
-  if (method === 'phone') return 'bg-amber-500';
-  return 'bg-slate-400';
+  if (method === 'fyzon_uuid') return 'bg-success';
+  if (method === 'phone') return 'bg-warning';
+  return 'bg-muted-foreground/40';
 }
 
 export function formatTime(iso: string): string {

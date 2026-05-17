@@ -354,9 +354,9 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                   {loadingVersion ? (
                     <Loader2 className="size-3.5 animate-spin" />
                   ) : isDirty ? (
-                    <AlertCircle className="size-3.5 text-amber-400" />
+                    <AlertCircle className="size-3.5 text-warning" />
                   ) : selectedVersionNumber === props.activeVersion ? (
-                    <Check className="size-3.5 text-emerald-400" />
+                    <Check className="size-3.5 text-success" />
                   ) : (
                     <Eye className="size-3.5 text-blue-400" />
                   )}
@@ -389,7 +389,7 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                       >
                         <span className="mt-0.5 flex size-4 items-center justify-center">
                           {isSelected ? (
-                            <Check className="size-3.5 text-emerald-400" />
+                            <Check className="size-3.5 text-success" />
                           ) : (
                             <Circle className="size-2 opacity-40" />
                           )}
@@ -400,7 +400,7 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                             {isActive ? (
                               <Badge
                                 variant="outline"
-                                className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5 text-[10px] py-0 px-1.5"
+                                className="border-success/40 text-success bg-success/5 text-[10px] py-0 px-1.5"
                               >
                                 activa
                               </Badge>
@@ -444,7 +444,7 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
               </span>
             ) : hasDraft && lastSavedAt ? (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Save className="size-3 text-emerald-400" />
+                <Save className="size-3 text-success" />
                 {lastSavedAt.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
               </span>
             ) : null}
@@ -507,14 +507,14 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                   </DialogDescription>
                 </DialogHeader>
                 {isSharedBlock ? (
-                  <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm">
+                  <div className="space-y-2 rounded-md border border-warning/40 bg-warning/5 p-3 text-sm">
                     <div className="flex items-start gap-2">
-                      <AlertCircle className="size-4 mt-0.5 text-amber-400 shrink-0" />
+                      <AlertCircle className="size-4 mt-0.5 text-warning shrink-0" />
                       <div className="space-y-1">
-                        <p className="font-medium text-amber-200">
+                        <p className="font-medium text-warning/90">
                           Este bloque es <strong>compartido</strong>.
                         </p>
-                        <p className="text-amber-100/80 text-xs">
+                        <p className="text-warning/80 text-xs">
                           Afectará a <strong>{tenantsAffected} tenant(s) activo(s)</strong> en el
                           siguiente turno del motor. No hay rollback automático: la versión
                           anterior queda en histórico pero el motor pasa a usar la nueva al
@@ -671,7 +671,7 @@ export function PromptBlockEditor(props: PromptBlockEditorProps) {
                     variant="outline"
                     className={`font-mono text-xs ${
                       b.source === 'draft'
-                        ? 'border-amber-500/50 text-amber-400 bg-amber-500/5'
+                        ? 'border-warning/50 text-warning bg-warning/5'
                         : ''
                     }`}
                     title={`${b.chars.toLocaleString()} chars · ${b.scope} · ${b.source}${b.cached ? ' · cached' : ''}`}

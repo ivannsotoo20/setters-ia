@@ -38,10 +38,10 @@ export function ActivationChecklist({ health }: { health: TenantHealth }) {
   const allDone = completedCount === steps.length;
 
   return (
-    <Card className="border-emerald-500/30 bg-emerald-500/5">
+    <Card className="border-success/30 bg-success/5">
       <CardContent className="p-5 flex flex-col gap-4">
         <div className="flex items-start gap-3">
-          <Rocket className="size-6 text-emerald-500 shrink-0 mt-0.5" />
+          <Rocket className="size-6 text-success shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="text-lg font-semibold tracking-tight">
               Tu setter IA está listo, falta encender los canales
@@ -52,7 +52,7 @@ export function ActivationChecklist({ health }: { health: TenantHealth }) {
             </p>
           </div>
           <div className="text-right shrink-0 hidden sm:block">
-            <p className="text-3xl font-semibold tabular-nums text-emerald-500">
+            <p className="text-3xl font-semibold tabular-nums text-success">
               {completedCount}<span className="text-muted-foreground text-base">/4</span>
             </p>
             <p className="text-xs text-muted-foreground">pasos completados</p>
@@ -66,12 +66,12 @@ export function ActivationChecklist({ health }: { health: TenantHealth }) {
               className={cn(
                 'flex items-start gap-3 p-2.5 rounded-md border',
                 step.done
-                  ? 'border-emerald-500/20 bg-emerald-500/5'
+                  ? 'border-success/20 bg-success/5'
                   : 'border-border bg-card',
               )}
             >
               {step.done ? (
-                <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                <CheckCircle2 className="size-4 text-success shrink-0 mt-0.5" />
               ) : (
                 <Circle className="size-4 text-muted-foreground shrink-0 mt-0.5" />
               )}

@@ -238,7 +238,7 @@ function MemberRowUi({
         {member.isAgencyAdmin ? (
           <Badge
             variant="outline"
-            className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5"
+            className="border-success/40 text-success bg-success/5"
           >
             <ShieldCheck className="size-3 mr-1" />
             Agency admin
@@ -284,7 +284,7 @@ function MemberRowUi({
             Activo
           </Badge>
         ) : (
-          <Badge variant="outline" className="text-amber-400 border-amber-500/40 bg-amber-500/5">
+          <Badge variant="outline" className="text-warning border-warning/40 bg-warning/5">
             <Clock className="size-3 mr-1" />
             Pendiente
           </Badge>

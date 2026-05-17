@@ -81,7 +81,7 @@ export function ThreadComposer({
   return (
     <div className="border-t border-border bg-background/95 backdrop-blur p-3 shrink-0">
       {disabledReason ? (
-        <div className="flex items-center gap-2 text-xs text-amber-400 bg-amber-500/5 border border-amber-500/20 rounded-md px-3 py-2 mb-2">
+        <div className="flex items-center gap-2 text-xs text-warning bg-warning/5 border border-warning/20 rounded-md px-3 py-2 mb-2">
           <AlertCircle className="size-3.5 shrink-0" />
           <span>{disabledReason}</span>
         </div>

@@ -171,7 +171,7 @@ export function AddLabelDialog({ members }: Props) {
               <Switch id="label-resume" checked={resumeAi} onCheckedChange={setResumeAi} />
             </div>
             {pauseAi && resumeAi ? (
-              <p className="text-[10px] text-amber-400">
+              <p className="text-[10px] text-warning">
                 Pausar y reactivar son contradictorios. Si ambos están activos, ganará reactivar.
               </p>
             ) : null}

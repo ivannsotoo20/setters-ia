@@ -60,7 +60,7 @@ export function BlockAction({ conversationId, currentlyBlocked, leadName }: Prop
                 variant="ghost"
                 size="icon"
                 aria-label={label}
-                className={currentlyBlocked ? 'text-amber-400 hover:text-amber-400' : ''}
+                className={currentlyBlocked ? 'text-warning hover:text-warning' : ''}
               >
                 <Icon className="size-4" />
               </Button>

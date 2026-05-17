@@ -95,7 +95,7 @@ export function ScopeSwitcher({
     <div className="flex items-center gap-2">
       <Badge
         variant="outline"
-        className="border-emerald-500/40 text-emerald-400 bg-emerald-500/5"
+        className="border-success/40 text-success bg-success/5"
       >
         <ShieldCheck className="size-3 mr-1" />
         {tenantName}
