@@ -111,5 +111,18 @@ export async function composePrompt(
     };
   }
 
+  // Hito 10.6 — Inyectar bloque de slots disponibles (si tenant usa API booking).
+  // Composer NO formatea: recibe el bloque markdown ya renderizado por el caller
+  // (renderSlotsBlock en apps/motor-agente/src/services/load-available-slots.ts).
+  if (options.availableSlots !== undefined && options.availableSlots !== null && options.availableSlots.length > 0) {
+    const block = options.availableSlots
+      .map((s) => `- ${s.humanLabel}  (${s.iso})`)
+      .join('\n');
+    trainerContext = {
+      ...trainerContext,
+      availableSlotsBlock: block,
+    };
+  }
+
   return buildComposedPrompt(rows, { ...options, trainerContext });
 }

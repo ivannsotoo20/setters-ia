@@ -90,6 +90,16 @@ export interface ComposeOptions {
    * de llamar a composePrompt. Composer no computa nada — solo interpola.
    */
   trackedCalendarUrl?: string | null;
+  /**
+   * Hito 10.6 — Slots disponibles para API booking. Si presente y el tenant tiene
+   * `useApiBooking=true`, el composer rellena `{{available_slots|fallback}}` en
+   * fase_6_v4 con la lista markdown. Si null/ausente, cae al fallback (lo que
+   * permite seguir usando el flow legacy de URL del widget).
+   *
+   * Cada slot tiene `iso` (lo que el LLM debe rellenar en `proposed_booking_slot`)
+   * y `humanLabel` (lo que el LLM muestra al lead en chat).
+   */
+  availableSlots?: Array<{ iso: string; humanLabel: string }> | null;
 }
 
 /**
@@ -114,6 +124,12 @@ export interface TrainerContext {
    * (closingResourceUrl legacy de trainer_preferences si está, sino frase genérica).
    */
   trackedCalendarUrl?: string | null;
+  /**
+   * Hito 10.6 — Bloque markdown con los slots disponibles (ya renderizado).
+   * Si null/empty, el placeholder `{{available_slots|fallback}}` cae al fallback.
+   * Construido por el caller con `renderSlotsBlock(slots)`.
+   */
+  availableSlotsBlock?: string | null;
 }
 
 export interface HandoffContext {

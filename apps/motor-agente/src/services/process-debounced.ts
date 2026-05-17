@@ -17,6 +17,8 @@ import {
 } from './pipeline-runs.js';
 import { enqueueNotification } from './notify-trainer.js';
 import { applySystemLabels } from './labels/index.js';
+import { loadAvailableSlots, type AvailableSlot } from './load-available-slots.js';
+import { loadGhlClientByTenant } from '../lib/load-ghl-client.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -235,6 +237,31 @@ export async function processDebounced(
     );
   }
 
+  // Hito 10.6 — Cargar slots disponibles del calendar para API booking.
+  // Solo si tenant tiene flag useApiBooking=true en preferences y conv está
+  // cerca del booking (F5+). Si no hay calendar, GHL falla o no hay slots →
+  // availableSlots queda null y el composer cae al fallback del placeholder
+  // (= el bot improvisa con el flow legacy de URL widget).
+  let availableSlots: AvailableSlot[] | null = null;
+  const useApiBooking = await loadUseApiBookingFlag(supabase, tenantId);
+  if (useApiBooking && currentPhase >= 5) {
+    try {
+      const ghlClient = await loadGhlClientByTenant(supabase, tenantId);
+      if (ghlClient) {
+        availableSlots = await loadAvailableSlots({
+          supabase,
+          ghlClient,
+          tenantId,
+        });
+      }
+    } catch (err) {
+      console.warn(
+        'processDebounced: loadAvailableSlots failed (non-fatal):',
+        err instanceof Error ? err.message : String(err),
+      );
+    }
+  }
+
   let pipelineOut;
   try {
     pipelineOut = await runPipeline(
@@ -252,6 +279,7 @@ export async function processDebounced(
         },
         composeOverrides: {
           trackedCalendarUrl,
+          availableSlots,
         },
       },
     );
@@ -492,4 +520,22 @@ export function computeAutoPromotedPhase(args: {
   if (currentPhase !== 1) return generatorPhase;
   if (generatorPhase >= 2) return generatorPhase;
   return 2;
+}
+
+/**
+ * Hito 10.6 — Lee `trainer_preferences.preferences.useApiBooking` (bool).
+ * Default false (flow legacy de URL widget). Best-effort: si query falla,
+ * devuelve false.
+ */
+async function loadUseApiBookingFlag(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<boolean> {
+  const { data } = await supabase
+    .from('trainer_preferences')
+    .select('preferences')
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
+  const prefs = (data?.preferences ?? {}) as Record<string, unknown>;
+  return prefs.useApiBooking === true;
 }

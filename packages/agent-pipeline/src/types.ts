@@ -95,6 +95,13 @@ export interface GeneratorInput {
      * en fase_6_v4. Si null/undefined, composer cae al fallback legacy.
      */
     trackedCalendarUrl?: string | null;
+    /**
+     * Hito 10.6 — Slots disponibles del calendar para API booking, cargados por
+     * el caller (motor) con `loadAvailableSlots`. Si se pasa, el composer
+     * rellena `{{available_slots}}` en fase_6_v4 con la lista markdown.
+     * Si null/undefined o vacío, composer cae al fallback (= flow legacy widget).
+     */
+    availableSlots?: Array<{ iso: string; humanLabel: string }> | null;
   };
 }
 

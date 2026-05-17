@@ -265,3 +265,54 @@ describe('interpolateTrainerPlaceholders + {{handoff_directive}} (Sprint 2.6b)',
     expect(out.length).toBeLessThan(3500);
   });
 });
+
+describe('interpolateTrainerPlaceholders — {{available_slots}} (Hito 10.6)', () => {
+  it('reemplaza con el bloque markdown cuando availableSlotsBlock está presente', () => {
+    const ctx: TrainerContext = {
+      phone: null,
+      availableSlotsBlock: '- lunes 19 may, 17:00  (2026-05-19T17:00:00+02:00)\n- martes 20 may, 10:00  (2026-05-20T10:00:00+02:00)',
+    };
+    const out = interpolateTrainerPlaceholders(
+      'Slots disponibles:\n{{available_slots|fallback}}',
+      ctx,
+    );
+    expect(out).toContain('lunes 19 may, 17:00');
+    expect(out).toContain('martes 20 may, 10:00');
+    expect(out).not.toContain('fallback');
+  });
+
+  it('cae al fallback cuando availableSlotsBlock es null', () => {
+    const out = interpolateTrainerPlaceholders(
+      '{{available_slots|Pide al lead cuándo le viene mejor.}}',
+      { phone: null, availableSlotsBlock: null },
+    );
+    expect(out).toBe('Pide al lead cuándo le viene mejor.');
+  });
+
+  it('cae al fallback cuando availableSlotsBlock es string vacío', () => {
+    const out = interpolateTrainerPlaceholders(
+      '{{available_slots|N/A}}',
+      { phone: null, availableSlotsBlock: '   ' },
+    );
+    expect(out).toBe('N/A');
+  });
+
+  it('cae a string vacío si no hay fallback ni slots', () => {
+    const out = interpolateTrainerPlaceholders('{{available_slots}}', {
+      phone: null,
+    });
+    expect(out).toBe('');
+  });
+
+  it('funciona junto con otros placeholders del trainer', () => {
+    const out = interpolateTrainerPlaceholders(
+      'Tel: {{trainer_phone|sin tel}} | Slots: {{available_slots|sin slots}}',
+      {
+        phone: '+34666',
+        availableSlotsBlock: '- jueves 22 may, 18:00  (2026-05-22T18:00:00+02:00)',
+      },
+    );
+    expect(out).toContain('Tel: +34666');
+    expect(out).toContain('jueves 22 may, 18:00');
+  });
+});
