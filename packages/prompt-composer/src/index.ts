@@ -124,5 +124,52 @@ export async function composePrompt(
     };
   }
 
+  // Hito 10.6.1 — Fecha actual: el composer renderiza la etiqueta humana es-ES
+  // a partir del ISO YYYY-MM-DD. Sin esto, el LLM no sabe la fecha real y dice
+  // "mañana" cuando los slots son de dentro de varios días.
+  if (options.currentDateIso) {
+    trainerContext = {
+      ...trainerContext,
+      currentDateLabel: renderCurrentDateLabel(options.currentDateIso),
+    };
+  }
+
+  // Hito 10.6.1 — Estado de contacto del lead (nombre + email). El LLM ve si
+  // tiene los datos o si debe pedirlos antes de proponer slots.
+  if (options.leadContact) {
+    trainerContext = {
+      ...trainerContext,
+      leadContactStatusBlock: renderLeadContactBlock(options.leadContact),
+    };
+  }
+
   return buildComposedPrompt(rows, { ...options, trainerContext });
+}
+
+function renderCurrentDateLabel(iso: string): string {
+  try {
+    // ISO YYYY-MM-DD se interpreta como UTC midnight; usamos timezone Europe/Madrid
+    // para evitar off-by-one en zonas con DST.
+    const d = new Date(`${iso}T12:00:00`);
+    if (Number.isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('es-ES', {
+      timeZone: 'Europe/Madrid',
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
+
+function renderLeadContactBlock(contact: { firstName: string | null; email: string | null }): string {
+  const nameLine = contact.firstName && contact.firstName.trim()
+    ? `- Nombre: **${contact.firstName.trim()}** ✓ (ya en BD, NO lo pidas otra vez)`
+    : `- Nombre: **FALTA** — pídeselo al lead ANTES de proponer cita`;
+  const emailLine = contact.email && contact.email.trim()
+    ? `- Email: **${contact.email.trim()}** ✓ (ya en BD, NO lo pidas otra vez)`
+    : `- Email: **FALTA** — pídeselo al lead ANTES de proponer cita`;
+  return `${nameLine}\n${emailLine}`;
 }

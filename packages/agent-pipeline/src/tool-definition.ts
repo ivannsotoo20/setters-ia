@@ -141,10 +141,31 @@ export const respondAsSetterTool: AnthropicTool = {
           'Si el lead confirma EXPLÍCITAMENTE un slot de los que le propusiste en el turno anterior, ' +
           'rellena con la fecha/hora EXACTA en ISO 8601 con offset, copiada literalmente del listado de slots ' +
           'que tienes en el system prompt (entre paréntesis junto a la etiqueta humana). Ejemplo: "2026-05-19T17:00:00+02:00". ' +
+          'PRE-REQUISITO ABSOLUTO: solo rellenar si ya tienes EMAIL y NOMBRE del lead (mira "Datos del lead" en F6). ' +
+          'Si falta email o nombre → NO rellenar, pídelos primero. ' +
           'CUÁNDO RELLENAR: solo cuando el lead diga claramente "sí, ese me viene", "el lunes 17h va bien", "agéndame ese". ' +
           'CUÁNDO NO RELLENAR (omitir el campo): si el lead pregunta, duda, negocia, pide otro día, o aún no confirma. ' +
           'NO inventes slots — copia EXACTAMENTE uno de los que tienes en el system prompt. ' +
           'El motor reservará la cita automáticamente al detectar este campo.',
+      },
+      // Hito 10.6.1 — Captura de email/nombre del lead durante la conversación.
+      // El setter rellena estos campos cuando el lead da el dato en este turno.
+      // Motor los persiste a leads.email / leads.first_name + sincroniza al contacto
+      // GHL via upsertContact para que GHL pueda enviar el email de confirmación
+      // al lead cuando se cree la cita.
+      captured_lead_email: {
+        type: 'string',
+        description:
+          'Email del lead capturado en ESTE turno (no en uno anterior). Rellenar solo si el lead acaba de dar su email ' +
+          'en su último mensaje. Formato email válido (ej: "juan@example.com"). Si el lead ya dio el email antes y ya está ' +
+          'guardado en BD (ves "Email: ya tienes" en Datos del lead), NO rellenar. NO inventar emails.',
+      },
+      captured_lead_name: {
+        type: 'string',
+        description:
+          'Nombre real del lead capturado en ESTE turno. Rellenar solo si el lead acaba de dar su nombre en su último ' +
+          'mensaje y ANTES estaba marcado como "FALTA". Formato: solo el nombre o "Nombre Apellido". Si ya está en BD ' +
+          '(ves "Nombre: Ivan ✓" en Datos del lead), NO rellenar. NO inventar nombres.',
       },
     },
     additionalProperties: false,

@@ -67,6 +67,21 @@ export interface SetterToolOutput {
    * disponible, no se reserva nada (flow legacy de URL widget).
    */
   proposed_booking_slot?: string;
+  /**
+   * Hito 10.6.1 — Email capturado del lead en este turno. El motor:
+   *  - persiste en leads.email
+   *  - actualiza el contacto GHL via upsertContact (para que GHL pueda enviar
+   *    email de confirmación al lead cuando se cree la cita)
+   * Solo rellenado por el setter si el lead dio email en su último mensaje.
+   */
+  captured_lead_email?: string;
+  /**
+   * Hito 10.6.1 — Nombre real capturado del lead en este turno. El motor:
+   *  - persiste en leads.first_name (si está vacío)
+   *  - actualiza el contacto GHL via upsertContact
+   * Útil cuando el handle IG/FB no es el nombre real (ej: caballo56 → María).
+   */
+  captured_lead_name?: string;
 }
 
 /** Input al Generator: todo lo que necesita para producir un turno. */
@@ -110,6 +125,18 @@ export interface GeneratorInput {
      * Si null/undefined o vacío, composer cae al fallback (= flow legacy widget).
      */
     availableSlots?: Array<{ iso: string; humanLabel: string }> | null;
+    /**
+     * Hito 10.6.1 — Fecha actual (ISO YYYY-MM-DD). El composer la renderiza como
+     * etiqueta humana es-ES en el placeholder `{{current_date}}`. Sin esto el
+     * LLM no sabe qué día es hoy y dice "mañana" sin verificar.
+     */
+    currentDateIso?: string | null;
+    /**
+     * Hito 10.6.1 — Estado del contacto del lead (nombre + email). El composer
+     * los renderiza en `{{lead_contact_status}}` para que el setter sepa si
+     * debe pedir nombre/email antes de proponer slots.
+     */
+    leadContact?: { firstName: string | null; email: string | null } | null;
   };
 }
 

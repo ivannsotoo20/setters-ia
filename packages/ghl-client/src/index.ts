@@ -23,7 +23,7 @@ import {
   listLocationCustomFields,
   type GetFreeSlotsOptions,
 } from './calendars.js';
-import { getContactInfo, upsertContact, updateContactCustomFields } from './contacts.js';
+import { getContactInfo, upsertContact, updateContact, updateContactCustomFields } from './contacts.js';
 import {
   registerInboundMessage,
   registerOutboundMessage,
@@ -141,6 +141,13 @@ export class GhlClient {
     customFields: GhlCustomField[],
   ): Promise<GhlContact> {
     return updateContactCustomFields(this.apiToken, contactId, customFields, this.fetchImpl);
+  }
+
+  updateContact(
+    contactId: string,
+    input: { email?: string; phone?: string; firstName?: string; lastName?: string },
+  ): Promise<GhlContact> {
+    return updateContact(this.apiToken, contactId, input, this.fetchImpl);
   }
 
   registerInbound(input: GhlRegisterMessageInput): Promise<GhlRegisterMessageResult> {

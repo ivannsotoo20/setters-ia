@@ -109,3 +109,52 @@ export async function updateContactCustomFields(
 
   return response.contact;
 }
+
+/**
+ * Actualiza campos básicos de un contacto existente por ID (no upsert).
+ *
+ * Endpoint: PUT /contacts/{id} (GHL API v2). Body parcial — solo se envían
+ * los campos que el caller pasa. Útil para enriquecer un contacto IG/FB
+ * existente con email + nombre que el lead da por chat, sin riesgo de crear
+ * contactos duplicados (cosa que upsertContact sí podría hacer si phone/email
+ * no matchea con ningún contacto existente).
+ *
+ * Hito 10.6.1 — usado por bookAppointmentFromSlot para sincronizar email/name
+ * capturados durante la conversación antes de createAppointment, para que GHL
+ * pueda enviar el email de confirmación de cita al lead.
+ */
+export async function updateContact(
+  apiToken: string,
+  contactId: string,
+  input: {
+    email?: string;
+    phone?: string;
+    firstName?: string;
+    lastName?: string;
+  },
+  fetchImpl?: typeof fetch,
+): Promise<GhlContact> {
+  if (!contactId) throw new Error('updateContact: contactId requerido');
+  const body: Record<string, unknown> = {};
+  if (input.email) body.email = input.email;
+  if (input.phone) body.phone = input.phone;
+  if (input.firstName) body.firstName = input.firstName;
+  if (input.lastName) body.lastName = input.lastName;
+  if (Object.keys(body).length === 0) {
+    throw new Error('updateContact: al menos un campo (email/phone/firstName/lastName) requerido');
+  }
+
+  const response = await ghlRequest<{ contact?: GhlContact }>({
+    apiToken,
+    method: 'PUT',
+    path: `/contacts/${encodeURIComponent(contactId)}`,
+    body,
+    fetchImpl,
+  });
+
+  if (!response.contact || !response.contact.id) {
+    throw new Error('updateContact: respuesta GHL sin contact.id');
+  }
+
+  return response.contact;
+}

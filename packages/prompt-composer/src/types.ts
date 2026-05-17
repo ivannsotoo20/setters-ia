@@ -100,6 +100,20 @@ export interface ComposeOptions {
    * y `humanLabel` (lo que el LLM muestra al lead en chat).
    */
   availableSlots?: Array<{ iso: string; humanLabel: string }> | null;
+  /**
+   * Hito 10.6.1 — Fecha actual (ISO YYYY-MM-DD). El composer la renderiza como
+   * etiqueta humana es-ES ("domingo 17 mayo 2026") en el placeholder
+   * `{{current_date}}` de fase_6_v4. Sin esto el LLM dice "mañana" sin saber
+   * qué día es realmente.
+   */
+  currentDateIso?: string | null;
+  /**
+   * Hito 10.6.1 — Datos de contacto del lead activo en la conv. El composer los
+   * renderiza en `{{lead_contact_status}}` como bloque "Nombre: ✓ / Email: FALTA"
+   * para que el setter sepa si tiene que pedir email o nombre antes de proponer
+   * cita. Si null, el placeholder cae a fallback.
+   */
+  leadContact?: { firstName: string | null; email: string | null } | null;
 }
 
 /**
@@ -130,6 +144,10 @@ export interface TrainerContext {
    * Construido por el caller con `renderSlotsBlock(slots)`.
    */
   availableSlotsBlock?: string | null;
+  /** Hito 10.6.1 — Fecha actual humana es-ES (ej: "domingo 17 mayo 2026"). */
+  currentDateLabel?: string | null;
+  /** Hito 10.6.1 — Bloque markdown con estado de contacto del lead. */
+  leadContactStatusBlock?: string | null;
 }
 
 export interface HandoffContext {

@@ -264,6 +264,15 @@ export async function processDebounced(
     }
   }
 
+  // Hito 10.6.1 — Pasar fecha actual + estado contacto del lead al composer.
+  // El LLM las usa en fase_6_v4 para (a) no decir "mañana" sin verificar y
+  // (b) pedir email/nombre al lead antes de proponer slots.
+  const currentDateIso = new Date().toISOString().slice(0, 10);
+  const leadContact = {
+    firstName: ((lead.first_name as string | null | undefined) ?? null) || null,
+    email: ((lead.email as string | null | undefined) ?? null) || null,
+  };
+
   let pipelineOut;
   try {
     pipelineOut = await runPipeline(
@@ -282,6 +291,8 @@ export async function processDebounced(
         composeOverrides: {
           trackedCalendarUrl,
           availableSlots,
+          currentDateIso,
+          leadContact,
         },
       },
     );
@@ -293,6 +304,54 @@ export async function processDebounced(
       error: err,
     });
     throw err;
+  }
+
+  // 7.4. Hito 10.6.1 — Captura email/nombre del lead que el setter haya
+  //      identificado en este turno. Persiste a leads.email/first_name y
+  //      sincroniza al contacto GHL (updateContact) para que GHL pueda mandar
+  //      la confirmación de cita al lead cuando se cree (paso 7.5).
+  const capturedEmail = pipelineOut.generator.setterOutput.captured_lead_email;
+  const capturedName = pipelineOut.generator.setterOutput.captured_lead_name;
+  let leadEmailForBooking = leadContact.email;
+  let leadNameForBooking = leadContact.firstName;
+  if (typeof capturedEmail === 'string' && capturedEmail.trim() !== '') {
+    const emailNorm = capturedEmail.trim().toLowerCase();
+    // Validación email mínima
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) {
+      try {
+        await supabase
+          .from('leads')
+          .update({ email: emailNorm })
+          .eq('id', Number(lead.id))
+          .eq('tenant_id', tenantId);
+        leadEmailForBooking = emailNorm;
+        console.log(`[capture-contact] conv=${conversationId} email actualizado a ${emailNorm}`);
+      } catch (err) {
+        console.warn(
+          `[capture-contact] conv=${conversationId} update email failed:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    } else {
+      console.warn(`[capture-contact] conv=${conversationId} email malformado: "${emailNorm}"`);
+    }
+  }
+  if (typeof capturedName === 'string' && capturedName.trim() !== '') {
+    const nameNorm = capturedName.trim().slice(0, 100);
+    try {
+      await supabase
+        .from('leads')
+        .update({ first_name: nameNorm })
+        .eq('id', Number(lead.id))
+        .eq('tenant_id', tenantId);
+      leadNameForBooking = nameNorm;
+      console.log(`[capture-contact] conv=${conversationId} first_name actualizado a "${nameNorm}"`);
+    } catch (err) {
+      console.warn(
+        `[capture-contact] conv=${conversationId} update first_name failed:`,
+        err instanceof Error ? err.message : String(err),
+      );
+    }
   }
 
   // 7.5. Hito 10.6 — API Booking action: si el setter rellenó proposed_booking_slot
@@ -314,12 +373,18 @@ export async function processDebounced(
         tenantId,
         conversationId,
         slotIso: proposedSlot.trim(),
-        leadFirstName: (lead.first_name as string | null | undefined) ?? null,
+        // Usamos los valores actualizados (capturados en 7.4 o BD pre-turno)
+        leadFirstName: leadNameForBooking,
+        leadEmail: leadEmailForBooking,
         tenantName: (tenantNameRow.data?.name as string | null | undefined) ?? null,
       });
       if (!result.ok) {
         console.warn(
           `[api-booking] conv=${conversationId} slot=${proposedSlot} failed: ${result.reason}${result.error ? ` (${result.error})` : ''}`,
+        );
+      } else {
+        console.log(
+          `[api-booking] conv=${conversationId} appointment=${result.appointmentId} movedToF7=${result.movedToF7}`,
         );
       }
     } catch (err) {

@@ -63,6 +63,9 @@ export async function runGenerator(
     trackedCalendarUrl: input.composeOverrides?.trackedCalendarUrl,
     // Hito 10.6 — Inyecta slots disponibles para API booking en fase_6_v4.
     availableSlots: input.composeOverrides?.availableSlots,
+    // Hito 10.6.1 — Inyecta fecha actual + estado de contacto del lead.
+    currentDateIso: input.composeOverrides?.currentDateIso,
+    leadContact: input.composeOverrides?.leadContact,
   });
 
   // 2. Construye messages[] para la API (history + último mensaje del lead)
@@ -258,6 +261,15 @@ export function validateSetterOutput(raw: unknown): SetterToolOutput {
     proposed_booking_slot:
       typeof r.proposed_booking_slot === 'string' && r.proposed_booking_slot.trim() !== ''
         ? r.proposed_booking_slot.trim()
+        : undefined,
+    // Hito 10.6.1 — Captura email/nombre del lead. Sanitizar (trim + lowercase email).
+    captured_lead_email:
+      typeof r.captured_lead_email === 'string' && r.captured_lead_email.trim() !== ''
+        ? r.captured_lead_email.trim().toLowerCase()
+        : undefined,
+    captured_lead_name:
+      typeof r.captured_lead_name === 'string' && r.captured_lead_name.trim() !== ''
+        ? r.captured_lead_name.trim()
         : undefined,
   };
 }
