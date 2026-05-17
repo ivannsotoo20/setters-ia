@@ -12,12 +12,16 @@
  */
 
 import {
+  createAppointment,
   ensureCustomField,
+  flattenFreeSlots,
   getAppointment,
   getCalendar,
+  getFreeSlots,
   listAppointmentsByCalendar,
   listCalendars,
   listLocationCustomFields,
+  type GetFreeSlotsOptions,
 } from './calendars.js';
 import { getContactInfo, upsertContact, updateContactCustomFields } from './contacts.js';
 import {
@@ -48,6 +52,9 @@ import type {
   GhlAppointment,
   GhlAppointmentWebhookEvent,
   GhlCalendar,
+  GhlCreateAppointmentInput,
+  GhlFreeSlot,
+  GhlFreeSlotsResponse,
   GhlLocationCustomField,
 } from './types-calendar.js';
 
@@ -73,18 +80,26 @@ export { GhlApiError } from './api-client.js';
 export { AI_ZWSP_TAG, appendZwspIfMissing, sendMessageViaChannel } from './messages.js';
 export type { GhlSendMessageInput } from './messages.js';
 export {
+  createAppointment,
   ensureCustomField,
+  flattenFreeSlots,
   getAppointment,
   getCalendar,
+  getFreeSlots,
+  GhlSlotConflictError,
   listAppointmentsByCalendar,
   listCalendars,
   listLocationCustomFields,
   createLocationCustomField,
 } from './calendars.js';
+export type { GetFreeSlotsOptions } from './calendars.js';
 export type {
   GhlAppointment,
   GhlAppointmentWebhookEvent,
   GhlCalendar,
+  GhlCreateAppointmentInput,
+  GhlFreeSlot,
+  GhlFreeSlotsResponse,
   GhlLocationCustomField,
 } from './types-calendar.js';
 export { FYZON_LEAD_UUID_FIELD_KEY } from './types-calendar.js';
@@ -198,5 +213,41 @@ export class GhlClient {
     model?: 'contact' | 'opportunity';
   }): Promise<GhlLocationCustomField> {
     return ensureCustomField(this.apiToken, this.locationId, opts, this.fetchImpl);
+  }
+
+  // ----- API Booking (Hito 10.6) -----
+
+  /**
+   * Consulta huecos libres de un calendar. Devuelve response raw GHL; usar
+   * `flattenFreeSlots` para aplanar a array cronológico.
+   */
+  getFreeSlots(calendarId: string, opts?: GetFreeSlotsOptions): Promise<GhlFreeSlotsResponse> {
+    return getFreeSlots(this.apiToken, calendarId, opts, this.fetchImpl);
+  }
+
+  /**
+   * Carga + aplana en un solo paso. Devuelve los primeros `maxSlots` slots
+   * ordenados cronológicamente (default 8 si no se pasa).
+   */
+  async getFreeSlotsFlat(
+    calendarId: string,
+    opts?: GetFreeSlotsOptions & { maxSlots?: number },
+  ): Promise<GhlFreeSlot[]> {
+    const response = await getFreeSlots(this.apiToken, calendarId, opts, this.fetchImpl);
+    return flattenFreeSlots(response, opts?.maxSlots ?? 8);
+  }
+
+  /**
+   * Crea una cita asociada a un contacto GHL existente.
+   * Lanza `GhlSlotConflictError` si el slot ya no está disponible (409/422).
+   */
+  createAppointment(
+    input: Omit<GhlCreateAppointmentInput, 'locationId'> & { locationId?: string },
+  ): Promise<GhlAppointment> {
+    return createAppointment(
+      this.apiToken,
+      { ...input, locationId: input.locationId ?? this.locationId },
+      this.fetchImpl,
+    );
   }
 }
