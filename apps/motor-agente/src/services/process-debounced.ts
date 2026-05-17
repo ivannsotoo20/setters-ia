@@ -248,7 +248,10 @@ export async function processDebounced(
   const useApiBooking = await loadUseApiBookingFlag(supabase, tenantId);
   if (useApiBooking) {
     ghlClient = await loadGhlClientByTenant(supabase, tenantId);
-    if (ghlClient && currentPhase >= 5) {
+    // Fix Hito 10.6.1 — cargar slots SIEMPRE que el flag esté on. El LLM puede
+    // hacer fast-track de F1→F6/F7 si el lead pide agenda rápido; necesita los
+    // slots disponibles desde el primer turno para no caer al flow legacy URL.
+    if (ghlClient) {
       try {
         availableSlots = await loadAvailableSlots({
           supabase,
@@ -357,9 +360,9 @@ export async function processDebounced(
   // 7.5. Hito 10.6 — API Booking action: si el setter rellenó proposed_booking_slot
   //      Y el tenant tiene useApiBooking=true, reservar la cita en GHL vía API.
   //      Best-effort: si falla (slot conflict, GHL down, conv sin ghl_contact_id),
-  //      log y continúa. El bot ya generó el mensaje de confirmación al lead — si
-  //      no se reservó, siguiente turno detectará y re-propondrá.
+  //      log y continúa.
   const proposedSlot = pipelineOut.generator.setterOutput.proposed_booking_slot;
+  let bookingSucceeded = false;
   if (useApiBooking && ghlClient && typeof proposedSlot === 'string' && proposedSlot.trim() !== '') {
     try {
       const tenantNameRow = await supabase
@@ -383,6 +386,7 @@ export async function processDebounced(
           `[api-booking] conv=${conversationId} slot=${proposedSlot} failed: ${result.reason}${result.error ? ` (${result.error})` : ''}`,
         );
       } else {
+        bookingSucceeded = true;
         console.log(
           `[api-booking] conv=${conversationId} appointment=${result.appointmentId} movedToF7=${result.movedToF7}`,
         );
@@ -392,6 +396,32 @@ export async function processDebounced(
         `[api-booking] conv=${conversationId} unexpected error:`,
         err instanceof Error ? err.message : String(err),
       );
+    }
+  }
+
+  // 7.6. Hito 10.6.1 — Fix degradación handoff falso A_agenda.
+  //      Si el LLM puso handoff='A_agenda' pero la cita NO se creó realmente
+  //      (booking failed, o el LLM ni siquiera rellenó proposed_booking_slot),
+  //      degradar el output: handoff_cause=null, status='active', phase a F5/F6
+  //      (no F7). Razón: si dejamos handoff='A_agenda' y state='closed', el
+  //      outbound-gate bloquea el envío del mensaje del bot ("Listo, te apunto...")
+  //      y el lead se queda sin respuesta + la conv queda zombie en F7.
+  //      Mejor: degradar para que la conv siga viva, el bot pueda re-proponer
+  //      en el siguiente turno con slots reales.
+  if (
+    useApiBooking &&
+    pipelineOut.generator.setterOutput.handoff_cause === 'A_agenda' &&
+    !bookingSucceeded
+  ) {
+    console.warn(
+      `[api-booking] conv=${conversationId} LLM marcó handoff=A_agenda pero booking NO succeed → degradando a active/F${Math.min(Math.max(currentPhase, 5), 6)}`,
+    );
+    pipelineOut.generator.setterOutput.handoff_cause = undefined;
+    pipelineOut.generator.setterOutput.conversation_status = 'active';
+    // Mantener phase mínimo en F5 (puente — el lead ya está cerca de agendar).
+    // Si el LLM puso F7, bajamos a F6 (envío de enlace / proposing slots).
+    if (pipelineOut.generator.setterOutput.phase_decision >= 7) {
+      pipelineOut.generator.setterOutput.phase_decision = 6;
     }
   }
 
