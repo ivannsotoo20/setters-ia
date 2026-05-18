@@ -171,13 +171,13 @@ export function OnboardingWizard({
         )}
         <Button asChild variant={status.ghl.connected ? 'outline' : 'default'} size="sm">
           <a
-            href="https://marketplace.gohighlevel.com/"
+            href="https://app.gohighlevel.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="gap-1.5"
           >
             <ExternalLink className="size-3.5" />
-            {status.ghl.connected ? 'Abrir Marketplace GHL' : 'Ir al Marketplace GHL'}
+            {status.ghl.connected ? 'Abrir GoHighLevel' : 'Ir a GoHighLevel'}
           </a>
         </Button>
       </StepCard>
