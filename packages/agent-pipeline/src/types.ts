@@ -137,6 +137,19 @@ export interface GeneratorInput {
      * debe pedir nombre/email antes de proponer slots.
      */
     leadContact?: { firstName: string | null; email: string | null } | null;
+    /**
+     * Hito 11 — Etiqueta humana de la timezone del LEAD (ej: "hora Argentina").
+     * El composer la inyecta en `{{lead_timezone_label}}` de fase_6_v4 para que
+     * el setter siempre mencione la zona al proponer horas cuando el lead esté
+     * en huso distinto al trainer.
+     */
+    leadTimezoneLabel?: string | null;
+    /**
+     * Hito 11 — Etiqueta humana de la timezone del TRAINER (ej: "hora España").
+     * Inyectada en `{{trainer_timezone_label}}`. Útil para que el setter pueda
+     * verbalizar el desfase si lo necesita.
+     */
+    trainerTimezoneLabel?: string | null;
   };
 }
 

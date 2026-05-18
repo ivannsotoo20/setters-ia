@@ -1,8 +1,9 @@
 /**
- * Tracked calendar URL helper (Hito 10).
+ * Tracked calendar URL helper (Hito 10 + Hito 11).
  *
- * Carga el calendar_accounts default activo del tenant + lead data, y construye
- * la URL trackable con tracking_uuid + phone prefilled.
+ * Carga el calendar_accounts default activo del tenant (resolviendo por
+ * channel_kind si el caller lo pasa) + lead data, y construye la URL
+ * trackable con tracking_uuid + phone prefilled.
  *
  * Lazy generation: si `leads.tracking_uuid` es NULL, lo computa con HMAC y UPDATE.
  *
@@ -10,39 +11,42 @@
  * se pasa a `composePrompt.options.trackedCalendarUrl` para que el placeholder
  * `{{tracked_calendar_url|fallback}}` de fase_6_v4 quede resuelto.
  *
- * Si NO hay calendar default vinculado → devuelve null y composer cae al
- * closingResourceUrl legacy de trainer_preferences.
+ * Si NO hay calendar default vinculado (ni por canal ni any) → devuelve null
+ * y composer cae al closingResourceUrl legacy de trainer_preferences.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { buildTrackedBookingUrl } from '../lib/booking-url-builder.js';
 import { computeTrackingUuid } from '../lib/tracking-uuid.js';
 import { logger } from '../lib/logger.js';
+import { resolveDefaultCalendar, type ChannelKind } from './load-available-slots.js';
 
 export interface GetTrackedCalendarUrlInput {
   supabase: SupabaseClient;
   tenantId: number;
   leadId: number;
+  /**
+   * Hito 11 — Canal de la conversación. Si viene, se resuelve el calendar por
+   * canal con fallback any. Si no, solo any (`channel_kind IS NULL`).
+   */
+  channelKind?: ChannelKind | null;
 }
 
 export async function getTrackedCalendarUrl(
   input: GetTrackedCalendarUrlInput,
 ): Promise<string | null> {
-  const { supabase, tenantId, leadId } = input;
+  const { supabase, tenantId, leadId, channelKind = null } = input;
 
-  // 1. Carga calendar default activo
-  const { data: cal, error: calErr } = await supabase
-    .from('calendar_accounts')
-    .select('id, widget_base_url')
-    .eq('tenant_id', tenantId)
-    .eq('is_default', true)
-    .eq('is_active', true)
-    .maybeSingle();
-  if (calErr) {
-    logger.warn({ err: calErr.message, tenantId }, 'getTrackedCalendarUrl: calendar_accounts query failed');
+  // 1. Resolver calendar default jerárquico (canal primero, fallback any).
+  const cal = await resolveDefaultCalendar(supabase, tenantId, channelKind);
+  if (!cal) {
     return null;
   }
-  if (!cal) {
+  if (!cal.widget_base_url) {
+    logger.warn(
+      { tenantId, calendarAccountId: cal.id },
+      'getTrackedCalendarUrl: calendar sin widget_base_url',
+    );
     return null;
   }
 

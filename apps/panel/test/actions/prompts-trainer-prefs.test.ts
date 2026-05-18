@@ -277,6 +277,8 @@ describe('saveTrainerPreferences', () => {
       handoffMode: 'share_phone',
       handoffCustomTemplate: 'warm',
       handoffCustomMessage: null,
+      schedulingMode: null,
+      trainerTimezone: null,
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });

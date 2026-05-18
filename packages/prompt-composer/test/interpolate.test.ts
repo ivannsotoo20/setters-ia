@@ -316,3 +316,62 @@ describe('interpolateTrainerPlaceholders — {{available_slots}} (Hito 10.6)', (
     expect(out).toContain('jueves 22 may, 18:00');
   });
 });
+
+describe('interpolateTrainerPlaceholders — {{lead_timezone_label}} / {{trainer_timezone_label}} (Hito 11)', () => {
+  it('reemplaza lead_timezone_label cuando está presente', () => {
+    const out = interpolateTrainerPlaceholders(
+      'el martes a las 13h {{lead_timezone_label|hora local}}, ¿te encaja?',
+      {
+        phone: null,
+        leadTimezoneLabel: 'hora Argentina',
+      },
+    );
+    expect(out).toBe('el martes a las 13h hora Argentina, ¿te encaja?');
+  });
+
+  it('cae al fallback cuando leadTimezoneLabel es null', () => {
+    const out = interpolateTrainerPlaceholders(
+      'el martes a las 13h {{lead_timezone_label|hora local}}, ¿te encaja?',
+      { phone: null, leadTimezoneLabel: null },
+    );
+    expect(out).toBe('el martes a las 13h hora local, ¿te encaja?');
+  });
+
+  it('reemplaza trainer_timezone_label cuando está presente', () => {
+    const out = interpolateTrainerPlaceholders(
+      'tu zona ({{trainer_timezone_label|tu zona}}) vs lead',
+      {
+        phone: null,
+        trainerTimezoneLabel: 'hora España',
+      },
+    );
+    expect(out).toBe('tu zona (hora España) vs lead');
+  });
+
+  it('los dos placeholders coexisten en el mismo texto', () => {
+    const out = interpolateTrainerPlaceholders(
+      'lead: {{lead_timezone_label|hora local}} | trainer: {{trainer_timezone_label|tu zona}}',
+      {
+        phone: null,
+        leadTimezoneLabel: 'hora Argentina',
+        trainerTimezoneLabel: 'hora España',
+      },
+    );
+    expect(out).toBe('lead: hora Argentina | trainer: hora España');
+  });
+
+  it('si ctx no se pasa, ambos placeholders caen a sus fallbacks', () => {
+    const out = interpolateTrainerPlaceholders(
+      '{{lead_timezone_label|X}} {{trainer_timezone_label|Y}}',
+    );
+    expect(out).toBe('X Y');
+  });
+
+  it('whitespace-only se trata como null y cae al fallback', () => {
+    const out = interpolateTrainerPlaceholders('{{lead_timezone_label|FB}}', {
+      phone: null,
+      leadTimezoneLabel: '   ',
+    });
+    expect(out).toBe('FB');
+  });
+});

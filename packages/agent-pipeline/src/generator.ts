@@ -66,6 +66,10 @@ export async function runGenerator(
     // Hito 10.6.1 — Inyecta fecha actual + estado de contacto del lead.
     currentDateIso: input.composeOverrides?.currentDateIso,
     leadContact: input.composeOverrides?.leadContact,
+    // Hito 11 — Inyecta etiquetas humanas de timezone del lead y trainer para
+    // que fase_6_v4 hable en hora del lead y mencione la zona explícitamente.
+    leadTimezoneLabel: input.composeOverrides?.leadTimezoneLabel,
+    trainerTimezoneLabel: input.composeOverrides?.trainerTimezoneLabel,
   });
 
   // 2. Construye messages[] para la API (history + último mensaje del lead)

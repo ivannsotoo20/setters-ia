@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { InboundMessage } from '@fyzon/channel-adapters';
+import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 
 export interface ResolveTenantResult {
   tenantId: number;
@@ -167,7 +168,7 @@ export async function upsertLead({
 }: UpsertLeadParams): Promise<{ leadId: number; created: boolean }> {
   const { data: existing, error: selectError } = await supabase
     .from('leads')
-    .select('id')
+    .select('id, timezone')
     .eq('tenant_id', tenantId)
     .eq('channel_id', channelId)
     .eq('external_id', externalId)
@@ -177,6 +178,11 @@ export async function upsertLead({
     throw new Error(`upsertLead select failed: ${selectError.message}`);
   }
 
+  // Hito 11 — Inferir timezone IANA del lead a partir del prefijo telefónico.
+  // Solo se calcula si phone llega y solo se persiste si la BD aún no tiene
+  // valor (NO pisamos un timezone que pudo set otro turno / edición manual).
+  const inferredTz = phone != null ? inferTimezoneFromPhone(phone) : null;
+
   if (existing) {
     // Actualizamos campos opcionales si llegan (sin pisar con null campos ya poblados).
     const patch: Record<string, unknown> = {};
@@ -185,6 +191,7 @@ export async function upsertLead({
     if (phone != null) patch.phone = phone;
     if (email != null) patch.email = email;
     if (username != null) patch.username = username;
+    if (inferredTz && existing.timezone == null) patch.timezone = inferredTz;
 
     if (Object.keys(patch).length > 0) {
       const { error: updateError } = await supabase
@@ -209,6 +216,7 @@ export async function upsertLead({
       phone: phone ?? null,
       email: email ?? null,
       username: username ?? null,
+      timezone: inferredTz,
     })
     .select('id')
     .single();

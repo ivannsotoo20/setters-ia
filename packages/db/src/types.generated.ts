@@ -61,6 +61,7 @@ export type Database = {
       }
       calendar_accounts: {
         Row: {
+          channel_kind: Database["public"]["Enums"]["channel_type"] | null
           created_at: string
           description: string | null
           external_calendar_id: string
@@ -77,6 +78,7 @@ export type Database = {
           widget_base_url: string
         }
         Insert: {
+          channel_kind?: Database["public"]["Enums"]["channel_type"] | null
           created_at?: string
           description?: string | null
           external_calendar_id: string
@@ -93,6 +95,7 @@ export type Database = {
           widget_base_url: string
         }
         Update: {
+          channel_kind?: Database["public"]["Enums"]["channel_type"] | null
           created_at?: string
           description?: string | null
           external_calendar_id?: string
@@ -1139,6 +1142,7 @@ export type Database = {
           phone: string | null
           source_channel: string | null
           tenant_id: number
+          timezone: string | null
           tracking_uuid: string | null
           updated_at: string
           username: string | null
@@ -1157,6 +1161,7 @@ export type Database = {
           phone?: string | null
           source_channel?: string | null
           tenant_id: number
+          timezone?: string | null
           tracking_uuid?: string | null
           updated_at?: string
           username?: string | null
@@ -1175,6 +1180,7 @@ export type Database = {
           phone?: string | null
           source_channel?: string | null
           tenant_id?: number
+          timezone?: string | null
           tracking_uuid?: string | null
           updated_at?: string
           username?: string | null

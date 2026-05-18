@@ -50,6 +50,11 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Hito 11 — Badge opcional al final del item (p.ej. "Pendiente" naranja). */
+  badge?: {
+    text: string;
+    tone: 'orange' | 'neutral';
+  };
 }
 
 interface NavGroup {
@@ -77,7 +82,10 @@ const NAV_TRAINER_MAIN: NavItem[] = [
  *   - "Salud integraciones" fusionado como tab interna dentro de `/settings/integrations`.
  *   - "Miembros" renombrado visualmente al grupo "Equipo".
  */
-function buildTrainerConfigGroups(canManageTenant: boolean): NavGroup[] {
+function buildTrainerConfigGroups(
+  canManageTenant: boolean,
+  schedulingModeUnset: boolean,
+): NavGroup[] {
   const groups: NavGroup[] = [];
 
   // Perfil + Integraciones — items sueltos top. Integraciones absorbe WhatsApp
@@ -103,10 +111,20 @@ function buildTrainerConfigGroups(canManageTenant: boolean): NavGroup[] {
   });
 
   // Agenda — solo si puede gestionar (calendar OAuth + matching config).
+  // Hito 11 — Añade "Modo de agendado" con badge "Pendiente" si el trainer
+  // todavía no eligió direct vs link.
   if (canManageTenant) {
     groups.push({
       label: 'Agenda',
-      items: [{ href: '/settings/calendars', label: 'Calendarios', icon: CalendarDays }],
+      items: [
+        { href: '/settings/calendars', label: 'Calendarios', icon: CalendarDays },
+        {
+          href: '/settings/scheduling',
+          label: 'Modo de agendado',
+          icon: Clock,
+          badge: schedulingModeUnset ? { text: 'Pendiente', tone: 'orange' as const } : undefined,
+        },
+      ],
     });
   }
 
@@ -174,6 +192,8 @@ interface Props {
   /** Rol del profile en su tenant natural — usado para hints UX. */
   memberRole?: 'owner' | 'admin' | 'viewer';
   impersonatingTenantName?: string | null;
+  /** Hito 11 — true si el trainer aún no eligió schedulingMode → badge "Pendiente". */
+  schedulingModeUnset?: boolean;
 }
 
 export function AppSidebar({
@@ -183,11 +203,12 @@ export function AppSidebar({
   canManageTenant = true,
   memberRole = 'owner',
   impersonatingTenantName,
+  schedulingModeUnset = false,
 }: Props) {
   const pathname = usePathname();
   const mode = deriveMode(pathname, isAgencyAdmin === true);
   const tenantIdInUrl = extractTenantId(pathname);
-  const trainerConfigGroups = buildTrainerConfigGroups(canManageTenant);
+  const trainerConfigGroups = buildTrainerConfigGroups(canManageTenant, schedulingModeUnset);
 
   const homeHref =
     mode === 'agency' || mode === 'tenant-admin'
@@ -366,6 +387,19 @@ function NavItemRow({ item, active }: { item: NavItem; active: boolean }) {
         <Link href={item.href}>
           <Icon className="size-4" />
           <span>{item.label}</span>
+          {item.badge ? (
+            <Badge
+              variant={item.badge.tone === 'orange' ? 'default' : 'outline'}
+              className={cn(
+                'ml-auto text-[9px] px-1.5 h-4 group-data-[collapsible=icon]:hidden',
+                item.badge.tone === 'orange'
+                  ? 'bg-orange-500 text-white hover:bg-orange-500/90 border-orange-500'
+                  : '',
+              )}
+            >
+              {item.badge.text}
+            </Badge>
+          ) : null}
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -446,7 +480,20 @@ function ConfigGroupBlock({
             <SidebarMenuSubButton asChild isActive={active}>
               <Link href={item.href}>
                 <Icon className="size-4" />
-                <span>{item.label}</span>
+                <span className="flex-1 truncate">{item.label}</span>
+                {item.badge ? (
+                  <Badge
+                    variant={item.badge.tone === 'orange' ? 'default' : 'outline'}
+                    className={cn(
+                      'text-[9px] px-1.5 h-4 shrink-0',
+                      item.badge.tone === 'orange'
+                        ? 'bg-orange-500 text-white hover:bg-orange-500/90 border-orange-500'
+                        : '',
+                    )}
+                  >
+                    {item.badge.text}
+                  </Badge>
+                ) : null}
               </Link>
             </SidebarMenuSubButton>
           </SidebarMenuSubItem>

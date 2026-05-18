@@ -114,6 +114,17 @@ export interface ComposeOptions {
    * cita. Si null, el placeholder cae a fallback.
    */
   leadContact?: { firstName: string | null; email: string | null } | null;
+  /**
+   * Hito 11 — Etiqueta humana de la timezone del lead (ej: "hora Argentina").
+   * Si presente, se inyecta en `{{lead_timezone_label}}` de fase_6_v4. Si null,
+   * cae a fallback (typically "hora local").
+   */
+  leadTimezoneLabel?: string | null;
+  /**
+   * Hito 11 — Etiqueta humana de la timezone del trainer (ej: "hora España").
+   * Si presente, se inyecta en `{{trainer_timezone_label}}` de fase_6_v4.
+   */
+  trainerTimezoneLabel?: string | null;
 }
 
 /**
@@ -148,6 +159,10 @@ export interface TrainerContext {
   currentDateLabel?: string | null;
   /** Hito 10.6.1 — Bloque markdown con estado de contacto del lead. */
   leadContactStatusBlock?: string | null;
+  /** Hito 11 — Etiqueta humana de la timezone del lead (ej: "hora Argentina"). */
+  leadTimezoneLabel?: string | null;
+  /** Hito 11 — Etiqueta humana de la timezone del trainer (ej: "hora España"). */
+  trainerTimezoneLabel?: string | null;
 }
 
 export interface HandoffContext {

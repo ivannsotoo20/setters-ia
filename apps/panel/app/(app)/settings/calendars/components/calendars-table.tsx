@@ -17,20 +17,37 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   setDefaultCalendar,
+  setCalendarChannelKind,
   unlinkCalendar,
   type CalendarAccountRow,
+  type CalendarChannelKind,
 } from '@/lib/actions/calendars';
 
 interface Props {
   calendars: CalendarAccountRow[];
 }
 
+const ANY_CHANNEL_VALUE = '__any__';
+
+const CHANNEL_LABEL: Record<NonNullable<CalendarChannelKind>, string> = {
+  whatsapp: 'WhatsApp',
+  instagram_dm: 'Instagram',
+  facebook_messenger: 'Facebook',
+};
+
 export function CalendarsTable({ calendars }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [unlinkTarget, setUnlinkTarget] = useState<{ id: number; name: string } | null>(null);
-  const [_, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
 
   async function handleSetDefault(id: number) {
     setPendingId(id);
@@ -41,6 +58,26 @@ export function CalendarsTable({ calendars }: Props) {
         return;
       }
       toast.success('Calendario default actualizado');
+      startTransition(() => router.refresh());
+    } finally {
+      setPendingId(null);
+    }
+  }
+
+  async function handleChangeChannel(id: number, raw: string) {
+    const next: CalendarChannelKind = raw === ANY_CHANNEL_VALUE ? null : (raw as CalendarChannelKind);
+    setPendingId(id);
+    try {
+      const r = await setCalendarChannelKind(id, next);
+      if (!r.ok) {
+        toast.error(r.error);
+        return;
+      }
+      toast.success(
+        next == null
+          ? 'Calendario asignado a "cualquier canal"'
+          : `Calendario asignado a ${CHANNEL_LABEL[next]}`,
+      );
       startTransition(() => router.refresh());
     } finally {
       setPendingId(null);
@@ -71,7 +108,7 @@ export function CalendarsTable({ calendars }: Props) {
       {calendars.map((cal) => (
         <div
           key={cal.id}
-          className="flex items-center justify-between gap-3 p-3"
+          className="flex items-center justify-between gap-3 p-3 flex-wrap"
         >
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -86,6 +123,11 @@ export function CalendarsTable({ calendars }: Props) {
                   desvinculado
                 </Badge>
               )}
+              {cal.channelKind != null && (
+                <Badge variant="secondary" className="text-[10px]">
+                  canal: {CHANNEL_LABEL[cal.channelKind]}
+                </Badge>
+              )}
             </div>
             {cal.description && (
               <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -96,7 +138,29 @@ export function CalendarsTable({ calendars }: Props) {
               {cal.externalCalendarId}
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {cal.isActive && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  Canal
+                </span>
+                <Select
+                  value={cal.channelKind ?? ANY_CHANNEL_VALUE}
+                  onValueChange={(v) => handleChangeChannel(cal.id, v)}
+                  disabled={pendingId === cal.id}
+                >
+                  <SelectTrigger className="h-8 w-[170px] text-xs">
+                    <SelectValue placeholder="Cualquier canal" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ANY_CHANNEL_VALUE}>Cualquier canal</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                    <SelectItem value="instagram_dm">Instagram</SelectItem>
+                    <SelectItem value="facebook_messenger">Facebook</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             {cal.isActive && !cal.isDefault && (
               <Button
                 size="sm"

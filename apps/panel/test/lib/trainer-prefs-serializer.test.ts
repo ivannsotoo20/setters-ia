@@ -45,6 +45,8 @@ describe('parseTrainerPreferences', () => {
       handoffMode: 'share_phone',
       handoffCustomTemplate: 'warm',
       handoffCustomMessage: null,
+      schedulingMode: null,
+      trainerTimezone: null,
     };
     expect(parseTrainerPreferences(input)).toEqual(input);
   });
@@ -145,6 +147,8 @@ describe('serializeTrainerPreferences', () => {
       handoffMode: 'share_phone',
       handoffCustomTemplate: 'warm',
       handoffCustomMessage: null,
+      schedulingMode: null,
+      trainerTimezone: null,
     });
     expect(md.length).toBeGreaterThan(400);
     expect(md).toContain('Doble interrogación');
@@ -641,6 +645,8 @@ describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B + 2
       handoffMode: 'custom_message',
       handoffCustomTemplate: 'free',
       handoffCustomMessage: 'a'.repeat(250),
+      schedulingMode: 'direct',
+      trainerTimezone: 'Europe/Madrid',
     };
     const md = serializeTrainerPreferences(maxConfig, []);
     expect(md.length).toBeLessThan(3000);

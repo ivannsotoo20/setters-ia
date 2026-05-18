@@ -22,6 +22,8 @@ export function interpolateTrainerPlaceholders(
   const slotsBlock = ctx?.availableSlotsBlock?.trim() || null;
   const currentDateLabel = ctx?.currentDateLabel?.trim() || null;
   const leadContactBlock = ctx?.leadContactStatusBlock?.trim() || null;
+  const leadTzLabel = ctx?.leadTimezoneLabel?.trim() || null;
+  const trainerTzLabel = ctx?.trainerTimezoneLabel?.trim() || null;
   return text
     .replace(/\{\{trainer_phone(?:\|([^}]*))?\}\}/g, (_, fallback) => {
       if (phone) return phone;
@@ -41,6 +43,14 @@ export function interpolateTrainerPlaceholders(
     })
     .replace(/\{\{lead_contact_status(?:\|([^}]*))?\}\}/g, (_, fallback) => {
       if (leadContactBlock) return leadContactBlock;
+      return fallback ?? '';
+    })
+    .replace(/\{\{lead_timezone_label(?:\|([^}]*))?\}\}/g, (_, fallback) => {
+      if (leadTzLabel) return leadTzLabel;
+      return fallback ?? '';
+    })
+    .replace(/\{\{trainer_timezone_label(?:\|([^}]*))?\}\}/g, (_, fallback) => {
+      if (trainerTzLabel) return trainerTzLabel;
       return fallback ?? '';
     })
     .replace(/\{\{handoff_directive\}\}/g, () => renderHandoffDirective(ctx));

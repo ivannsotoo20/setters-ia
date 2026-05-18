@@ -67,6 +67,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     }
   }
 
+  // Hito 11 — Lee schedulingMode del tenant efectivo para mostrar badge
+  // "Pendiente" en sidebar > Agenda > Modo de agendado mientras no se elija.
+  let schedulingModeUnset = false;
+  if (canManageTenant) {
+    const effectiveTenantId = impersonatingTenantId ?? (profile?.tenant_id ? Number(profile.tenant_id) : null);
+    if (effectiveTenantId != null) {
+      const { data: prefsRow } = await supabase
+        .from('trainer_preferences')
+        .select('preferences')
+        .eq('tenant_id', effectiveTenantId)
+        .maybeSingle();
+      const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
+      const rawMode = prefs.schedulingMode;
+      schedulingModeUnset = rawMode !== 'direct' && rawMode !== 'link';
+    }
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -76,6 +93,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         canManageTenant={canManageTenant}
         memberRole={role}
         impersonatingTenantName={impersonatingTenantName}
+        schedulingModeUnset={schedulingModeUnset}
       />
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6">

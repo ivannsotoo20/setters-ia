@@ -17,9 +17,11 @@ import {
 } from './pipeline-runs.js';
 import { enqueueNotification } from './notify-trainer.js';
 import { applySystemLabels } from './labels/index.js';
-import { loadAvailableSlots, type AvailableSlot } from './load-available-slots.js';
+import { loadAvailableSlots, type AvailableSlot, type ChannelKind } from './load-available-slots.js';
 import { loadGhlClientByTenant } from '../lib/load-ghl-client.js';
 import { bookAppointmentFromSlot } from './book-appointment-from-slot.js';
+import { timezoneToLabel } from '../lib/timezone-label.js';
+import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -98,14 +100,38 @@ export async function processDebounced(
     };
   }
 
-  // 2. Cargar lead (para subscriber_id externo, requerido por el outbound luego)
+  // 2. Cargar lead (para subscriber_id externo, requerido por el outbound luego).
+  //    Hito 11 — incluye `timezone` IANA (puede ser NULL si no se infirió aún).
   const { data: lead, error: leadErr } = await supabase
     .from('leads')
-    .select('id, external_id, first_name, last_name, phone, email')
+    .select('id, external_id, first_name, last_name, phone, email, timezone')
     .eq('id', Number(conv.lead_id))
     .maybeSingle();
   if (leadErr) throw new Error(`processDebounced: lead lookup ${leadErr.message}`);
   if (!lead) throw new Error(`processDebounced: lead ${conv.lead_id} not found`);
+
+  // 2.4. Hito 11 — Backfill perezoso de `leads.timezone` si está NULL y hay phone.
+  //      Si la inferencia da algo, persistimos para que la próxima vez no recalcule.
+  //      Best-effort: si UPDATE falla, seguimos con el valor in-memory.
+  let leadTimezone: string | null = (lead.timezone as string | null | undefined) ?? null;
+  if (!leadTimezone && lead.phone) {
+    const inferred = inferTimezoneFromPhone(lead.phone as string);
+    if (inferred) {
+      leadTimezone = inferred;
+      try {
+        await supabase
+          .from('leads')
+          .update({ timezone: inferred })
+          .eq('id', Number(lead.id))
+          .is('timezone', null);
+      } catch (err) {
+        console.warn(
+          `[process-debounced] backfill leads.timezone failed conv=${conversationId}:`,
+          err instanceof Error ? err.message : String(err),
+        );
+      }
+    }
+  }
 
   // 2.5. (Bloque C.5: removido) — el sync con GHL ya no se hace desde aquí.
   //      Cuando el lead viene via /webhook/ghl, los IDs (ghl_contact_id,
@@ -139,15 +165,23 @@ export async function processDebounced(
     };
   }
 
-  // 3.5. Cargar canal para conocer channel_type (whatsapp / instagram / facebook).
-  // Lo necesita el Validator V0-V16 para reglas dependientes de canal.
+  // 3.5. Cargar canal para conocer channel_type. El valor crudo de BD es el
+  //      enum `channel_type` (whatsapp / instagram_dm / facebook_messenger),
+  //      pero el Validator V0-V16 y otros consumers esperan el alias corto
+  //      (whatsapp / instagram / facebook). Mantenemos ambos.
   const { data: channel, error: channelErr } = await supabase
     .from('channels')
     .select('channel_type')
     .eq('id', channelId)
     .maybeSingle();
   if (channelErr) throw new Error(`processDebounced: channel lookup ${channelErr.message}`);
-  const channelType = (channel?.channel_type as 'whatsapp' | 'instagram' | 'facebook' | undefined) ?? 'whatsapp';
+  const channelTypeDb = (channel?.channel_type as ChannelKind | undefined) ?? 'whatsapp';
+  const channelType: 'whatsapp' | 'instagram' | 'facebook' =
+    channelTypeDb === 'instagram_dm'
+      ? 'instagram'
+      : channelTypeDb === 'facebook_messenger'
+        ? 'facebook'
+        : 'whatsapp';
 
   // 3.7. Bloque D — enriquecimiento multimodal: si hay rows del lead con
   //      `media_url` pero `content=NULL`, transcribir audios (Groq Whisper) y
@@ -221,8 +255,20 @@ export async function processDebounced(
   // sean derivados del coach del tenant cuando exista la pieza que los extrae
   // del prompt_blocks (TODO post-Hito 9). Hoy el Judge funciona con sus
   // guardrails universales y el Validator usa defaults seguros sin whitelist.
-  // Hito 10 — Construir URL trackable del calendario default antes del pipeline.
-  // Si no hay calendar vinculado o falla, composer cae al closingResourceUrl legacy.
+  // Hito 11 — Configuración de agendado del trainer (schedulingMode + timezone).
+  // `schedulingMode === null` (no elegido) → fallback conservador a 'link'.
+  // Para compat con tenants Hito 10.6 que tenían `useApiBooking=true` antes del
+  // schedulingMode, lo respetamos como hint si schedulingMode sigue null.
+  const schedulingConfig = await loadSchedulingConfig(supabase, tenantId);
+  const effectiveMode: 'direct' | 'link' =
+    schedulingConfig.schedulingMode ??
+    (schedulingConfig.useApiBookingLegacy ? 'direct' : 'link');
+  const trainerTimezone = schedulingConfig.trainerTimezone ?? 'Europe/Madrid';
+
+  // Hito 10 + Hito 11 — Construir URL trackable del calendario default antes del
+  // pipeline. La resolución del calendar es jerárquica por canal (channel_kind
+  // específico → fallback any). Si no hay calendar vinculado o falla, composer
+  // cae al closingResourceUrl legacy.
   let trackedCalendarUrl: string | null = null;
   try {
     const { getTrackedCalendarUrl } = await import('./tracked-calendar-url.js');
@@ -230,6 +276,7 @@ export async function processDebounced(
       supabase,
       tenantId,
       leadId: Number(lead.id),
+      channelKind: channelTypeDb,
     });
   } catch (err) {
     console.warn(
@@ -238,25 +285,23 @@ export async function processDebounced(
     );
   }
 
-  // Hito 10.6 — Cargar slots disponibles del calendar para API booking.
-  // Solo si tenant tiene flag useApiBooking=true en preferences y conv está
-  // cerca del booking (F5+). Si no hay calendar, GHL falla o no hay slots →
-  // availableSlots queda null y el composer cae al fallback del placeholder
-  // (= el bot improvisa con el flow legacy de URL widget).
+  // Hito 10.6 + Hito 11 — Cargar slots disponibles SOLO si el trainer eligió
+  // 'direct'. En modo 'link' (o no elegido) el setter cae a Modo B con
+  // {{tracked_calendar_url}}. Slots se renderizan en hora del LEAD; la API
+  // GHL recibe la timezone del trainer para calcular su disponibilidad real.
   let availableSlots: AvailableSlot[] | null = null;
   let ghlClient: Awaited<ReturnType<typeof loadGhlClientByTenant>> = null;
-  const useApiBooking = await loadUseApiBookingFlag(supabase, tenantId);
-  if (useApiBooking) {
+  if (effectiveMode === 'direct') {
     ghlClient = await loadGhlClientByTenant(supabase, tenantId);
-    // Fix Hito 10.6.1 — cargar slots SIEMPRE que el flag esté on. El LLM puede
-    // hacer fast-track de F1→F6/F7 si el lead pide agenda rápido; necesita los
-    // slots disponibles desde el primer turno para no caer al flow legacy URL.
     if (ghlClient) {
       try {
         availableSlots = await loadAvailableSlots({
           supabase,
           ghlClient,
           tenantId,
+          trainerTimezone,
+          leadTimezone,
+          channelKind: channelTypeDb,
         });
       } catch (err) {
         console.warn(
@@ -275,6 +320,11 @@ export async function processDebounced(
     firstName: ((lead.first_name as string | null | undefined) ?? null) || null,
     email: ((lead.email as string | null | undefined) ?? null) || null,
   };
+
+  // Hito 11 — Etiquetas humanas de timezone para los placeholders del prompt.
+  // Si lead no tiene timezone inferible → cae a la del trainer (mismo huso).
+  const leadTimezoneLabel = timezoneToLabel(leadTimezone ?? trainerTimezone);
+  const trainerTimezoneLabel = timezoneToLabel(trainerTimezone);
 
   let pipelineOut;
   try {
@@ -296,6 +346,8 @@ export async function processDebounced(
           availableSlots,
           currentDateIso,
           leadContact,
+          leadTimezoneLabel,
+          trainerTimezoneLabel,
         },
       },
     );
@@ -363,7 +415,7 @@ export async function processDebounced(
   //      log y continúa.
   const proposedSlot = pipelineOut.generator.setterOutput.proposed_booking_slot;
   let bookingSucceeded = false;
-  if (useApiBooking && ghlClient && typeof proposedSlot === 'string' && proposedSlot.trim() !== '') {
+  if (effectiveMode === 'direct' && ghlClient && typeof proposedSlot === 'string' && proposedSlot.trim() !== '') {
     try {
       const tenantNameRow = await supabase
         .from('tenants')
@@ -380,6 +432,7 @@ export async function processDebounced(
         leadFirstName: leadNameForBooking,
         leadEmail: leadEmailForBooking,
         tenantName: (tenantNameRow.data?.name as string | null | undefined) ?? null,
+        channelKind: channelTypeDb,
       });
       if (!result.ok) {
         console.warn(
@@ -409,7 +462,7 @@ export async function processDebounced(
   //      Mejor: degradar para que la conv siga viva, el bot pueda re-proponer
   //      en el siguiente turno con slots reales.
   if (
-    useApiBooking &&
+    effectiveMode === 'direct' &&
     pipelineOut.generator.setterOutput.handoff_cause === 'A_agenda' &&
     !bookingSucceeded
   ) {
@@ -660,19 +713,40 @@ export function computeAutoPromotedPhase(args: {
 }
 
 /**
- * Hito 10.6 — Lee `trainer_preferences.preferences.useApiBooking` (bool).
- * Default false (flow legacy de URL widget). Best-effort: si query falla,
- * devuelve false.
+ * Hito 11 — Lee configuración de agendado del trainer:
+ *   - `schedulingMode`: 'direct' | 'link' | null. null = no elegido aún (UI panel
+ *     muestra badge "Pendiente"). El motor cae a fallback conservador 'link'
+ *     a menos que el campo legacy `useApiBooking` esté en true (compat).
+ *   - `trainerTimezone`: IANA. null = motor usa 'Europe/Madrid' como default.
+ *   - `useApiBookingLegacy`: hint Hito 10.6 — algunos tenants antes del
+ *     schedulingMode tenían `useApiBooking=true`. Si schedulingMode sigue null
+ *     y este es true, mantenemos 'direct' para no romper su flujo en producción.
+ *
+ * Best-effort: si query falla, devuelve defaults conservadores.
  */
-async function loadUseApiBookingFlag(
+async function loadSchedulingConfig(
   supabase: SupabaseClient,
   tenantId: number,
-): Promise<boolean> {
+): Promise<{
+  schedulingMode: 'direct' | 'link' | null;
+  trainerTimezone: string | null;
+  useApiBookingLegacy: boolean;
+}> {
   const { data } = await supabase
     .from('trainer_preferences')
     .select('preferences')
     .eq('tenant_id', tenantId)
     .maybeSingle();
   const prefs = (data?.preferences ?? {}) as Record<string, unknown>;
-  return prefs.useApiBooking === true;
+  const rawMode = prefs.schedulingMode;
+  const schedulingMode =
+    rawMode === 'direct' || rawMode === 'link' ? (rawMode as 'direct' | 'link') : null;
+  const rawTz = prefs.trainerTimezone;
+  const trainerTimezone =
+    typeof rawTz === 'string' && rawTz.trim() !== '' ? rawTz.trim() : null;
+  return {
+    schedulingMode,
+    trainerTimezone,
+    useApiBookingLegacy: prefs.useApiBooking === true,
+  };
 }

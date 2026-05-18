@@ -41,10 +41,19 @@ export default async function SettingsCalendarsPage() {
           <CardTitle className="text-base">
             Tus calendarios ({calendars.length})
           </CardTitle>
-          <CardDescription>
-            {defaultCount === 0
-              ? 'Designa uno como default — es el que recibirá el lead en F6.'
-              : 'El calendario default se usa en F6 cuando el setter manda el enlace.'}
+          <CardDescription className="space-y-1">
+            <span className="block">
+              {defaultCount === 0
+                ? 'Designa uno como default — es el que recibirá el lead en F6.'
+                : 'El calendario default se usa en F6 cuando el setter manda el enlace.'}
+            </span>
+            <span className="block">
+              <strong className="text-foreground">Canal asignado</strong>:
+              opcional. Si asignas un canal a un calendario, las conversaciones
+              de ese canal usarán <em>este</em> calendar; las demás caerán al
+              calendario &quot;cualquier canal&quot; como fallback. Útil para
+              distinguir el origen del booking sin abrir el chat.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent>

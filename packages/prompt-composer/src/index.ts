@@ -143,6 +143,22 @@ export async function composePrompt(
     };
   }
 
+  // Hito 11 — Etiquetas humanas de timezone (lead + trainer). El setter las
+  // inyecta en fase_6_v4 para mencionar siempre la zona al proponer horas
+  // cuando lead y trainer estén en husos distintos.
+  if (options.leadTimezoneLabel !== undefined) {
+    trainerContext = {
+      ...trainerContext,
+      leadTimezoneLabel: options.leadTimezoneLabel,
+    };
+  }
+  if (options.trainerTimezoneLabel !== undefined) {
+    trainerContext = {
+      ...trainerContext,
+      trainerTimezoneLabel: options.trainerTimezoneLabel,
+    };
+  }
+
   return buildComposedPrompt(rows, { ...options, trainerContext });
 }
 

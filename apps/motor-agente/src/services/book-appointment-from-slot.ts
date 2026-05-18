@@ -26,6 +26,7 @@ import type { GhlClient } from '@fyzon/ghl-client';
 import { GhlSlotConflictError } from '@fyzon/ghl-client';
 import { logger } from '../lib/logger.js';
 import { enqueueNotification } from './notify-trainer.js';
+import { resolveDefaultCalendar, type ChannelKind } from './load-available-slots.js';
 
 const F7_PHASE_NUMBER = 7;
 
@@ -42,6 +43,11 @@ export interface BookAppointmentInput {
   leadEmail?: string | null;
   /** Nombre del tenant para el título. */
   tenantName?: string | null;
+  /**
+   * Hito 11 — Canal de la conversación. Se usa para resolver el calendar por
+   * canal (con fallback any). Si null, solo se intenta el calendar any.
+   */
+  channelKind?: ChannelKind | null;
 }
 
 export type BookAppointmentResult =
@@ -68,7 +74,17 @@ export type BookAppointmentResult =
 export async function bookAppointmentFromSlot(
   input: BookAppointmentInput,
 ): Promise<BookAppointmentResult> {
-  const { supabase, ghlClient, tenantId, conversationId, slotIso, leadFirstName, leadEmail, tenantName } = input;
+  const {
+    supabase,
+    ghlClient,
+    tenantId,
+    conversationId,
+    slotIso,
+    leadFirstName,
+    leadEmail,
+    tenantName,
+    channelKind = null,
+  } = input;
 
   // 0. Validar ISO 8601
   if (!isValidIso8601(slotIso)) {
@@ -100,16 +116,14 @@ export async function bookAppointmentFromSlot(
   }
   const leadId = (conv?.lead_id as number | null | undefined) ?? null;
 
-  // 3. Cargar calendar default + integration account id
-  const { data: cal } = await supabase
-    .from('calendar_accounts')
-    .select('id, external_calendar_id, name')
-    .eq('tenant_id', tenantId)
-    .eq('is_default', true)
-    .eq('is_active', true)
-    .maybeSingle();
+  // 3. Cargar calendar default resolviendo por canal (Hito 11). Si no hay
+  //    calendar específico del canal, fallback a `channel_kind IS NULL`.
+  const cal = await resolveDefaultCalendar(supabase, tenantId, channelKind);
   if (!cal?.external_calendar_id) {
-    logger.warn({ tenantId, conversationId }, 'bookAppointmentFromSlot: tenant sin calendar default');
+    logger.warn(
+      { tenantId, conversationId, channelKind },
+      'bookAppointmentFromSlot: tenant sin calendar default para el canal ni fallback any',
+    );
     return { ok: false, reason: 'no_calendar' };
   }
 

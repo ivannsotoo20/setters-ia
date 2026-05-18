@@ -28,6 +28,8 @@ function getServiceRoleClient() {
 
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
+export type CalendarChannelKind = 'whatsapp' | 'instagram_dm' | 'facebook_messenger' | null;
+
 export interface CalendarAccountRow {
   id: number;
   externalCalendarId: string;
@@ -37,6 +39,11 @@ export interface CalendarAccountRow {
   widgetBaseUrl: string;
   isDefault: boolean;
   isActive: boolean;
+  /**
+   * Hito 11 — Canal al que aplica este calendar. null = aplica a cualquier
+   * canal como fallback global. Valor enum DB `channel_type`.
+   */
+  channelKind: CalendarChannelKind;
   createdAt: string;
 }
 
@@ -62,7 +69,7 @@ export async function listCalendarAccounts(): Promise<ActionResult<CalendarAccou
   const supabase = getServiceRoleClient();
   const { data, error } = await supabase
     .from('calendar_accounts')
-    .select('id, external_calendar_id, name, description, slug, widget_base_url, is_default, is_active, created_at')
+    .select('id, external_calendar_id, name, description, slug, widget_base_url, is_default, is_active, channel_kind, created_at')
     .eq('tenant_id', eff.tenantId)
     .order('is_default', { ascending: false })
     .order('created_at', { ascending: true });
@@ -78,9 +85,84 @@ export async function listCalendarAccounts(): Promise<ActionResult<CalendarAccou
     widgetBaseUrl: String(r.widget_base_url),
     isDefault: Boolean(r.is_default),
     isActive: Boolean(r.is_active),
+    channelKind: ((r.channel_kind as CalendarChannelKind | null) ?? null) as CalendarChannelKind,
     createdAt: String(r.created_at),
   }));
   return { ok: true, data: rows };
+}
+
+/**
+ * Hito 11 — Asigna un canal al calendar (channel_kind). null = "cualquier canal"
+ * (fallback global). El UNIQUE parcial parcial idx_calendar_accounts_one_default_per_channel
+ * + idx_calendar_accounts_one_default_any garantiza unicidad a nivel DB; aquí
+ * hacemos pre-check para devolver mensaje user-friendly antes del violation.
+ */
+export async function setCalendarChannelKind(
+  calendarAccountId: number,
+  channelKind: CalendarChannelKind,
+): Promise<ActionResult> {
+  const eff = await getEffectiveTenant();
+  if (!eff) return { ok: false, error: 'unauthenticated' };
+  if (!(eff.isAgencyAdmin || eff.role === 'owner')) {
+    return { ok: false, error: 'forbidden — solo el owner puede asignar canales a calendars' };
+  }
+  if (
+    channelKind != null &&
+    channelKind !== 'whatsapp' &&
+    channelKind !== 'instagram_dm' &&
+    channelKind !== 'facebook_messenger'
+  ) {
+    return { ok: false, error: 'channel_kind no válido' };
+  }
+
+  const supabase = getServiceRoleClient();
+
+  // Verifica que el calendar pertenece al tenant y obtén su estado actual.
+  const { data: target } = await supabase
+    .from('calendar_accounts')
+    .select('id, is_default, is_active, channel_kind')
+    .eq('id', calendarAccountId)
+    .eq('tenant_id', eff.tenantId)
+    .maybeSingle();
+  if (!target) {
+    return { ok: false, error: 'calendar no encontrado o no pertenece a este tenant' };
+  }
+
+  // Pre-check unicidad: si este calendar va a ser default y hay otro default
+  // activo con el MISMO channel_kind (incluyendo NULL ↔ NULL), conflicto.
+  if (target.is_default && target.is_active) {
+    const conflictQuery = supabase
+      .from('calendar_accounts')
+      .select('id, name')
+      .eq('tenant_id', eff.tenantId)
+      .eq('is_default', true)
+      .eq('is_active', true)
+      .neq('id', calendarAccountId);
+    const conflictFiltered =
+      channelKind == null
+        ? conflictQuery.is('channel_kind', null)
+        : conflictQuery.eq('channel_kind', channelKind);
+    const { data: conflicts } = await conflictFiltered;
+    if (conflicts && conflicts.length > 0) {
+      const otherName = (conflicts[0] as { name: string }).name;
+      const kindLabel = channelKind == null ? 'cualquier canal' : channelKind;
+      return {
+        ok: false,
+        error: `Ya tienes "${otherName}" como calendario default para ${kindLabel}. Quita el default de ese primero o asigna otro canal.`,
+      };
+    }
+  }
+
+  const { error } = await supabase
+    .from('calendar_accounts')
+    .update({ channel_kind: channelKind, updated_at: new Date().toISOString() })
+    .eq('id', calendarAccountId)
+    .eq('tenant_id', eff.tenantId);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/settings/calendars');
+  return { ok: true };
 }
 
 /** Pide al motor que liste los calendars del GHL del tenant. NO inserta nada. */

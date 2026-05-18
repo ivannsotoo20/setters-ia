@@ -118,6 +118,25 @@ export interface TrainerPreferences {
   closingResourceUrl: string | null;
   /** Frase opcional (max 200 chars) que el setter dirá justo antes de compartir el enlace de cierre. null = el setter decide. Ignorada si modo='human_handoff'. */
   calendarClosingMessage: string | null;
+
+  // ----- Hito 11: Modo de agendado + timezone del trainer -----
+  /**
+   * Hito 11 — Modo de agendado: 'direct' = IA crea cita en GHL directamente
+   * en el chat (Modo A). 'link' = IA envía el enlace del widget GHL (Modo B).
+   * null = no elegido aún (UI muestra badge "Pendiente"; el motor cae a 'link'
+   * como fallback conservador a menos que el legacy useApiBooking esté true).
+   *
+   * NO se serializa al markdown del trainer_prefs_v1 — es control de motor.
+   */
+  schedulingMode: 'direct' | 'link' | null;
+  /**
+   * Hito 11 — Zona horaria IANA del trainer (ej "Europe/Madrid"). El motor la
+   * pasa a GHL getFreeSlots para calcular disponibilidad en su zona. null =
+   * motor usa 'Europe/Madrid' como default conservador.
+   *
+   * NO se serializa al markdown del trainer_prefs_v1.
+   */
+  trainerTimezone: string | null;
 }
 
 export const CALL_PROPOSAL_MODES = ['calendar', 'form', 'human_handoff'] as const;
@@ -219,6 +238,9 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   handoffMode: 'share_phone',
   handoffCustomTemplate: 'warm',
   handoffCustomMessage: null,
+  // Hito 11: null = no elegido aún. UI muestra badge "Pendiente".
+  schedulingMode: null,
+  trainerTimezone: null,
 };
 
 const MAX_HANDOFF_CUSTOM_MESSAGE_CHARS = 250;
@@ -515,7 +537,68 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
 
   out.notificationSubscriptions = parseNotificationSubscriptions(r.notificationSubscriptions);
 
+  // Hito 11 — Modo de agendado + timezone del trainer.
+  if (r.schedulingMode === 'direct' || r.schedulingMode === 'link') {
+    out.schedulingMode = r.schedulingMode;
+  }
+  if (typeof r.trainerTimezone === 'string') {
+    const tz = r.trainerTimezone.trim();
+    out.trainerTimezone = tz === '' ? null : tz;
+  }
+
   return out;
+}
+
+/**
+ * Hito 11 — Listado curado de timezones IANA presentadas en el selector del
+ * panel /settings/scheduling. Cubre el top hispanohablante + portugués/inglés
+ * comunes. El motor acepta cualquier IANA válida en runtime (no se valida
+ * contra esta lista), pero la UI solo expone estas.
+ */
+export const TRAINER_TIMEZONE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'Europe/Madrid', label: 'España peninsular (Europe/Madrid)' },
+  { value: 'Atlantic/Canary', label: 'Canarias (Atlantic/Canary)' },
+  { value: 'America/Argentina/Buenos_Aires', label: 'Argentina (Buenos Aires)' },
+  { value: 'America/Mexico_City', label: 'México (CDMX)' },
+  { value: 'America/Bogota', label: 'Colombia (Bogotá)' },
+  { value: 'America/Lima', label: 'Perú (Lima)' },
+  { value: 'America/Santiago', label: 'Chile (Santiago)' },
+  { value: 'America/Caracas', label: 'Venezuela (Caracas)' },
+  { value: 'America/Montevideo', label: 'Uruguay (Montevideo)' },
+  { value: 'America/Asuncion', label: 'Paraguay (Asunción)' },
+  { value: 'America/Guayaquil', label: 'Ecuador (Guayaquil)' },
+  { value: 'America/La_Paz', label: 'Bolivia (La Paz)' },
+  { value: 'America/Costa_Rica', label: 'Costa Rica' },
+  { value: 'America/Panama', label: 'Panamá' },
+  { value: 'America/El_Salvador', label: 'El Salvador' },
+  { value: 'America/Guatemala', label: 'Guatemala' },
+  { value: 'America/Tegucigalpa', label: 'Honduras' },
+  { value: 'America/Managua', label: 'Nicaragua' },
+  { value: 'America/Havana', label: 'Cuba (La Habana)' },
+  { value: 'America/Santo_Domingo', label: 'R. Dominicana' },
+  { value: 'America/Puerto_Rico', label: 'Puerto Rico' },
+  { value: 'America/Sao_Paulo', label: 'Brasil (São Paulo)' },
+  { value: 'Europe/Lisbon', label: 'Portugal (Lisboa)' },
+  { value: 'Europe/London', label: 'Reino Unido (Londres)' },
+  { value: 'America/New_York', label: 'EE.UU. Este (Nueva York)' },
+  { value: 'America/Los_Angeles', label: 'EE.UU. Pacífico (Los Ángeles)' },
+];
+
+/**
+ * Hito 11 — Comprueba si una timezone IANA es válida y está soportada por
+ * el runtime de Node (Intl.DateTimeFormat). Permite cualquier IANA aunque
+ * no esté en TRAINER_TIMEZONE_OPTIONS — el panel valida con esta función.
+ */
+export function isValidIanaTimezone(tz: string | null | undefined): boolean {
+  if (typeof tz !== 'string') return false;
+  const trimmed = tz.trim();
+  if (trimmed === '') return false;
+  try {
+    new Intl.DateTimeFormat('es-ES', { timeZone: trimmed }).format(new Date());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 const MESSAGE_LENGTH_DESCRIPTIONS = {
