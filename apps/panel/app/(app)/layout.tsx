@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { AppSidebar } from '@/components/app-sidebar';
@@ -8,8 +7,8 @@ import { ScopeSwitcher } from '@/components/scope-switcher';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { UserMenu } from '@/components/user-menu';
 import { AnimatedPageShell } from '@/components/animated-page-shell';
-import { OnboardingBannerSlot } from '@/components/onboarding/onboarding-banner-slot';
 import { getImpersonateTenantId } from '@/lib/impersonate';
+import { getTenantHealth } from '@/lib/tenant-health';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,8 +69,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // Hito 11 — Lee schedulingMode del tenant efectivo para mostrar badge
   // "Pendiente" en sidebar > Agenda > Modo de agendado mientras no se elija.
   let schedulingModeUnset = false;
+  // Setup pendiente — calcula pasos pendientes para mostrar badge "N/4" en
+  // sidebar > Configuración > Setup mientras `onboarded_at IS NULL`. Si el
+  // tenant ya cerró setup (onboardedAt != null), `setupPendingCount = 0` y
+  // no se muestra badge.
+  let setupPendingCount = 0;
   if (canManageTenant) {
-    const effectiveTenantId = impersonatingTenantId ?? (profile?.tenant_id ? Number(profile.tenant_id) : null);
+    const effectiveTenantId =
+      impersonatingTenantId ?? (profile?.tenant_id ? Number(profile.tenant_id) : null);
     if (effectiveTenantId != null) {
       const { data: prefsRow } = await supabase
         .from('trainer_preferences')
@@ -81,6 +86,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
       const rawMode = prefs.schedulingMode;
       schedulingModeUnset = rawMode !== 'direct' && rawMode !== 'link';
+
+      const health = await getTenantHealth(effectiveTenantId);
+      if (health && health.onboardedAt == null) {
+        const stepsDone = [
+          health.ghlConnected,
+          health.hasKeywordsBienvenida && health.hasKeywordsLeadmagnet,
+          health.ycloudConnected && health.approvedWaTemplates > 0,
+          health.welcomeTemplateId != null && health.tokenLeadForm != null,
+        ];
+        setupPendingCount = 4 - stepsDone.filter(Boolean).length;
+      }
     }
   }
 
@@ -94,6 +110,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         memberRole={role}
         impersonatingTenantName={impersonatingTenantName}
         schedulingModeUnset={schedulingModeUnset}
+        setupPendingCount={setupPendingCount}
       />
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background/80 backdrop-blur-md px-4 md:px-6">
@@ -109,18 +126,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <ThemeToggle />
           <UserMenu userEmail={profile?.email ?? user.email ?? null} />
         </header>
-        {/*
-          OnboardingBannerSlot va en Suspense para que los 2 awaits que necesita
-          (resolveEffectiveTenantId + getTenantHealth) NO bloqueen la primera
-          pintura del shell. Sidebar + header + main se sirven inmediato; el
-          banner aparece cuando el slot resuelve si aplica.
-        */}
-        <Suspense fallback={null}>
-          <OnboardingBannerSlot
-            profileTenantId={profile?.tenant_id ? Number(profile.tenant_id) : null}
-            isAgencyAdmin={isAgencyAdmin}
-          />
-        </Suspense>
         <main className="flex-1 min-w-0 flex flex-col p-6 md:p-8">
           <AnimatedPageShell>{children}</AnimatedPageShell>
         </main>

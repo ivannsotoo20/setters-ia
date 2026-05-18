@@ -2,6 +2,7 @@ import { loadDashboardData, type ChannelFilter } from '@/lib/actions/dashboard';
 import { DashboardLayout } from '@/components/dashboard/dashboard-layout';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 import { getTenantHealth } from '@/lib/tenant-health';
+import { FirstVisitRedirect } from '@/components/onboarding/first-visit-redirect';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,9 @@ function parseChannelKey(value: string | null | undefined): ChannelFilter {
 export default async function DashboardPage({ searchParams }: PageProps) {
   const sp = await searchParams;
 
-  // Cargas en paralelo: dashboard snapshot + tenant health (para activation checklist).
+  // Cargas en paralelo. tenantHealth se usa SOLO para decidir si renderizar
+  // <FirstVisitRedirect /> (auto-redirect a /settings/setup la primera vez).
+  // El dashboard normal NO se bloquea: widgets + tendencia se muestran siempre.
   const effective = await getEffectiveTenant();
   const [result, tenantHealth] = await Promise.all([
     loadDashboardData({
@@ -42,5 +45,12 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     );
   }
 
-  return <DashboardLayout snapshot={result.data} tenantHealth={tenantHealth} />;
+  const isOnboardingPending = tenantHealth != null && tenantHealth.onboardedAt == null;
+
+  return (
+    <>
+      {isOnboardingPending ? <FirstVisitRedirect /> : null}
+      <DashboardLayout snapshot={result.data} />
+    </>
+  );
 }

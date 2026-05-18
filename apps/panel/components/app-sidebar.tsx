@@ -23,6 +23,7 @@ import {
   ChevronDown,
   User,
   CalendarDays,
+  Rocket,
 } from 'lucide-react';
 import { FyzonLogo } from '@/components/branding/fyzon-logo';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -85,8 +86,29 @@ const NAV_TRAINER_MAIN: NavItem[] = [
 function buildTrainerConfigGroups(
   canManageTenant: boolean,
   schedulingModeUnset: boolean,
+  setupPendingCount: number,
 ): NavGroup[] {
   const groups: NavGroup[] = [];
+
+  // Setup (Activación) — primer item destacado mientras quedan pasos pendientes.
+  // Cuando setupPendingCount=0 (todos los 4 pasos hechos), seguimos mostrándolo
+  // pero sin badge: el trainer puede volver a revisar/reconfigurar credenciales.
+  if (canManageTenant) {
+    groups.push({
+      label: 'Activación',
+      items: [
+        {
+          href: '/settings/setup',
+          label: 'Setup',
+          icon: Rocket,
+          badge:
+            setupPendingCount > 0
+              ? { text: `${setupPendingCount}/4 pendiente`, tone: 'orange' as const }
+              : undefined,
+        },
+      ],
+    });
+  }
 
   // Perfil + Integraciones — items sueltos top. Integraciones absorbe WhatsApp
   // y Salud como tabs internas (eliminamos header "Canales" — solo había 2 items).
@@ -194,6 +216,12 @@ interface Props {
   impersonatingTenantName?: string | null;
   /** Hito 11 — true si el trainer aún no eligió schedulingMode → badge "Pendiente". */
   schedulingModeUnset?: boolean;
+  /**
+   * Hito 12.1 — Número de pasos del setup que faltan por completar (0..4).
+   * Si > 0 muestra badge "N/4 pendiente" en sidebar > Configuración > Setup.
+   * Si tenant ya tiene `onboarded_at != null` o todos los pasos hechos → 0.
+   */
+  setupPendingCount?: number;
 }
 
 export function AppSidebar({
@@ -204,11 +232,16 @@ export function AppSidebar({
   memberRole = 'owner',
   impersonatingTenantName,
   schedulingModeUnset = false,
+  setupPendingCount = 0,
 }: Props) {
   const pathname = usePathname();
   const mode = deriveMode(pathname, isAgencyAdmin === true);
   const tenantIdInUrl = extractTenantId(pathname);
-  const trainerConfigGroups = buildTrainerConfigGroups(canManageTenant, schedulingModeUnset);
+  const trainerConfigGroups = buildTrainerConfigGroups(
+    canManageTenant,
+    schedulingModeUnset,
+    setupPendingCount,
+  );
 
   const homeHref =
     mode === 'agency' || mode === 'tenant-admin'
