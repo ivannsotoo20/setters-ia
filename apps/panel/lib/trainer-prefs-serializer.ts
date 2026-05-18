@@ -260,7 +260,7 @@ function sanitizeHandoffCustomMessage(raw: unknown): string | null {
     trimmed = trimmed.slice(0, MAX_HANDOFF_CUSTOM_MESSAGE_CHARS);
   }
   trimmed = trimmed.replace(
-    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    /<\/(system|message|user|assistant|core_v4_base|core_v5_base|output_contract_v5|coach_v3|coach_v5|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
     '&lt;/$1&gt;',
   );
   return trimmed;
@@ -312,7 +312,7 @@ function sanitizeEmojiWhenToUse(raw: unknown): string | null {
   }
   // Escape de tags reservados (igual estrategia que custom_instructions + closingMessage)
   trimmed = trimmed.replace(
-    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    /<\/(system|message|user|assistant|core_v4_base|core_v5_base|output_contract_v5|coach_v3|coach_v5|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
     '&lt;/$1&gt;',
   );
   return trimmed;
@@ -376,7 +376,7 @@ function sanitizeCalendarClosingMessage(raw: unknown): string | null {
   if (trimmed === '') return null;
   if (trimmed.length > MAX_CALENDAR_CLOSING_CHARS) trimmed = trimmed.slice(0, MAX_CALENDAR_CLOSING_CHARS);
   trimmed = trimmed.replace(
-    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    /<\/(system|message|user|assistant|core_v4_base|core_v5_base|output_contract_v5|coach_v3|coach_v5|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
     '&lt;/$1&gt;',
   );
   return trimmed;
@@ -406,7 +406,7 @@ export function sanitizeCustomInstruction(raw: string | null | undefined): strin
   if (trimmed.length > 500) trimmed = trimmed.slice(0, 500);
   // Escape de cierres de tags reservados del Cerebro/Anthropic
   trimmed = trimmed.replace(
-    /<\/(system|message|user|assistant|core_v4_base|coach_v3|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    /<\/(system|message|user|assistant|core_v4_base|core_v5_base|output_contract_v5|coach_v3|coach_v5|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
     '&lt;/$1&gt;',
   );
   return trimmed;

@@ -1003,7 +1003,8 @@ export async function loadTenantBlocks(args: {
   if (tenantErr) return { ok: false, error: tenantErr.message };
   if (!tenant) return { ok: false, error: 'tenant not found' };
 
-  const blockKeys = ['coach_v3', 'admin_overrides_v1', 'trainer_prefs_v1'] as const;
+  // Cerebro v5 (Sprint Iota): coach_v3 → coach_v5.
+  const blockKeys = ['coach_v5', 'admin_overrides_v1', 'trainer_prefs_v1'] as const;
 
   const summaries = await Promise.all(
     blockKeys.map(async (key) => {

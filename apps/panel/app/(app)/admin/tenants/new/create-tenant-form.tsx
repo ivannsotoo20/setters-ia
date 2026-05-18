@@ -439,7 +439,7 @@ export function CreateTenantForm() {
               <ul className="text-xs space-y-1 text-muted-foreground">
                 <li>✓ tenant_configs (timezone <code className="font-mono text-foreground">{timezone}</code>)</li>
                 <li>✓ trainer_preferences (estructura por defecto)</li>
-                <li>✓ prompt_blocks coach_v3 (placeholder vacío — lo pegas tú después)</li>
+                <li>✓ prompt_blocks coach_v5 (placeholder vacío — lo pegas tú después)</li>
                 <li>✓ 3 webhook tokens (YCloud, GHL, Lead Form)</li>
                 <li>✓ 8 system labels (Hot Lead, Comprado, Activo…) vía trigger</li>
                 <li>✓ 7 dashboard widgets KPI vía trigger</li>

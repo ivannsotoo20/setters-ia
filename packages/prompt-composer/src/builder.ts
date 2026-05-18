@@ -5,24 +5,30 @@ import type {
   PromptBlockRow,
   SystemContentBlock,
 } from './types.js';
-import { interpolateTrainerPlaceholders } from './interpolate.js';
+import {
+  interpolatePhasePriorities,
+  interpolateTrainerPlaceholders,
+} from './interpolate.js';
 
 /**
- * Sprint Gamma 2.6 — Bloques en los que el composer aplica interpolación de
- * `{{trainer_phone|fallback}}`. Whitelist explícita para evitar replacements
- * no intencionados en otros bloques (p.ej. coach_v3 podría tener `{{` literal
- * por accidente del trainer).
+ * Cerebro v5 — Bloques que llevan placeholders rich y deben pasar por interpolación.
+ * Both el CORE y el COACH llevan placeholders (currentPhaseFocus, phase priorities,
+ * tracked_calendar_url, available_slots, etc.).
  */
-const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['handoff_v4', 'fase_6_v4']);
+const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['core_v5_base', 'coach_v5']);
 
 /**
- * Lista de block_keys que se requieren siempre para una composición válida.
- * Si falta uno de estos, la composición falla.
+ * Bloques requeridos para una composición v5 válida.
+ * Si falta uno de estos, el builder falla con error explícito.
  *
- * Nota v4: el Cerebro es `core_v4_base`. El Coach sigue como `coach_v3` por compat
- * (los Coaches concretos no se han migrado a v4 todavía).
+ * - core_v5_base: cerebro shared consolidado (sort=0).
+ * - coach_v5: voz/criterios del trainer (sort=5, por tenant).
+ *
+ * output_contract_v5 también es importante pero NO es estrictamente requerido
+ * por el builder (el motor puede operar sin él temporalmente). Se incluye por
+ * default en wantedKeys y si falta se reporta como missing.
  */
-const REQUIRED_BLOCK_KEYS = ['core_v4_base', 'coach_v3'] as const;
+const REQUIRED_BLOCK_KEYS = ['core_v5_base', 'coach_v5'] as const;
 
 /**
  * Construye el system prompt a partir de un array de filas de prompt_blocks.
@@ -36,10 +42,6 @@ export function buildComposedPrompt(
   const {
     tenantId,
     currentPhase,
-    isHandoff = false,
-    includeObjections = true,
-    includeDescualificacion = true,
-    includeOutputContract = true,
     cacheStrategy = 'two-point',
     cacheTtl = '1h',
     trainerContext,
@@ -49,8 +51,7 @@ export function buildComposedPrompt(
     throw new Error(`composePrompt: currentPhase must be 1..6, got ${currentPhase}`);
   }
 
-  // Índice por block_key. Si hay duplicados (p.ej. core compartido y coach por tenant),
-  // preferimos el que matchea tenant (scope tenant) sobre el compartido.
+  // Índice por block_key. Si hay duplicados (p.ej. shared y tenant), preferir tenant.
   const byKey = new Map<string, PromptBlockRow>();
   for (const r of rows) {
     const existing = byKey.get(r.block_key);
@@ -58,7 +59,6 @@ export function buildComposedPrompt(
       byKey.set(r.block_key, r);
       continue;
     }
-    // Prefiere tenant especifico sobre shared
     const existingIsTenant = existing.tenant_id === tenantId;
     const incomingIsTenant = r.tenant_id === tenantId;
     if (incomingIsTenant && !existingIsTenant) {
@@ -66,22 +66,18 @@ export function buildComposedPrompt(
     }
   }
 
-  // Orden de inclusión (el orden en que aparecen en el system prompt final).
-  // Bloques REQUERIDOS o ESTRUCTURALES (su ausencia rompe la composición o el flujo de fases).
+  // Orden de inclusión final del system prompt (sort_order canónico):
+  //   0   core_v5_base       (shared)
+  //   5   coach_v5           (tenant)
+  //   6   admin_overrides_v1 (tenant, opcional)
+  //   100 output_contract_v5 (shared)
+  //   110 trainer_prefs_v1   (tenant, opcional, fuera de cache)
   const wantedKeys: string[] = [
-    'core_v4_base',
-    'coach_v3',
-    `fase_${currentPhase}_v4`,
+    'core_v5_base',
+    'coach_v5',
+    'output_contract_v5',
   ];
-  if (isHandoff) wantedKeys.push('handoff_v4');
-  if (includeObjections) wantedKeys.push('objeciones_v4');
-  if (includeDescualificacion) wantedKeys.push('descualificacion_v4');
-  if (includeOutputContract) wantedKeys.push('output_contract_v4');
 
-  // Bloques OPCIONALES (Sprint Alpha): si existen en BD para este tenant se incluyen,
-  // si no, se omiten silenciosamente. NO son error.
-  //   - admin_overrides_v1 va inmediatamente después del coach (sort=6 implícito).
-  //   - trainer_prefs_v1   va al final, después de output_contract_v4 (sort=110 implícito).
   const OPTIONAL_AFTER_COACH = 'admin_overrides_v1';
   const OPTIONAL_AT_END = 'trainer_prefs_v1';
 
@@ -101,12 +97,17 @@ export function buildComposedPrompt(
       missing.push(key);
       continue;
     }
-    // Sprint Gamma 2.6 — interpolación selectiva de placeholders del trainer
-    // (whitelist en INTERPOLATABLE_BLOCK_KEYS). Si trainerContext no se pasa,
-    // la función igualmente reemplaza por fallbacks (nunca deja `{{...}}` literal).
-    const text = INTERPOLATABLE_BLOCK_KEYS.has(key)
-      ? interpolateTrainerPlaceholders(row.content, trainerContext)
-      : row.content;
+    // Interpolación selectiva (whitelist):
+    // - core_v5_base: {{current_phase_focus}} + phase priorities + handoff_directive
+    //   + (placeholders del lead/trainer si el .md los usa).
+    // - coach_v5: placeholders ricos del trainer que el .md utilice.
+    let text = row.content;
+    if (INTERPOLATABLE_BLOCK_KEYS.has(key)) {
+      text = interpolateTrainerPlaceholders(text, trainerContext);
+      // Phase priorities solo aplica al core_v5_base (las etiquetas <phaseN>
+      // viven ahí). Aplicar al coach también es no-op (no contiene esos tokens).
+      text = interpolatePhasePriorities(text, currentPhase);
+    }
     blocks.push({
       key,
       text,
@@ -114,8 +115,8 @@ export function buildComposedPrompt(
       scope: row.tenant_id === null ? 'shared' : 'tenant',
     });
 
-    // Tras insertar 'coach_v3', si existe admin_overrides_v1 para este tenant, lo añadimos.
-    if (key === 'coach_v3') {
+    // Tras insertar 'coach_v5', si existe admin_overrides_v1 para este tenant, lo añadimos.
+    if (key === 'coach_v5') {
       const overridesRow = byKey.get(OPTIONAL_AFTER_COACH);
       if (overridesRow && overridesRow.tenant_id === tenantId) {
         blocks.push({
@@ -149,8 +150,6 @@ export function buildComposedPrompt(
   const systemContent: SystemContentBlock[] = blocks.map((b) => {
     const block: SystemContentBlock = { type: 'text', text: b.text };
     if (b.cached) {
-      // Si TTL es '5m', no lo emitimos (default histórico de Anthropic).
-      // Si es '1h', sí emitimos `ttl` para activar el cache extendido.
       block.cache_control =
         cacheTtl === '1h' ? { type: 'ephemeral', ttl: '1h' } : { type: 'ephemeral' };
     }
@@ -193,8 +192,9 @@ function applyCacheStrategy(
     return;
   }
 
-  // two-point (default): breakpoint tras core_v4_base + breakpoint al final cacheable.
-  const coreIdx = blocks.findIndex((b) => b.key === 'core_v4_base');
+  // two-point (default): breakpoint tras core_v5_base + breakpoint al final cacheable.
+  // Beneficio: cuando se edita el coach_v5 de un tenant, el core_v5_base sigue cacheado.
+  const coreIdx = blocks.findIndex((b) => b.key === 'core_v5_base');
   if (coreIdx >= 0) {
     blocks[coreIdx]!.cached = true;
   }

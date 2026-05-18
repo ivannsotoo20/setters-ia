@@ -103,52 +103,47 @@ export interface GeneratorInput {
   /** Max tokens del response. Default 1024. */
   maxTokens?: number;
   /**
-   * Permite ajustar inclusión de bloques opcionales del Cerebro v4 en el composer.
-   * Por defecto: handoff=false, objeciones=true, descualificacion=true, output_contract=true.
+   * Overrides que el motor inyecta al composer por turno (Cerebro v5).
+   *
+   * En v5 se eliminaron los flags `isHandoff/includeObjections/includeDescualificacion/includeOutputContract`:
+   * los 11 bloques v4 se han consolidado en `core_v5_base` + `output_contract_v5`,
+   * que se cargan SIEMPRE. El marker de fase activa pasa por `currentPhaseFocus`
+   * + atributo XML `priority="active|reference"` dinámico (resuelto en el composer).
    */
   composeOverrides?: {
-    isHandoff?: boolean;
-    includeObjections?: boolean;
-    includeDescualificacion?: boolean;
-    includeOutputContract?: boolean;
+    /**
+     * Cerebro v5 — Instrucción focal corta para la fase actual (~30-80 tokens).
+     * Construida por el motor con `apps/motor-agente/src/lib/phase-focus.ts`
+     * (`buildPhaseFocusInstruction(currentPhase, isHandoff)`). El composer la
+     * inyecta en `{{current_phase_focus}}` del `core_v5_base`.
+     */
+    currentPhaseFocus?: string | null;
     /**
      * Hito 10 — URL trackable del calendario default ya construida por el caller
      * (motor) con `getTrackedCalendarUrl`. Si se pasa, se inyecta en
      * `trainerContext.trackedCalendarUrl` para resolver `{{tracked_calendar_url}}`
-     * en fase_6_v4. Si null/undefined, composer cae al fallback legacy.
+     * (típicamente en coach_v5 fase_6). Si null/undefined, composer cae al fallback legacy.
      */
     trackedCalendarUrl?: string | null;
     /**
      * Hito 10.6 — Slots disponibles del calendar para API booking, cargados por
      * el caller (motor) con `loadAvailableSlots`. Si se pasa, el composer
-     * rellena `{{available_slots}}` en fase_6_v4 con la lista markdown.
-     * Si null/undefined o vacío, composer cae al fallback (= flow legacy widget).
+     * rellena `{{available_slots}}` con la lista markdown.
      */
     availableSlots?: Array<{ iso: string; humanLabel: string }> | null;
     /**
      * Hito 10.6.1 — Fecha actual (ISO YYYY-MM-DD). El composer la renderiza como
-     * etiqueta humana es-ES en el placeholder `{{current_date}}`. Sin esto el
-     * LLM no sabe qué día es hoy y dice "mañana" sin verificar.
+     * etiqueta humana es-ES en el placeholder `{{current_date}}`.
      */
     currentDateIso?: string | null;
     /**
-     * Hito 10.6.1 — Estado del contacto del lead (nombre + email). El composer
-     * los renderiza en `{{lead_contact_status}}` para que el setter sepa si
-     * debe pedir nombre/email antes de proponer slots.
+     * Hito 10.6.1 — Estado del contacto del lead (nombre + email). Renderizado
+     * en `{{lead_contact_status}}`.
      */
     leadContact?: { firstName: string | null; email: string | null } | null;
-    /**
-     * Hito 11 — Etiqueta humana de la timezone del LEAD (ej: "hora Argentina").
-     * El composer la inyecta en `{{lead_timezone_label}}` de fase_6_v4 para que
-     * el setter siempre mencione la zona al proponer horas cuando el lead esté
-     * en huso distinto al trainer.
-     */
+    /** Hito 11 — Etiqueta humana de la timezone del LEAD (ej: "hora Argentina"). */
     leadTimezoneLabel?: string | null;
-    /**
-     * Hito 11 — Etiqueta humana de la timezone del TRAINER (ej: "hora España").
-     * Inyectada en `{{trainer_timezone_label}}`. Útil para que el setter pueda
-     * verbalizar el desfase si lo necesita.
-     */
+    /** Hito 11 — Etiqueta humana de la timezone del TRAINER (ej: "hora España"). */
     trainerTimezoneLabel?: string | null;
   };
 }

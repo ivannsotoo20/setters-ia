@@ -22,6 +22,7 @@ import { loadGhlClientByTenant } from '../lib/load-ghl-client.js';
 import { bookAppointmentFromSlot } from './book-appointment-from-slot.js';
 import { timezoneToLabel } from '../lib/timezone-label.js';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
+import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -326,6 +327,11 @@ export async function processDebounced(
   const leadTimezoneLabel = timezoneToLabel(leadTimezone ?? trainerTimezone);
   const trainerTimezoneLabel = timezoneToLabel(trainerTimezone);
 
+  // Cerebro v5 — instrucción focal corta de la fase activa para inyectar en
+  // {{current_phase_focus}} del core_v5_base. Reemplaza el filtro dinámico de
+  // fase_N_v4 del v4.
+  const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false);
+
   let pipelineOut;
   try {
     pipelineOut = await runPipeline(
@@ -342,6 +348,7 @@ export async function processDebounced(
           isFirstAssistantMessage: lastAssistantIdx < 0,
         },
         composeOverrides: {
+          currentPhaseFocus,
           trackedCalendarUrl,
           availableSlots,
           currentDateIso,

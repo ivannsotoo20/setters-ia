@@ -49,18 +49,11 @@ export interface WriteBlockArgs {
   promptSourceRoot?: string;
 }
 
-const CORE_V4_MAPPING: Record<string, string> = {
-  core_v4_base: 'core-v4/01-role.md',
-  fase_1_v4: 'core-v4/02-fase-1.md',
-  fase_2_v4: 'core-v4/03-fase-2.md',
-  fase_3_v4: 'core-v4/04-fase-3.md',
-  fase_4_v4: 'core-v4/05-fase-4.md',
-  fase_5_v4: 'core-v4/06-fase-5.md',
-  fase_6_v4: 'core-v4/07-fase-6.md',
-  objeciones_v4: 'core-v4/08-objeciones.md',
-  descualificacion_v4: 'core-v4/09-descualificacion.md',
-  handoff_v4: 'core-v4/10-handoff.md',
-  output_contract_v4: 'core-v4/11-output-contract.md',
+// Cerebro v5 (Sprint Iota, 2026-05-18): 2 bloques shared consolidados en
+// prompts/source/core-v5/. Reemplazaron los 11 bloques v4.
+const CORE_V5_MAPPING: Record<string, string> = {
+  core_v5_base: 'core-v5/01-core.md',
+  output_contract_v5: 'core-v5/02-output-contract.md',
 };
 
 /**
@@ -90,20 +83,20 @@ export function resolveSourcePath(args: {
 
   const root = args.promptSourceRoot ?? resolveDefaultRoot();
 
-  // Bloques globales del Cerebro v4
-  if (args.blockKey in CORE_V4_MAPPING) {
+  // Bloques globales del Cerebro v5
+  if (args.blockKey in CORE_V5_MAPPING) {
     if (args.tenantId != null) {
       return { error: `block ${args.blockKey} is global, but tenantId=${args.tenantId} provided` };
     }
-    return { path: path.join(root, CORE_V4_MAPPING[args.blockKey]!) };
+    return { path: path.join(root, CORE_V5_MAPPING[args.blockKey]!) };
   }
 
   // Bloques scoped a tenant
-  if (args.blockKey === 'coach_v3') {
+  if (args.blockKey === 'coach_v5') {
     if (args.tenantId == null || !args.tenantSlug) {
-      return { error: 'coach_v3 requires tenantId + tenantSlug' };
+      return { error: 'coach_v5 requires tenantId + tenantSlug' };
     }
-    return { path: path.join(root, 'coach-v3', `${args.tenantSlug}.md`) };
+    return { path: path.join(root, 'coach-v5', `${args.tenantSlug}.md`) };
   }
 
   if (args.blockKey === 'admin_overrides_v1') {

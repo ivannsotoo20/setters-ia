@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { interpolateTrainerPlaceholders, renderHandoffDirective } from '../src/interpolate.js';
+import {
+  interpolatePhasePriorities,
+  interpolateTrainerPlaceholders,
+  renderHandoffDirective,
+} from '../src/interpolate.js';
 import type { TrainerContext } from '../src/types.js';
 
 describe('interpolateTrainerPlaceholders (Sprint Gamma 2.6)', () => {
@@ -373,5 +377,109 @@ describe('interpolateTrainerPlaceholders — {{lead_timezone_label}} / {{trainer
       leadTimezoneLabel: '   ',
     });
     expect(out).toBe('FB');
+  });
+});
+
+// =============================================================================
+// Cerebro v5 — {{current_phase_focus}} + interpolatePhasePriorities
+// =============================================================================
+
+describe('interpolateTrainerPlaceholders — {{current_phase_focus}} (Cerebro v5)', () => {
+  it('reemplaza con currentPhaseFocus cuando está presente', () => {
+    const out = interpolateTrainerPlaceholders(
+      'Foco: {{current_phase_focus|sin foco definido}}',
+      {
+        phone: null,
+        currentPhaseFocus: 'AHORA EN FASE 3 — CUALIFICACIÓN. Hard cap 2 mensajes.',
+      },
+    );
+    expect(out).toBe('Foco: AHORA EN FASE 3 — CUALIFICACIÓN. Hard cap 2 mensajes.');
+  });
+
+  it('cae al fallback cuando currentPhaseFocus es null', () => {
+    const out = interpolateTrainerPlaceholders(
+      'Foco: {{current_phase_focus|sin foco definido}}',
+      { phone: null, currentPhaseFocus: null },
+    );
+    expect(out).toBe('Foco: sin foco definido');
+  });
+
+  it('cae al fallback cuando ctx no se pasa', () => {
+    const out = interpolateTrainerPlaceholders(
+      'Foco: {{current_phase_focus|sin foco definido}}',
+    );
+    expect(out).toBe('Foco: sin foco definido');
+  });
+
+  it('whitespace-only se trata como null y cae al fallback', () => {
+    const out = interpolateTrainerPlaceholders('{{current_phase_focus|FB}}', {
+      phone: null,
+      currentPhaseFocus: '   ',
+    });
+    expect(out).toBe('FB');
+  });
+});
+
+describe('interpolatePhasePriorities (Cerebro v5)', () => {
+  const samplePrompt = [
+    '<phase1 priority="{{phase1_priority|reference}}">F1</phase1>',
+    '<phase2 priority="{{phase2_priority|reference}}">F2</phase2>',
+    '<phase3 priority="{{phase3_priority|reference}}">F3</phase3>',
+    '<phase4 priority="{{phase4_priority|reference}}">F4</phase4>',
+    '<phase5 priority="{{phase5_priority|reference}}">F5</phase5>',
+    '<phase6 priority="{{phase6_priority|reference}}">F6</phase6>',
+  ].join('\n');
+
+  it('marca solo la fase activa con priority="active"', () => {
+    const out = interpolatePhasePriorities(samplePrompt, 3);
+    expect(out).toContain('<phase3 priority="active">');
+    expect(out).toContain('<phase1 priority="reference">');
+    expect(out).toContain('<phase2 priority="reference">');
+    expect(out).toContain('<phase4 priority="reference">');
+    expect(out).toContain('<phase5 priority="reference">');
+    expect(out).toContain('<phase6 priority="reference">');
+    expect(out).not.toContain('{{phase');
+  });
+
+  it('funciona para fase 1 (extremo bajo)', () => {
+    const out = interpolatePhasePriorities(samplePrompt, 1);
+    expect(out).toContain('<phase1 priority="active">');
+    expect(out).toContain('<phase6 priority="reference">');
+  });
+
+  it('funciona para fase 6 (extremo alto)', () => {
+    const out = interpolatePhasePriorities(samplePrompt, 6);
+    expect(out).toContain('<phase6 priority="active">');
+    expect(out).toContain('<phase1 priority="reference">');
+  });
+
+  it('respeta fallbacks personalizados distintos a "reference"', () => {
+    const customPrompt = '<phase2 priority="{{phase2_priority|inactive}}">F2</phase2>';
+    const out = interpolatePhasePriorities(customPrompt, 3);
+    expect(out).toContain('<phase2 priority="inactive">');
+  });
+
+  it('placeholders sin fallback caen a "reference" cuando NO son la fase activa', () => {
+    const noFallback = '<phase2 priority="{{phase2_priority}}">F2</phase2>';
+    const out = interpolatePhasePriorities(noFallback, 3);
+    expect(out).toContain('<phase2 priority="reference">');
+  });
+
+  it('placeholders sin fallback caen a "active" cuando SÍ son la fase activa', () => {
+    const noFallback = '<phase3 priority="{{phase3_priority}}">F3</phase3>';
+    const out = interpolatePhasePriorities(noFallback, 3);
+    expect(out).toContain('<phase3 priority="active">');
+  });
+
+  it('fuera de rango (0, 7) cae a fallback en todas las fases (defensivo)', () => {
+    const out = interpolatePhasePriorities(samplePrompt, 7);
+    expect(out).not.toContain('priority="active"');
+    expect(out).toContain('priority="reference"');
+    expect(out).not.toContain('{{phase');
+  });
+
+  it('texto sin placeholders se devuelve idéntico', () => {
+    const md = '## Sección estática\n\nSin placeholders de fase aquí.';
+    expect(interpolatePhasePriorities(md, 3)).toBe(md);
   });
 });

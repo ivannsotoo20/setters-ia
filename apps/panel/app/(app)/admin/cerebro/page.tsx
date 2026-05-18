@@ -23,18 +23,10 @@ import { Badge } from '@/components/ui/badge';
 export const dynamic = 'force-dynamic';
 
 const BLOCK_DESCRIPTIONS: Record<string, string> = {
-  core_v4_base:
-    'Cerebro raíz: identidad, propósito, tareas, reglas críticas/condicionales, objetivos universales, resultado esperado.',
-  fase_1_v4: 'Fase 1 — Conexión + tema principal.',
-  fase_2_v4: 'Fase 2 — Contexto + problema principal.',
-  fase_3_v4: 'Fase 3 — Cualificación con pregunta de compromiso.',
-  fase_4_v4: 'Fase 4 — Transición + ¿necesita ayuda? (omitible).',
-  fase_5_v4: 'Fase 5 — Propuesta de llamada flexible.',
-  fase_6_v4: 'Fase 6 — Envío de enlace + cierre.',
-  objeciones_v4: 'Protocolo RAM universal (Reconocer + Anotar + Mover).',
-  descualificacion_v4: 'Protocolo cierre cálido para descualificaciones.',
-  handoff_v4: 'Protocolo handoff doble capa (Cerebro + Coach).',
-  output_contract_v4: 'Schema del output del Generator (tool respond_as_setter).',
+  core_v5_base:
+    'Cerebro consolidado (v5): identidad, propósito, mental model, reglas críticas/condicionales, tono, las 6 fases inline con priority dinámico, protocolo de objeciones y protocolo de handoff. Reemplaza a los 11 bloques v4 anteriores.',
+  output_contract_v5:
+    'Schema técnico del output del Generator (tool respond_as_setter). Separado del CORE narrativo por decisión arquitectónica.',
 };
 
 export default async function CerebroPage() {

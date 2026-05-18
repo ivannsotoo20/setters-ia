@@ -129,7 +129,7 @@ function EmptyCoach({ tenantName }: { tenantName: string }) {
     <Card>
       <CardContent className="p-6">
         <p className="text-sm text-muted-foreground">
-          {tenantName} no tiene coach_v3 cargado. Esto es inesperado — un tenant productivo siempre
+          {tenantName} no tiene coach_v5 cargado. Esto es inesperado — un tenant productivo siempre
           debe tener su coach activo. Revisa los seeds o carga uno via MCP.
         </p>
       </CardContent>

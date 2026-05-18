@@ -14,7 +14,7 @@
     "typecheck": "turbo run typecheck",
     "clean": "turbo run clean && rm -rf node_modules",
     "db:generate-types": "node scripts/generate-db-types.mjs",
-    "core:build-seed": "node scripts/build-core-v3-seed.mjs"
+    "core:build-seed": "node scripts/build-core-v5-seed.mjs"
   },
   "devDependencies": {
     "@supabase/supabase-js": "^2.103.3",

@@ -1,16 +1,22 @@
 import type { TrainerContext } from './types.js';
 
 /**
- * Sprint Gamma 2.6 — Interpolación de placeholders del trainer en bloques shared.
+ * Cerebro v5 — Interpolación de placeholders rich en bloques shared/tenant.
  *
  * Sintaxis soportada:
- *   - `{{trainer_phone|fallback text}}` / `{{trainer_phone}}` (Sprint 2.6)
- *   - `{{handoff_directive}}` (Sprint 2.6b — placeholder rich, renderiza un bloque
- *     markdown completo según `ctx.handoff`)
+ *   - `{{trainer_phone|fallback text}}` / `{{trainer_phone}}`
+ *   - `{{tracked_calendar_url|fallback}}`
+ *   - `{{available_slots|fallback}}`
+ *   - `{{current_date|fallback}}`
+ *   - `{{lead_contact_status|fallback}}`
+ *   - `{{lead_timezone_label|fallback}}`
+ *   - `{{trainer_timezone_label|fallback}}`
+ *   - `{{handoff_directive}}` (placeholder rich — renderiza markdown según ctx.handoff)
+ *   - `{{current_phase_focus|fallback}}` (Cerebro v5 — instrucción focal por turno)
  *
  * Diseño defensivo:
- * - `ctx` opcional: si se omite, todos los placeholders caen a fallback legacy.
- * - Si phone llega con espacios alrededor, se trimea antes de inyectar.
+ * - `ctx` opcional: si se omite, todos los placeholders caen a fallback.
+ * - Trim de valores con espacios alrededor antes de inyectar.
  * - Match no-greedy para múltiples placeholders en el mismo texto.
  */
 export function interpolateTrainerPlaceholders(
@@ -24,6 +30,7 @@ export function interpolateTrainerPlaceholders(
   const leadContactBlock = ctx?.leadContactStatusBlock?.trim() || null;
   const leadTzLabel = ctx?.leadTimezoneLabel?.trim() || null;
   const trainerTzLabel = ctx?.trainerTimezoneLabel?.trim() || null;
+  const phaseFocus = ctx?.currentPhaseFocus?.trim() || null;
   return text
     .replace(/\{\{trainer_phone(?:\|([^}]*))?\}\}/g, (_, fallback) => {
       if (phone) return phone;
@@ -53,7 +60,45 @@ export function interpolateTrainerPlaceholders(
       if (trainerTzLabel) return trainerTzLabel;
       return fallback ?? '';
     })
+    .replace(/\{\{current_phase_focus(?:\|([^}]*))?\}\}/g, (_, fallback) => {
+      if (phaseFocus) return phaseFocus;
+      return fallback ?? '';
+    })
     .replace(/\{\{handoff_directive\}\}/g, () => renderHandoffDirective(ctx));
+}
+
+/**
+ * Cerebro v5 — Interpolación dinámica del atributo `priority="..."` en las
+ * etiquetas `<phase1>` … `<phase6>` del bloque `core_v5_base`.
+ *
+ * Sintaxis en el .md: `priority="{{phase1_priority|reference}}"` (1..6).
+ *
+ * El composer reemplaza solo la fase ACTIVA con `priority="active"` y deja
+ * las restantes con su fallback (típicamente `reference`). Esto baja la
+ * atención del modelo sobre las fases inactivas sin necesidad de excluirlas
+ * del prompt (coste ≈ 0 tokens vs. solución dinámica con sub-bloques).
+ *
+ * @param text - texto que contiene placeholders `{{phaseN_priority|fallback}}`
+ * @param currentPhase - fase activa 1..6
+ * @returns texto con los placeholders reemplazados
+ */
+export function interpolatePhasePriorities(text: string, currentPhase: number): string {
+  if (!Number.isInteger(currentPhase) || currentPhase < 1 || currentPhase > 6) {
+    // Fuera de rango — todos caen a fallback. No es bug del composer; el caller debería
+    // haber validado currentPhase. Defensivo: no rompemos la composición.
+    return text.replace(
+      /\{\{phase([1-6])_priority(?:\|([^}]*))?\}\}/g,
+      (_, _n, fallback) => fallback ?? 'reference',
+    );
+  }
+  return text.replace(
+    /\{\{phase([1-6])_priority(?:\|([^}]*))?\}\}/g,
+    (_, n, fallback) => {
+      const phase = parseInt(n, 10);
+      if (phase === currentPhase) return 'active';
+      return fallback ?? 'reference';
+    },
+  );
 }
 
 /**
@@ -109,7 +154,6 @@ export function renderHandoffDirective(ctx?: TrainerContext): string {
           `NUNCA llames "trainer" o "entrenador" al humano del handoff (usa "el equipo", "alguien del equipo").`
         );
       }
-      // Degrada a silent automático cuando phone null pero modo elegido era share_phone
       return (
         `(El trainer eligió "compartir teléfono" pero NO lo tiene configurado: degrada a silencioso). ` +
         `NO ofrezcas ningún canal al lead. Di "el equipo te contactará en breve, no es necesario que hagas nada más".`

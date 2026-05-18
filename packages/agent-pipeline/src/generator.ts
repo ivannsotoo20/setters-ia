@@ -49,25 +49,21 @@ export async function runGenerator(
   const model = input.model ?? DEFAULT_GENERATOR_MODEL;
   const maxTokens = input.maxTokens ?? DEFAULT_MAX_TOKENS;
 
-  // 1. Compose system prompt (cargado desde Supabase, con cache_control)
-  // v4: handoff opcional (default false). objeciones / descualificacion / output_contract
-  // se cargan por defecto (universales en el Cerebro v4).
+  // 1. Compose system prompt (Cerebro v5 — cargado desde Supabase, con cache_control)
+  //
+  // En v5 los 11 bloques shared del v4 se han consolidado en 2 (core_v5_base + output_contract_v5).
+  // Ya no se eligen bloques por fase ni por flags isHandoff/includeObjections/etc.
+  // El marker de fase activa pasa por:
+  //   - currentPhaseFocus: instrucción focal corta inyectada en {{current_phase_focus}} del CORE.
+  //   - currentPhase: se usa para resolver priority="active|reference" en las etiquetas <phaseN>.
   const composed = await composePrompt(supabase, {
     tenantId: input.tenantId,
     currentPhase: input.currentPhase,
-    isHandoff: input.composeOverrides?.isHandoff ?? false,
-    includeObjections: input.composeOverrides?.includeObjections ?? true,
-    includeDescualificacion: input.composeOverrides?.includeDescualificacion ?? true,
-    includeOutputContract: input.composeOverrides?.includeOutputContract ?? true,
-    // Hito 10 — Inyecta URL trackable del calendario default para fase_6_v4.
+    currentPhaseFocus: input.composeOverrides?.currentPhaseFocus,
     trackedCalendarUrl: input.composeOverrides?.trackedCalendarUrl,
-    // Hito 10.6 — Inyecta slots disponibles para API booking en fase_6_v4.
     availableSlots: input.composeOverrides?.availableSlots,
-    // Hito 10.6.1 — Inyecta fecha actual + estado de contacto del lead.
     currentDateIso: input.composeOverrides?.currentDateIso,
     leadContact: input.composeOverrides?.leadContact,
-    // Hito 11 — Inyecta etiquetas humanas de timezone del lead y trainer para
-    // que fase_6_v4 hable en hora del lead y mencione la zona explícitamente.
     leadTimezoneLabel: input.composeOverrides?.leadTimezoneLabel,
     trainerTimezoneLabel: input.composeOverrides?.trainerTimezoneLabel,
   });

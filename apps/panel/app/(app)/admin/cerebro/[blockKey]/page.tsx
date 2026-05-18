@@ -9,18 +9,11 @@ import { Badge } from '@/components/ui/badge';
 
 export const dynamic = 'force-dynamic';
 
+// Cerebro v5 (Sprint Iota, 2026-05-18): 2 bloques shared consolidados.
+// Reemplazó los 11 bloques v4 anteriores que ya están is_active=false en BD.
 const VALID_GLOBAL_BLOCKS = new Set([
-  'core_v4_base',
-  'fase_1_v4',
-  'fase_2_v4',
-  'fase_3_v4',
-  'fase_4_v4',
-  'fase_5_v4',
-  'fase_6_v4',
-  'objeciones_v4',
-  'descualificacion_v4',
-  'handoff_v4',
-  'output_contract_v4',
+  'core_v5_base',
+  'output_contract_v5',
 ]);
 
 interface Props {

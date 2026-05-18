@@ -74,8 +74,8 @@ export default async function TenantDetailPage({ params, searchParams }: Props) 
     integrationsRows,
     health,
   ] = await Promise.all([
-    loadActiveBlock({ blockKey: 'coach_v3', tenantId }),
-    listVersions({ blockKey: 'coach_v3', tenantId, limit: 50 }),
+    loadActiveBlock({ blockKey: 'coach_v5', tenantId }),
+    listVersions({ blockKey: 'coach_v5', tenantId, limit: 50 }),
     adminOverrides.isMissing
       ? Promise.resolve({ ok: true as const, block: null, draft: null })
       : loadActiveBlock({ blockKey: 'admin_overrides_v1', tenantId }),
@@ -178,7 +178,7 @@ export default async function TenantDetailPage({ params, searchParams }: Props) 
         coach={
           coachActive.ok && coachActive.block
             ? {
-                blockKey: 'coach_v3',
+                blockKey: 'coach_v5',
                 tenantId: tenant.id,
                 activeContent: coachActive.block.content,
                 activeVersion: coachActive.block.activeVersionNumber,

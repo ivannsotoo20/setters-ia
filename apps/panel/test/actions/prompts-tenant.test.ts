@@ -200,7 +200,7 @@ describe('loadTenantBlocks', () => {
   it('returns tenant info + 3 block summaries with isMissing flags correctly set', async () => {
     seedTenant({ id: 3, slug: 'ivan-dev', name: 'Iván / Fyzon Sandbox', is_active: true });
     // Coach existe, admin_overrides NO, trainer_prefs NO
-    seedBlock({ id: 14, block_key: 'coach_v3', tenant_id: 3, content: 'COACH CONTENT', sort_order: 5 });
+    seedBlock({ id: 14, block_key: 'coach_v5', tenant_id: 3, content: 'COACH CONTENT', sort_order: 5 });
     seedVersion({ id: 1, prompt_block_id: 14, version_number: 1, content: 'COACH CONTENT', change_summary: 'baseline' });
 
     const r = await loadTenantBlocks({ tenantId: 3 });

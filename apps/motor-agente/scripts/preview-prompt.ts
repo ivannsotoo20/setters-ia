@@ -3,41 +3,37 @@
  * CLI de inspeccion: compone el system prompt con el composer real contra
  * Supabase y lo imprime con un resumen (por bloque, chars y cache).
  *
+ * Cerebro v5: ya no se eligen bloques por fase ni por flags. El composer
+ * carga siempre `core_v5_base` + `coach_v5` + `admin_overrides_v1?` +
+ * `output_contract_v5` + `trainer_prefs_v1?`. El marker de fase activa pasa
+ * por `currentPhaseFocus` (inyectado por el motor desde phase-focus.ts).
+ *
  * Uso:
  *   pnpm --filter @fyzon/motor-agente preview-prompt --tenant 2 --phase 2
- *   pnpm --filter @fyzon/motor-agente preview-prompt --tenant 2 --phase 4 --qualification
- *   pnpm --filter @fyzon/motor-agente preview-prompt --tenant 2 --phase 6 --handoff --pipeline
+ *   pnpm --filter @fyzon/motor-agente preview-prompt --tenant 2 --phase 6 --handoff
  *
  * Flags:
  *   --tenant <id>        (requerido)
  *   --phase <1..6>       (requerido)
- *   --qualification      incluye cualificacion_v3
- *   --handoff            incluye handoff_v3
- *   --pipeline           incluye pipeline_v3
- *   --no-objections      excluye objeciones_v3
+ *   --handoff            usa la instrucción focal de handoff
  *   --cache <two-point|single-point|none>  estrategia de cache (default two-point)
  *   --full               imprime todo el contenido de cada bloque en lugar del preview
  */
 import { composePrompt } from '@fyzon/prompt-composer';
 import { getSupabase } from '../src/lib/supabase.js';
+import { buildPhaseFocusInstruction } from '../src/lib/phase-focus.js';
 
 interface Argv {
   tenant?: number;
   phase?: number;
-  qualification: boolean;
   handoff: boolean;
-  pipeline: boolean;
-  objections: boolean;
   cache: 'two-point' | 'single-point' | 'none';
   full: boolean;
 }
 
 function parseArgs(argv: string[]): Argv {
   const out: Argv = {
-    qualification: false,
     handoff: false,
-    pipeline: false,
-    objections: true,
     cache: 'two-point',
     full: false,
   };
@@ -50,17 +46,8 @@ function parseArgs(argv: string[]): Argv {
       case '--phase':
         out.phase = Number(argv[++i]);
         break;
-      case '--qualification':
-        out.qualification = true;
-        break;
       case '--handoff':
         out.handoff = true;
-        break;
-      case '--pipeline':
-        out.pipeline = true;
-        break;
-      case '--no-objections':
-        out.objections = false;
         break;
       case '--cache': {
         const v = argv[++i] as Argv['cache'];
@@ -93,10 +80,7 @@ async function main(): Promise<void> {
   const composed = await composePrompt(supabase, {
     tenantId: args.tenant,
     currentPhase: args.phase,
-    isQualification: args.qualification,
-    isHandoff: args.handoff,
-    includePipeline: args.pipeline,
-    includeObjections: args.objections,
+    currentPhaseFocus: buildPhaseFocusInstruction(args.phase, args.handoff),
     cacheStrategy: args.cache,
   });
 

@@ -98,35 +98,46 @@ El motor soporta **varios proveedores BSP** en paralelo, decididos por `integrat
 | **YCloud** | ✅ Sí | Header `YCloud-Signature: t=<unix_seconds>,s=<hmac_sha256_hex>`. Signed payload `{ts}.{rawBody}`. Secret se obtiene del panel YCloud (Retrieve a webhook endpoint API) y se guarda en `integration_accounts.webhook_secret`. Implementación: `apps/motor-agente/src/lib/webhook-verify.ts`. Modo configurable vía `YCLOUD_WEBHOOK_VERIFY_MODE=disabled\|warn\|enforce` (default `warn`). En `enforce`, requests sin firma o con firma inválida → 401. Tolerance default 300s anti-replay. |
 | **ManyChat** | ❌ No | ManyChat NO firma webhooks (verificado 2026-04-21). Protección única: token aleatorio en URL `/webhook/manychat/<tenant_token>`. Deuda asumida hasta que Pablo migre a YCloud / Meta Cloud / GHL (Fase 6). |
 
-## Editar prompts — 4 capas con flujos distintos
+## Editar prompts — Cerebro v5 (consolidado, 4 capas)
 
 El system prompt del setter se compone de bloques en `public.prompt_blocks` (ver
 arquitectura completa en `packages/prompt-composer/src/types.ts`). **Hay 4 capas
 y cada una tiene un flujo de edición distinto. Editarlas mal rompe el motor.**
 
+Sprint Iota (Cerebro v5, 2026-05-18): los 11 bloques shared del v4 se consolidaron
+en **2 bloques shared** (`core_v5_base` con todas las fases inline + `output_contract_v5`).
+Los `coach_v3` se migraron a `coach_v5` con sub-secciones canónicas inline.
+
 | Capa | block_key | tenant_id | Quién edita | Flujo |
 |---|---|---|---|---|
-| 1. Cerebro v3/v4 | `core_v4_base`, `fase_N_v4`, `objeciones_v4`, `descualificacion_v4`, `handoff_v4`, `output_contract_v4` | `NULL` (shared) | Iván o Claude | `.md` source → bumping versión → MCP UPDATE + snapshot |
-| 2. Coach | `coach_v3` | tenant_id | Iván + trainer | UI panel `/admin/cerebro` editor (con drafts/preview) o vía MCP |
-| 3. admin_overrides_v1 | `admin_overrides_v1` | tenant_id | SOLO Iván admin | UI panel `/admin/tenants/[id]` tab "Overrides" |
-| 4. trainer_prefs_v1 | `trainer_prefs_v1` | tenant_id | Trainer (autogenerado) | UI panel `/settings/preferences` → JSONB → serializer regenera markdown |
+| 1. Cerebro v5 (CORE) | `core_v5_base` (sort=0), `output_contract_v5` (sort=100) | `NULL` (shared) | Iván o Claude | `.md` source → bumping versión → MCP UPDATE + snapshot |
+| 2. Coach v5 | `coach_v5` (sort=5) | tenant_id | Iván + trainer | UI panel `/admin/cerebro` editor (drafts/preview) o vía MCP |
+| 3. admin_overrides_v1 | `admin_overrides_v1` (sort=6) | tenant_id | SOLO Iván admin | UI panel `/admin/tenants/[id]` tab "Overrides" |
+| 4. trainer_prefs_v1 | `trainer_prefs_v1` (sort=110, OUT of cache) | tenant_id | Trainer (autogenerado) | UI panel `/settings/preferences` → JSONB → serializer regenera markdown |
 
-### Capa 1 — Cerebro v3/v4 (compartido)
+**Marker dinámico de fase activa** (Cerebro v5, ≈ 0 tokens extra): el `core_v5_base` describe las 6 fases inline. El motor inyecta por turno:
+- `{{current_phase_focus}}`: instrucción focal corta construida por `apps/motor-agente/src/lib/phase-focus.ts` (`buildPhaseFocusInstruction(currentPhase, isHandoff)`).
+- `priority="{{phaseN_priority|reference}}"` en cada etiqueta `<phaseN>`: el composer (`interpolatePhasePriorities`) reemplaza solo la fase activa con `priority="active"`.
+
+**Cache strategy** (`two-point` default): breakpoint tras `core_v5_base` (cachea cerebro universal ~13k tokens) + breakpoint tras `output_contract_v5` (cachea prefix invariante de la conversación). Cuando se edita `coach_v5` de un tenant, el primer breakpoint sigue válido → savings ~90% en read cost vs single-point.
+
+### Capa 1 — Cerebro v5 (compartido)
 
 **Regla dura**: NUNCA editar `prompt_blocks.content` directo en Supabase para bloques con `tenant_id IS NULL` SIN seguir el flujo completo. Si lo haces sin sync `.md` source, el próximo `pnpm core:build-seed` pisa tu cambio.
 
-**Workflow estándar** (cuando es rebuild de varios bloques):
+**Workflow estándar** (rebuild full cuando se cambian varios bloques o el CORE entero):
 ```bash
-# 1. Editar uno o más .md en prompts/source/core-v4/
-vim prompts/source/core-v4/10-handoff.md
+# 1. Editar uno o ambos .md en prompts/source/core-v5/
+vim prompts/source/core-v5/01-core.md      # CORE narrativo consolidado
+vim prompts/source/core-v5/02-output-contract.md  # JSON schema técnico
 
 # 2. Regenerar el seed completo
-pnpm core:build-seed
+pnpm core:build-seed   # → schema/v1/seeds/008-core-v5-blocks.sql
 
 # 3. Revisar diff (NO confiar a ojo)
-git diff schema/v1/seeds/002-core-v3-blocks.sql
+git diff schema/v1/seeds/008-core-v5-blocks.sql
 
-# 4. Aplicar vía MCP supabase-fyzon (apply_migration o execute_sql con el seed)
+# 4. Aplicar vía MCP supabase-fyzon (execute_sql con el seed completo o apply_migration)
 ```
 
 **Workflow incremental — editar UN solo bloque vía MCP** (Sprint Gamma 2.6 / 2.6b — patrón validado):
@@ -166,12 +177,12 @@ JOIN public.prompt_blocks pb ON pb.id = u.id;
 
 **Rollback** trivial: `UPDATE prompt_blocks SET content = (SELECT content FROM prompt_block_versions WHERE prompt_block_id=<ID> AND version_number=<V_ANTERIOR>) WHERE id=<ID>`.
 
-### Capa 2 — Coach (por tenant)
+### Capa 2 — Coach v5 (por tenant)
 
-Bloque `coach_v3` con `tenant_id` específico. Hay 2 caminos:
+Bloque `coach_v5` con `tenant_id` específico. Monolítico inline con sub-secciones canónicas (`<coach_identity>`, `<coach_tone>` con voiceprint/variety/lexicon/openers/emojis/exemplars/contrast, `<coach_structural_modifications>`, `<coach_phase_massage>` fase0..fase6, `<coach_links>`, `<coach_qualification>`, `<coach_wclose>`, `<coach_program>`, `<coach_objections>`). Hay 2 caminos:
 
-- **UI panel** (recomendado para iteración asistida): `/admin/cerebro` con editor versionado + drafts + preview compuesto. Sprint Alpha lo construyó con tabla `prompt_block_drafts` para staging y `prompt_block_versions` para historial.
-- **Script seed**: `node scripts/build-coach-seed.mjs --trainer <slug> --tenant-slug <slug> --seed-number <NNN>` cuando se carga un coach desde un `.md` source (formato `prompts/source/coach-v3/<slug>.md`).
+- **UI panel** (recomendado para iteración asistida): `/admin/cerebro` con editor versionado + drafts + preview compuesto. El editor parsea headers `## coach_*` para navegación por sub-sección.
+- **Script seed**: `node scripts/build-coach-v5-seed.mjs --trainer <slug> --tenant-slug <slug> --seed-number <NNN>` cuando se carga un coach desde un `.md` source (formato `prompts/source/coach-v5/<slug>.md` con frontmatter YAML).
 
 NUNCA editar coach directo en BD sin pasar por la UI o el script — pierdes el versionado y no hay snapshot.
 
@@ -238,18 +249,28 @@ Sprint Alpha (migration 016) introdujo esta tabla + auto-baselines de v1 para lo
 2. UPDATE in-place del row activo.
 3. INSERT snapshot v_nueva.
 
-`composePrompt` filtra por `version=1` en `prompt_blocks`, NO por `prompt_block_versions`. La tabla de versiones es solo log histórico + rollback. La columna `prompt_blocks.version` es el "schema version" del bloque (v3 vs v4), NO el número de revisión histórica.
+`composePrompt` filtra por `version=1` en `prompt_blocks`, NO por `prompt_block_versions`. La tabla de versiones es solo log histórico + rollback. La columna `prompt_blocks.version` es el "schema version" del bloque (v3 vs v4 vs v5), NO el número de revisión histórica.
 
-## Placeholders rich en bloques shared
+## Placeholders rich en bloques shared / tenant
 
-Sprint 2.6 introdujo `{{trainer_phone|fallback}}` y Sprint 2.6b introdujo `{{handoff_directive}}`. La interpolación vive en `packages/prompt-composer/src/interpolate.ts`.
+Cerebro v5 — la interpolación vive en `packages/prompt-composer/src/interpolate.ts`. Placeholders soportados:
+
+- `{{trainer_phone|fallback}}` (Sprint 2.6)
+- `{{handoff_directive}}` (Sprint 2.6b — rich render según `trainer_preferences.handoff`)
+- `{{tracked_calendar_url|fallback}}` (Hito 10)
+- `{{available_slots|fallback}}` (Hito 10.6)
+- `{{current_date|fallback}}` (Hito 10.6.1)
+- `{{lead_contact_status|fallback}}` (Hito 10.6.1)
+- `{{lead_timezone_label|fallback}}`, `{{trainer_timezone_label|fallback}}` (Hito 11)
+- `{{current_phase_focus|fallback}}` (Cerebro v5 — instrucción focal por turno)
+- `{{phase1_priority|reference}}` … `{{phase6_priority|reference}}` (Cerebro v5 — atributo XML dinámico, resuelto por `interpolatePhasePriorities`)
 
 **Whitelist** explícita en `packages/prompt-composer/src/builder.ts`:
 ```ts
-const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['handoff_v4']);
+const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['core_v5_base', 'coach_v5']);
 ```
 
-Solo los bloques en esa whitelist pasan por interpolación. Esto evita reemplazos accidentales en otros bloques (p.ej. `coach_v3` con `{{` literal por accidente del trainer).
+Tanto el CORE como el COACH llevan placeholders ricos. El resto de bloques (`output_contract_v5`, `admin_overrides_v1`, `trainer_prefs_v1`) no se interpolan.
 
 **Cómo añadir un nuevo placeholder rich**:
 
@@ -417,6 +438,40 @@ Plantilla en `.env.example`. `.env.local` es gitignored — Ivan lo rellena con 
 - Recordatorios automáticos WA pre-llamada.
 - Dashboard show-rate / noshow-rate.
 
+## Hito 12 — Cerebro v5 consolidado (Sprint Iota, 2026-05-18)
+
+**Doctrina** (decidida por Ivan 2026-05-18): los 11 bloques shared del Cerebro v4 (`core_v4_base` + 6 × `fase_N_v4` + `objeciones_v4` + `descualificacion_v4` + `handoff_v4` + `output_contract_v4`) se consolidan en **2 bloques shared**:
+
+- `core_v5_base` (sort=0, ~53k chars): cerebro narrativo consolidado con todas las fases inline (`<phase1>`…`<phase6>`), critical_rules, conditional_rules, objections_protocol, protocolo_handoff.
+- `output_contract_v5` (sort=100): JSON schema técnico SEPARADO del narrativo.
+
+Los `coach_v3` se migraron a `coach_v5` (monolítico inline con 9 sub-secciones canónicas — estructura del ejemplo María Lluc en `Downloads/bloques (1).md`). Pablo Montenegro y ivan-dev migrados; María Lluc disponible en `prompts/source/coach-v5/montefit.md` (tenant slug `maria-lluc` pendiente de alta si se quiere activar).
+
+**Migration big-bang aplicada** (sin feature flag, sin compat v4):
+- Seed 008 → carga `core_v5_base` + `output_contract_v5`.
+- Migration 058 → deactivate los 11 bloques v4 shared + snapshot v1 de los v5.
+- Seeds 009, 010 → carga `coach_v5` Pablo + ivan-dev.
+- Migration 059 → deactivate coach_v3 + ensure coach_v5.
+
+**Marker dinámico de fase activa** (≈ 0 tokens extra):
+- `{{current_phase_focus}}`: instrucción focal corta por turno construida en `apps/motor-agente/src/lib/phase-focus.ts`. El motor la inyecta en `composeOverrides.currentPhaseFocus`.
+- `priority="{{phaseN_priority|reference}}"` en cada etiqueta `<phaseN>`: el composer (`interpolatePhasePriorities`) reemplaza solo la fase activa con `priority="active"`. Las inactivas quedan en `priority="reference"` para que el modelo baje su atención sobre ellas sin necesidad de excluirlas.
+
+**Cache strategy two-point** (mantenida): breakpoint tras `core_v5_base` (universal) + breakpoint tras `output_contract_v5` (prefix invariante de conversación). `trainer_prefs_v1` sigue OUT of cache. Beneficio: cuando Ivan edita `coach_v5` de un tenant, el primer breakpoint sigue válido → cache read cost para el CORE no se recalienta.
+
+**Cambios composer** (`packages/prompt-composer/`):
+- `REQUIRED_BLOCK_KEYS = ['core_v5_base', 'coach_v5']`.
+- `wantedKeys = ['core_v5_base', 'coach_v5', 'output_contract_v5']` + opcionales `admin_overrides_v1` (tras coach) y `trainer_prefs_v1` (final).
+- Eliminados los flags `isHandoff/includeObjections/includeDescualificacion/includeOutputContract` de `ComposeOptions` — todos los protocolos viven dentro de `core_v5_base`, y `output_contract_v5` se carga siempre.
+- `INTERPOLATABLE_BLOCK_KEYS = ['core_v5_base', 'coach_v5']`.
+
+**Lo que NO cambió** (out of scope, intactos):
+- `trainer_preferences.preferences` JSONB schema (todos los toggles: emojis, callProposalMode, schedulingMode, handoffMode, etc.).
+- `apps/panel/lib/trainer-prefs-serializer.ts` (serialización a `trainer_prefs_v1`).
+- `admin_overrides_v1` (block_key, comportamiento, UI `/admin/tenants/[id]` tab Overrides).
+- Lógica del motor para callProposalMode / schedulingMode / handoffMode / API booking / calendar matching / lead-form / timezone-awareness Hito 11.
+- Cache TTL = `'1h'`.
+
 ## Qué NO hacer
 
 - No añadir Prisma al motor sin conversación previa con Ivan.
@@ -424,3 +479,4 @@ Plantilla en `.env.example`. `.env.local` es gitignored — Ivan lo rellena con 
 - No meter Trigger.dev hasta Fase 1. En Hito 3 es esqueleto.
 - No crear `.md` de análisis o de "cómo va el proyecto" si Ivan no los pide — está la memoria y el plan maestro.
 - No hacer commits sin que Ivan los pida. Preparamos cambios, Ivan revisa, Ivan aprueba.
+- No reactivar bloques v4 ni `coach_v3` sin migration explícita — están `is_active=FALSE` definitivamente desde 2026-05-18.

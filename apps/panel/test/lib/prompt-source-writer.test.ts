@@ -19,24 +19,24 @@ afterEach(async () => {
 });
 
 describe('resolveSourcePath', () => {
-  it('maps core_v4_base to 01-role.md', () => {
-    const r = resolveSourcePath({ blockKey: 'core_v4_base', promptSourceRoot: tmpRoot });
-    expect(r).toMatchObject({ path: path.join(tmpRoot, 'core-v4', '01-role.md') });
+  it('maps core_v5_base to core-v5/01-core.md', () => {
+    const r = resolveSourcePath({ blockKey: 'core_v5_base', promptSourceRoot: tmpRoot });
+    expect(r).toMatchObject({ path: path.join(tmpRoot, 'core-v5', '01-core.md') });
   });
 
-  it('maps fase_3_v4 to 04-fase-3.md', () => {
-    const r = resolveSourcePath({ blockKey: 'fase_3_v4', promptSourceRoot: tmpRoot });
-    expect(r).toMatchObject({ path: path.join(tmpRoot, 'core-v4', '04-fase-3.md') });
+  it('maps output_contract_v5 to core-v5/02-output-contract.md', () => {
+    const r = resolveSourcePath({ blockKey: 'output_contract_v5', promptSourceRoot: tmpRoot });
+    expect(r).toMatchObject({ path: path.join(tmpRoot, 'core-v5', '02-output-contract.md') });
   });
 
-  it('maps coach_v3 with tenantSlug to coach-v3/<slug>.md', () => {
+  it('maps coach_v5 with tenantSlug to coach-v5/<slug>.md', () => {
     const r = resolveSourcePath({
-      blockKey: 'coach_v3',
+      blockKey: 'coach_v5',
       tenantId: 3,
       tenantSlug: 'ivan-dev',
       promptSourceRoot: tmpRoot,
     });
-    expect(r).toMatchObject({ path: path.join(tmpRoot, 'coach-v3', 'ivan-dev.md') });
+    expect(r).toMatchObject({ path: path.join(tmpRoot, 'coach-v5', 'ivan-dev.md') });
   });
 
   it('maps admin_overrides_v1 with tenantSlug to admin-overrides/<slug>.md', () => {
@@ -56,16 +56,21 @@ describe('resolveSourcePath', () => {
 
   it('errors if global block has tenantId', () => {
     const r = resolveSourcePath({
-      blockKey: 'core_v4_base',
+      blockKey: 'core_v5_base',
       tenantId: 2,
       promptSourceRoot: tmpRoot,
     });
     expect(r).toMatchObject({ error: expect.stringMatching(/global/) });
   });
 
-  it('errors if coach_v3 missing tenantSlug', () => {
-    const r = resolveSourcePath({ blockKey: 'coach_v3', tenantId: 3, promptSourceRoot: tmpRoot });
+  it('errors if coach_v5 missing tenantSlug', () => {
+    const r = resolveSourcePath({ blockKey: 'coach_v5', tenantId: 3, promptSourceRoot: tmpRoot });
     expect(r).toMatchObject({ error: expect.stringMatching(/tenantSlug/) });
+  });
+
+  it('errors on unknown block_key (e.g. legacy v4 keys)', () => {
+    const r = resolveSourcePath({ blockKey: 'core_v4_base', promptSourceRoot: tmpRoot });
+    expect(r).toMatchObject({ error: expect.stringMatching(/unknown block_key/) });
   });
 
   it('errors on unknown block_key', () => {
@@ -102,7 +107,7 @@ describe('splitFrontmatter', () => {
 describe('writeBlockToSource — global Cerebro blocks', () => {
   it('creates new file when target does not exist', async () => {
     const result = await writeBlockToSource({
-      blockKey: 'output_contract_v4',
+      blockKey: 'output_contract_v5',
       content: '# Output contract\n\nNuevo contenido.',
       promptSourceRoot: tmpRoot,
     });
@@ -117,16 +122,16 @@ describe('writeBlockToSource — global Cerebro blocks', () => {
   });
 
   it('preserves existing YAML frontmatter when updating', async () => {
-    const targetDir = path.join(tmpRoot, 'core-v4');
+    const targetDir = path.join(tmpRoot, 'core-v5');
     await fs.mkdir(targetDir, { recursive: true });
-    const existingPath = path.join(targetDir, '01-role.md');
+    const existingPath = path.join(targetDir, '01-core.md');
     const existing =
-      '---\nblock_key: core_v4_base\nversion: 1\nsort_order: 0\n---\n# Cerebro viejo\n\nContenido viejo.';
+      '---\nblock_key: core_v5_base\nversion: 1\nsort_order: 0\n---\n# Cerebro viejo\n\nContenido viejo.';
     await fs.writeFile(existingPath, existing, 'utf8');
 
     const newBody = '# Cerebro nuevo\n\nContenido nuevo con cambios.';
     const result = await writeBlockToSource({
-      blockKey: 'core_v4_base',
+      blockKey: 'core_v5_base',
       content: newBody,
       promptSourceRoot: tmpRoot,
     });
@@ -136,15 +141,15 @@ describe('writeBlockToSource — global Cerebro blocks', () => {
       expect(result.created).toBe(false);
     }
     const written = await fs.readFile(existingPath, 'utf8');
-    expect(written).toContain('block_key: core_v4_base');
+    expect(written).toContain('block_key: core_v5_base');
     expect(written).toContain('# Cerebro nuevo');
     expect(written).not.toContain('# Cerebro viejo');
     expect(written).not.toContain('Contenido viejo');
   });
 
-  it('writes coach_v3 to coach-v3/<slug>.md', async () => {
+  it('writes coach_v5 to coach-v5/<slug>.md', async () => {
     const result = await writeBlockToSource({
-      blockKey: 'coach_v3',
+      blockKey: 'coach_v5',
       content: '## Coach Iván\n\nTest coach content.',
       tenantId: 3,
       tenantSlug: 'ivan-dev',
@@ -152,7 +157,7 @@ describe('writeBlockToSource — global Cerebro blocks', () => {
     });
     expect(result.ok).toBe(true);
     if (result.ok) {
-      expect(result.path).toContain(path.join('coach-v3', 'ivan-dev.md'));
+      expect(result.path).toContain(path.join('coach-v5', 'ivan-dev.md'));
       const written = await fs.readFile(result.path, 'utf8');
       expect(written).toContain('## Coach Iván');
     }

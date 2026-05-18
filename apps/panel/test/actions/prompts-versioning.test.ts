@@ -459,18 +459,18 @@ describe('applyDraft — versioning', () => {
     expect(state.blocks[0]!.content).toBe('V3 active');
   });
 
-  it('block per tenant (coach_v3) versioning: scoped al tenant correcto', async () => {
-    seedBlock({ id: 14, blockKey: 'coach_v3', tenantId: 3, content: 'coach Iván', sortOrder: 5 });
+  it('block per tenant (coach_v5) versioning: scoped al tenant correcto', async () => {
+    seedBlock({ id: 14, blockKey: 'coach_v5', tenantId: 3, content: 'coach Iván', sortOrder: 5 });
     seedVersion({ id: 1, promptBlockId: 14, versionNumber: 1, content: 'coach Iván' });
     seedDraft({
       id: 1,
-      blockKey: 'coach_v3',
+      blockKey: 'coach_v5',
       tenantId: 3,
       content: 'coach Iván v2',
       baseVersion: 1,
     });
 
-    const r = await applyDraft({ blockKey: 'coach_v3', tenantId: 3 });
+    const r = await applyDraft({ blockKey: 'coach_v5', tenantId: 3 });
     expect(r.ok).toBe(true);
     if (r.ok) {
       expect(r.newVersionNumber).toBe(2);
@@ -486,11 +486,11 @@ describe('applyDraft — versioning', () => {
       isAgencyAdmin: false,
       isImpersonating: false,
     };
-    seedBlock({ id: 14, blockKey: 'coach_v3', tenantId: 3, content: 'X', sortOrder: 5 });
+    seedBlock({ id: 14, blockKey: 'coach_v5', tenantId: 3, content: 'X', sortOrder: 5 });
     seedVersion({ id: 1, promptBlockId: 14, versionNumber: 1, content: 'X' });
-    seedDraft({ id: 1, blockKey: 'coach_v3', tenantId: 3, content: 'Y', baseVersion: 1 });
+    seedDraft({ id: 1, blockKey: 'coach_v5', tenantId: 3, content: 'Y', baseVersion: 1 });
 
-    const r = await applyDraft({ blockKey: 'coach_v3', tenantId: 3 });
+    const r = await applyDraft({ blockKey: 'coach_v5', tenantId: 3 });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toMatch(/forbidden/);
   });
@@ -498,7 +498,7 @@ describe('applyDraft — versioning', () => {
 
 describe('restoreVersion', () => {
   it('creates a new version (max+1) with the OLD content, updates prompt_blocks', async () => {
-    seedBlock({ id: 50, blockKey: 'fase_1_v4', tenantId: null, content: 'V3 current', sortOrder: 10 });
+    seedBlock({ id: 50, blockKey: 'core_v5_base', tenantId: null, content: 'V3 current', sortOrder: 10 });
     seedVersion({ id: 1, promptBlockId: 50, versionNumber: 1, content: 'V1 baseline' });
     seedVersion({ id: 2, promptBlockId: 50, versionNumber: 2, content: 'V2 mid' });
     seedVersion({ id: 3, promptBlockId: 50, versionNumber: 3, content: 'V3 current' });

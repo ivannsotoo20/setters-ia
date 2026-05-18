@@ -13,111 +13,52 @@ function makeRow(
   return { block_key, sort_order, tenant_id, content };
 }
 
-const sharedRowsV4: PromptBlockRow[] = [
-  makeRow('core_v4_base', 0, null),
-  makeRow('fase_1_v4', 10, null),
-  makeRow('fase_2_v4', 20, null),
-  makeRow('fase_3_v4', 30, null),
-  makeRow('fase_4_v4', 40, null),
-  makeRow('fase_5_v4', 50, null),
-  makeRow('fase_6_v4', 60, null),
-  makeRow('objeciones_v4', 70, null),
-  makeRow('descualificacion_v4', 80, null),
-  makeRow('handoff_v4', 90, null),
-  makeRow('output_contract_v4', 100, null),
+// Cerebro v5 — 2 bloques shared (consolidación de los 11 v4 anteriores).
+const sharedRowsV5: PromptBlockRow[] = [
+  makeRow('core_v5_base', 0, null),
+  makeRow('output_contract_v5', 100, null),
 ];
 
-const coachRow: PromptBlockRow = makeRow('coach_v3', 5, TENANT_ID);
+const coachRow: PromptBlockRow = makeRow('coach_v5', 5, TENANT_ID);
 
-describe('buildComposedPrompt (v4)', () => {
-  it('composes default prompt (phase 1) with core + coach + fase_1 + objeciones + descualificacion + output_contract', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+describe('buildComposedPrompt (Cerebro v5)', () => {
+  it('composes default prompt with core_v5_base + coach_v5 + output_contract_v5', () => {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
 
     expect(out.metadata.blocksLoaded).toEqual([
-      'core_v4_base',
-      'coach_v3',
-      'fase_1_v4',
-      'objeciones_v4',
-      'descualificacion_v4',
-      'output_contract_v4',
+      'core_v5_base',
+      'coach_v5',
+      'output_contract_v5',
     ]);
-    expect(out.blocks).toHaveLength(6);
-    expect(out.blocks[1]!.scope).toBe('tenant'); // coach
+    expect(out.blocks).toHaveLength(3);
     expect(out.blocks[0]!.scope).toBe('shared'); // core
+    expect(out.blocks[1]!.scope).toBe('tenant'); // coach
+    expect(out.blocks[2]!.scope).toBe('shared'); // output_contract
   });
 
-  it('includes handoff when isHandoff=true', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
-      tenantId: TENANT_ID,
-      currentPhase: 4,
-      isHandoff: true,
-    });
-
-    expect(out.metadata.blocksLoaded).toEqual([
-      'core_v4_base',
-      'coach_v3',
-      'fase_4_v4',
-      'handoff_v4',
-      'objeciones_v4',
-      'descualificacion_v4',
-      'output_contract_v4',
-    ]);
-  });
-
-  it('excludes objeciones when includeObjections is false', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
-      tenantId: TENANT_ID,
-      currentPhase: 2,
-      includeObjections: false,
-    });
-
-    expect(out.metadata.blocksLoaded).not.toContain('objeciones_v4');
-  });
-
-  it('excludes descualificacion when includeDescualificacion is false', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
-      tenantId: TENANT_ID,
-      currentPhase: 2,
-      includeDescualificacion: false,
-    });
-
-    expect(out.metadata.blocksLoaded).not.toContain('descualificacion_v4');
-  });
-
-  it('excludes output_contract when includeOutputContract is false', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
-      tenantId: TENANT_ID,
-      currentPhase: 2,
-      includeOutputContract: false,
-    });
-
-    expect(out.metadata.blocksLoaded).not.toContain('output_contract_v4');
-  });
-
-  it('applies two-point cache strategy by default (core_v4_base + last block cached) with TTL 1h', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+  it('applies two-point cache strategy by default (core + last cacheable) with TTL 1h', () => {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
 
     const cached = out.blocks.filter((b) => b.cached);
-    expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
+    expect(cached.map((b) => b.key)).toEqual(['core_v5_base', 'output_contract_v5']);
     expect(out.metadata.cacheBreakpoints).toBe(2);
 
-    // Default cacheTtl = '1h' desde 2026-05-07 (ver plan playful-petting-pine.md §3.5).
     expect(out.systemContent[0]!.cache_control).toEqual({ type: 'ephemeral', ttl: '1h' });
     expect(out.systemContent[out.systemContent.length - 1]!.cache_control).toEqual({
       type: 'ephemeral',
       ttl: '1h',
     });
-    expect(out.systemContent[1]!.cache_control).toBeUndefined(); // coach_v3 no cacheado en two-point
+    expect(out.systemContent[1]!.cache_control).toBeUndefined(); // coach_v5 no cacheado en two-point
   });
 
   it('emits cache_control without ttl when cacheTtl is "5m"', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       cacheTtl: '5m',
@@ -129,8 +70,8 @@ describe('buildComposedPrompt (v4)', () => {
     });
   });
 
-  it('single-point strategy caches only the last block', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+  it('single-point strategy caches only the last cacheable block', () => {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       cacheStrategy: 'single-point',
@@ -138,11 +79,11 @@ describe('buildComposedPrompt (v4)', () => {
 
     const cached = out.blocks.filter((b) => b.cached);
     expect(cached).toHaveLength(1);
-    expect(cached[0]!.key).toBe('output_contract_v4');
+    expect(cached[0]!.key).toBe('output_contract_v5');
   });
 
   it('none strategy emits zero cache_control markers', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       cacheStrategy: 'none',
@@ -154,65 +95,64 @@ describe('buildComposedPrompt (v4)', () => {
     }
   });
 
-  it('throws when coach_v3 is missing', () => {
+  it('throws when coach_v5 is missing', () => {
     expect(() =>
-      buildComposedPrompt(sharedRowsV4, {
+      buildComposedPrompt(sharedRowsV5, {
         tenantId: TENANT_ID,
         currentPhase: 1,
       }),
-    ).toThrow(/missing required blocks: coach_v3/);
+    ).toThrow(/missing required blocks: coach_v5/);
   });
 
-  it('throws when core_v4_base is missing', () => {
-    const rowsNoCore = sharedRowsV4.filter((r) => r.block_key !== 'core_v4_base');
+  it('throws when core_v5_base is missing', () => {
+    const rowsNoCore = sharedRowsV5.filter((r) => r.block_key !== 'core_v5_base');
     expect(() =>
       buildComposedPrompt([...rowsNoCore, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 1,
       }),
-    ).toThrow(/missing required blocks: core_v4_base/);
+    ).toThrow(/missing required blocks: core_v5_base/);
   });
 
-  it('throws when the requested phase block is missing', () => {
-    const rowsNoFase3 = sharedRowsV4.filter((r) => r.block_key !== 'fase_3_v4');
+  it('reports output_contract_v5 as missing in missing blocks error when absent', () => {
+    const rowsNoOutput = sharedRowsV5.filter((r) => r.block_key !== 'output_contract_v5');
     expect(() =>
-      buildComposedPrompt([...rowsNoFase3, coachRow], {
+      buildComposedPrompt([...rowsNoOutput, coachRow], {
         tenantId: TENANT_ID,
-        currentPhase: 3,
+        currentPhase: 1,
       }),
-    ).toThrow(/missing blocks for current options: fase_3_v4/);
+    ).toThrow(/missing blocks for current options: output_contract_v5/);
   });
 
   it('rejects out-of-range currentPhase', () => {
     expect(() =>
-      buildComposedPrompt([...sharedRowsV4, coachRow], {
+      buildComposedPrompt([...sharedRowsV5, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 7,
       }),
     ).toThrow(/currentPhase must be 1..6/);
     expect(() =>
-      buildComposedPrompt([...sharedRowsV4, coachRow], {
+      buildComposedPrompt([...sharedRowsV5, coachRow], {
         tenantId: TENANT_ID,
         currentPhase: 0,
       }),
     ).toThrow(/currentPhase must be 1..6/);
   });
 
-  it('picks tenant coach over a hypothetical shared coach with same key', () => {
-    const sharedCoach = makeRow('coach_v3', 5, null, '[shared fallback coach]');
-    const tenantCoach = makeRow('coach_v3', 5, TENANT_ID, '[tenant coach]');
-    // Orden adverso a propósito: shared primero
-    const out = buildComposedPrompt([...sharedRowsV4, sharedCoach, tenantCoach], {
+  it('picks tenant coach_v5 over a hypothetical shared coach_v5 with same key', () => {
+    const sharedCoach = makeRow('coach_v5', 5, null, '[shared fallback coach]');
+    const tenantCoach = makeRow('coach_v5', 5, TENANT_ID, '[tenant coach]');
+    const out = buildComposedPrompt([...sharedRowsV5, sharedCoach, tenantCoach], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
-    const coachBlock = out.blocks.find((b) => b.key === 'coach_v3')!;
+    const coachBlock = out.blocks.find((b) => b.key === 'coach_v5')!;
     expect(coachBlock.text).toBe('[tenant coach]');
     expect(coachBlock.scope).toBe('tenant');
   });
 
   it('metadata.totalChars matches concatenated content length', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
@@ -221,7 +161,7 @@ describe('buildComposedPrompt (v4)', () => {
   });
 });
 
-describe('buildComposedPrompt — admin_overrides_v1 (Sprint Alpha)', () => {
+describe('buildComposedPrompt — admin_overrides_v1', () => {
   const adminOverridesRow = makeRow(
     'admin_overrides_v1',
     6,
@@ -229,20 +169,17 @@ describe('buildComposedPrompt — admin_overrides_v1 (Sprint Alpha)', () => {
     '[admin overrides para tenant 2]',
   );
 
-  it('inserts admin_overrides_v1 immediately after coach_v3 when present for tenant', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, adminOverridesRow], {
+  it('inserts admin_overrides_v1 immediately after coach_v5 when present for tenant', () => {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, adminOverridesRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
 
     expect(out.metadata.blocksLoaded).toEqual([
-      'core_v4_base',
-      'coach_v3',
+      'core_v5_base',
+      'coach_v5',
       'admin_overrides_v1',
-      'fase_2_v4',
-      'objeciones_v4',
-      'descualificacion_v4',
-      'output_contract_v4',
+      'output_contract_v5',
     ]);
     const overridesBlock = out.blocks.find((b) => b.key === 'admin_overrides_v1')!;
     expect(overridesBlock.scope).toBe('tenant');
@@ -250,17 +187,17 @@ describe('buildComposedPrompt — admin_overrides_v1 (Sprint Alpha)', () => {
   });
 
   it('omits admin_overrides_v1 silently when not present (not an error)', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
     expect(out.metadata.blocksLoaded).not.toContain('admin_overrides_v1');
-    expect(out.blocks).toHaveLength(6);
+    expect(out.blocks).toHaveLength(3);
   });
 
   it('ignores admin_overrides_v1 from a different tenant (security)', () => {
     const otherTenantOverrides = makeRow('admin_overrides_v1', 6, 999, '[other tenant overrides]');
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, otherTenantOverrides], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, otherTenantOverrides], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
@@ -268,19 +205,19 @@ describe('buildComposedPrompt — admin_overrides_v1 (Sprint Alpha)', () => {
   });
 
   it('admin_overrides_v1 is included inside the cache window (not extra breakpoint)', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, adminOverridesRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, adminOverridesRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
     const cached = out.blocks.filter((b) => b.cached);
-    // two-point default: core + último bloque cacheable (output_contract_v4 aquí).
-    expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
+    // two-point default: core + último cacheable (output_contract_v5).
+    expect(cached.map((b) => b.key)).toEqual(['core_v5_base', 'output_contract_v5']);
     const overridesBlock = out.blocks.find((b) => b.key === 'admin_overrides_v1')!;
     expect(overridesBlock.cached).toBe(false);
   });
 });
 
-describe('buildComposedPrompt — trainer_prefs_v1 (Sprint Alpha)', () => {
+describe('buildComposedPrompt — trainer_prefs_v1', () => {
   const trainerPrefsRow = makeRow(
     'trainer_prefs_v1',
     110,
@@ -289,18 +226,15 @@ describe('buildComposedPrompt — trainer_prefs_v1 (Sprint Alpha)', () => {
   );
 
   it('appends trainer_prefs_v1 at the end when present for tenant', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, trainerPrefsRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, trainerPrefsRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
 
     expect(out.metadata.blocksLoaded).toEqual([
-      'core_v4_base',
-      'coach_v3',
-      'fase_2_v4',
-      'objeciones_v4',
-      'descualificacion_v4',
-      'output_contract_v4',
+      'core_v5_base',
+      'coach_v5',
+      'output_contract_v5',
       'trainer_prefs_v1',
     ]);
     const lastBlock = out.blocks[out.blocks.length - 1]!;
@@ -309,7 +243,7 @@ describe('buildComposedPrompt — trainer_prefs_v1 (Sprint Alpha)', () => {
   });
 
   it('omits trainer_prefs_v1 silently when not present', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
@@ -318,82 +252,174 @@ describe('buildComposedPrompt — trainer_prefs_v1 (Sprint Alpha)', () => {
 
   it('ignores trainer_prefs_v1 from a different tenant (security)', () => {
     const otherPrefs = makeRow('trainer_prefs_v1', 110, 999, '[other tenant prefs]');
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, otherPrefs], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, otherPrefs], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });
     expect(out.metadata.blocksLoaded).not.toContain('trainer_prefs_v1');
   });
 
-  it('trainer_prefs_v1 is NEVER cached even with two-point strategy (cache breakpoint stays before it)', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, trainerPrefsRow], {
+  it('trainer_prefs_v1 is NEVER cached even with two-point strategy', () => {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, trainerPrefsRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
     });
     const cached = out.blocks.filter((b) => b.cached);
-    expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
+    expect(cached.map((b) => b.key)).toEqual(['core_v5_base', 'output_contract_v5']);
     const prefsBlock = out.blocks.find((b) => b.key === 'trainer_prefs_v1')!;
     expect(prefsBlock.cached).toBe(false);
   });
 
   it('trainer_prefs_v1 is NEVER cached even with single-point strategy', () => {
-    const out = buildComposedPrompt([...sharedRowsV4, coachRow, trainerPrefsRow], {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, trainerPrefsRow], {
       tenantId: TENANT_ID,
       currentPhase: 2,
       cacheStrategy: 'single-point',
     });
     const cached = out.blocks.filter((b) => b.cached);
     expect(cached).toHaveLength(1);
-    expect(cached[0]!.key).toBe('output_contract_v4'); // último cacheable, no trainer_prefs
+    expect(cached[0]!.key).toBe('output_contract_v5');
   });
 
-  it('full stack: core + coach + admin_overrides + fase + objeciones + desc + output + trainer_prefs', () => {
+  it('full stack: core + coach + admin_overrides + output + trainer_prefs', () => {
     const adminOverridesRow = makeRow('admin_overrides_v1', 6, TENANT_ID);
     const out = buildComposedPrompt(
-      [...sharedRowsV4, coachRow, adminOverridesRow, trainerPrefsRow],
+      [...sharedRowsV5, coachRow, adminOverridesRow, trainerPrefsRow],
       {
         tenantId: TENANT_ID,
         currentPhase: 3,
-        isHandoff: true,
       },
     );
     expect(out.metadata.blocksLoaded).toEqual([
-      'core_v4_base',
-      'coach_v3',
+      'core_v5_base',
+      'coach_v5',
       'admin_overrides_v1',
-      'fase_3_v4',
-      'handoff_v4',
-      'objeciones_v4',
-      'descualificacion_v4',
-      'output_contract_v4',
+      'output_contract_v5',
       'trainer_prefs_v1',
     ]);
-    // Cache: core + último cacheable (output_contract_v4, NO trainer_prefs).
     const cached = out.blocks.filter((b) => b.cached);
-    expect(cached.map((b) => b.key)).toEqual(['core_v4_base', 'output_contract_v4']);
+    expect(cached.map((b) => b.key)).toEqual(['core_v5_base', 'output_contract_v5']);
   });
 });
 
 // =============================================================================
-// Sprint Gamma 2.6 — interpolación de placeholders del trainer en handoff_v4
+// Cerebro v5 — interpolación de current_phase_focus + phase priorities
 // =============================================================================
 
-describe('buildComposedPrompt — interpolación trainer_phone en handoff_v4 (Sprint Gamma 2.6)', () => {
-  const handoffWithPlaceholder: PromptBlockRow = {
-    block_key: 'handoff_v4',
-    sort_order: 90,
+describe('buildComposedPrompt — current_phase_focus interpolation (Cerebro v5)', () => {
+  const coreWithFocus: PromptBlockRow = {
+    block_key: 'core_v5_base',
+    sort_order: 0,
+    tenant_id: null,
+    content:
+      '<current_phase_focus>{{current_phase_focus|fallback genérico de fase}}</current_phase_focus>',
+  };
+
+  it('inserts currentPhaseFocus from trainerContext into core_v5_base', () => {
+    const out = buildComposedPrompt(
+      [coreWithFocus, sharedRowsV5[1]!, coachRow],
+      {
+        tenantId: TENANT_ID,
+        currentPhase: 3,
+        trainerContext: { phone: null, currentPhaseFocus: 'AHORA EN FASE 3 — CUALIFICACIÓN' },
+      },
+    );
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
+    expect(coreBlock.text).toContain('AHORA EN FASE 3 — CUALIFICACIÓN');
+    expect(coreBlock.text).not.toContain('{{current_phase_focus');
+  });
+
+  it('falls back to default text when currentPhaseFocus is null', () => {
+    const out = buildComposedPrompt(
+      [coreWithFocus, sharedRowsV5[1]!, coachRow],
+      {
+        tenantId: TENANT_ID,
+        currentPhase: 3,
+        trainerContext: { phone: null, currentPhaseFocus: null },
+      },
+    );
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
+    expect(coreBlock.text).toContain('fallback genérico de fase');
+    expect(coreBlock.text).not.toContain('{{current_phase_focus');
+  });
+
+  it('falls back to default text when trainerContext is omitted', () => {
+    const out = buildComposedPrompt([coreWithFocus, sharedRowsV5[1]!, coachRow], {
+      tenantId: TENANT_ID,
+      currentPhase: 3,
+    });
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
+    expect(coreBlock.text).toContain('fallback genérico de fase');
+    expect(coreBlock.text).not.toContain('{{current_phase_focus');
+  });
+});
+
+describe('buildComposedPrompt — phase priority XML interpolation (Cerebro v5)', () => {
+  const coreWithPriorities: PromptBlockRow = {
+    block_key: 'core_v5_base',
+    sort_order: 0,
+    tenant_id: null,
+    content: [
+      '<phase1 priority="{{phase1_priority|reference}}">F1</phase1>',
+      '<phase2 priority="{{phase2_priority|reference}}">F2</phase2>',
+      '<phase3 priority="{{phase3_priority|reference}}">F3</phase3>',
+      '<phase4 priority="{{phase4_priority|reference}}">F4</phase4>',
+      '<phase5 priority="{{phase5_priority|reference}}">F5</phase5>',
+      '<phase6 priority="{{phase6_priority|reference}}">F6</phase6>',
+    ].join('\n'),
+  };
+
+  it('marks only the active phase with priority="active", rest with reference', () => {
+    const out = buildComposedPrompt(
+      [coreWithPriorities, sharedRowsV5[1]!, coachRow],
+      {
+        tenantId: TENANT_ID,
+        currentPhase: 3,
+      },
+    );
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
+    expect(coreBlock.text).toContain('<phase3 priority="active">');
+    // Las otras 5 fases caen al fallback reference
+    expect(coreBlock.text).toContain('<phase1 priority="reference">');
+    expect(coreBlock.text).toContain('<phase2 priority="reference">');
+    expect(coreBlock.text).toContain('<phase4 priority="reference">');
+    expect(coreBlock.text).toContain('<phase5 priority="reference">');
+    expect(coreBlock.text).toContain('<phase6 priority="reference">');
+    // Ningún placeholder literal
+    expect(coreBlock.text).not.toContain('{{phase');
+  });
+
+  it('applies to phase 6 correctly', () => {
+    const out = buildComposedPrompt(
+      [coreWithPriorities, sharedRowsV5[1]!, coachRow],
+      {
+        tenantId: TENANT_ID,
+        currentPhase: 6,
+      },
+    );
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
+    expect(coreBlock.text).toContain('<phase6 priority="active">');
+    expect(coreBlock.text).toContain('<phase1 priority="reference">');
+    expect(coreBlock.text).not.toContain('{{phase');
+  });
+});
+
+// =============================================================================
+// Sprint Gamma 2.6 — interpolación de placeholders del trainer (compat preservada)
+// =============================================================================
+
+describe('buildComposedPrompt — interpolación trainer_phone (compat Sprint Gamma 2.6)', () => {
+  const coreWithPlaceholder: PromptBlockRow = {
+    block_key: 'core_v5_base',
+    sort_order: 0,
     tenant_id: null,
     content:
       'Causa B: contacto del equipo: {{trainer_phone|(no configurado — frase genérica)}}',
   };
 
   const baseRows: PromptBlockRow[] = [
-    makeRow('core_v4_base', 0, null),
-    makeRow('fase_4_v4', 40, null),
-    handoffWithPlaceholder,
-    makeRow('objeciones_v4', 70, null),
-    makeRow('descualificacion_v4', 80, null),
-    makeRow('output_contract_v4', 100, null),
+    coreWithPlaceholder,
+    makeRow('output_contract_v5', 100, null),
     coachRow,
   ];
 
@@ -401,84 +427,63 @@ describe('buildComposedPrompt — interpolación trainer_phone en handoff_v4 (Sp
     const out = buildComposedPrompt(baseRows, {
       tenantId: TENANT_ID,
       currentPhase: 4,
-      isHandoff: true,
       trainerContext: { phone: '+34659487594' },
     });
-    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
-    expect(handoffBlock).toBeDefined();
-    expect(handoffBlock!.text).toContain('+34659487594');
-    expect(handoffBlock!.text).not.toContain('{{trainer_phone');
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base');
+    expect(coreBlock).toBeDefined();
+    expect(coreBlock!.text).toContain('+34659487594');
+    expect(coreBlock!.text).not.toContain('{{trainer_phone');
   });
 
   it('cae al fallback cuando trainerContext.phone es null', () => {
     const out = buildComposedPrompt(baseRows, {
       tenantId: TENANT_ID,
       currentPhase: 4,
-      isHandoff: true,
       trainerContext: { phone: null },
     });
-    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
-    expect(handoffBlock!.text).toContain('(no configurado — frase genérica)');
-    expect(handoffBlock!.text).not.toContain('{{trainer_phone');
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base');
+    expect(coreBlock!.text).toContain('(no configurado — frase genérica)');
+    expect(coreBlock!.text).not.toContain('{{trainer_phone');
   });
 
-  it('cae al fallback cuando trainerContext NO se pasa (defensa por defecto)', () => {
-    const out = buildComposedPrompt(baseRows, {
-      tenantId: TENANT_ID,
-      currentPhase: 4,
-      isHandoff: true,
-      // trainerContext omitido a propósito
-    });
-    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
-    expect(handoffBlock!.text).toContain('(no configurado — frase genérica)');
-    expect(handoffBlock!.text).not.toContain('{{trainer_phone');
-  });
-
-  it('NO interpola en otros bloques (whitelist solo handoff_v4)', () => {
-    // Reemplazo del coach por uno con placeholder (NO duplicar — el builder
-    // resuelve byKey y solo se queda con el primero si hay tied tenant scope).
+  it('interpola también en coach_v5 (ambos bloques son interpolables en v5)', () => {
     const coachWithPlaceholder: PromptBlockRow = {
-      block_key: 'coach_v3',
+      block_key: 'coach_v5',
       sort_order: 5,
       tenant_id: TENANT_ID,
       content: 'Coach: {{trainer_phone|x}}',
     };
-    const rowsWithFakePhones: PromptBlockRow[] = [
-      ...baseRows.filter((r) => r.block_key !== 'coach_v3'),
+    const rows: PromptBlockRow[] = [
+      makeRow('core_v5_base', 0, null),
+      makeRow('output_contract_v5', 100, null),
       coachWithPlaceholder,
     ];
-    const out = buildComposedPrompt(rowsWithFakePhones, {
+    const out = buildComposedPrompt(rows, {
       tenantId: TENANT_ID,
       currentPhase: 4,
-      isHandoff: true,
       trainerContext: { phone: '+34600' },
     });
-    const coachBlock = out.blocks.find((b) => b.key === 'coach_v3');
-    // Coach NO se interpola — el `{{trainer_phone|x}}` queda literal
-    expect(coachBlock!.text).toContain('{{trainer_phone|x}}');
-    expect(coachBlock!.text).not.toContain('+34600');
-    // Pero handoff SÍ se interpola
-    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
-    expect(handoffBlock!.text).toContain('+34600');
+    const coachBlock = out.blocks.find((b) => b.key === 'coach_v5');
+    expect(coachBlock!.text).toContain('+34600');
+    expect(coachBlock!.text).not.toContain('{{trainer_phone');
   });
 
-  it('handoff_v4 sin placeholder se queda intacto (no rompe bloques pre-Sprint-2.6)', () => {
-    const handoffSinPlaceholder: PromptBlockRow = {
-      block_key: 'handoff_v4',
-      sort_order: 90,
+  it('bloques sin placeholder se quedan intactos', () => {
+    const coreSinPlaceholder: PromptBlockRow = {
+      block_key: 'core_v5_base',
+      sort_order: 0,
       tenant_id: null,
-      content: 'Protocolo handoff sin placeholders',
+      content: 'Core sin placeholders',
     };
     const out = buildComposedPrompt(
-      [...baseRows.filter((r) => r.block_key !== 'handoff_v4'), handoffSinPlaceholder],
+      [coreSinPlaceholder, makeRow('output_contract_v5', 100, null), coachRow],
       {
         tenantId: TENANT_ID,
         currentPhase: 4,
-        isHandoff: true,
         trainerContext: { phone: '+34600' },
       },
     );
-    const handoffBlock = out.blocks.find((b) => b.key === 'handoff_v4');
-    expect(handoffBlock!.text).toBe('Protocolo handoff sin placeholders');
+    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base');
+    expect(coreBlock!.text).toBe('Core sin placeholders');
   });
 });

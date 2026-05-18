@@ -7,11 +7,11 @@
  * AHORA y lo guarda en el row para que el panel lo muestre como preview real
  * (no como placeholder "el mensaje se generará al enviar").
  *
- * Modelo: Haiku 4.5. Coste base por followup: ~$0.0003. Con coach_v3
+ * Modelo: Haiku 4.5. Coste base por followup: ~$0.0003. Con coach_v5
  * inyectado puede subir a ~$0.001 (3×) — sigue siendo trivial.
  *
  * Iota.2 — Voz del trainer:
- *   1. Carga el bloque coach_v3 del tenant y lo inyecta en el system prompt
+ *   1. Carga el bloque coach_v5 del tenant y lo inyecta en el system prompt
  *      → el followup hereda el tono del setter en tiempo real.
  *   2. Si `tenant_followup_config.followup_voice_examples` no es null, sus
  *      ejemplos reemplazan los 4 ejemplos genéricos hardcodeados.
@@ -42,7 +42,7 @@ export interface PersonalizePanelInput {
   supabase: SupabaseClient;
   conversationId: number;
   aiGuide: string;
-  /** Sprint Iota.2 — opcional: tenant_id para cargar coach_v3 + voice_examples */
+  /** Sprint Iota.2 — opcional: tenant_id para cargar coach_v5 + voice_examples */
   tenantId?: number;
 }
 
@@ -173,7 +173,7 @@ Genera el mensaje (solo el texto, sin envoltorios):`;
 }
 
 /**
- * Carga el bloque coach_v3 del tenant + ejemplos del trainer en una sola pasada.
+ * Carga el bloque coach_v5 del tenant + ejemplos del trainer en una sola pasada.
  * Si tenantId no se proporciona o no hay coach, se usa null (se cae al genérico).
  */
 async function loadVoiceContext(
@@ -186,7 +186,7 @@ async function loadVoiceContext(
     supabase
       .from('prompt_blocks')
       .select('content')
-      .eq('block_key', 'coach_v3')
+      .eq('block_key', 'coach_v5')
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
       .maybeSingle(),
@@ -246,7 +246,7 @@ export async function personalizeFollowupAtMaterialize(
   const leadMsgCount = recentMessages.filter((m) => m.source === 'lead').length;
   const isEarlyConversation = leadMsgCount <= EARLY_CONV_THRESHOLD;
 
-  // 3. Sprint Iota.2 — cargar voice context (coach_v3 + ejemplos del trainer)
+  // 3. Sprint Iota.2 — cargar voice context (coach_v5 + ejemplos del trainer)
   const voice = await loadVoiceContext(input.supabase, tenantId);
 
   // 4. Llamada a Haiku
