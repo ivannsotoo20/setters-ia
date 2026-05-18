@@ -171,13 +171,13 @@ export function OnboardingWizard({
         )}
         <Button asChild variant={status.ghl.connected ? 'outline' : 'default'} size="sm">
           <a
-            href="/api/integrations/oauth-install-redirect"
+            href="https://marketplace.gohighlevel.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="gap-1.5"
           >
             <ExternalLink className="size-3.5" />
-            {status.ghl.connected ? 'Reconectar GHL' : 'Conectar con GHL'}
+            {status.ghl.connected ? 'Abrir Marketplace GHL' : 'Ir al Marketplace GHL'}
           </a>
         </Button>
       </StepCard>
