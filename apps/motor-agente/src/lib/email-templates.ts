@@ -14,12 +14,14 @@ import { renderEmailShell, escapeHtml } from './email-shell.js';
  */
 
 // Sprint 2.5b/A: `error_motor` removido del set público.
+// Sprint Iota.5 PR-D: añadido `integration_down`.
 export type NotificationEventType =
   | 'handoff'
   | 'qualified'
   | 'appointment_booked'
   | 'descalified'
-  | 'paused_by_rule';
+  | 'paused_by_rule'
+  | 'integration_down';
 
 export interface RenderedEmail {
   subject: string;
@@ -267,6 +269,67 @@ ${field('Motivo', reason)}
   };
 }
 
+/**
+ * Sprint Iota.5 PR-D — alerta de integración caída (sin webhooks > threshold red).
+ * Payload esperado:
+ *   - integration_account_id, provider, channel_type, last_webhook_at, threshold_hours.
+ */
+function renderIntegrationDown(args: RenderArgs): RenderedEmail {
+  const p = args.payload;
+  const provider = (p.provider as string | undefined) ?? '(desconocido)';
+  const channelType = (p.channel_type as string | null | undefined) ?? null;
+  const lastWebhookAt = (p.last_webhook_at as string | null | undefined) ?? null;
+  const thresholdHours = (p.threshold_hours as number | undefined) ?? 72;
+
+  const providerLabel =
+    provider === 'ghl'
+      ? 'GoHighLevel'
+      : provider === 'ycloud'
+        ? 'YCloud'
+        : provider === 'manychat'
+          ? 'ManyChat'
+          : provider === 'meta_cloud'
+            ? 'Meta Cloud'
+            : provider;
+  const channelLabel = channelType === 'whatsapp'
+    ? 'WhatsApp'
+    : channelType === 'instagram_dm'
+      ? 'Instagram'
+      : channelType === 'facebook_messenger'
+        ? 'Facebook Messenger'
+        : null;
+
+  const lastSeenText = lastWebhookAt
+    ? new Date(lastWebhookAt).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+    : 'nunca';
+
+  const subject = `[Fyzon] Integración ${providerLabel} sin actividad`;
+  const body = `${greeting(args.trainerName)}<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">Tu conector <strong style="color:#0f172a;">${esc(providerLabel)}</strong>${channelLabel ? ` (${esc(channelLabel)})` : ''} lleva más de <strong>${thresholdHours}h</strong> sin recibir webhooks.</p>
+${field('Último webhook', lastSeenText)}
+${field('Threshold rojo', `${thresholdHours}h`)}
+<p style="margin:14px 0;color:#374151;font-size:14px;line-height:1.6;">Si esto es esperado (estás de viaje, sin campañas activas), ignora este aviso. Si no, revisa:</p>
+<ul style="margin:0 0 14px 0;padding-left:20px;color:#374151;font-size:14px;line-height:1.6;">
+  <li>La automation en el panel del proveedor sigue activa.</li>
+  <li>La URL de webhook apunta al motor Fyzon vigente.</li>
+  <li>El token / API key no ha caducado ni se ha revocado.</li>
+</ul>`;
+
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'trainer',
+      variant: 'notification',
+      preheader: `${providerLabel} sin webhooks hace >${thresholdHours}h`,
+      badge: tenantContext(args.tenantName, 'Integración caída'),
+      title: subject,
+      body,
+      cta: { url: panelUrl('/settings/integrations?tab=health'), label: 'Ver dashboard' },
+      showCopyUrl: false,
+      manageNotificationsUrl: panelUrl('/settings/preferences'),
+    }),
+  };
+}
+
 // =============================================================================
 // Dispatcher
 // =============================================================================
@@ -286,5 +349,7 @@ export function renderEmailTemplate(
       return renderDescalified(args);
     case 'paused_by_rule':
       return renderPausedByRule(args);
+    case 'integration_down':
+      return renderIntegrationDown(args);
   }
 }

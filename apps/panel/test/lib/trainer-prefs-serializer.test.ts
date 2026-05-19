@@ -333,9 +333,12 @@ describe('serializeTrainerPreferences — sección instrucciones libres (lista)'
 // =============================================================================
 
 describe('parseTrainerPreferences — notificationSubscriptions (Gamma 2.5)', () => {
-  it('defaults to handoff + appointment_booked when missing', () => {
+  it('defaults to handoff + appointment_booked + integration_down when missing', () => {
+    // Sprint Iota.5 PR-D — integration_down ahora forma parte del default set.
     const out = parseTrainerPreferences({});
-    expect(out.notificationSubscriptions.sort()).toEqual(['appointment_booked', 'handoff'].sort());
+    expect(out.notificationSubscriptions.sort()).toEqual(
+      ['appointment_booked', 'handoff', 'integration_down'].sort(),
+    );
   });
 
   it('accepts a valid subset', () => {
@@ -363,10 +366,10 @@ describe('parseTrainerPreferences — notificationSubscriptions (Gamma 2.5)', ()
   it('non-array input falls back to defaults', () => {
     expect(
       parseTrainerPreferences({ notificationSubscriptions: 'handoff' }).notificationSubscriptions.sort(),
-    ).toEqual(['appointment_booked', 'handoff'].sort());
+    ).toEqual(['appointment_booked', 'handoff', 'integration_down'].sort());
     expect(
       parseTrainerPreferences({ notificationSubscriptions: null }).notificationSubscriptions.sort(),
-    ).toEqual(['appointment_booked', 'handoff'].sort());
+    ).toEqual(['appointment_booked', 'handoff', 'integration_down'].sort());
   });
 
   it('deduplicates entries', () => {

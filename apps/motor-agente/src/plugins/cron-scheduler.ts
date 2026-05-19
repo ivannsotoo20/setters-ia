@@ -8,12 +8,14 @@ import { sendNextBatch } from '../services/outbound-sender.js';
 import { processNotificationQueue } from '../services/notify-trainer.js';
 import { evaluateInactivityRules } from '../services/labels/index.js';
 import { runAutoFollowupCron } from '../services/auto-followup-cron.js';
+import { checkIntegrationsHealth } from '../services/integration-health-check.js';
 
 const DEBOUNCE_TICK_MS = 5_000;
 const OUTBOUND_TICK_MS = 5_000;
 const NOTIFY_TICK_MS = 10_000;
 const INACTIVITY_TICK_MS = 60 * 60 * 1_000; // 1h
 const AUTO_FOLLOWUP_TICK_MS = 15 * 60 * 1_000; // 15min
+const INTEGRATION_HEALTH_TICK_MS = 30 * 60 * 1_000; // 30min (Sprint Iota.5 PR-D)
 /**
  * Si processDebounced lanza, re-encolamos la conversacion con este delay.
  * Suficientemente corto para reintentar pronto, suficientemente largo para
@@ -27,6 +29,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let notifyTimer: NodeJS.Timeout | null = null;
   let inactivityTimer: NodeJS.Timeout | null = null;
   let autoFollowupTimer: NodeJS.Timeout | null = null;
+  let integrationHealthTimer: NodeJS.Timeout | null = null;
   let stopping = false;
 
   const tickDebounce = async () => {
@@ -166,12 +169,41 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  const tickIntegrationHealth = async () => {
+    if (stopping) return;
+    try {
+      const supabase = getSupabase();
+      const result = await checkIntegrationsHealth({
+        supabase,
+        log: app.log as unknown as {
+          info: (obj: unknown, msg?: string) => void;
+          warn: (obj: unknown, msg?: string) => void;
+          error: (obj: unknown, msg?: string) => void;
+        },
+      });
+      if (result.enqueued > 0 || result.errors > 0) {
+        app.log.info(
+          {
+            scanned: result.scanned,
+            enqueued: result.enqueued,
+            skipped: result.skipped,
+            errors: result.errors,
+          },
+          'integration-health-check completed',
+        );
+      }
+    } catch (err) {
+      app.log.error({ err }, 'tickIntegrationHealth error');
+    }
+  };
+
   app.addHook('onReady', async () => {
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
     outboundTimer = setInterval(tickOutbound, OUTBOUND_TICK_MS);
     notifyTimer = setInterval(tickNotify, NOTIFY_TICK_MS);
     inactivityTimer = setInterval(tickInactivity, INACTIVITY_TICK_MS);
     autoFollowupTimer = setInterval(tickAutoFollowup, AUTO_FOLLOWUP_TICK_MS);
+    integrationHealthTimer = setInterval(tickIntegrationHealth, INTEGRATION_HEALTH_TICK_MS);
     app.log.info(
       {
         debounceMs: DEBOUNCE_TICK_MS,
@@ -179,6 +211,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
         notifyMs: NOTIFY_TICK_MS,
         inactivityMs: INACTIVITY_TICK_MS,
         autoFollowupMs: AUTO_FOLLOWUP_TICK_MS,
+        integrationHealthMs: INTEGRATION_HEALTH_TICK_MS,
       },
       'cron-scheduler started',
     );
@@ -191,6 +224,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     if (notifyTimer) clearInterval(notifyTimer);
     if (inactivityTimer) clearInterval(inactivityTimer);
     if (autoFollowupTimer) clearInterval(autoFollowupTimer);
+    if (integrationHealthTimer) clearInterval(integrationHealthTimer);
     app.log.info('cron-scheduler stopped');
   });
 }

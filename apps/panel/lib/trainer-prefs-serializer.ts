@@ -204,6 +204,7 @@ export const NOTIFICATION_EVENT_TYPES = [
   'appointment_booked',
   'descalified',
   'paused_by_rule',
+  'integration_down',
 ] as const;
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];
 
@@ -213,9 +214,10 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, { label: s
   appointment_booked: { label: 'Cita agendada', desc: 'El lead reservó la llamada/sesión por el flujo automatizado.' },
   descalified: { label: 'Lead descalificado', desc: 'La IA descarta el lead (no encaja con tu criterio de cliente ideal).' },
   paused_by_rule: { label: 'IA pausada por regla', desc: 'Se pausó la IA en una conversación por una regla configurada (cuando esté disponible).' },
+  integration_down: { label: 'Integración caída', desc: 'Un conector (GHL/YCloud/ManyChat) lleva horas sin recibir webhooks. Revisa la automation en el proveedor.' },
 };
 
-const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_booked'];
+const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_booked', 'integration_down'];
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   emojisEnabled: true,

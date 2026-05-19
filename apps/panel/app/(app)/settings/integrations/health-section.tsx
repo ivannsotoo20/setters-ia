@@ -30,7 +30,20 @@ interface IntegrationRow {
 
 type HealthStatus = 'green' | 'amber' | 'red';
 
-function deriveStatus(lastWebhookAt: string | null): {
+// Sprint Iota.5 PR-D — defaults agresivos (decisión Iván 2026-05-19):
+// 12h ámbar / 72h rojo. El tenant puede customizar en /settings/integrations?tab=health.
+const DEFAULT_AMBER_HOURS = 12;
+const DEFAULT_RED_HOURS = 72;
+
+interface HealthThresholds {
+  amberHours: number;
+  redHours: number;
+}
+
+function deriveStatus(
+  lastWebhookAt: string | null,
+  thresholds: HealthThresholds = { amberHours: DEFAULT_AMBER_HOURS, redHours: DEFAULT_RED_HOURS },
+): {
   status: HealthStatus;
   ageHours: number | null;
   label: string;
@@ -40,10 +53,10 @@ function deriveStatus(lastWebhookAt: string | null): {
   }
   const age = Date.now() - new Date(lastWebhookAt).getTime();
   const hours = age / (1000 * 60 * 60);
-  if (hours < 24) {
+  if (hours < thresholds.amberHours) {
     return { status: 'green', ageHours: hours, label: `Activo (${formatAge(age)})` };
   }
-  if (hours < 24 * 7) {
+  if (hours < thresholds.redHours) {
     return { status: 'amber', ageHours: hours, label: `Sin actividad ${formatAge(age)}` };
   }
   return { status: 'red', ageHours: hours, label: `Inactivo ${formatAge(age)}` };
@@ -124,6 +137,23 @@ export async function HealthSection() {
     .eq('tenant_id', effective.tenantId)
     .order('id', { ascending: true });
 
+  // Sprint Iota.5 PR-D — cargar thresholds custom del tenant (default 12/72h).
+  const { data: tcfg } = await supabase
+    .from('tenant_configs')
+    .select('health_threshold_hours_amber, health_threshold_hours_red')
+    .eq('tenant_id', effective.tenantId)
+    .maybeSingle();
+  const thresholds: HealthThresholds = {
+    amberHours:
+      tcfg && typeof tcfg.health_threshold_hours_amber === 'number'
+        ? tcfg.health_threshold_hours_amber
+        : DEFAULT_AMBER_HOURS,
+    redHours:
+      tcfg && typeof tcfg.health_threshold_hours_red === 'number'
+        ? tcfg.health_threshold_hours_red
+        : DEFAULT_RED_HOURS,
+  };
+
   const rows: IntegrationRow[] = (data ?? []).map((r) => {
     const ch = Array.isArray(r.channels) ? r.channels[0] : r.channels;
     const channelType = (ch as { channel_type?: string } | null)?.channel_type ?? null;
@@ -145,8 +175,10 @@ export async function HealthSection() {
         <CardHeader>
           <CardTitle className="text-base">Última actividad por conector</CardTitle>
           <CardDescription>
-            🟢 &lt;24h · 🟠 24h-7d · 🔴 &gt;7d o nunca. Si una integración está
-            en rojo mucho tiempo, revisa la automation en el origen.
+            🟢 &lt;{thresholds.amberHours}h · 🟠 {thresholds.amberHours}h-{thresholds.redHours}h · 🔴 &gt;{thresholds.redHours}h o nunca.
+            Cuando una integración cruza el umbral rojo, el motor envía un email
+            si tienes activado el aviso &quot;Integración caída&quot; en{' '}
+            <code className="text-[10px]">/settings/preferences</code>.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -170,7 +202,7 @@ export async function HealthSection() {
                 </thead>
                 <tbody>
                   {rows.map((r) => {
-                    const status = deriveStatus(r.last_webhook_at);
+                    const status = deriveStatus(r.last_webhook_at, thresholds);
                     return (
                       <tr key={r.id} className="border-b border-border last:border-0">
                         <td className="px-4 py-3">
