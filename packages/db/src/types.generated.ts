@@ -2114,6 +2114,8 @@ export type Database = {
           default_audio_language: string
           ghl_fyzon_uuid_field_id: string | null
           ghl_inbound_mode: string
+          health_threshold_hours_amber: number
+          health_threshold_hours_red: number
           idle_conversation_delay: string
           manychat_inbound_mode: string
           max_messages_per_conversation: number
@@ -2130,6 +2132,8 @@ export type Database = {
           default_audio_language?: string
           ghl_fyzon_uuid_field_id?: string | null
           ghl_inbound_mode?: string
+          health_threshold_hours_amber?: number
+          health_threshold_hours_red?: number
           idle_conversation_delay?: string
           manychat_inbound_mode?: string
           max_messages_per_conversation?: number
@@ -2146,6 +2150,8 @@ export type Database = {
           default_audio_language?: string
           ghl_fyzon_uuid_field_id?: string | null
           ghl_inbound_mode?: string
+          health_threshold_hours_amber?: number
+          health_threshold_hours_red?: number
           idle_conversation_delay?: string
           manychat_inbound_mode?: string
           max_messages_per_conversation?: number
@@ -2429,6 +2435,7 @@ export type Database = {
           name: string
           onboarded_at: string | null
           settings: Json
+          setup_step_overrides: Json
           slug: string
           updated_at: string
         }
@@ -2441,6 +2448,7 @@ export type Database = {
           name: string
           onboarded_at?: string | null
           settings?: Json
+          setup_step_overrides?: Json
           slug: string
           updated_at?: string
         }
@@ -2453,6 +2461,7 @@ export type Database = {
           name?: string
           onboarded_at?: string | null
           settings?: Json
+          setup_step_overrides?: Json
           slug?: string
           updated_at?: string
         }

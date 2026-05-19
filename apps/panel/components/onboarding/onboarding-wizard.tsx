@@ -1,9 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Circle, ExternalLink, Copy, Check, Loader2, Rocket } from 'lucide-react';
+import {
+  CheckCircle2,
+  Circle,
+  ExternalLink,
+  Copy,
+  Check,
+  Loader2,
+  Rocket,
+  HandMetal,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,13 +22,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
   setWelcomeTemplate,
   ensureLeadFormToken,
   type OnboardingStatus,
 } from '@/lib/actions/welcome-template';
-import { markOnboardingCompleteAction } from '@/lib/actions/tenants';
+import {
+  markOnboardingCompleteAction,
+  setStepOverrideAction,
+} from '@/lib/actions/tenants';
 
 interface CandidateTemplate {
   id: number;
@@ -34,6 +54,12 @@ interface Props {
   candidateTemplates: CandidateTemplate[];
   panelOrigin: string;
   motorOrigin: string;
+  /**
+   * Sprint Iota.5 PR-E — overrides manuales del trainer indexados por step
+   * (1..4). Si un step tiene override=true, se considera completado aunque la
+   * verificación real no haya pasado.
+   */
+  setupStepOverrides?: Record<string, boolean>;
 }
 
 export function OnboardingWizard({
@@ -41,16 +67,49 @@ export function OnboardingWizard({
   candidateTemplates,
   panelOrigin: _panelOrigin,
   motorOrigin,
+  setupStepOverrides = {},
 }: Props) {
   const router = useRouter();
   const [pendingWelcome, startWelcomeTransition] = useTransition();
   const [pendingToken, startTokenTransition] = useTransition();
   const [pendingComplete, startCompleteTransition] = useTransition();
+  const [pendingOverride, startOverrideTransition] = useTransition();
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(
     status.welcome.welcomeTemplateId,
   );
   const [token, setToken] = useState<string | null>(status.welcome.leadFormToken);
   const [copied, setCopied] = useState(false);
+  const [overrides, setOverrides] = useState<Record<string, boolean>>(setupStepOverrides);
+  const [overrideDialogStep, setOverrideDialogStep] = useState<number | null>(null);
+  const stepRefs = useRef<Array<HTMLDivElement | null>>([null, null, null, null]);
+
+  const realChecks = [
+    status.ghl.connected,
+    status.keywords.hasBienvenida && status.keywords.hasLeadMagnet,
+    status.ycloud.connected && status.ycloud.templatesApproved > 0,
+    status.welcome.welcomeTemplateId != null && status.welcome.leadFormToken != null,
+  ];
+
+  function onScrollToStep(stepIndex: number) {
+    const el = stepRefs.current[stepIndex - 1];
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  function onConfirmOverride(stepIndex: number) {
+    startOverrideTransition(async () => {
+      const res = await setStepOverrideAction(stepIndex, true);
+      if (!res.ok) {
+        toast.error(`No se pudo guardar: ${res.error}`);
+        return;
+      }
+      setOverrides(res.overrides);
+      setOverrideDialogStep(null);
+      toast.success(`Paso ${stepIndex} marcado como ya hecho (verificación omitida).`);
+      router.refresh();
+    });
+  }
 
   const onSaveWelcome = () => {
     if (pendingWelcome) return;
@@ -94,11 +153,12 @@ export function OnboardingWizard({
     }
   };
 
-  const stepsCompleted = [
-    status.ghl.connected,
-    status.keywords.hasBienvenida && status.keywords.hasLeadMagnet,
-    status.ycloud.connected && status.ycloud.templatesApproved > 0,
-    status.welcome.welcomeTemplateId != null && status.welcome.leadFormToken != null,
+  // Sprint Iota.5 PR-E — `stepsCompleted[i]` = verificación real OR override manual.
+  const stepsCompleted: [boolean, boolean, boolean, boolean] = [
+    realChecks[0] || overrides['1'] === true,
+    realChecks[1] || overrides['2'] === true,
+    realChecks[2] || overrides['3'] === true,
+    realChecks[3] || overrides['4'] === true,
   ];
   const totalCompleted = stepsCompleted.filter(Boolean).length;
   const allComplete = totalCompleted === stepsCompleted.length;
@@ -134,16 +194,36 @@ export function OnboardingWizard({
               : 'Completa todos los pasos para activar la captación end-to-end.'}
           </p>
         </div>
-        <div className="flex gap-1">
-          {stepsCompleted.map((done, i) => (
-            <span
-              key={i}
-              className={cn(
-                'size-2 rounded-full',
-                done ? 'bg-success' : 'bg-muted-foreground/30',
-              )}
-            />
-          ))}
+        <div className="flex gap-2 items-center">
+          {stepsCompleted.map((done, i) => {
+            const stepIdx = i + 1;
+            const isOverride = overrides[String(stepIdx)] === true && !realChecks[i];
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onScrollToStep(stepIdx)}
+                aria-label={`Ir al paso ${stepIdx}`}
+                title={
+                  done
+                    ? isOverride
+                      ? `Paso ${stepIdx} — marcado manualmente`
+                      : `Paso ${stepIdx} — verificado automáticamente`
+                    : `Paso ${stepIdx} — pendiente`
+                }
+                className={cn(
+                  'size-7 rounded-full border-2 flex items-center justify-center text-[10px] font-semibold transition-all cursor-pointer hover:scale-110',
+                  done
+                    ? isOverride
+                      ? 'bg-warning/15 text-warning border-warning'
+                      : 'bg-success/15 text-success border-success'
+                    : 'bg-muted/20 text-muted-foreground border-muted-foreground/30 hover:border-muted-foreground',
+                )}
+              >
+                {done ? '✓' : stepIdx}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -152,7 +232,13 @@ export function OnboardingWizard({
         index={1}
         title="Conectar GoHighLevel (canales IG / FB)"
         description="GHL es el conector de origen para Instagram y Facebook. Cuando un lead comenta una keyword en un post, GHL lo enruta vía workflow webhook hacia el SaaS."
-        completed={status.ghl.connected}
+        completed={stepsCompleted[0]}
+        realCompleted={realChecks[0]}
+        isOverride={overrides['1'] === true && !realChecks[0]}
+        onMarkAsDone={setOverrideDialogStep}
+        innerRef={(el) => {
+          stepRefs.current[0] = el;
+        }}
       >
         {status.ghl.connected ? (
           <p className="text-sm text-success mb-3">
@@ -187,7 +273,13 @@ export function OnboardingWizard({
         index={2}
         title="Configurar palabras clave de origen"
         description="El motor clasifica los webhooks GHL por keyword: 'bienvenida' (trainer escribe a lead nuevo), 'lm' (lead pide recurso/info), 'inbound' (lead responde DM espontáneo). Sin keywords, los outbounds manuales del trainer no activan IA."
-        completed={status.keywords.hasBienvenida && status.keywords.hasLeadMagnet}
+        completed={stepsCompleted[1]}
+        realCompleted={realChecks[1]}
+        isOverride={overrides['2'] === true && !realChecks[1]}
+        onMarkAsDone={setOverrideDialogStep}
+        innerRef={(el) => {
+          stepRefs.current[1] = el;
+        }}
       >
         <div className="text-sm text-muted-foreground mb-3 space-y-1">
           <p>
@@ -223,7 +315,13 @@ export function OnboardingWizard({
         index={3}
         title="Conectar YCloud + sincronizar plantillas WA"
         description="YCloud es el BSP oficial Meta para WhatsApp. Pega tu API key + business phone, sincroniza las plantillas aprobadas en Meta y prepara el canal para enviar bienvenidas."
-        completed={status.ycloud.connected && status.ycloud.templatesApproved > 0}
+        completed={stepsCompleted[2]}
+        realCompleted={realChecks[2]}
+        isOverride={overrides['3'] === true && !realChecks[2]}
+        onMarkAsDone={setOverrideDialogStep}
+        innerRef={(el) => {
+          stepRefs.current[2] = el;
+        }}
       >
         <div className="text-sm text-muted-foreground mb-3 space-y-1">
           <p>
@@ -257,9 +355,13 @@ export function OnboardingWizard({
         index={4}
         title="Designar plantilla bienvenida + URL del webhook"
         description="Selecciona qué plantilla WhatsApp se envía cuando un lead rellena un formulario externo (VSL, Tally, Meta Lead Ads). La URL del webhook se pega en tu automation n8n / GHL Workflow para disparar la bienvenida."
-        completed={
-          status.welcome.welcomeTemplateId != null && status.welcome.leadFormToken != null
-        }
+        completed={stepsCompleted[3]}
+        realCompleted={realChecks[3]}
+        isOverride={overrides['4'] === true && !realChecks[3]}
+        onMarkAsDone={setOverrideDialogStep}
+        innerRef={(el) => {
+          stepRefs.current[3] = el;
+        }}
       >
         {/* Selector de plantilla */}
         <div className="space-y-2 mb-4">
@@ -430,8 +532,69 @@ export function OnboardingWizard({
           </Button>
         </CardContent>
       </Card>
+
+      {/* Dialog de confirmación override — Sprint Iota.5 PR-E */}
+      <Dialog
+        open={overrideDialogStep !== null}
+        onOpenChange={(o) => {
+          if (!o) setOverrideDialogStep(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar paso {overrideDialogStep} como ya hecho</DialogTitle>
+            <DialogDescription className="space-y-2 pt-2">
+              <span className="block">
+                Vas a omitir la verificación automática de este paso. El panel
+                lo considerará completado a efectos del progreso y del cierre
+                del setup, aunque la integración real no haya pasado el chequeo.
+              </span>
+              <span className="block font-medium text-warning">
+                Asegúrate de que ya tienes esa parte configurada por tu cuenta
+                (cuenta GHL conectada, keywords creadas, etc.). Si no es así,
+                cuando lleguen leads reales el flujo fallará silenciosamente.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOverrideDialogStep(null)}
+              disabled={pendingOverride}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="default"
+              onClick={() => overrideDialogStep && onConfirmOverride(overrideDialogStep)}
+              disabled={pendingOverride}
+              className="gap-1.5"
+            >
+              {pendingOverride ? <Loader2 className="size-3.5 animate-spin" /> : null}
+              Sí, marcar como hecho
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
+}
+
+interface StepCardProps {
+  index: number;
+  title: string;
+  description: string;
+  /** Si el step se considera completado (real OR override). */
+  completed: boolean;
+  /** Si el step está completado SOLO por override (no por verificación real). */
+  isOverride?: boolean;
+  /** Si el step verificación real ha pasado (independiente del override). */
+  realCompleted?: boolean;
+  /** Callback que abre el diálogo de override. Null = botón oculto. */
+  onMarkAsDone?: (stepIndex: number) => void;
+  /** Ref del contenedor para scroll desde los círculos arriba. */
+  innerRef?: (el: HTMLDivElement | null) => void;
+  children: React.ReactNode;
 }
 
 function StepCard({
@@ -439,35 +602,56 @@ function StepCard({
   title,
   description,
   completed,
+  isOverride,
+  realCompleted,
+  onMarkAsDone,
+  innerRef,
   children,
-}: {
-  index: number;
-  title: string;
-  description: string;
-  completed: boolean;
-  children: React.ReactNode;
-}) {
+}: StepCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex-row items-start gap-3 space-y-0">
-        {completed ? (
-          <CheckCircle2 className="size-5 text-success shrink-0 mt-0.5" />
-        ) : (
-          <Circle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
-        )}
-        <div className="flex-1">
-          <CardTitle className="text-base flex items-center gap-2">
-            <span className="text-xs text-muted-foreground tabular-nums">
-              Paso {index}
-            </span>
-            <span>{title}</span>
-          </CardTitle>
-          <CardDescription className="mt-1.5 text-sm leading-relaxed">
-            {description}
-          </CardDescription>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">{children}</CardContent>
-    </Card>
+    <div ref={innerRef}>
+      <Card>
+        <CardHeader className="flex-row items-start gap-3 space-y-0">
+          {completed ? (
+            <CheckCircle2
+              className={cn(
+                'size-5 shrink-0 mt-0.5',
+                isOverride ? 'text-warning' : 'text-success',
+              )}
+            />
+          ) : (
+            <Circle className="size-5 text-muted-foreground shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1">
+            <CardTitle className="text-base flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground tabular-nums">Paso {index}</span>
+              <span>{title}</span>
+              {isOverride ? (
+                <span className="text-[10px] text-warning bg-warning/10 border border-warning/30 px-1.5 py-0.5 rounded uppercase font-semibold tracking-wide">
+                  Verificación omitida
+                </span>
+              ) : null}
+            </CardTitle>
+            <CardDescription className="mt-1.5 text-sm leading-relaxed">
+              {description}
+            </CardDescription>
+          </div>
+          {!realCompleted && !isOverride && onMarkAsDone ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onMarkAsDone(index)}
+              className="shrink-0 gap-1.5 text-muted-foreground hover:text-foreground"
+              title="Marcar como ya hecho (omitir verificación)"
+            >
+              <HandMetal className="size-3.5" />
+              Marcar como hecho
+            </Button>
+          ) : null}
+        </CardHeader>
+        <CardContent className="pt-0">{children}</CardContent>
+      </Card>
+    </div>
   );
 }

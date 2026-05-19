@@ -6,6 +6,8 @@ import {
 } from '@/lib/actions/welcome-template';
 import { OnboardingWizard } from '@/components/onboarding/onboarding-wizard';
 import { Badge } from '@/components/ui/badge';
+import { getEffectiveTenant } from '@/lib/effective-tenant';
+import { getServiceRoleClient } from '@/lib/supabase/service-role';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,6 +58,21 @@ export default async function SettingsSetupPage({ searchParams }: PageProps) {
   const panelOrigin = process.env.NEXT_PUBLIC_PANEL_ORIGIN ?? '';
   const motorOrigin =
     process.env.NEXT_PUBLIC_MOTOR_ORIGIN ?? process.env.MOTOR_INTERNAL_URL ?? '';
+
+  // Sprint Iota.5 PR-E — cargar overrides manuales del trainer.
+  const effective = await getEffectiveTenant();
+  let setupStepOverrides: Record<string, boolean> = {};
+  if (effective) {
+    const sb = getServiceRoleClient();
+    const { data: tenantRow } = await sb
+      .from('tenants')
+      .select('setup_step_overrides')
+      .eq('id', effective.tenantId)
+      .maybeSingle();
+    if (tenantRow?.setup_step_overrides && typeof tenantRow.setup_step_overrides === 'object') {
+      setupStepOverrides = tenantRow.setup_step_overrides as Record<string, boolean>;
+    }
+  }
 
   // Calcular pasos completados/pendientes para mostrar progreso en el header.
   const data = status.data;
@@ -120,6 +137,7 @@ export default async function SettingsSetupPage({ searchParams }: PageProps) {
         candidateTemplates={candidateTemplates}
         panelOrigin={panelOrigin}
         motorOrigin={motorOrigin}
+        setupStepOverrides={setupStepOverrides}
       />
     </div>
   );

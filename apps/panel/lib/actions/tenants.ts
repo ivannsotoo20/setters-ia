@@ -484,3 +484,77 @@ export async function markOnboardingCompleteAction(): Promise<MarkOnboardingResu
 
   return { ok: true, alreadyComplete: false };
 }
+
+// ----- setStepOverrideAction -------------------------------------------------
+// Sprint Iota.5 PR-E: el trainer puede marcar manualmente un paso del wizard
+// como "ya hecho" para saltar la verificación automática. Iván decisión
+// (2026-05-19): el override cuenta como completado a efectos del progress
+// bar + cierre del setup.
+
+export type SetStepOverrideResult =
+  | { ok: true; overrides: Record<string, boolean> }
+  | { ok: false; error: string };
+
+const VALID_STEP_INDICES = new Set([1, 2, 3, 4]);
+
+export async function setStepOverrideAction(
+  stepIndex: number,
+  override: boolean,
+): Promise<SetStepOverrideResult> {
+  if (!VALID_STEP_INDICES.has(stepIndex)) {
+    return { ok: false, error: `step ${stepIndex} fuera del rango 1..4` };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'unauthenticated' };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, tenant_id, role, is_agency_admin, is_active')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (!profile || profile.is_active === false) {
+    return { ok: false, error: 'forbidden' };
+  }
+
+  let targetTenantId = Number(profile.tenant_id);
+  if (profile.is_agency_admin) {
+    const { getEffectiveTenant } = await import('@/lib/effective-tenant');
+    const effective = await getEffectiveTenant();
+    if (!effective) return { ok: false, error: 'no_effective_tenant' };
+    targetTenantId = effective.tenantId;
+  } else if (profile.role !== 'owner') {
+    return { ok: false, error: 'forbidden — solo owner puede modificar el wizard' };
+  }
+
+  const admin = getServiceRoleClient();
+  const { data: tenant, error: readErr } = await admin
+    .from('tenants')
+    .select('id, setup_step_overrides')
+    .eq('id', targetTenantId)
+    .maybeSingle();
+  if (readErr || !tenant) {
+    return { ok: false, error: readErr?.message ?? 'tenant_not_found' };
+  }
+
+  const current = (tenant.setup_step_overrides ?? {}) as Record<string, boolean>;
+  const next = { ...current };
+  if (override) {
+    next[String(stepIndex)] = true;
+  } else {
+    delete next[String(stepIndex)];
+  }
+
+  const { error: updErr } = await admin
+    .from('tenants')
+    .update({ setup_step_overrides: next })
+    .eq('id', targetTenantId);
+  if (updErr) return { ok: false, error: updErr.message };
+
+  revalidatePath('/settings/setup');
+  revalidatePath('/onboarding/integrations');
+  return { ok: true, overrides: next };
+}
