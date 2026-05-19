@@ -65,3 +65,9 @@ export type {
   GhlParsedOutbound,
 } from './ghl/types.js';
 export { GhlChannelAdapter, type GhlChannelAdapterParams } from './ghl/channel-adapter.js';
+export {
+  ghlSendTemplate,
+  GhlTemplatesError,
+  type GhlSendTemplateInput,
+  type GhlSendTemplateResult,
+} from './ghl/templates.js';

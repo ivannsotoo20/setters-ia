@@ -11,8 +11,12 @@ import { Separator } from '@/components/ui/separator';
 import { getWaInboundMode } from '@/lib/actions/wa-inbound-mode';
 import { listFollowupTemplates } from '@/lib/actions/followups';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
+import { getServiceRoleClient } from '@/lib/supabase/service-role';
 import { WaModeForm } from '@/app/(app)/settings/whatsapp/wa-mode-form';
-import { TemplatesTabs } from '@/components/followup-templates/templates-tabs';
+import {
+  TemplatesTabs,
+  type WaProvider,
+} from '@/components/followup-templates/templates-tabs';
 
 /**
  * Sección "WhatsApp" dentro de `/settings/integrations`. Antes vivían en dos
@@ -35,6 +39,11 @@ export async function WhatsAppSection() {
   ]);
 
   const templates = tplResult.ok ? tplResult.data ?? [] : [];
+
+  // Sprint Iota.5 PR-C — detectar provider WA conectado para mostrar el botón
+  // de sync apropiado (YCloud / Meta Cloud / GHL) o un CTA "Conectar WhatsApp
+  // primero" si no hay nada.
+  const waProvider = await resolveConnectedWaProvider(effective.tenantId);
 
   return (
     <>
@@ -94,15 +103,75 @@ export async function WhatsAppSection() {
         <CardHeader>
           <CardTitle className="text-base">Plantillas WhatsApp</CardTitle>
           <CardDescription>
-            Plantillas aprobadas por Meta sincronizadas desde YCloud. Únicas
-            mensajes que se pueden enviar a un lead pasadas las 24h desde su
-            último mensaje (ventana de WhatsApp Business).
+            {waProvider === 'ghl'
+              ? 'Plantillas aprobadas por Meta gestionadas desde GoHighLevel (WhatsApp conectado vía LC Phone).'
+              : waProvider === 'meta_cloud'
+                ? 'Plantillas aprobadas por Meta sincronizadas desde la Cloud API directa.'
+                : waProvider === 'ycloud'
+                  ? 'Plantillas aprobadas por Meta sincronizadas desde YCloud.'
+                  : 'Conecta primero un proveedor WhatsApp (YCloud, GHL o Meta Cloud directo) para gestionar plantillas.'}{' '}
+            Únicos mensajes que se pueden enviar a un lead pasadas las 24h desde
+            su último mensaje (ventana de WhatsApp Business).
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <TemplatesTabs templates={templates} canEdit={canEditTemplates} />
+          <TemplatesTabs
+            templates={templates}
+            canEdit={canEditTemplates}
+            waProvider={waProvider}
+          />
         </CardContent>
       </Card>
     </>
   );
+}
+
+/**
+ * Detecta qué proveedor WA está conectado para el tenant. Orden de
+ * preferencia: YCloud > Meta Cloud > GHL como BSP WA. Devuelve `null` si no
+ * hay ninguno conectado (entonces el panel muestra CTA "Conecta WhatsApp
+ * primero" en lugar del botón de sync).
+ *
+ * GHL como BSP WA = trainer tiene integration_accounts provider='ghl' Y un
+ * channel WA vinculado (channel_type='whatsapp', via_provider='ghl'). Si solo
+ * tiene GHL para IG/FB, no cuenta como provider WA.
+ */
+async function resolveConnectedWaProvider(tenantId: number): Promise<WaProvider> {
+  const supabase = getServiceRoleClient();
+
+  // 1. YCloud activo
+  const { data: ycloud } = await supabase
+    .from('integration_accounts')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('provider', 'ycloud')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+  if (ycloud) return 'ycloud';
+
+  // 2. Meta Cloud directo activo
+  const { data: metaCloud } = await supabase
+    .from('integration_accounts')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('provider', 'meta_cloud')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+  if (metaCloud) return 'meta_cloud';
+
+  // 3. GHL como BSP WA: requiere channel WhatsApp con via_provider='ghl'
+  const { data: ghlChannel } = await supabase
+    .from('channels')
+    .select('id')
+    .eq('tenant_id', tenantId)
+    .eq('channel_type', 'whatsapp')
+    .eq('via_provider', 'ghl')
+    .eq('is_active', true)
+    .limit(1)
+    .maybeSingle();
+  if (ghlChannel) return 'ghl';
+
+  return null;
 }
