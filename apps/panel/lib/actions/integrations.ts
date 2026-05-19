@@ -86,6 +86,18 @@ async function validateCredentials(
     if (!apiToken || !locationId) {
       return { ok: false, reason: 'apiToken y locationId son requeridos' };
     }
+    // Sprint Iota.5 PR-A: el panel BYOK guarda Private Integration Tokens (PIT)
+    // de GHL v2.0, que empiezan con `pit-`. Otros formatos (Agency-level v1, API
+    // keys legacy) suelen fallar contra el endpoint v2 + Version header, así
+    // que avisamos pronto con un mensaje claro en lugar de dejar que GHL devuelva
+    // 401 críptico.
+    if (!apiToken.startsWith('pit-')) {
+      return {
+        ok: false,
+        reason:
+          'El token debe ser un Private Integration Token v2.0 (formato `pit-...`). En GHL: Settings → Private Integrations → Generate.',
+      };
+    }
     try {
       const res = await fetch(`https://services.leadconnectorhq.com/locations/${locationId}`, {
         headers: {
@@ -258,6 +270,14 @@ export async function createOrUpdateIntegration(
     }
   }
 
+  // 1c. Sprint Iota.5 PR-A: marcar el `auth_type` explícito para que el motor
+  //     pueda distinguir filas. BYOK desde este panel = PIT v2.0 (validado por
+  //     prefijo `pit-` en validateCredentials para GHL). OAuth Marketplace se
+  //     crea por separado en `oauth-ghl.ts` y guarda `auth_type='oauth'`.
+  if (input.provider === 'ghl') {
+    mergedConnectionConfig.auth_type = 'pit';
+  }
+
   // 2. Cifrar credenciales.
   let encryptedBlob: string;
   try {
@@ -299,6 +319,64 @@ export async function createOrUpdateIntegration(
   }
 
   // 4. UPSERT integration_account.
+  // Sprint Iota.5 PR-B: para GHL, la row PIT BYOK NO debe pisar la row OAuth
+  // Marketplace (coexisten — Modelo C híbrido). Filtramos también por
+  // auth_type='pit' al buscar la fila existente. Para otros providers (YCloud,
+  // ManyChat, Meta), el filtro por canal sigue siendo suficiente.
+  let existingQuery = supabase
+    .from('integration_accounts')
+    .select('id, connection_config')
+    .eq('tenant_id', ctx.tenantId)
+    .eq('provider', input.provider)
+    .eq('channel_id', channelId);
+  if (input.provider === 'ghl') {
+    // Solo buscamos rows con auth_type='pit' o sin auth_type (legacy BYOK
+    // pre-Iota.5). OAuth rows (auth_type='oauth') quedan intactas.
+    const { data: rowsFound } = await existingQuery;
+    const pitRow = (rowsFound ?? []).find((r) => {
+      const cc = (r.connection_config ?? {}) as { auth_type?: string };
+      return cc.auth_type === 'pit' || !cc.auth_type;
+    });
+    const existing = pitRow ? { id: pitRow.id } : null;
+    if (existing) {
+      const { error: updErr } = await supabase
+        .from('integration_accounts')
+        .update({
+          credentials_encrypted: { blob: encryptedBlob },
+          connection_config: mergedConnectionConfig,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id);
+      if (updErr) return { ok: false, error: `UPDATE falló: ${updErr.message}` };
+      revalidatePath('/settings/integrations');
+      return {
+        ok: true,
+        data: { id: Number(existing.id), validated: true, derived: validation.derived },
+      };
+    }
+    // No existe PIT row → INSERT nueva (puede coexistir con OAuth)
+    const { data: inserted, error: insErr } = await supabase
+      .from('integration_accounts')
+      .insert({
+        tenant_id: ctx.tenantId,
+        channel_id: channelId,
+        provider: input.provider,
+        is_active: true,
+        credentials_encrypted: { blob: encryptedBlob },
+        connection_config: mergedConnectionConfig,
+      })
+      .select('id')
+      .single();
+    if (insErr || !inserted) return { ok: false, error: `INSERT falló: ${insErr?.message}` };
+    revalidatePath('/settings/integrations');
+    return {
+      ok: true,
+      data: { id: Number(inserted.id), validated: true, derived: validation.derived },
+    };
+  }
+
+  // Path original para YCloud/ManyChat/Meta (sin auth_type duality)
   const { data: existing } = await supabase
     .from('integration_accounts')
     .select('id')
@@ -333,7 +411,10 @@ export async function createOrUpdateIntegration(
       provider: input.provider,
       is_active: true,
       credentials_encrypted: { blob: encryptedBlob },
-      connection_config: input.connectionConfig,
+      // Sprint Iota.5 PR-A: usar mergedConnectionConfig (no el input crudo) para
+      // que las INSERT nuevas reciban wabaId derivado de YCloud + auth_type='pit'
+      // de GHL. La rama UPDATE ya usaba merged; aquí estaba el bug.
+      connection_config: mergedConnectionConfig,
     })
     .select('id')
     .single();

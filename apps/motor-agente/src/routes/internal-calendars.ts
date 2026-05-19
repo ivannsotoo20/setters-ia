@@ -1,9 +1,12 @@
 /**
- * Endpoint POST /internal/calendars/sync (Hito 10).
+ * Endpoint POST /internal/calendars/sync (Hito 10, refactor Iota.5 PR-A).
  *
  * Disparado por server action del panel `/settings/calendars` cuando el trainer
  * pulsa "Sincronizar desde GHL". Hace:
- *   1. Carga OAuth access_token GHL del tenant (auto-refresh si expira en <5min).
+ *   1. Resuelve credenciales GHL con prioridad **PIT → OAuth → legacy**
+ *      (`resolveGhlCredentials`). El PIT v2.0 BYOK suele tener scopes más
+ *      amplios (`calendars.*`, `opportunities.write`) que la OAuth Marketplace
+ *      app, así que conviene preferirlo cuando esté disponible.
  *   2. `ensureCustomField('fyzon_lead_uuid')` en la location GHL. Cachea el
  *      `customFieldId` en `tenant_configs.ghl_fyzon_uuid_field_id`.
  *   3. `listCalendars(locationId)` → devuelve los calendars al panel.
@@ -17,10 +20,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z, ZodError } from 'zod';
 import { GhlClient } from '@fyzon/ghl-client';
 import { env } from '../config/env.js';
-import { getValidAccessToken } from '../lib/ghl-oauth.js';
-import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { getSupabase } from '../lib/supabase.js';
 import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
+import { resolveGhlCredentials, type ResolvedCreds } from '../lib/resolve-ghl-credentials.js';
 import { backfillCalendarAppointments } from '../services/backfill-appointments.js';
 
 const bodySchema = z.object({
@@ -71,64 +73,11 @@ export async function internalCalendarsRoutes(app: FastifyInstance): Promise<voi
       const { tenant_id: tenantId } = parsed;
       const supabase = getSupabase();
 
-      // 1. Resolver credenciales GHL: primero OAuth (con auto-refresh), si falla
-      //    fallback a API Key estática (legacy `apiToken` + `locationId` en
-      //    credentials). Esto soporta tenants que aún no han completado OAuth
-      //    Marketplace pero ya tienen una sub-account API key configurada.
-      let accessToken = '';
-      let locationId = '';
-      let credSource: 'oauth' | 'api_key' = 'oauth';
-      try {
-        const tokens = await getValidAccessToken(supabase, tenantId);
-        accessToken = tokens.accessToken;
-        locationId = tokens.locationId ?? '';
-      } catch (oauthErr) {
-        request.log.warn(
-          { tenantId, err: oauthErr instanceof Error ? oauthErr.message : String(oauthErr) },
-          'internal-calendars/sync: OAuth path unavailable, trying static API Key fallback',
-        );
-        // Fallback: cargar `apiToken` + `locationId` legacy
-        const { data: ia, error: iaErr } = await supabase
-          .from('integration_accounts')
-          .select('id, credentials, credentials_encrypted, connection_config')
-          .eq('tenant_id', tenantId)
-          .eq('provider', 'ghl')
-          .eq('is_active', true)
-          .order('id', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (iaErr || !ia) {
-          return reply.code(409).send({
-            error: 'ghl_unavailable',
-            message: 'No hay integración GHL activa para este tenant.',
-          });
-        }
-        try {
-          const decoded = decodeCredentialsRow(ia, Number(ia.id));
-          const at = typeof decoded.apiToken === 'string' ? decoded.apiToken : '';
-          const lid =
-            typeof decoded.locationId === 'string'
-              ? decoded.locationId
-              : typeof (ia.connection_config as Record<string, unknown> | null)?.locationId === 'string'
-                ? String((ia.connection_config as Record<string, unknown>).locationId)
-                : '';
-          if (!at || !lid) {
-            return reply.code(409).send({
-              error: 'ghl_credentials_incomplete',
-              message:
-                'integration_accounts no tiene OAuth válido NI apiToken+locationId. Reconfigura la integración GHL desde /settings/integrations.',
-            });
-          }
-          accessToken = at;
-          locationId = lid;
-          credSource = 'api_key';
-        } catch (decodeErr) {
-          return reply.code(409).send({
-            error: 'ghl_credentials_decode_failed',
-            message: decodeErr instanceof Error ? decodeErr.message : String(decodeErr),
-          });
-        }
+      const cred = await resolveGhlCredentials(supabase, tenantId, request.log);
+      if (!cred.ok) {
+        return reply.code(cred.status).send({ error: cred.error, message: cred.message });
       }
+      const { accessToken, locationId, credSource } = cred;
       request.log.info(
         { tenantId, credSource, locationId: locationId.slice(0, 8) + '…' },
         'internal-calendars/sync: credentials resolved',
@@ -284,67 +233,28 @@ function buildWidgetBaseUrl(calendarId: string): string {
 }
 
 /**
- * Reuse credential resolution (OAuth o apiToken legacy) y devuelve un GhlClient
- * listo. Extraído para que `/internal/calendars/backfill` no duplique.
+ * Wrapper compat: resuelve credenciales + construye GhlClient.
+ * Mantiene la API previa de `resolveGhlClient` para el endpoint de backfill.
  */
 async function resolveGhlClient(
   supabase: ReturnType<typeof getSupabase>,
   tenantId: number,
-  log: { warn: (o: object, msg: string) => void },
+  log: { warn: (o: object, msg: string) => void; info?: (o: object, msg: string) => void },
 ): Promise<
-  | { ok: true; ghl: GhlClient; locationId: string; credSource: 'oauth' | 'api_key' }
+  | { ok: true; ghl: GhlClient; locationId: string; credSource: 'pit' | 'oauth' | 'legacy' }
   | { ok: false; status: number; error: string; message: string }
 > {
-  try {
-    const tokens = await getValidAccessToken(supabase, tenantId);
-    const lid = tokens.locationId ?? '';
-    if (!lid) {
-      return { ok: false, status: 409, error: 'missing_location_id', message: 'OAuth sin locationId.' };
-    }
-    return { ok: true, ghl: new GhlClient({ apiToken: tokens.accessToken, locationId: lid }), locationId: lid, credSource: 'oauth' };
-  } catch (oauthErr) {
-    log.warn(
-      { tenantId, err: oauthErr instanceof Error ? oauthErr.message : String(oauthErr) },
-      'resolveGhlClient: OAuth path unavailable, trying static API Key fallback',
-    );
-    const { data: ia, error: iaErr } = await supabase
-      .from('integration_accounts')
-      .select('id, credentials, credentials_encrypted, connection_config')
-      .eq('tenant_id', tenantId)
-      .eq('provider', 'ghl')
-      .eq('is_active', true)
-      .order('id', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (iaErr || !ia) {
-      return { ok: false, status: 409, error: 'ghl_unavailable', message: 'No hay integración GHL activa para este tenant.' };
-    }
-    try {
-      const decoded = decodeCredentialsRow(ia, Number(ia.id));
-      const at = typeof decoded.apiToken === 'string' ? decoded.apiToken : '';
-      const lid =
-        typeof decoded.locationId === 'string'
-          ? decoded.locationId
-          : typeof (ia.connection_config as Record<string, unknown> | null)?.locationId === 'string'
-            ? String((ia.connection_config as Record<string, unknown>).locationId)
-            : '';
-      if (!at || !lid) {
-        return {
-          ok: false,
-          status: 409,
-          error: 'ghl_credentials_incomplete',
-          message:
-            'integration_accounts no tiene OAuth válido NI apiToken+locationId. Reconfigura la integración GHL.',
-        };
-      }
-      return { ok: true, ghl: new GhlClient({ apiToken: at, locationId: lid }), locationId: lid, credSource: 'api_key' };
-    } catch (decodeErr) {
-      return {
-        ok: false,
-        status: 409,
-        error: 'ghl_credentials_decode_failed',
-        message: decodeErr instanceof Error ? decodeErr.message : String(decodeErr),
-      };
-    }
-  }
+  const cred = await resolveGhlCredentials(supabase, tenantId, log);
+  if (!cred.ok) return cred;
+  return {
+    ok: true,
+    ghl: new GhlClient({ apiToken: cred.accessToken, locationId: cred.locationId }),
+    locationId: cred.locationId,
+    credSource: cred.credSource,
+  };
 }
+
+// Re-export para que el test internal-calendars-pit-priority.test.ts siga
+// importando desde routes/internal-calendars (compat backward).
+export { resolveGhlCredentials };
+export type { ResolvedCreds };
