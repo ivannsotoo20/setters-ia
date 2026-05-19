@@ -1,42 +1,32 @@
 /**
  * Helper compartido para cargar un GhlClient autenticado por tenant.
  *
- * Lee `integration_accounts` (provider='ghl', is_active=true) → decodifica
- * credenciales (encrypted o legacy plain) → construye GhlClient con
- * `locationId` + `apiToken`.
+ * Sprint Iota.5 PR-B: usa `resolveGhlCredentials` con prioridad PIT → OAuth
+ * → legacy. PIT no requiere refresh; OAuth se refresca automáticamente si
+ * quedan <5min de TTL.
  *
- * Devuelve null si no hay integration GHL activa o las credenciales son
- * inválidas — caller debe manejar el null silenciosamente (tenant sin GHL).
+ * Devuelve null si no hay integración GHL utilizable — caller debe manejar
+ * el null silenciosamente (tenant sin GHL configurado).
  *
  * Refactor 2026-05-17 (Hito 10.6): extraído de webhook-ghl.ts para reuso
  * en process-debounced.ts (API booking).
+ * Refactor 2026-05-19 (Sprint Iota.5 PR-B): pasa por resolveGhlCredentials
+ * para soportar Modelo C híbrido.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { GhlClient } from '@fyzon/ghl-client';
-import { decodeCredentialsRow } from './integration-credentials.js';
+import { resolveGhlCredentials } from './resolve-ghl-credentials.js';
+import { logger } from './logger.js';
 
 export async function loadGhlClientByTenant(
   supabase: SupabaseClient,
   tenantId: number,
 ): Promise<GhlClient | null> {
-  const { data: ia } = await supabase
-    .from('integration_accounts')
-    .select('id, credentials, credentials_encrypted')
-    .eq('tenant_id', tenantId)
-    .eq('provider', 'ghl')
-    .eq('is_active', true)
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (!ia) return null;
-  try {
-    const creds = decodeCredentialsRow(ia, Number(ia.id));
-    const locationId = typeof creds.locationId === 'string' ? creds.locationId : '';
-    const apiToken = typeof creds.apiToken === 'string' ? creds.apiToken : '';
-    if (!locationId || !apiToken) return null;
-    return new GhlClient({ locationId, apiToken });
-  } catch {
-    return null;
-  }
+  const cred = await resolveGhlCredentials(supabase, tenantId, {
+    warn: (o, msg) => logger.warn(o, msg),
+    info: (o, msg) => logger.info(o, msg),
+  });
+  if (!cred.ok) return null;
+  return new GhlClient({ locationId: cred.locationId, apiToken: cred.accessToken });
 }

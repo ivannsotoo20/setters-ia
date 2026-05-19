@@ -20,6 +20,7 @@ import { getAnthropic } from '../lib/anthropic.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
+import { getValidAccessToken, GhlOauthError } from '../lib/ghl-oauth.js';
 
 type SupportedProvider = 'manychat' | 'ycloud' | 'ghl';
 
@@ -351,7 +352,7 @@ async function loadSendContext(
   const { data: ia, error: iaErr } = await supabase
     .from('integration_accounts')
     .select(
-      'id, provider, credentials, credentials_encrypted, connection_config, channel_id, channels(channel_type)',
+      'id, tenant_id, provider, credentials, credentials_encrypted, connection_config, channel_id, channels(channel_type)',
     )
     .eq('id', params.integrationAccountId)
     .maybeSingle();
@@ -365,16 +366,39 @@ async function loadSendContext(
   // Hito 9 (2026-05-16) — fallback `apiKey` (camelCase) antes de `api_key`
   // (snake_case) para alinear con lo que el panel persiste vía wizard onboarding
   // (apps/panel/lib/actions/integrations.ts). Mismo patrón que send-welcome-template.ts:188.
-  const apiKey =
+  let apiKey =
     provider === 'ghl'
       ? typeof credentials.apiToken === 'string'
         ? credentials.apiToken
-        : ''
+        : typeof credentials.accessToken === 'string' // OAuth shape
+          ? credentials.accessToken
+          : ''
       : typeof credentials.apiKey === 'string' && credentials.apiKey.length > 0
         ? credentials.apiKey
         : typeof credentials.api_key === 'string'
           ? credentials.api_key
           : '';
+
+  // Sprint Iota.5 PR-B: si la row GHL es OAuth, asegurar token fresco
+  // (auto-refresh si quedan <5min). `getValidAccessToken` también persiste
+  // los tokens nuevos. Si es PIT, el apiToken pegado no requiere refresh.
+  if (provider === 'ghl') {
+    const cc = (ia.connection_config ?? {}) as { auth_type?: string };
+    if (cc.auth_type === 'oauth') {
+      try {
+        const refreshed = await getValidAccessToken(supabase, Number(ia.tenant_id));
+        apiKey = refreshed.accessToken;
+      } catch (err) {
+        if (!(err instanceof GhlOauthError)) throw err;
+        // Si el refresh falla (clientId/secret no configurados, refresh_token
+        // revocado, etc.) y NO tenemos apiKey usable del decifrado original,
+        // propagamos el error. Si sí tenemos uno (legacy plain), seguimos con
+        // ese — degraded mode hasta que el trainer reautorice.
+        if (!apiKey) throw err;
+      }
+    }
+  }
+
   if (!apiKey) {
     throw new Error(
       `integration_account ${params.integrationAccountId} (${provider}) sin token (api_key/apiKey/apiToken)`,

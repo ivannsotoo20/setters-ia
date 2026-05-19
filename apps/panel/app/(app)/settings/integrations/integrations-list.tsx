@@ -101,9 +101,16 @@ function IntegrationRow({ integration }: { integration: Integration }) {
         #{integration.id}
       </TableCell>
       <TableCell>
-        <Badge variant="outline" className="font-medium uppercase">
-          {integration.provider}
-        </Badge>
+        <div className="flex flex-col gap-1 items-start">
+          <Badge variant="outline" className="font-medium uppercase">
+            {integration.provider}
+          </Badge>
+          {integration.provider === 'ghl' && getAuthTypeLabel(integration.connectionConfig) && (
+            <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wider">
+              {getAuthTypeLabel(integration.connectionConfig)}
+            </Badge>
+          )}
+        </div>
       </TableCell>
       <TableCell>
         <Badge variant="secondary" className="font-normal">
@@ -207,4 +214,17 @@ function formatChannelType(t: string): string {
   if (t === 'facebook_messenger') return 'Facebook Messenger';
   if (t === 'whatsapp') return 'WhatsApp';
   return t;
+}
+
+/**
+ * Sprint Iota.5 PR-B — devuelve el label del auth_type para integraciones GHL.
+ * - 'pit' → "PIT v2.0" (BYOK, Private Integration Token)
+ * - 'oauth' → "OAuth" (Marketplace install, refresh automático)
+ * - sin auth_type → null (no muestra chip)
+ */
+function getAuthTypeLabel(connectionConfig: Record<string, unknown>): string | null {
+  const t = connectionConfig.auth_type;
+  if (t === 'pit') return 'PIT v2.0';
+  if (t === 'oauth') return 'OAuth';
+  return null;
 }
