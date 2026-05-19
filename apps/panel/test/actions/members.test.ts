@@ -133,7 +133,24 @@ vi.mock('@/lib/supabase/service-role', () => ({
           const builder = {
             eq: (col: string, _val: unknown) => {
               if (col === 'tenant_id') {
+                // Sprint Iota.5 hotfix — listMembers ahora encadena
+                //   .eq('tenant_id', X).eq('is_active', true).order(...)
+                // El mock filtra in-memory por is_active=true cuando el segundo
+                // eq llega, manteniendo el comportamiento previo cuando no.
+                const filteredByActive = mockProfilesByTenant.filter((p) => p.is_active);
                 return {
+                  eq: (col2: string, val2: unknown) => {
+                    const filtered =
+                      col2 === 'is_active' && val2 === true
+                        ? filteredByActive
+                        : mockProfilesByTenant;
+                    return {
+                      order: () => ({
+                        then: (resolve: (v: { data: ProfileRow[]; error: null }) => unknown) =>
+                          Promise.resolve({ data: filtered, error: null }).then(resolve),
+                      }),
+                    };
+                  },
                   order: () => ({
                     then: (resolve: (v: { data: ProfileRow[]; error: null }) => unknown) =>
                       Promise.resolve({ data: mockProfilesByTenant, error: null }).then(resolve),

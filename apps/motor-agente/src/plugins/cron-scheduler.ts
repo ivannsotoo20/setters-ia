@@ -9,6 +9,7 @@ import { processNotificationQueue } from '../services/notify-trainer.js';
 import { evaluateInactivityRules } from '../services/labels/index.js';
 import { runAutoFollowupCron } from '../services/auto-followup-cron.js';
 import { checkIntegrationsHealth } from '../services/integration-health-check.js';
+import { env } from '../config/env.js';
 
 const DEBOUNCE_TICK_MS = 5_000;
 const OUTBOUND_TICK_MS = 5_000;
@@ -199,7 +200,12 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
 
   app.addHook('onReady', async () => {
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
-    outboundTimer = setInterval(tickOutbound, OUTBOUND_TICK_MS);
+    // SPIKE Trigger.dev (2026-05-19): si TRIGGER_OUTBOUND_ENABLED=true, el envío
+    // de mensajes lo gestiona la task `outboundBatchTick` en Trigger; aquí lo
+    // saltamos para evitar doble envío. Default OFF → comportamiento idéntico al previo.
+    if (!env.TRIGGER_OUTBOUND_ENABLED) {
+      outboundTimer = setInterval(tickOutbound, OUTBOUND_TICK_MS);
+    }
     notifyTimer = setInterval(tickNotify, NOTIFY_TICK_MS);
     inactivityTimer = setInterval(tickInactivity, INACTIVITY_TICK_MS);
     autoFollowupTimer = setInterval(tickAutoFollowup, AUTO_FOLLOWUP_TICK_MS);
@@ -207,7 +213,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     app.log.info(
       {
         debounceMs: DEBOUNCE_TICK_MS,
-        outboundMs: OUTBOUND_TICK_MS,
+        outboundMs: env.TRIGGER_OUTBOUND_ENABLED ? 'managed_by_trigger_dev' : OUTBOUND_TICK_MS,
         notifyMs: NOTIFY_TICK_MS,
         inactivityMs: INACTIVITY_TICK_MS,
         autoFollowupMs: AUTO_FOLLOWUP_TICK_MS,

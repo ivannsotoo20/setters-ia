@@ -108,6 +108,18 @@ const envSchema = z.object({
   RESEND_API_BASE: z.string().url().default('https://api.resend.com'),
   /** URL pública del panel para enlaces dentro de los emails (CTA "Ver conversación"). */
   PANEL_PUBLIC_URL: z.string().url().default('https://panel.fyzon.es'),
+  /**
+   * SPIKE Trigger.dev (2026-05-19) — si `true`, el cron-scheduler interno
+   * saltea su `tickOutbound` y deja el envío de mensajes en manos de la task
+   * scheduled `outboundBatchTick` (gestionada por Trigger). Default `false`
+   * (motor sigue idéntico a hoy). Ver docs/trigger-dev-spike.md.
+   */
+  TRIGGER_OUTBOUND_ENABLED: z
+    .string()
+    .transform((v) => v === 'true' || v === '1')
+    .default('false'),
+  /** Project ref de Trigger.dev (formato proj_xxxxx). Solo necesario si TRIGGER_OUTBOUND_ENABLED=true. */
+  TRIGGER_PROJECT_REF: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

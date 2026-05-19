@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { UserCog } from 'lucide-react';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { listMembers } from '@/lib/actions/members';
+import { listMembers, listTenantPendingInvites } from '@/lib/actions/members';
 import { MembersList } from '@/components/members-list';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 
@@ -27,7 +27,14 @@ export default async function SettingsMembersPage() {
   const isAgencyAdmin = profile?.is_agency_admin === true;
   const canManage = isOwner || isAgencyAdmin;
 
-  const result = await listMembers({ tenantId: effective.tenantId });
+  // Sprint Iota.5 hotfix — cargar miembros activos + invitaciones pendientes
+  // en paralelo. Antes solo se mostraban los profiles ya existentes, lo que
+  // ocultaba las invitaciones recién enviadas (el INSERT en `profiles` ocurre
+  // al aceptar el invite, no al enviarlo).
+  const [membersResult, invitesResult] = await Promise.all([
+    listMembers({ tenantId: effective.tenantId }),
+    listTenantPendingInvites({ tenantId: effective.tenantId }),
+  ]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -44,15 +51,16 @@ export default async function SettingsMembersPage() {
         </p>
       </div>
 
-      {result.ok ? (
+      {membersResult.ok ? (
         <MembersList
           tenantId={effective.tenantId}
-          initialMembers={result.data ?? []}
+          initialMembers={membersResult.data ?? []}
+          initialInvites={invitesResult.ok ? invitesResult.data ?? [] : []}
           canManage={canManage}
           currentUserId={user.id}
         />
       ) : (
-        <p className="text-sm text-destructive">Error: {result.error}</p>
+        <p className="text-sm text-destructive">Error: {membersResult.error}</p>
       )}
     </div>
   );

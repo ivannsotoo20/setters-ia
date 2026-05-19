@@ -66,12 +66,18 @@ export async function listMembers(args: {
   try {
     const supabase = getServiceRoleClient();
 
+    // Sprint Iota.5 hotfix — filtrar miembros soft-removed (is_active=false).
+    // Antes la UI los mostraba todos y los pintaba como "Activo" si tenían
+    // email confirmado, lo que daba la sensación de que el botón "Quitar" no
+    // hacía nada. El removeMember sigue siendo soft (is_active=false), pero
+    // el listing solo devuelve los activos.
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select(
         'id, email, full_name, role, is_active, is_agency_admin, invited_at, created_at',
       )
       .eq('tenant_id', args.tenantId)
+      .eq('is_active', true)
       .order('created_at', { ascending: true });
 
     if (error) return { ok: false, error: error.message };

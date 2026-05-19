@@ -32,6 +32,8 @@
     "@fyzon/prompt-composer": "workspace:*",
     "@fyzon/shared-validator": "workspace:*",
     "@supabase/supabase-js": "^2.47.12",
+    "@trigger.dev/build": "^4.4.6",
+    "@trigger.dev/sdk": "^4.4.6",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.1",
     "ioredis": "^5.4.2",
