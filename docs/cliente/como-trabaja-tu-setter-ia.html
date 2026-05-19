@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cómo trabaja tu setter IA — Fyzon</title>
+<style>
+  :root {
+    --primary: #5046e5;
+    --primary-soft: #ece9ff;
+    --success: #16a34a;
+    --warning: #ca8a04;
+    --danger: #dc2626;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --border: #e2e8f0;
+    --code-bg: #f1f5f9;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.65;
+    margin: 0;
+    padding: 0;
+    font-size: 16px;
+  }
+  .container { max-width: 920px; margin: 0 auto; padding: 48px 24px 96px; }
+  header { margin-bottom: 48px; }
+  header .brand {
+    display: inline-block;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--primary);
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: 36px;
+    line-height: 1.2;
+    margin: 0 0 12px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  header .subtitle {
+    font-size: 18px;
+    color: var(--muted);
+    max-width: 640px;
+    line-height: 1.55;
+  }
+  h2 {
+    font-size: 26px;
+    margin: 56px 0 16px;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 8px;
+  }
+  h3 {
+    font-size: 19px;
+    margin: 28px 0 8px;
+    font-weight: 700;
+  }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code {
+    background: var(--code-bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 13px;
+    color: var(--text);
+  }
+  strong { font-weight: 700; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 18px 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .card.tinted-primary { border-color: var(--primary); background: var(--primary-soft); }
+  .card.tinted-success { border-color: #bbf7d0; background: #f0fdf4; }
+  .card.tinted-warning { border-color: #fde68a; background: #fefce8; }
+
+  .badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .badge-primary { background: var(--primary); color: #fff; }
+  .badge-success { background: var(--success); color: #fff; }
+  .badge-muted { background: var(--border); color: var(--muted); }
+
+  .three-cols {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+    margin: 24px 0;
+  }
+  @media (min-width: 720px) {
+    .three-cols { grid-template-columns: repeat(3, 1fr); }
+  }
+  .entry-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .entry-card .icon {
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    margin-bottom: 4px;
+  }
+  .entry-card h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+  }
+  .entry-card p {
+    font-size: 14px;
+    color: var(--muted);
+    margin: 0;
+  }
+
+  .flow {
+    margin: 24px 0;
+    border-left: 3px solid var(--primary);
+    padding-left: 20px;
+  }
+  .flow-step {
+    margin-bottom: 22px;
+    position: relative;
+  }
+  .flow-step::before {
+    content: '';
+    position: absolute;
+    left: -26.5px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--primary);
+    border: 3px solid #fff;
+    box-shadow: 0 0 0 1px var(--primary);
+  }
+  .flow-step strong { display: block; font-size: 15px; margin-bottom: 4px; }
+  .flow-step p { font-size: 14px; color: var(--muted); margin: 0; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: #f8fafc; font-weight: 700; }
+  tbody tr:nth-child(even) { background: #fafbff; }
+
+  .ascii-flow {
+    background: var(--code-bg);
+    padding: 16px;
+    border-radius: 8px;
+    font-family: "SF Mono", Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.55;
+    overflow-x: auto;
+    margin: 16px 0;
+    white-space: pre;
+  }
+
+  .callout {
+    border-left: 4px solid var(--warning);
+    background: #fefce8;
+    padding: 14px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout.success { border-color: var(--success); background: #f0fdf4; }
+  .callout.info { border-color: var(--primary); background: var(--primary-soft); }
+  .callout strong { display: block; margin-bottom: 4px; }
+
+  .toc {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 24px;
+    margin: 24px 0 48px;
+  }
+  .toc h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .toc ol { margin: 0; padding-left: 20px; }
+  .toc a { color: var(--text); text-decoration: none; font-size: 14px; }
+  .toc a:hover { color: var(--primary); }
+
+  footer {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <span class="brand">Fyzon · Setters IA</span>
+  <h1>Cómo trabaja tu setter IA</h1>
+  <p class="subtitle">
+    Esta guía explica paso a paso cómo conversa la inteligencia artificial con tus
+    leads, qué hace en cada momento y cuándo te pasa la conversación a ti.
+    Pensada para que entiendas el comportamiento del sistema sin tener que tocar
+    código.
+  </p>
+</header>
+
+<nav class="toc" aria-label="Índice">
+  <h3>Índice</h3>
+  <ol>
+    <li><a href="#vista-general">Vista general en 60 segundos</a></li>
+    <li><a href="#tres-entradas">Las 3 puertas de entrada del lead</a></li>
+    <li><a href="#bienvenida-manual">1. Mensaje de bienvenida hecho a mano</a></li>
+    <li><a href="#lead-magnet">2. Lead magnet activado por webhook</a></li>
+    <li><a href="#formulario-vsl">3. Formulario VSL / WhatsApp directo</a></li>
+    <li><a href="#motor-procesa">Qué hace el motor después de recibir al lead</a></li>
+    <li><a href="#fases">Las 7 fases de la conversación (F0–F7)</a></li>
+    <li><a href="#handoff">Cuándo se te pasa la conversación (handoff)</a></li>
+    <li><a href="#avisos">Cómo se te avisa: email, panel, etiquetas</a></li>
+    <li><a href="#tu-control">Qué controlas tú desde el panel</a></li>
+    <li><a href="#checklist">Checklist de qué tienes que tener listo</a></li>
+  </ol>
+</nav>
+
+<section id="vista-general">
+  <h2>Vista general en 60 segundos</h2>
+  <p>
+    Tu setter IA es un asistente que vive entre tus canales (Instagram, Facebook,
+    WhatsApp) y tu CRM (GoHighLevel). Cuando llega un lead, lo recibe, lo cualifica
+    conversando como lo harías tú, y agenda la llamada. Si en algún momento la
+    conversación necesita tu intervención, la IA se aparta y te avisa.
+  </p>
+  <div class="ascii-flow">Lead ─► Canal (IG / FB / WA) ─► Motor IA (Fyzon)
+                                  │
+            ┌─── Cualifica conversando ───┘
+            │
+            ├─► Agenda llamada en tu calendario GHL  ◄── Te avisa por email
+            │
+            └─► Si bloquea → Handoff a TI (con etiqueta + email)</div>
+  <p>
+    Detrás del telón hay un cerebro entrenado contigo (tu tono, tu programa, tu
+    avatar de cliente, tus objeciones típicas) y una red de seguridad que vigila
+    que el mensaje sea natural, dentro de la longitud que querías, sin emojis de
+    más, sin enlaces que no debería compartir.
+  </p>
+</section>
+
+<section id="tres-entradas">
+  <h2>Las 3 puertas de entrada del lead</h2>
+  <p>
+    Hay tres maneras distintas de que un lead entre al sistema. La IA reacciona
+    distinto en cada una:
+  </p>
+  <div class="three-cols">
+    <div class="entry-card">
+      <span class="icon">✍️</span>
+      <h4>1. Bienvenida manual</h4>
+      <p>
+        Tú escribes a un lead a mano desde GoHighLevel (un comentario IG/FB, un
+        DM). La IA detecta tu mensaje y continúa la conversación desde donde lo
+        dejaste.
+      </p>
+    </div>
+    <div class="entry-card">
+      <span class="icon">🪝</span>
+      <h4>2. Lead magnet</h4>
+      <p>
+        Un lead comenta una palabra clave (<code>info</code>, <code>quiero</code>,
+        etc.) en un post tuyo de IG/FB. GoHighLevel le manda el recurso y la
+        IA arranca la conversación.
+      </p>
+    </div>
+    <div class="entry-card">
+      <span class="icon">📋</span>
+      <h4>3. Formulario / VSL</h4>
+      <p>
+        El lead rellena un formulario (VSL, Tally, Meta Lead Ads). La IA le
+        manda automáticamente una plantilla de bienvenida WhatsApp aprobada por
+        Meta y entra al flujo.
+      </p>
+    </div>
+  </div>
+  <p>
+    Cualquiera de las 3 puertas lleva al mismo motor — solo cambia cómo arranca
+    la conversación. A partir del primer mensaje del lead, el comportamiento es
+    el mismo.
+  </p>
+</section>
+
+<section id="bienvenida-manual">
+  <h2>1. Mensaje de bienvenida hecho a mano</h2>
+  <p>
+    Este es el caso típico cuando tú ves un lead interesante (por ejemplo, una
+    persona que comenta tus posts) y decides escribirle tú directamente desde
+    GoHighLevel con un saludo personalizado.
+  </p>
+  <h3>Qué pasa, paso a paso</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <strong>1. Tú escribes desde GHL.</strong>
+      <p>Desde tu sub-cuenta GoHighLevel abres la conversación con el lead y le mandas un mensaje a mano (Instagram, Facebook o WhatsApp).</p>
+    </div>
+    <div class="flow-step">
+      <strong>2. GoHighLevel notifica a Fyzon.</strong>
+      <p>GHL dispara un webhook automático al motor Fyzon. Le indica: "ha salido un mensaje tuyo hacia este lead, contiene la palabra <code>bienvenida</code>" (configurable en tus Keywords).</p>
+    </div>
+    <div class="flow-step">
+      <strong>3. Fyzon crea la conversación.</strong>
+      <p>El motor crea el contacto si no existe, registra tu mensaje y deja la conversación lista para reaccionar al primer mensaje del lead.</p>
+    </div>
+    <div class="flow-step">
+      <strong>4. El lead responde.</strong>
+      <p>Cuando el lead te contesta, la IA toma el control: lee tu mensaje original + la respuesta del lead y prepara la siguiente respuesta en tu tono.</p>
+    </div>
+    <div class="flow-step">
+      <strong>5. Se cualifica conversando.</strong>
+      <p>La IA hace preguntas naturales para saber si encaja con tu cliente ideal (situación actual, objetivo, dolor, presupuesto cuando aplique).</p>
+    </div>
+    <div class="flow-step">
+      <strong>6. Se cierra agendando.</strong>
+      <p>Si el lead cualifica, la IA le propone una llamada usando tu calendario GHL. El sistema verifica disponibilidad real y agenda.</p>
+    </div>
+  </div>
+  <div class="callout info">
+    <strong>¿Y si no quieres que la IA tome el control?</strong>
+    Puedes etiquetar la conversación como "manual" o pausar la IA desde el panel
+    Fyzon en cualquier momento. La conversación se queda contigo.
+  </div>
+</section>
+
+<section id="lead-magnet">
+  <h2>2. Lead magnet activado por webhook</h2>
+  <p>
+    Este es el flujo cuando un lead te encuentra orgánico — por ejemplo, comenta
+    "INFO" en un post tuyo de Instagram pidiendo el recurso gratuito que ofreces.
+  </p>
+  <h3>Qué pasa, paso a paso</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <strong>1. El lead comenta una keyword.</strong>
+      <p>Escribe "INFO", "QUIERO", "DAME", o la palabra que tengas configurada en GHL como trigger del lead magnet.</p>
+    </div>
+    <div class="flow-step">
+      <strong>2. GoHighLevel envía el recurso.</strong>
+      <p>El workflow GHL le manda al lead automáticamente el Drive / PDF / link que tengas configurado, vía DM Instagram.</p>
+    </div>
+    <div class="flow-step">
+      <strong>3. GHL notifica a Fyzon.</strong>
+      <p>En paralelo, GHL dispara un webhook al motor avisando: "este mensaje al lead lleva la keyword <code>lm</code> (lead magnet)".</p>
+    </div>
+    <div class="flow-step">
+      <strong>4. Fyzon prepara el follow-up.</strong>
+      <p>El motor sabe que el lead acaba de recibir tu recurso. Espera a que diga algo (un "gracias", una pregunta, un "tiene buena pinta") y arranca la conversación en Fase 2: validar que ha consumido el recurso y entender qué busca.</p>
+    </div>
+    <div class="flow-step">
+      <strong>5. Cualifica conversando.</strong>
+      <p>Mismo flujo que la bienvenida manual: preguntas naturales, sin sonar a bot, en tu tono.</p>
+    </div>
+    <div class="flow-step">
+      <strong>6. Si cualifica, se cierra agendando.</strong>
+      <p>Calendario GHL, slot disponible, confirmación al lead. Tú te enteras por email + en el panel.</p>
+    </div>
+  </div>
+  <div class="callout">
+    <strong>Diferencia clave con la bienvenida manual:</strong>
+    en la bienvenida manual <em>tú</em> rompes el hielo. En lead magnet,
+    <em>la IA</em> arranca cuando el lead responde tras recibir el recurso.
+  </div>
+</section>
+
+<section id="formulario-vsl">
+  <h2>3. Formulario VSL / WhatsApp directo</h2>
+  <p>
+    Este es el flujo cuando un lead pasa por una página de venta (VSL), un
+    formulario Meta Lead Ad, un Tally o un workflow GHL que captura su teléfono.
+    El primer contacto se hace por WhatsApp con una plantilla aprobada por Meta.
+  </p>
+  <h3>Qué pasa, paso a paso</h3>
+  <div class="flow">
+    <div class="flow-step">
+      <strong>1. El lead rellena el formulario.</strong>
+      <p>VSL, Tally, Meta Lead Ad, GHL form — cualquier formulario al que conectes el sistema. Deja al menos su nombre y teléfono.</p>
+    </div>
+    <div class="flow-step">
+      <strong>2. El formulario llama a Fyzon.</strong>
+      <p>El form envía los datos al endpoint del motor Fyzon (la URL del webhook
+      que generas en el wizard de setup, sección "Designar plantilla bienvenida").</p>
+    </div>
+    <div class="flow-step">
+      <strong>3. Fyzon manda la plantilla de bienvenida WhatsApp.</strong>
+      <p>El motor envía automáticamente la plantilla Meta aprobada que tú elegiste como "bienvenida" (típicamente algo como: <em>"Hola {{nombre}}, soy el equipo de Pablo Montenegro, gracias por completar la información..."</em>). Esto se envía vía YCloud (o GHL si lo tienes configurado como BSP).</p>
+    </div>
+    <div class="flow-step">
+      <strong>4. El lead responde.</strong>
+      <p>Cuando el lead contesta, la IA arranca el flujo de cualificación en Fase 1.</p>
+    </div>
+    <div class="flow-step">
+      <strong>5. Cualifica y cierra como siempre.</strong>
+      <p>Mismas 7 fases. La IA termina agendando llamada en tu calendario GHL.</p>
+    </div>
+  </div>
+  <div class="callout info">
+    <strong>¿Por qué hace falta una plantilla aprobada?</strong>
+    WhatsApp Business solo permite enviar el primer mensaje fuera de la ventana
+    de 24h si es una plantilla aprobada por Meta. Esto evita el spam. Tú apruebas
+    una o dos plantillas en YCloud (o GHL), y la IA las usa para abrir
+    conversaciones de leads que llegan por formulario.
+  </div>
+</section>
+
+<section id="motor-procesa">
+  <h2>Qué hace el motor después de recibir al lead</h2>
+  <p>
+    Cuando llega un mensaje nuevo del lead (por cualquiera de las 3 puertas), el
+    motor no responde inmediato. Espera unos segundos a que el lead acabe de
+    escribir (a veces mandan 3 mensajes seguidos) y entonces procesa todo de una.
+    Esto evita respuestas cortadas y sensación de bot.
+  </p>
+  <div class="ascii-flow">    Mensaje del lead llega ──► Espera ~25 segundos (debounce)
+                                    │
+                                    ▼
+                          ┌─────────────────────┐
+                          │  Generator (Sonnet) │  ◄── compone la respuesta
+                          └─────────┬───────────┘       según tu cerebro + coach
+                                    │
+                                    ▼
+                          ┌─────────────────────┐
+                          │  Judge (Haiku)      │  ◄── red de seguridad:
+                          └─────────┬───────────┘       ¿sonó natural? ¿muy largo?
+                                    │                   ¿usó algo prohibido?
+                                    ▼
+                          ┌─────────────────────┐
+                          │  Splitter (Haiku)   │  ◄── divide en 1-3 mensajes
+                          └─────────┬───────────┘       para que suene humano
+                                    │
+                                    ▼
+                          Envía con typing delay realista
+                          (no instantáneo, no robótico)</div>
+  <p>
+    Tres modelos de inteligencia artificial trabajan en cadena. El <strong>Generator</strong>
+    es el que conversa de verdad usando todo lo que sabe sobre ti y tu programa.
+    El <strong>Judge</strong> es la red de seguridad: revisa cada mensaje antes de mandarlo,
+    verifica que no rompa ninguna regla (longitud, tono, emojis, enlaces no
+    autorizados). El <strong>Splitter</strong> divide el mensaje en 1, 2 o 3 burbujas,
+    como hace un humano, para que no llegue todo de golpe.
+  </p>
+  <p>
+    Entre cada burbuja hay un retraso de "está escribiendo..." configurado para
+    sonar natural. Si el lead manda otro mensaje mientras el setter está pensando,
+    el motor empieza de cero con el contexto actualizado — no se solapan
+    respuestas.
+  </p>
+</section>
+
+<section id="fases">
+  <h2>Las 7 fases de la conversación (F0–F7)</h2>
+  <p>
+    Cada conversación pasa por hasta 7 fases. El motor sabe en cuál está cada
+    lead y adapta su tono y objetivo:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Fase</th>
+        <th>Nombre</th>
+        <th>Qué busca</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-muted">F0</span></td>
+        <td>Pre-contacto</td>
+        <td>El lead aún no ha respondido (acabas de mandarle la bienvenida o el recurso). Sin actividad de la IA.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-primary">F1</span></td>
+        <td>Apertura</td>
+        <td>Primer intercambio. Establecer rapport, agradecer su interés, hacer una primera pregunta abierta sobre su situación.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-primary">F2</span></td>
+        <td>Diagnóstico</td>
+        <td>Entender dónde está el lead: situación actual, qué ha probado, qué le frena. Sin sonar a interrogatorio.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-primary">F3</span></td>
+        <td>Cualificación profunda</td>
+        <td>Verificar que encaja con tu cliente ideal (edad, objetivo, predisposición, presupuesto cuando aplique).</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-primary">F4</span></td>
+        <td>Puente</td>
+        <td>Transición desde "te escucho" hacia "te puedo ayudar". Resume lo que el lead te contó y conecta con tu propuesta de valor.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-primary">F5</span></td>
+        <td>Propuesta</td>
+        <td>Presentar la solución (tu programa) en términos del lenguaje del lead, no del tuyo. Sin precios todavía.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-primary">F6</span></td>
+        <td>Cierre / Agenda</td>
+        <td>Proponer una llamada con tu calendario GHL. La IA detecta slots disponibles reales y los envía como propuesta.</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-success">F7</span></td>
+        <td>Llamada agendada</td>
+        <td>El lead reservó la cita. La IA confirma, le recuerda detalles y se aparta — la conversación pasa a ti.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    No todos los leads llegan a F7. Algunos se descalifican antes (no encaja con
+    el cliente ideal, está fuera de presupuesto, fuera de rango de edad). Otros
+    se quedan en F2 o F3 sin avanzar y la IA los marca como "fríos" para
+    reactivarlos con un follow-up posterior.
+  </p>
+</section>
+
+<section id="handoff">
+  <h2>Cuándo se te pasa la conversación (handoff)</h2>
+  <p>
+    La IA no está sola — sabe cuándo debe apartarse y avisarte. Hay varias
+    razones por las que esto ocurre:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>Causa</th>
+        <th>Qué la activa</th>
+        <th>Qué pasa</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>A · Agendó cita</strong></td>
+        <td>El lead reservó en tu calendario GHL.</td>
+        <td>Conversación pasa a F7. IA se aparta. Te llega email "Cita agendada" + se ve en panel /calendarios.</td>
+      </tr>
+      <tr>
+        <td><strong>B · El lead lo pide</strong></td>
+        <td>Dice algo como "quiero hablar contigo", "puedo llamarte directamente", "prefiero que me llame Pablo".</td>
+        <td>IA pausada. Email "Handoff a humano". La conversación queda con etiqueta "manual" en el panel.</td>
+      </tr>
+      <tr>
+        <td><strong>C · Tema fuera de scope</strong></td>
+        <td>El lead pregunta algo que la IA no debe responder (precios concretos antes de llamada, médico, legal, casos muy personalizados).</td>
+        <td>IA da una respuesta puente "lo vemos en la llamada" y deja la conversación en suspense, marcada para tu revisión.</td>
+      </tr>
+      <tr>
+        <td><strong>D · Algo se rompió</strong></td>
+        <td>Plantilla mal configurada, lead sin teléfono, link de agenda inválido, etc.</td>
+        <td>IA pausa el flujo, te avisa por email y te etiqueta la conversación con la causa para que puedas intervenir.</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>
+    En todos los casos tú puedes retomar la conversación desde el panel Fyzon o
+    desde GoHighLevel sin que la IA interfiera. Si quieres devolverle el control
+    a la IA, hay un botón "reanudar IA" en la ficha del lead.
+  </p>
+</section>
+
+<section id="avisos">
+  <h2>Cómo se te avisa: email, panel, etiquetas</h2>
+  <p>
+    Cuando algo importante pasa, te enteras por tres canales que se complementan:
+  </p>
+  <div class="three-cols">
+    <div class="entry-card">
+      <span class="icon">📧</span>
+      <h4>Email</h4>
+      <p>
+        Lead cualificado, cita agendada, handoff a humano, integración caída.
+        Llega a tu correo. Decides qué eventos te interesan en
+        <code>/settings/preferences</code>.
+      </p>
+    </div>
+    <div class="entry-card">
+      <span class="icon">📊</span>
+      <h4>Panel</h4>
+      <p>
+        En <code>/conversations</code> ves todo en vivo. Cada conversación
+        tiene su fase, su última actividad y un resumen del estado.
+      </p>
+    </div>
+    <div class="entry-card">
+      <span class="icon">🏷️</span>
+      <h4>Etiquetas</h4>
+      <p>
+        Hot lead, comprado, perdido, requiere revisión... Etiquetas de
+        colores que tú configuras y que la IA aplica automáticamente según
+        reglas (o las pones tú a mano).
+      </p>
+    </div>
+  </div>
+  <h3>Aviso automático cuando algo se cae</h3>
+  <p>
+    Si una integración deja de recibir actividad (por ejemplo GHL deja de
+    mandarnos webhooks porque alguien cambió la configuración), recibes un email
+    de alerta automático.
+  </p>
+  <ul>
+    <li>Verde: actividad reciente (&lt;12 h por defecto).</li>
+    <li>Ámbar: lleva 12-72 h sin actividad (puede ser fin de semana, sin alarma).</li>
+    <li>Rojo: más de 72 h sin actividad → email automático para que revises.</li>
+  </ul>
+  <p>
+    Los umbrales (12 h / 72 h) son configurables desde
+    <code>/settings/integrations</code> tab Salud. Si tienes campañas
+    estacionales, súbelos para evitar falsas alarmas.
+  </p>
+</section>
+
+<section id="tu-control">
+  <h2>Qué controlas tú desde el panel</h2>
+  <p>
+    El sistema viene afinado con tu cerebro y tu coach, pero estos son los
+    botones que tú puedes mover sin tocar configuración técnica:
+  </p>
+  <table>
+    <thead>
+      <tr>
+        <th>En el panel</th>
+        <th>Qué controlas</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>/settings/setup</code></td>
+        <td>Wizard de onboarding. Conecta GHL, configura keywords, conecta WhatsApp, designa plantilla de bienvenida. Cada paso se puede marcar manualmente como hecho si ya lo tienes resuelto por tu cuenta.</td>
+      </tr>
+      <tr>
+        <td><code>/settings/preferences</code></td>
+        <td>Tono del setter (emojis sí/no, longitud, registro formal/cercano), nombre con el que firma la IA, email donde recibes avisos, qué eventos te notifican.</td>
+      </tr>
+      <tr>
+        <td><code>/settings/integrations</code></td>
+        <td>Conectar/desconectar GHL, YCloud, ManyChat. Ver salud de cada conector. Configurar umbrales de alerta.</td>
+      </tr>
+      <tr>
+        <td><code>/keywords</code></td>
+        <td>Palabras clave que activan/pausan la IA cuando GHL te envía mensajes (<code>bienvenida</code>, <code>lm</code>, <code>info</code>, etc.).</td>
+      </tr>
+      <tr>
+        <td><code>/labels</code></td>
+        <td>Etiquetas de colores que aparecen en cada conversación. Reglas automáticas si quieres (ej: "si lead lleva 7 días sin responder → etiqueta Frío").</td>
+      </tr>
+      <tr>
+        <td><code>/calendars</code></td>
+        <td>Lista de calendarios GHL vinculados + citas agendadas. Aquí ves todas las llamadas que la IA cerró por ti.</td>
+      </tr>
+      <tr>
+        <td><code>/conversations</code></td>
+        <td>Pantalla de control diario. Todas las conversaciones, en qué fase, qué dijo la IA, qué dijo el lead. Puedes intervenir o pausar la IA con un click.</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="checklist">
+  <h2>Checklist de qué tienes que tener listo</h2>
+  <p>Para que el setter funcione correctamente, esto es lo que pedimos por tu lado:</p>
+  <div class="card tinted-success">
+    <h3 style="margin-top:0">Imprescindible</h3>
+    <ul>
+      <li>Sub-cuenta GoHighLevel activa con tus canales IG / FB / WhatsApp conectados.</li>
+      <li>App Fyzon instalada en tu sub-cuenta GHL (te enviamos el link de instalación) <em>O</em> Private Integration Token (PIT) de GHL pegado en el panel Fyzon. Te explicamos por qué se hace así abajo.</li>
+      <li>Calendario GHL configurado con tus horarios de llamada disponibles.</li>
+      <li>Cuenta YCloud (o equivalente Meta Cloud) con al menos una plantilla WhatsApp de bienvenida aprobada por Meta, si vas a captar por VSL/formulario.</li>
+      <li>Email donde recibir avisos importantes.</li>
+    </ul>
+  </div>
+  <div class="card tinted-warning">
+    <h3 style="margin-top:0">Recomendable</h3>
+    <ul>
+      <li>Lead magnet (PDF, vídeo, Drive) preparado para el flujo "comentario en post".</li>
+      <li>Una página de aterrizaje o VSL con formulario conectado al webhook Fyzon para captación entrante.</li>
+      <li>Etiquetas configuradas con tu nomenclatura (Hot, Tibio, Frío, Comprado, etc.).</li>
+      <li>Keywords <code>wa_open</code> definidas si quieres filtrar quién pasa al setter por WhatsApp en frío.</li>
+    </ul>
+  </div>
+  <h3>¿Por qué dos vías para conectar GHL?</h3>
+  <p>
+    El sistema soporta dos formas de hablar con GoHighLevel, que se complementan:
+  </p>
+  <ul>
+    <li>
+      <strong>App Marketplace Fyzon (OAuth)</strong>: instalación en un click desde
+      tu sub-cuenta. Recibimos los webhooks (mensajes nuevos IG/FB/WA, citas
+      agendadas, etc.).
+    </li>
+    <li>
+      <strong>Private Integration Token (PIT)</strong>: un token estático que tú
+      generas en tu GHL (Settings → Private Integrations). Lo pegas en el panel
+      Fyzon. Se usa para que el motor pueda llamar a la API de GHL para
+      <em>consultar y crear cosas</em> (listar calendarios, leer contactos,
+      crear citas, etc.). Tiene scopes granulares que tú activas.
+    </li>
+  </ul>
+  <p>
+    En la práctica, lo recomendable es tener las dos vías activas. Si solo tienes
+    una, el sistema funciona en modo degradado pero pierde alguna funcionalidad.
+  </p>
+</section>
+
+<footer>
+  <p>
+    Documento de referencia · Fyzon Setters IA · Versión Iota.5 · 2026-05-19.<br>
+    Si algo de esta guía no encaja con cómo está funcionando tu setter,
+    avísanos — ajustamos el comportamiento por configuración, no cambiando código.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
