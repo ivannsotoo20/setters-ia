@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   respondAsSetterTool,
   RESPOND_AS_SETTER_TOOL_NAME,
+  buildRespondAsSetterTool,
 } from '../src/tool-definition.js';
 import { validateSetterOutput } from '../src/generator.js';
 
@@ -150,5 +151,61 @@ describe('validateSetterOutput', () => {
       proposed_booking_slot: 12345,
     });
     expect(out3.proposed_booking_slot).toBeUndefined();
+  });
+});
+
+// =============================================================================
+// Hito 12.1 — buildRespondAsSetterTool factory (maxLength dinámico)
+// =============================================================================
+
+describe('Hito 12.1 — buildRespondAsSetterTool', () => {
+  function getMessageRawMaxLength(tool: ReturnType<typeof buildRespondAsSetterTool>): number {
+    const schema = tool.input_schema as {
+      properties: { message_raw: { maxLength: number } };
+    };
+    return schema.properties.message_raw.maxLength;
+  }
+
+  it('factory sin args usa cap default 4 → maxLength=1150', () => {
+    expect(getMessageRawMaxLength(buildRespondAsSetterTool())).toBe(1150);
+  });
+
+  it('maxParts=1 → maxLength=310 (1*280 + 30 holgura)', () => {
+    expect(getMessageRawMaxLength(buildRespondAsSetterTool({ maxParts: 1 }))).toBe(310);
+  });
+
+  it('maxParts=2 → maxLength=590', () => {
+    expect(getMessageRawMaxLength(buildRespondAsSetterTool({ maxParts: 2 }))).toBe(590);
+  });
+
+  it('maxParts=3 → maxLength=870', () => {
+    expect(getMessageRawMaxLength(buildRespondAsSetterTool({ maxParts: 3 }))).toBe(870);
+  });
+
+  it('maxParts=4 → maxLength=1150', () => {
+    expect(getMessageRawMaxLength(buildRespondAsSetterTool({ maxParts: 4 }))).toBe(1150);
+  });
+
+  it('description del message_raw interpola el cap (máximo N burbujas)', () => {
+    const t1 = buildRespondAsSetterTool({ maxParts: 1 });
+    const s1 = t1.input_schema as { properties: { message_raw: { description: string } } };
+    expect(s1.properties.message_raw.description).toContain('máximo 1 burbujas');
+    // El cap 2 también interpola correctamente.
+    const t2 = buildRespondAsSetterTool({ maxParts: 2 });
+    const s2 = t2.input_schema as { properties: { message_raw: { description: string } } };
+    expect(s2.properties.message_raw.description).toContain('máximo 2 burbujas');
+  });
+
+  it('mantiene los demás campos del schema (required, properties opcionales)', () => {
+    const tool = buildRespondAsSetterTool({ maxParts: 2 });
+    const schema = tool.input_schema as { required: string[]; properties: Record<string, unknown> };
+    expect(schema.required).toEqual(['message_raw', 'conversation_status', 'phase_decision']);
+    expect(schema.properties).toHaveProperty('captured_lead_email');
+    expect(schema.properties).toHaveProperty('proposed_booking_slot');
+    expect(schema.properties).toHaveProperty('handoff_cause');
+  });
+
+  it('export legacy `respondAsSetterTool` equivale al cap default (4)', () => {
+    expect(getMessageRawMaxLength(respondAsSetterTool)).toBe(1150);
   });
 });

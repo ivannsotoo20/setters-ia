@@ -472,6 +472,58 @@ Los `coach_v3` se migraron a `coach_v5` (monolítico inline con 9 sub-secciones 
 - Lógica del motor para callProposalMode / schedulingMode / handoffMode / API booking / calendar matching / lead-form / timezone-awareness Hito 11.
 - Cache TTL = `'1h'`.
 
+## Hito 12.1 — Cumplimiento estricto: max msgs + addressing + forbidden phrases (2026-05-20)
+
+**Doctrina**: 3 preferencias del trainer con cumplimiento ESTRICTO (enforce en código), no best effort. El trainer las configura en `/settings/preferences` y el motor las valida a nivel código antes de enviar el mensaje al lead. Plan: `~/.claude/plans/me-gustar-a-configurar-dentro-memoized-cascade.md`.
+
+### Nuevas keys en `trainer_preferences.preferences` JSONB
+
+| Key | Tipo | Default | Enforce |
+|---|---|---|---|
+| `aiMessagesPerTurnMax` | 1\|2\|3\|4 | 4 (baseline) | 3 puntos: instrucción al Generator + `message_raw.maxLength` dinámico + Splitter `maxItems` dinámico |
+| `addressingMode` | 'tu'\|'usted'\|'mirror_lead' | 'mirror_lead' | tu/usted: V18 validator + instrucción `trainer_prefs_v1`. mirror_lead: motor detecta turno a turno e inyecta directiva runtime al system prompt como `extraSystemSuffix` |
+| `forbiddenPhrases` | string[] (0-10, ≤40 chars c/u) | `[]` | V17 validator + 1 retry al Generator + degradación grácil |
+
+### Cap dinámico Splitter + Generator (`aiMessagesPerTurnMax`)
+
+3 piezas coordinadas. **Cambiar solo una rompe el sistema** (el Splitter degrada a hard-split por longitud).
+
+1. **Generator** ([`packages/agent-pipeline/src/tool-definition.ts`](packages/agent-pipeline/src/tool-definition.ts)): factory `buildRespondAsSetterTool({ maxParts })` con `message_raw.maxLength = maxParts × 280 + 30`. Cap=1→310, cap=2→590, cap=3→870, cap=4→1150.
+2. **Splitter** ([`packages/agent-pipeline/src/splitter.ts`](packages/agent-pipeline/src/splitter.ts)): factory `buildSplitMessageTool(maxParts)` + `runSplitter` clampa al cap del trainer (`Math.min(PART_COUNT_MAX=4, maxParts)`). Fallback determinístico también respeta el cap.
+3. **Markdown** del `trainer_prefs_v1`: secciones "Máximo de mensajes por turno" siempre presente con N inyectado.
+
+Propagación: `trainer_preferences.preferences.aiMessagesPerTurnMax` → `loadSchedulingConfig` ([`apps/motor-agente/src/services/process-debounced.ts`](apps/motor-agente/src/services/process-debounced.ts)) → `PipelineInput.aiMessagesPerTurnMax` → `runGenerator` (tool factory) + `runSplitter` (input.maxParts).
+
+### Validadores nuevos (V17 + V18)
+
+- **V17** ([`packages/shared-validator/src/rules/V17-forbidden-phrases.ts`](packages/shared-validator/src/rules/V17-forbidden-phrases.ts)): detecta palabras prohibidas con word-boundary Unicode-aware (`\p{L}`/`\p{N}`). Severidad `warn`. El orquestador `runPipeline` detecta V17 específicamente y dispara **1 retry** al Generator con instrucción enriquecida + degradación grácil tras 2do fail (entrega el output, log incidente).
+- **V18** ([`packages/shared-validator/src/rules/V18-addressing.ts`](packages/shared-validator/src/rules/V18-addressing.ts)): heurística tú/usted vs `ctx.expectedAddressing`. Severidad `warn`. NO hay retry por design — heurístico, riesgo de falsos positivos. Solo log. Plan documenta degradar a warning-only si >10% falsos positivos en fixtures.
+
+### Helper `detectAddressing` compartido
+
+Vive en `@fyzon/shared-validator` (`packages/shared-validator/src/lib/detect-addressing.ts`) porque V18 lo necesita. El motor lo importa de ahí para `mirror_lead`. Heurística: pronombres fuertes (tú/te/ti/contigo/usted/ustedes/consigo = 2pts) + conjugaciones débiles (tienes/eres/cuéntame/cuénteme = 1pt). Decisión: si ambos lados puntúan se desempata solo si diferencia ≥2x con markers fuertes; si no, `ambiguous`.
+
+Fixtures (~30 ejemplos reales) en [`apps/motor-agente/test/detect-addressing.test.ts`](apps/motor-agente/test/detect-addressing.test.ts). Mantener este test verde antes de cualquier cambio a la heurística.
+
+### `extraSystemSuffix` en composer (genérico)
+
+Nuevo campo en `ComposeOptions` ([`packages/prompt-composer/src/types.ts`](packages/prompt-composer/src/types.ts)). El motor lo pasa via `composeOverrides.extraSystemSuffix` (en `GeneratorInput`). El builder lo añade como bloque sintético al final del array, OUT of cache (junto a `trainer_prefs_v1`). Útil para directivas dinámicas turno a turno que no viven en `prompt_blocks`.
+
+Uso actual único: `buildMirrorLeadDirective(detected)` cuando `addressingMode='mirror_lead'`. Si `detected === 'ambiguous'`, devuelve null y no se inyecta nada.
+
+### UI panel
+
+[`apps/panel/app/(app)/settings/preferences/preferences-form.tsx`](apps/panel/app/(app)/settings/preferences/preferences-form.tsx) — card "Estilo y registro" full-width con 2 controles ESTRICTOS: max mensajes (slider 1-4 con warning para valor 1) + tratamiento (3 botones radio). Nuevo card "Vocabulario prohibido" con `ForbiddenPhrasesList`. Componente reutilizable `EnforcementBadge` ([`apps/panel/components/ui/enforcement-badge.tsx`](apps/panel/components/ui/enforcement-badge.tsx)) marca cada control con 🛡️ Estricto o ✨ Best effort.
+
+**Sliders eliminados en migration 067 (2026-05-20)**: `messageLengthDensity` y `toneRegister` (eran best effort) salieron del schema porque Iván los gestiona directamente desde `core_v5_base` (longitud) y `coach_v5` (tono/registro), no como preferencias del trainer. El parser ignora las claves legacy silenciosamente; la migration 067 limpia el JSONB de tenants existentes + actualiza el COMMENT a v7.
+
+### Smoke E2E pendiente (no bloquea cierre)
+
+- `aiMessagesPerTurnMax=2` en tenant_ivan-dev → smoke conversación → confirmar ningún turno emite >2 burbujas y `message_raw` queda ≤590 chars.
+- `forbiddenPhrases=['genial','perfecto']` → forzar conversación que invite a usarlas → verificar log V17_retry y output sin las palabras.
+- `addressingMode='usted'` + lead tutea → verificar setter siempre usted (V18 log o retry-vacío).
+- `mirror_lead` + lead alterna tú/usted entre turnos → verificar setter cambia con el lead (directiva dinámica via extraSystemSuffix).
+
 ## Qué NO hacer
 
 - No añadir Prisma al motor sin conversación previa con Ivan.

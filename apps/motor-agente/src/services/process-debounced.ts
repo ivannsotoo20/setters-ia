@@ -23,6 +23,7 @@ import { bookAppointmentFromSlot } from './book-appointment-from-slot.js';
 import { timezoneToLabel } from '../lib/timezone-label.js';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
+import { detectAddressing, buildMirrorLeadDirective } from '../lib/detect-addressing.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -332,6 +333,22 @@ export async function processDebounced(
   // fase_N_v4 del v4.
   const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false);
 
+  // Hito 12.1 — Tratamiento al lead.
+  // - 'tu'/'usted': pasar expectedAddressing al validatorCtx para que V18 valide.
+  // - 'mirror_lead': detectar el tratamiento del ÚLTIMO mensaje del lead y
+  //   construir directiva markdown que se inyecta al system prompt como
+  //   extraSystemSuffix (OUT of cache). V18 NO se aplica (expectedAddressing undefined).
+  const addressingMode = schedulingConfig.addressingMode;
+  let expectedAddressing: 'tu' | 'usted' | undefined;
+  let addressingDirective: string | null = null;
+  if (addressingMode === 'tu' || addressingMode === 'usted') {
+    expectedAddressing = addressingMode;
+  } else {
+    // mirror_lead: detectar del último mensaje del lead.
+    const detected = detectAddressing(userMessage);
+    addressingDirective = buildMirrorLeadDirective(detected);
+  }
+
   let pipelineOut;
   try {
     pipelineOut = await runPipeline(
@@ -342,10 +359,20 @@ export async function processDebounced(
         userMessage,
         currentPhase,
         history: historyForPipeline,
+        // Hito 12.1 — propaga el cap del trainer al Generator (limita
+        // message_raw.maxLength) y al Splitter (limita maxItems).
+        aiMessagesPerTurnMax: schedulingConfig.aiMessagesPerTurnMax,
         validationContext: {
           channel: channelType,
           emojisWhitelist: null,
           isFirstAssistantMessage: lastAssistantIdx < 0,
+          // Hito 12.1 — V17 detecta cualquier palabra prohibida por el trainer.
+          // El runPipeline dispara 1 retry al Generator si V17 fires.
+          forbiddenPhrases: schedulingConfig.forbiddenPhrases,
+          // Hito 12.1 — V18 valida consistencia tú/usted (solo si tu o usted fijo).
+          // Para mirror_lead, expectedAddressing queda undefined (V18 skip) porque
+          // la directiva ya va inyectada al system prompt como extraSystemSuffix.
+          expectedAddressing,
         },
         composeOverrides: {
           currentPhaseFocus,
@@ -355,6 +382,9 @@ export async function processDebounced(
           leadContact,
           leadTimezoneLabel,
           trainerTimezoneLabel,
+          // Hito 12.1 — Directiva mirror_lead (markdown) si aplica. null si
+          // addressing es 'tu'/'usted' o si detectAddressing devolvió 'ambiguous'.
+          extraSystemSuffix: addressingDirective,
         },
       },
     );
@@ -738,6 +768,25 @@ async function loadSchedulingConfig(
   schedulingMode: 'direct' | 'link' | null;
   trainerTimezone: string | null;
   useApiBookingLegacy: boolean;
+  /**
+   * Hito 12.1 — Cap configurado por el trainer para mensajes por turno (1-4).
+   * Default 4 (baseline) si la clave no está en JSONB. El motor lo propaga al
+   * Generator (limita `message_raw.maxLength`) y al Splitter (limita `maxItems`).
+   */
+  aiMessagesPerTurnMax: 1 | 2 | 3 | 4;
+  /**
+   * Hito 12.1 — Lista de palabras/frases prohibidas (0-10, ya sanitizadas:
+   * trim+lowercase). Si vacía, V17 no dispara. El motor pasa esto a
+   * `validationContext.forbiddenPhrases` del pipeline.
+   */
+  forbiddenPhrases: string[];
+  /**
+   * Hito 12.1 — Modo de tratamiento al lead:
+   *  - 'tu'/'usted' → V18 enforcea consistencia (expectedAddressing en validatorCtx).
+   *  - 'mirror_lead' → motor detecta tratamiento del último mensaje del lead
+   *    y construye directiva runtime via `buildMirrorLeadDirective`.
+   */
+  addressingMode: 'tu' | 'usted' | 'mirror_lead';
 }> {
   const { data } = await supabase
     .from('trainer_preferences')
@@ -751,9 +800,41 @@ async function loadSchedulingConfig(
   const rawTz = prefs.trainerTimezone;
   const trainerTimezone =
     typeof rawTz === 'string' && rawTz.trim() !== '' ? rawTz.trim() : null;
+  // Hito 12.1 — valida aiMessagesPerTurnMax (espejo del parser en panel
+  // apps/panel/lib/trainer-prefs-serializer.ts:parseAiMessagesPerTurnMax).
+  const rawMax = prefs.aiMessagesPerTurnMax;
+  const aiMessagesPerTurnMax: 1 | 2 | 3 | 4 =
+    typeof rawMax === 'number' && Number.isInteger(rawMax) && rawMax >= 1 && rawMax <= 4
+      ? (rawMax as 1 | 2 | 3 | 4)
+      : 4;
+  // Hito 12.1 — valida forbiddenPhrases del JSONB. Defensa en profundidad:
+  // aunque el panel ya sanitiza, el motor revalida (trim, lowercase, dedup,
+  // max 10 items, max 40 chars cada uno).
+  const rawForbidden = prefs.forbiddenPhrases;
+  const forbiddenPhrases: string[] = [];
+  if (Array.isArray(rawForbidden)) {
+    const seen = new Set<string>();
+    for (const item of rawForbidden) {
+      if (forbiddenPhrases.length >= 10) break;
+      if (typeof item !== 'string') continue;
+      const normalized = item.trim().toLowerCase().slice(0, 40);
+      if (normalized === '' || seen.has(normalized)) continue;
+      seen.add(normalized);
+      forbiddenPhrases.push(normalized);
+    }
+  }
+  // Hito 12.1 — valida addressingMode (default 'mirror_lead').
+  const rawAddressing = prefs.addressingMode;
+  const addressingMode: 'tu' | 'usted' | 'mirror_lead' =
+    rawAddressing === 'tu' || rawAddressing === 'usted' || rawAddressing === 'mirror_lead'
+      ? rawAddressing
+      : 'mirror_lead';
   return {
     schedulingMode,
     trainerTimezone,
     useApiBookingLegacy: prefs.useApiBooking === true,
+    aiMessagesPerTurnMax,
+    forbiddenPhrases,
+    addressingMode,
   };
 }

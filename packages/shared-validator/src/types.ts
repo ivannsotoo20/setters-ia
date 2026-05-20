@@ -28,6 +28,20 @@ export interface ValidationContext {
   lastAssistantMessages?: string[];
   /** Locale principal del coach (es-VE, es-ES, etc.). Informativo. */
   locale?: string;
+  /**
+   * Hito 12.1 — Lista de palabras/frases prohibidas por el trainer
+   * (sanitizadas: trim + lowercase). Si vacía o undefined, V17 no dispara.
+   * El motor las carga de `trainer_preferences.preferences.forbiddenPhrases`.
+   */
+  forbiddenPhrases?: string[];
+  /**
+   * Hito 12.1 — Tratamiento ESPERADO del setter al lead (cumplimiento estricto).
+   * 'tu' o 'usted' → V18 valida que el output coincide. undefined → V18 skipea
+   * (caso 'mirror_lead': el motor inyecta directiva dinámica en system prompt
+   * basada en `detectAddressing(lastLeadMessage)`, V18 no aplica porque la
+   * "expectativa" depende del lead, no es estática).
+   */
+  expectedAddressing?: 'tu' | 'usted';
 }
 
 export interface RuleViolation {

@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { composePrompt } from '@fyzon/prompt-composer';
 import { calculateCostUsd } from './cost.js';
 import { logLlmCall, summarizeSetterOutput } from './llm-call-log.js';
-import { respondAsSetterTool, RESPOND_AS_SETTER_TOOL_NAME } from './tool-definition.js';
+import { buildRespondAsSetterTool, RESPOND_AS_SETTER_TOOL_NAME } from './tool-definition.js';
 import type { GeneratorInput, GeneratorOutput, SetterToolOutput } from './types.js';
 
 /**
@@ -48,6 +48,11 @@ export async function runGenerator(
   const { supabase, anthropic } = deps;
   const model = input.model ?? DEFAULT_GENERATOR_MODEL;
   const maxTokens = input.maxTokens ?? DEFAULT_MAX_TOKENS;
+  // Hito 12.1 — cap del trainer propagado a la tool definition: limita
+  // `message_raw.maxLength` a `maxParts × 280 + 30` chars. Si el modelo intenta
+  // pasarse, Anthropic rechaza el tool_use por schema validation.
+  const aiMessagesPerTurnMax: 1 | 2 | 3 | 4 = input.aiMessagesPerTurnMax ?? 4;
+  const respondTool = buildRespondAsSetterTool({ maxParts: aiMessagesPerTurnMax });
 
   // 1. Compose system prompt (Cerebro v5 — cargado desde Supabase, con cache_control)
   //
@@ -66,6 +71,8 @@ export async function runGenerator(
     leadContact: input.composeOverrides?.leadContact,
     leadTimezoneLabel: input.composeOverrides?.leadTimezoneLabel,
     trainerTimezoneLabel: input.composeOverrides?.trainerTimezoneLabel,
+    // Hito 12.1 — extraSystemSuffix (directiva mirror_lead u otros append-only futuros).
+    extraSystemSuffix: input.composeOverrides?.extraSystemSuffix,
   });
 
   // 2. Construye messages[] para la API (history + último mensaje del lead)
@@ -83,7 +90,7 @@ export async function runGenerator(
       max_tokens: maxTokens,
       system: composed.systemContent as unknown as Anthropic.Messages.TextBlockParam[],
       messages,
-      tools: [respondAsSetterTool] as unknown as Anthropic.Messages.Tool[],
+      tools: [respondTool] as unknown as Anthropic.Messages.Tool[],
       tool_choice: { type: 'tool', name: RESPOND_AS_SETTER_TOOL_NAME },
     });
   } catch (err) {

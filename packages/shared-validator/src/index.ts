@@ -18,6 +18,9 @@ export type {
 } from './types.js';
 export { DEFAULT_RULES } from './rules/index.js';
 export * from './rules/index.js';
+// Hito 12.1 — Heurística de tratamiento (tú/usted) usada por V18 y por el motor
+// (mirror_lead inyecta directiva dinámica al system prompt según la detección).
+export { detectAddressing, type AddressingResult } from './lib/detect-addressing.js';
 
 /**
  * Valida un mensaje del setter contra las reglas V0-V16.

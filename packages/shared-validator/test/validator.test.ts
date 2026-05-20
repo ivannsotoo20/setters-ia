@@ -216,3 +216,173 @@ describe('validator runner', () => {
     expect(r.ok).toBe(true);
   });
 });
+
+// =============================================================================
+// Hito 12.1 — V17 forbidden phrases (trainer vocabulary)
+// =============================================================================
+
+describe('validator V17 forbidden phrases', () => {
+  const ctxWithList = (list: string[] | undefined): ValidationContext => ({
+    ...baseCtx,
+    forbiddenPhrases: list,
+  });
+
+  it('skipea cuando forbiddenPhrases está undefined', () => {
+    const r = validateMessage('Esto es genial!', { ...baseCtx });
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeUndefined();
+  });
+
+  it('skipea cuando forbiddenPhrases es array vacío', () => {
+    const r = validateMessage('Esto es genial!', ctxWithList([]));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeUndefined();
+  });
+
+  it('matchea palabra exacta case-insensitive', () => {
+    const r = validateMessage('Esto es Genial!', ctxWithList(['genial']));
+    const v = r.violations.find((x) => x.ruleId === 'V17');
+    expect(v).toBeDefined();
+    expect(v?.severity).toBe('warn');
+    expect(v?.description).toContain('genial');
+  });
+
+  it('NO matchea substring (extensión de la palabra)', () => {
+    // "genial" NO debe matchear "genialmente" — word boundary lo evita.
+    const r = validateMessage('Lo hiciste genialmente bien', ctxWithList(['genial']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeUndefined();
+  });
+
+  it('NO matchea palabra que CONTIENE la prohibida como prefijo', () => {
+    // "tal" no matchea "talante".
+    const r = validateMessage('Tu talante me convence', ctxWithList(['tal']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeUndefined();
+  });
+
+  it('matchea con puntuación adyacente (signo de admiración)', () => {
+    const r = validateMessage('¡Genial!', ctxWithList(['genial']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeDefined();
+  });
+
+  it('matchea con acentos correctamente (Unicode-aware boundaries)', () => {
+    const r = validateMessage('Eso fue súper bueno', ctxWithList(['súper']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeDefined();
+  });
+
+  it('matchea con ñ correctamente', () => {
+    const r = validateMessage('Mi amigo el cariño', ctxWithList(['cariño']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeDefined();
+  });
+
+  it('matchea frases multi-palabra', () => {
+    const r = validateMessage('Lo siento, qué tal andas?', ctxWithList(['qué tal andas']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeDefined();
+  });
+
+  it('detecta múltiples ofensores y los reporta todos', () => {
+    const r = validateMessage('Genial, todo perfecto!', ctxWithList(['genial', 'perfecto']));
+    const v = r.violations.find((x) => x.ruleId === 'V17');
+    expect(v).toBeDefined();
+    expect(v?.description).toContain('genial');
+    expect(v?.description).toContain('perfecto');
+  });
+
+  it('match repetido en el mensaje cuenta una sola vez (dedup)', () => {
+    const r = validateMessage('Genial genial genial!', ctxWithList(['genial']));
+    const v = r.violations.find((x) => x.ruleId === 'V17');
+    expect(v).toBeDefined();
+    // El description menciona "genial" una sola vez (sin "genial, genial, genial")
+    const occurrences = (v!.description.match(/genial/g) ?? []).length;
+    expect(occurrences).toBe(1);
+  });
+
+  it('severidad warn (no error) — no bloquea hasErrors', () => {
+    const r = validateMessage('Genial!', ctxWithList(['genial']));
+    expect(r.hasErrors).toBe(false);
+    expect(r.violations.find((v) => v.ruleId === 'V17')?.severity).toBe('warn');
+  });
+
+  it('NO falso positivo si la palabra prohibida solo es un substring interno', () => {
+    // "claro" prohibida; "declarar" NO debe matchear.
+    const r = validateMessage('Tengo que declarar impuestos', ctxWithList(['claro']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeUndefined();
+  });
+
+  it('ignora entradas vacías o whitespace en la lista', () => {
+    const r = validateMessage('Genial!', ctxWithList(['', '  ', 'genial']));
+    expect(r.violations.find((v) => v.ruleId === 'V17')).toBeDefined();
+  });
+
+  it('description contiene suggestion con palabras a reescribir', () => {
+    const r = validateMessage('Genial!', ctxWithList(['genial']));
+    const v = r.violations.find((x) => x.ruleId === 'V17');
+    expect(v?.suggestion).toBeDefined();
+    expect(v?.suggestion).toContain('Reescribe');
+    expect(v?.suggestion).toContain('genial');
+  });
+});
+
+// =============================================================================
+// Hito 12.1 — V18 consistencia tú/usted
+// =============================================================================
+
+describe('validator V18 addressing consistency', () => {
+  const ctxWithExpected = (
+    expected: 'tu' | 'usted' | undefined,
+  ): ValidationContext => ({
+    ...baseCtx,
+    expectedAddressing: expected,
+  });
+
+  it('skipea cuando expectedAddressing es undefined (caso mirror_lead)', () => {
+    const r = validateMessage('Hola, ¿cómo está usted?', ctxWithExpected(undefined));
+    expect(r.violations.find((v) => v.ruleId === 'V18')).toBeUndefined();
+  });
+
+  it('OK cuando expected=tu y output tutea', () => {
+    const r = validateMessage('Hola, ¿qué tal estás tú?', ctxWithExpected('tu'));
+    expect(r.violations.find((v) => v.ruleId === 'V18')).toBeUndefined();
+  });
+
+  it('OK cuando expected=usted y output ustedea', () => {
+    const r = validateMessage('Hola, ¿cómo está usted?', ctxWithExpected('usted'));
+    expect(r.violations.find((v) => v.ruleId === 'V18')).toBeUndefined();
+  });
+
+  it('FAIL cuando expected=tu pero output ustedea', () => {
+    const r = validateMessage('Hola, ¿cómo está usted hoy?', ctxWithExpected('tu'));
+    const v = r.violations.find((x) => x.ruleId === 'V18');
+    expect(v).toBeDefined();
+    expect(v?.severity).toBe('warn');
+    expect(v?.description).toContain('"tu"');
+    expect(v?.description).toContain('"usted"');
+  });
+
+  it('FAIL cuando expected=usted pero output tutea', () => {
+    const r = validateMessage('Hola, ¿qué tal estás tú?', ctxWithExpected('usted'));
+    const v = r.violations.find((x) => x.ruleId === 'V18');
+    expect(v).toBeDefined();
+    expect(v?.description).toContain('"usted"');
+    expect(v?.description).toContain('"tu"');
+  });
+
+  it('OK cuando detector es ambiguous (no penalizamos texto neutral)', () => {
+    const r = validateMessage('Ok, gracias', ctxWithExpected('tu'));
+    expect(r.violations.find((v) => v.ruleId === 'V18')).toBeUndefined();
+    const r2 = validateMessage('Ok, gracias', ctxWithExpected('usted'));
+    expect(r2.violations.find((v) => v.ruleId === 'V18')).toBeUndefined();
+  });
+
+  it('severidad warn — no bloquea hasErrors', () => {
+    const r = validateMessage('Cómo está usted', ctxWithExpected('tu'));
+    expect(r.hasErrors).toBe(false);
+  });
+
+  it('suggestion contiene guía de reescritura coherente con expected', () => {
+    const rTu = validateMessage('Cómo está usted', ctxWithExpected('tu'));
+    const vTu = rTu.violations.find((x) => x.ruleId === 'V18');
+    expect(vTu?.suggestion).toContain('2ª persona');
+
+    const rUsted = validateMessage('Cómo estás tú', ctxWithExpected('usted'));
+    const vUsted = rUsted.violations.find((x) => x.ruleId === 'V18');
+    expect(vUsted?.suggestion).toContain('3ª persona');
+  });
+});

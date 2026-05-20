@@ -104,6 +104,15 @@ export interface ComposeOptions {
    * Si presente, se inyecta en `{{trainer_timezone_label}}`.
    */
   trainerTimezoneLabel?: string | null;
+  /**
+   * Hito 12.1 — Texto markdown extra que se APPEND al final del system prompt
+   * compuesto, como bloque adicional OUT of cache. Útil para directivas
+   * dinámicas que el caller construye por turno y NO viven en `prompt_blocks`
+   * (p.ej. el `buildMirrorLeadDirective` cuando `addressingMode='mirror_lead'`).
+   *
+   * Si `null` o `undefined`, no se agrega bloque extra. Si string vacío, igual.
+   */
+  extraSystemSuffix?: string | null;
 }
 
 /**

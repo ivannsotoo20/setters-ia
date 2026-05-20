@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart, ChevronDown, CheckCircle2, Ban, MessageSquare, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { EnforcementBadge } from '@/components/ui/enforcement-badge';
 import { saveTrainerPreferences } from '@/lib/actions/prompts';
 import {
   type TrainerPreferences,
@@ -20,6 +21,8 @@ import {
   type EmojiCustomization,
   type HandoffMode,
   type HandoffCustomTemplate,
+  type AddressingMode,
+  type AiMessagesPerTurnMax,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_EVENT_LABELS,
   CALL_PROPOSAL_MODES,
@@ -28,9 +31,16 @@ import {
   HANDOFF_MODE_LABELS,
   HANDOFF_CUSTOM_TEMPLATES,
   HANDOFF_CUSTOM_TEMPLATE_LABELS,
+  ADDRESSING_MODES,
+  ADDRESSING_MODE_LABELS,
+  AI_MESSAGES_PER_TURN_MAX_VALUES,
+  AI_MESSAGES_PER_TURN_MAX_LABELS,
+  MAX_FORBIDDEN_PHRASES,
+  MAX_FORBIDDEN_PHRASE_CHARS,
   DEFAULT_TRAINER_PREFERENCES,
   isValidEmail,
   normalizePhoneE164,
+  sanitizeForbiddenPhrase,
 } from '@/lib/trainer-prefs-serializer';
 
 interface Props {
@@ -67,17 +77,10 @@ const QUESTIONS_LABELS = [
   },
 ];
 
-const MESSAGE_LENGTH_LABELS = [
-  { value: 0, label: 'Cortos', desc: '1 frase por turno, máximo 2. Ágil, sin párrafos.' },
-  { value: 1, label: 'Equilibrado', desc: '1-2 frases por mensaje. Si hace falta más, parte en 2 mensajes (default).' },
-  { value: 2, label: 'Amplios', desc: '2-3 frases en un mismo mensaje cuando hace falta contexto. Útil consultivo.' },
-];
-
-const TONE_LABELS = [
-  { value: 0, label: 'Cercano', desc: 'Coloquial como un amigo del sector. Tutea, expresiones cotidianas.' },
-  { value: 1, label: 'Equilibrado', desc: 'Profesional pero cercano. Tutea por defecto, sin jerga (default).' },
-  { value: 2, label: 'Profesional', desc: 'Elegante, evita coloquialismos. Considera el usted si el lead lo usa primero.' },
-];
+// Hito 12.1 (2026-05-20): `MESSAGE_LENGTH_LABELS` y `TONE_LABELS` eliminados.
+// Longitud y tono se gestionan desde core_v5_base + coach_v5, no como
+// preferencias del trainer. El card "Estilo y registro" ahora solo aloja los
+// controles estrictos (max msgs + tratamiento).
 
 export function PreferencesForm({ tenantId, initial }: Props) {
   const router = useRouter();
@@ -177,68 +180,121 @@ export function PreferencesForm({ tenantId, initial }: Props) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* CARD 1 — Estilo */}
+      {/* CARD 1 — Estilo y registro (Hito 12.1: solo controles ESTRICTOS).
+          Longitud y tono se gestionan desde core_v5_base + coach_v5 — no
+          viven aquí como preferencias del trainer. */}
       <CollapsibleCard
-        title="Estilo"
-        description="Cómo se ve el mensaje del setter en pantalla."
+        title="Estilo y registro"
+        description="Número máximo de mensajes por turno y tratamiento al lead. Ambos con cumplimiento estricto validado por el motor."
+        icon={<MessageSquare className="size-4" />}
         defaultOpen
+        fullWidth
       >
-        <CardContent className="flex flex-col gap-6">
-          {/* Sprint 2.5b/B — Slider longitud de mensajes */}
+        <CardContent className="flex flex-col gap-7">
+          {/* Hito 12.1 — Slider máximo de mensajes por turno (ESTRICTO) */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between gap-2">
-              <Label className="text-sm">Longitud de mensajes</Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Máximo de mensajes por turno</Label>
+                <EnforcementBadge level="strict" />
+              </div>
               <Badge variant="outline" className="font-mono text-xs">
-                {MESSAGE_LENGTH_LABELS[prefs.messageLengthDensity]!.label}
+                {AI_MESSAGES_PER_TURN_MAX_LABELS[prefs.aiMessagesPerTurnMax].label}
               </Badge>
             </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Cuántas burbujas consecutivas como máximo manda el setter en un mismo turno. El número
+              real es variable (puede ser 1, 2 o 3 según el momento) — este slider marca el techo.
+              El motor lo enforcea a nivel código: instruye al modelo, limita la longitud generada,
+              y el splitter respeta el cap.
+            </p>
             <Slider
-              value={[prefs.messageLengthDensity]}
-              min={0}
-              max={2}
+              value={[prefs.aiMessagesPerTurnMax]}
+              min={1}
+              max={4}
               step={1}
               onValueChange={(v) => {
                 const n = v[0];
-                if (n != null) update('messageLengthDensity', n as 0 | 1 | 2);
+                if (n != null && n >= 1 && n <= 4) {
+                  update('aiMessagesPerTurnMax', n as AiMessagesPerTurnMax);
+                }
               }}
             />
             <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
-              <span>Cortos</span>
-              <span>Equilibrado</span>
-              <span>Amplios</span>
+              <span>1 msg</span>
+              <span>2 msg</span>
+              <span>3 msg</span>
+              <span>4 msg</span>
             </div>
             <p className="text-xs text-muted-foreground italic">
-              {MESSAGE_LENGTH_LABELS[prefs.messageLengthDensity]!.desc}
+              {AI_MESSAGES_PER_TURN_MAX_LABELS[prefs.aiMessagesPerTurnMax].hint}
             </p>
+            {AI_MESSAGES_PER_TURN_MAX_LABELS[prefs.aiMessagesPerTurnMax].warning && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+                <span>{AI_MESSAGES_PER_TURN_MAX_LABELS[prefs.aiMessagesPerTurnMax].warning}</span>
+              </div>
+            )}
           </div>
 
-          {/* Sprint 2.5b/B — Slider tono */}
+          <div className="border-t border-border/40" />
+
+          {/* Hito 12.1 — Tratamiento al lead (ESTRICTO) */}
           <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-2">
-              <Label className="text-sm">Tono</Label>
-              <Badge variant="outline" className="font-mono text-xs">
-                {TONE_LABELS[prefs.toneRegister]!.label}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Tratamiento al lead</Label>
+              <EnforcementBadge level="strict" />
             </div>
-            <Slider
-              value={[prefs.toneRegister]}
-              min={0}
-              max={2}
-              step={1}
-              onValueChange={(v) => {
-                const n = v[0];
-                if (n != null) update('toneRegister', n as 0 | 1 | 2);
-              }}
-            />
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
-              <span>Cercano</span>
-              <span>Equilibrado</span>
-              <span>Profesional</span>
-            </div>
-            <p className="text-xs text-muted-foreground italic">
-              {TONE_LABELS[prefs.toneRegister]!.desc}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Cómo se dirige el setter al lead. "Espejo del lead" es la opción más natural en nichos
+              hispanos: el setter detecta cómo le habla el lead (tú o usted) y le devuelve en el mismo
+              registro. Los modos fijos (tutear / tratar de usted) los enforcea el motor en cada
+              mensaje — el modelo no puede saltárselos.
             </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {ADDRESSING_MODES.map((mode) => {
+                const meta = ADDRESSING_MODE_LABELS[mode];
+                const active = prefs.addressingMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => update('addressingMode', mode as AddressingMode)}
+                    className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                    <span className="text-xs">{meta.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
+        </CardContent>
+      </CollapsibleCard>
+
+      {/* CARD VOCABULARIO PROHIBIDO (Hito 12.1) — full width, ESTRICTO */}
+      <CollapsibleCard
+        title="Vocabulario prohibido"
+        description="Lista de palabras o frases que el setter NUNCA dirá al lead. El motor valida cada mensaje antes de enviar y obliga al modelo a reescribir si las detecta. Útil para muletillas, expresiones que no encajan con tu marca, o términos sensibles del sector."
+        icon={<Ban className="size-4" />}
+        fullWidth
+      >
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <Label className="text-sm">Lista de bloqueo</Label>
+            <EnforcementBadge level="strict" />
+            <Badge variant="outline" className="ml-auto font-mono text-xs">
+              {prefs.forbiddenPhrases.length}/{MAX_FORBIDDEN_PHRASES}
+            </Badge>
+          </div>
+          <ForbiddenPhrasesList
+            items={prefs.forbiddenPhrases}
+            onChange={(next) => update('forbiddenPhrases', next)}
+          />
         </CardContent>
       </CollapsibleCard>
 
@@ -1033,6 +1089,111 @@ function CustomEmojiList({ items, onChange }: CustomEmojiListProps) {
       <p className="text-[11px] text-muted-foreground">
         {items.length}/{MAX} emojis configurados
       </p>
+    </div>
+  );
+}
+
+// =============================================================================
+// ForbiddenPhrasesList — sub-componente del card "Vocabulario prohibido" (Hito 12.1)
+// =============================================================================
+
+interface ForbiddenPhrasesListProps {
+  items: string[];
+  onChange: (next: string[]) => void;
+}
+
+function ForbiddenPhrasesList({ items, onChange }: ForbiddenPhrasesListProps) {
+  const [draft, setDraft] = useState('');
+  const trimmedDraft = draft.trim().toLowerCase();
+  const isDuplicate = trimmedDraft !== '' && items.includes(trimmedDraft);
+  const canAdd =
+    trimmedDraft !== '' &&
+    trimmedDraft.length <= MAX_FORBIDDEN_PHRASE_CHARS &&
+    !isDuplicate &&
+    items.length < MAX_FORBIDDEN_PHRASES;
+
+  function add() {
+    if (!canAdd) return;
+    const sanitized = sanitizeForbiddenPhrase(trimmedDraft);
+    if (sanitized == null) return;
+    if (items.includes(sanitized)) return;
+    onChange([...items, sanitized]);
+    setDraft('');
+  }
+
+  function remove(idx: number) {
+    onChange(items.filter((_, i) => i !== idx));
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        Cada entrada es 1 palabra o frase corta (máx {MAX_FORBIDDEN_PHRASE_CHARS} chars). El motor
+        compara con coincidencia exacta de palabra (insensible a mayúsculas), no fuzzy. Ejemplos
+        útiles: muletillas a evitar ("genial", "perfecto", "súper"), tratamientos no deseados
+        ("amigo", "colega"), términos sensibles del sector. Máximo {MAX_FORBIDDEN_PHRASES} entradas.
+      </p>
+
+      {items.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {items.map((phrase, idx) => (
+            <span
+              key={`${phrase}-${idx}`}
+              className="inline-flex items-center gap-1.5 rounded-full border border-destructive/30 bg-destructive/5 px-2.5 py-1 text-xs text-destructive"
+            >
+              <span className="font-mono">"{phrase}"</span>
+              <button
+                type="button"
+                onClick={() => remove(idx)}
+                aria-label={`Eliminar "${phrase}"`}
+                className="hover:bg-destructive/15 rounded-full p-0.5 transition-colors"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {items.length < MAX_FORBIDDEN_PHRASES ? (
+        <div className="flex items-start gap-2 p-2 rounded-md border border-dashed border-border/60">
+          <Input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.slice(0, MAX_FORBIDDEN_PHRASE_CHARS))}
+            maxLength={MAX_FORBIDDEN_PHRASE_CHARS}
+            placeholder='ej: "genial" o "qué tal andas"'
+            className={`flex-1 ${isDuplicate ? 'border-destructive' : ''}`}
+            aria-label="Nueva palabra o frase prohibida"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                add();
+              }
+            }}
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={add}
+            disabled={!canAdd}
+            className="shrink-0"
+          >
+            <Plus className="size-4" />
+            Añadir
+          </Button>
+        </div>
+      ) : (
+        <p className="text-xs text-warning">
+          Has llegado al máximo de {MAX_FORBIDDEN_PHRASES} entradas. Elimina alguna para añadir otra.
+        </p>
+      )}
+
+      {isDuplicate && (
+        <p className="text-[11px] text-destructive">
+          Esta frase ya está en la lista (la comparación es insensible a mayúsculas).
+        </p>
+      )}
     </div>
   );
 }

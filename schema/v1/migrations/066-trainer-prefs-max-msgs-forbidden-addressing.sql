@@ -1,0 +1,40 @@
+-- =============================================================================
+-- Migration 066 — trainer_preferences: 3 nuevas keys del JSONB (Hito 12.1)
+-- =============================================================================
+--
+-- Sprint nuevo (Hito 12.1, 2026-05-20): amplía las preferencias del trainer
+-- con 3 dimensiones nuevas de cumplimiento ESTRICTO (enforce en código):
+--
+--   1. aiMessagesPerTurnMax: 1|2|3|4 (default 4 = baseline). El trainer pone
+--      el techo de mensajes consecutivos que el setter manda por turno. Se
+--      enforcea en 3 puntos coordinados:
+--        - Instrucción al Generator vía trainer_prefs_v1 markdown.
+--        - maxLength dinámico del campo `message_raw` en la tool
+--          `respond_as_setter` (maxParts × 280 + 30 chars holgura).
+--        - maxParts dinámico en el Splitter (packages/agent-pipeline/splitter.ts).
+--
+--   2. forbiddenPhrases: string[] (0-10, cada una 1-40 chars, lowercase,
+--      deduplicadas). Palabras/frases que el setter NUNCA dirá al lead. Se
+--      enforcean con:
+--        - Instrucción en trainer_prefs_v1.
+--        - Validador V17 post-LLM (packages/shared-validator) con word-boundary
+--          regex; si match → retry al Generator con instrucción explícita;
+--          degradación grácil tras 2 intentos.
+--
+--   3. addressingMode: 'tu'|'usted'|'mirror_lead' (default 'mirror_lead').
+--      Tratamiento que usa el setter al dirigirse al lead. Para 'tu'/'usted'
+--      se enforcea con instrucción + validador V18 heurístico. Para
+--      'mirror_lead' el motor detecta el uso del lead turno a turno con un
+--      helper `detectAddressing` y propaga la directiva concreta al system
+--      prompt en cada llamada.
+--
+-- IMPORTANTE: esta migration NO añade columnas ni cambia el shape del schema
+-- relacional — todo vive dentro del JSONB existente `preferences`. Solo
+-- actualiza el COMMENT documental de la columna para reflejar el shape v6.
+-- El parser en apps/panel/lib/trainer-prefs-serializer.ts:parseTrainerPreferences
+-- tolera defaults para las 3 claves nuevas, así que los tenants legacy siguen
+-- funcionando sin tocar su JSONB.
+-- =============================================================================
+
+COMMENT ON COLUMN public.trainer_preferences.preferences IS
+  'JSONB con toggles tipados del trainer. Schema v6 (Hito 12.1, 2026-05-20). Estilo: messageLengthDensity 0-2, toneRegister 0-2, addressingMode tu|usted|mirror_lead, aiMessagesPerTurnMax 1-4. Emoticonos: emojisEnabled bool, emojiFrequencyPerMessages 1-3, emojiMaxPerConversation 1-8, customEmojis array. Cualificación: qualificationQuestionsEnabled bool, extraQuestionsBeforeCall 0-2, callProposalMode calendar|form|human_handoff, closingResourceUrl str|null, calendarClosingMessage str|null. Cumplimiento estricto: forbiddenPhrases string[] (0-10). Contacto: trainerName/Email/Phone str|null. Handoff: handoffPersonalizationEnabled bool, handoffMode share_phone|silent|custom_message, handoffCustomTemplate warm|professional|free, handoffCustomMessage str|null. Hito 11: schedulingMode direct|link|null, trainerTimezone IANA|null. Notificaciones: notificationSubscriptions array.';

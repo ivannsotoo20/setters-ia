@@ -264,8 +264,6 @@ describe('saveTrainerPreferences', () => {
       customEmojis: [],
       qualificationQuestionsEnabled: true,
       extraQuestionsBeforeCall: 2,
-      messageLengthDensity: 1,
-      toneRegister: 1,
       trainerName: null,
       trainerEmail: null,
       trainerPhone: null,
@@ -279,6 +277,9 @@ describe('saveTrainerPreferences', () => {
       handoffCustomMessage: null,
       schedulingMode: null,
       trainerTimezone: null,
+      aiMessagesPerTurnMax: 4,
+      addressingMode: 'mirror_lead',
+      forbiddenPhrases: [],
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });

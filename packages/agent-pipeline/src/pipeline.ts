@@ -110,7 +110,7 @@ export async function runPipeline(
 
   const textAfterJudge = judgeOut.finalText;
 
-  // === 3. Validator V0-V16 ===
+  // === 3. Validator V0-V17 ===
   const validatorCtx: ValidationContext = {
     tenantId: input.tenantId,
     conversationId: input.conversationId,
@@ -121,24 +121,97 @@ export async function runPipeline(
       input.validationContext?.isFirstAssistantMessage ?? input.history.every((h) => h.role === 'user'),
     lastAssistantMessages: input.validationContext?.lastAssistantMessages ?? [],
     locale: input.validationContext?.locale,
+    // Hito 12.1 — V17 usa esta lista para detectar vocabulario prohibido.
+    forbiddenPhrases: input.validationContext?.forbiddenPhrases,
   };
   const validatorOut = validateMessage(textAfterJudge, validatorCtx);
+
+  // Hito 12.1 — V17 retry logic. Si el output viola palabras prohibidas del trainer,
+  // reinvocamos el Generator una sola vez con instrucción explícita de reescribir.
+  // Si tras retry V17 sigue → log incidente + degradación grácil (entregamos el
+  // output del retry porque al menos lo intentó; si el retry fail por excepción,
+  // entregamos el original). NO bloqueamos la conversación.
+  let textForSplitter = textAfterJudge;
+  const v17Violations = validatorOut.violations.filter((v) => v.ruleId === 'V17');
+  if (v17Violations.length > 0 && (input.validationContext?.forbiddenPhrases?.length ?? 0) > 0) {
+    const violatedWords = v17Violations
+      .flatMap((v) => (v.match ?? '').split('|'))
+      .map((w) => w.trim())
+      .filter((w) => w.length > 0);
+    const allForbidden = (input.validationContext?.forbiddenPhrases ?? []).join(', ');
+    const retryHistory = [
+      ...input.history,
+      { role: 'user' as const, content: input.userMessage },
+      { role: 'assistant' as const, content: textAfterJudge },
+    ];
+    const retryUserMessage =
+      `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] ` +
+      `Tu respuesta anterior contiene palabra(s) prohibida(s) por el trainer: ${violatedWords.join(', ')}. ` +
+      `Reescribe TU ÚLTIMA respuesta SIN usar ninguna de las siguientes palabras prohibidas: ${allForbidden}. ` +
+      `Mantén el mismo sentido, longitud aproximada, fase, estado y datos. NO menciones esta corrección al lead — ` +
+      `el lead solo verá tu nueva respuesta limpia.`;
+
+    try {
+      const retryGen = await runGenerator(deps, {
+        ...input,
+        userMessage: retryUserMessage,
+        history: retryHistory,
+        model: input.models?.generator,
+      });
+      stages.push({
+        role: 'generator',
+        model: retryGen.model,
+        usage: retryGen.usage,
+        llmCallId: retryGen.llmCallId,
+        notes: 'V17_retry',
+      });
+      const retryText = retryGen.setterOutput.message_raw;
+      const retryValidator = validateMessage(retryText, validatorCtx, { only: ['V17'] });
+      if (retryValidator.violations.length === 0) {
+        // Retry exitoso — usar el output reescrito para el Splitter.
+        textForSplitter = retryText;
+        generatorOut.setterOutput.message_raw = retryText;
+      } else {
+        // Retry insistió en usar palabras prohibidas. Degradación grácil: entregamos
+        // el retry de todos modos (mejor que el original — al menos lo intentó) y
+        // loggeamos para revisar el coach o las palabras.
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[pipeline] V17 retry still violates trainer phrases (tenant=${input.tenantId}, conv=${input.conversationId}). ` +
+            `Original violated: ${violatedWords.join(', ')}. Delivering retry output anyway.`,
+        );
+        textForSplitter = retryText;
+        generatorOut.setterOutput.message_raw = retryText;
+      }
+    } catch (err) {
+      // El retry tiró excepción (network, tool no usada, etc). Degradación grácil:
+      // entregamos el output ORIGINAL y loggeamos. La conversación no se bloquea.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[pipeline] V17 retry threw (tenant=${input.tenantId}, conv=${input.conversationId}): ${err instanceof Error ? err.message : String(err)}. ` +
+          `Delivering original output despite violation: ${violatedWords.join(', ')}.`,
+      );
+    }
+  }
 
   if (validatorOut.hasErrors) {
     const errs = validatorOut.violations
       .filter((v) => v.severity === 'error')
       .map((v) => `${v.ruleId}: ${v.description}`)
       .join('; ');
-    throw new Error(`Validator V0-V16 found unrecoverable errors after Judge: ${errs}`);
+    throw new Error(`Validator V0-V17 found unrecoverable errors after Judge: ${errs}`);
   }
 
   // === 4. Splitter ===
+  // Hito 12.1 — propaga `aiMessagesPerTurnMax` (cap del trainer) al Splitter
+  // para que respete `maxItems` dinámico y el fallback determinístico.
   const splitterOut = await runSplitter(deps, {
-    finalText: textAfterJudge,
+    finalText: textForSplitter,
     channel: validatorCtx.channel,
     tenantId: input.tenantId,
     conversationId: input.conversationId,
     model: input.models?.splitter,
+    maxParts: input.aiMessagesPerTurnMax,
   });
   stages.push({
     role: 'splitter',

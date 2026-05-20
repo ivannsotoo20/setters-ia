@@ -10,7 +10,13 @@ const SPLITTER_MAX_TOKENS = 700;
 const PART_MIN_CHARS = 20;
 const PART_MAX_CHARS = 280;
 const PART_COUNT_MIN = 1;
+/**
+ * Techo absoluto del cap (hardcap del sistema). El cap efectivo por turno se
+ * calcula con `Math.min(PART_COUNT_MAX, maxParts ?? PART_COUNT_MAX)` para que el
+ * trainer pueda bajar a 1, 2 o 3 vía `aiMessagesPerTurnMax` (Hito 12.1).
+ */
 const PART_COUNT_MAX = 4;
+const DEFAULT_MAX_PARTS: 1 | 2 | 3 | 4 = 4;
 
 export interface SplitterInput {
   finalText: string;
@@ -19,6 +25,12 @@ export interface SplitterInput {
   tenantId: number;
   conversationId: number | null;
   model?: string;
+  /**
+   * Hito 12.1 — Cap dinámico de partes. Si undefined → default 4 (baseline).
+   * Si <1 o >4 se clampa al rango válido. El motor lo carga de
+   * `trainer_preferences.preferences.aiMessagesPerTurnMax`.
+   */
+  maxParts?: 1 | 2 | 3 | 4;
 }
 
 export interface SplitterOutput {
@@ -29,34 +41,48 @@ export interface SplitterOutput {
   fallback?: boolean;
 }
 
-export const splitMessageTool: AnthropicTool = {
-  name: SPLITTER_TOOL_NAME,
-  description:
-    'Parte el mensaje del setter en 1-4 mensajes naturales tipo WhatsApp, cada uno entre 20 y 280 caracteres. ' +
-    'NO añadas información nueva, NO cambies palabras, solo decide dónde partir para que cada parte sea un mensaje natural ' +
-    'que un humano enviaría. Si el mensaje original ya cabe en una sola burbuja (≤280 chars), devuelve un único elemento.',
-  input_schema: {
-    type: 'object',
-    required: ['parts'],
-    properties: {
-      parts: {
-        type: 'array',
-        minItems: PART_COUNT_MIN,
-        maxItems: PART_COUNT_MAX,
-        items: {
-          type: 'string',
-          minLength: 1,
-          maxLength: PART_MAX_CHARS,
+/**
+ * Hito 12.1 — Factory que construye la tool del Splitter con `maxItems` dinámico
+ * según el cap `maxParts`. Antes era una constante con cap hardcoded a 4. Ahora
+ * el trainer puede bajar a 1/2/3 vía `aiMessagesPerTurnMax` en sus preferencias.
+ */
+export function buildSplitMessageTool(maxParts: 1 | 2 | 3 | 4 = DEFAULT_MAX_PARTS): AnthropicTool {
+  return {
+    name: SPLITTER_TOOL_NAME,
+    description:
+      `Parte el mensaje del setter en 1-${maxParts} mensaje(s) natural(es) tipo WhatsApp, cada uno entre 20 y 280 caracteres. ` +
+      `NO añadas información nueva, NO cambies palabras, solo decide dónde partir para que cada parte sea un mensaje natural ` +
+      `que un humano enviaría. Si el mensaje original ya cabe en una sola burbuja (≤280 chars), devuelve un único elemento.`,
+    input_schema: {
+      type: 'object',
+      required: ['parts'],
+      properties: {
+        parts: {
+          type: 'array',
+          minItems: PART_COUNT_MIN,
+          maxItems: maxParts,
+          items: {
+            type: 'string',
+            minLength: 1,
+            maxLength: PART_MAX_CHARS,
+          },
+          description:
+            `Array de 1-${maxParts} string(s). Cada string debe tener entre 20 y 280 chars (excepción: si el original es <20, una única parte de menor longitud está permitida). Las partes deben juntarse semánticamente (sin perder palabras del original).`,
         },
-        description:
-          'Array de 1-4 strings. Cada string debe tener entre 20 y 280 chars (excepción: si el original es <20, una única parte de menor longitud está permitida). Las partes deben juntarse semánticamente (sin perder palabras del original).',
       },
+      additionalProperties: false,
     },
-    additionalProperties: false,
-  },
-};
+  };
+}
 
-const SPLITTER_SYSTEM_PROMPT = `Eres el SPLITTER del setter Fyzon. Tu único trabajo es partir el mensaje del setter en 1-4 mensajes naturales tipo WhatsApp.
+/**
+ * Hito 12.1 — Export legacy de compatibilidad: tool con el cap default (4).
+ * Tests y consumidores que no propagan `maxParts` usan esta versión.
+ */
+export const splitMessageTool: AnthropicTool = buildSplitMessageTool();
+
+function buildSplitterSystemPrompt(maxParts: 1 | 2 | 3 | 4): string {
+  return `Eres el SPLITTER del setter Fyzon. Tu único trabajo es partir el mensaje del setter en 1-${maxParts} mensaje(s) natural(es) tipo WhatsApp.
 
 REGLAS:
 1. Cada parte: 20-280 caracteres (excepción: si el mensaje original es <20 chars, devuelve UNA sola parte tal cual).
@@ -65,8 +91,10 @@ REGLAS:
 4. Si hay UNA pregunta al final, déjala SIEMPRE en la última parte (no la pongas suelta sin contexto).
 5. Si el mensaje cabe entero en ≤280 chars, devuelve UNA sola parte con el texto completo.
 6. Mantén orden lógico: parte_1 antes que parte_2, etc.
+7. **Hito 12.1 — Cap estricto**: NUNCA devuelvas más de ${maxParts} parte(s). Este es el techo configurado por el trainer.
 
 NO modifiques contenido. SOLO decides cortes.`;
+}
 
 interface RunSplitterDeps {
   supabase: SupabaseClient;
@@ -79,6 +107,11 @@ export async function runSplitter(
 ): Promise<SplitterOutput> {
   const { supabase, anthropic } = deps;
   const model = input.model ?? DEFAULT_SPLITTER_MODEL;
+  // Hito 12.1 — Cap efectivo: min(hardcap del schema, cap del trainer). Default 4.
+  const requestedMaxParts = input.maxParts ?? DEFAULT_MAX_PARTS;
+  const effectiveMaxParts = (
+    requestedMaxParts < 1 ? 1 : requestedMaxParts > PART_COUNT_MAX ? PART_COUNT_MAX : requestedMaxParts
+  ) as 1 | 2 | 3 | 4;
 
   // Fast path: si el texto ya cabe en una burbuja, no llamamos al modelo.
   if (input.finalText.length <= PART_MAX_CHARS) {
@@ -98,7 +131,7 @@ export async function runSplitter(
       system: [
         {
           type: 'text',
-          text: SPLITTER_SYSTEM_PROMPT,
+          text: buildSplitterSystemPrompt(effectiveMaxParts),
           // TTL 1h alineado con composer y Judge (ver plan playful-petting-pine.md §3.5).
           cache_control: { type: 'ephemeral', ttl: '1h' },
         },
@@ -109,7 +142,7 @@ export async function runSplitter(
           content: `CANAL: ${input.channel ?? 'instagram'}\n\nMENSAJE A PARTIR:\n${input.finalText}`,
         },
       ],
-      tools: [splitMessageTool] as unknown as Anthropic.Messages.Tool[],
+      tools: [buildSplitMessageTool(effectiveMaxParts)] as unknown as Anthropic.Messages.Tool[],
       tool_choice: { type: 'tool', name: SPLITTER_TOOL_NAME },
     });
   } catch (err) {
@@ -124,12 +157,12 @@ export async function runSplitter(
       status: 'error',
       usage: { latencyMs },
       errorMessage: message,
-      requestPayload: { model, max_tokens: SPLITTER_MAX_TOKENS, msg_chars: input.finalText.length },
+      requestPayload: { model, max_tokens: SPLITTER_MAX_TOKENS, msg_chars: input.finalText.length, max_parts: effectiveMaxParts },
       responsePayload: { error: message },
     });
-    // Fallback determinístico: parte por punto-y-aparte / doble salto.
+    // Fallback determinístico: parte por punto-y-aparte / doble salto, respetando el cap.
     return {
-      parts: deterministicSplit(input.finalText),
+      parts: deterministicSplit(input.finalText, effectiveMaxParts),
       usage: { ...zeroUsage(), latencyMs },
       fallback: true,
     };
@@ -144,22 +177,23 @@ export async function runSplitter(
   let parts: string[];
   let fallback = false;
   if (!toolUseBlock) {
-    parts = deterministicSplit(input.finalText);
+    parts = deterministicSplit(input.finalText, effectiveMaxParts);
     fallback = true;
   } else {
     const raw = (toolUseBlock.input as { parts?: unknown }).parts;
     if (!Array.isArray(raw) || raw.length === 0) {
-      parts = deterministicSplit(input.finalText);
+      parts = deterministicSplit(input.finalText, effectiveMaxParts);
       fallback = true;
     } else {
       parts = raw
         .filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
         .map((s) => s.trim());
       if (parts.length === 0) {
-        parts = deterministicSplit(input.finalText);
+        parts = deterministicSplit(input.finalText, effectiveMaxParts);
         fallback = true;
-      } else if (parts.length > PART_COUNT_MAX) {
-        parts = parts.slice(0, PART_COUNT_MAX);
+      } else if (parts.length > effectiveMaxParts) {
+        // Hito 12.1 — clamp al cap del trainer (no al hardcap del sistema).
+        parts = parts.slice(0, effectiveMaxParts);
       }
     }
   }
@@ -201,6 +235,7 @@ export async function runSplitter(
       max_tokens: SPLITTER_MAX_TOKENS,
       msg_chars: input.finalText.length,
       tool: SPLITTER_TOOL_NAME,
+      max_parts: effectiveMaxParts,
     },
     responsePayload: {
       stop_reason: response.stop_reason,
@@ -233,8 +268,15 @@ function zeroUsage(): GeneratorUsage {
 /**
  * Fallback determinístico: parte por doble salto de línea, luego por punto-y-aparte,
  * y como último recurso por longitud máxima.
+ *
+ * Hito 12.1 — Acepta `maxParts` opcional (default 4 = hardcap). Cuando el trainer
+ * configura `aiMessagesPerTurnMax` < 4, el fallback respeta el cap también.
+ * Importante: si el texto es demasiado largo para caber dentro de `maxParts × 280`
+ * caracteres, el último elemento puede exceder los 280 chars (es la única manera
+ * de no perder contenido). El caller (motor) debería evitarlo limitando la
+ * longitud del Generator output proporcionalmente.
  */
-export function deterministicSplit(text: string): string[] {
+export function deterministicSplit(text: string, maxParts: 1 | 2 | 3 | 4 = DEFAULT_MAX_PARTS): string[] {
   const trimmed = text.trim();
   if (trimmed.length <= PART_MAX_CHARS) return [trimmed];
 
@@ -243,7 +285,7 @@ export function deterministicSplit(text: string): string[] {
     .split(/\n\s*\n/)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (byParagraph.length > 1 && byParagraph.length <= PART_COUNT_MAX && byParagraph.every((p) => p.length <= PART_MAX_CHARS)) {
+  if (byParagraph.length > 1 && byParagraph.length <= maxParts && byParagraph.every((p) => p.length <= PART_MAX_CHARS)) {
     return byParagraph;
   }
 
@@ -252,14 +294,14 @@ export function deterministicSplit(text: string): string[] {
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (bySentence.length > 1 && bySentence.length <= PART_COUNT_MAX && bySentence.every((p) => p.length <= PART_MAX_CHARS)) {
+  if (bySentence.length > 1 && bySentence.length <= maxParts && bySentence.every((p) => p.length <= PART_MAX_CHARS)) {
     return bySentence;
   }
 
-  // 3. Hard split por longitud
+  // 3. Hard split por longitud (respetando el cap del trainer)
   const out: string[] = [];
   let current = trimmed;
-  while (current.length > PART_MAX_CHARS && out.length < PART_COUNT_MAX - 1) {
+  while (current.length > PART_MAX_CHARS && out.length < maxParts - 1) {
     let cut = current.lastIndexOf(' ', PART_MAX_CHARS);
     if (cut < PART_MAX_CHARS / 2) cut = PART_MAX_CHARS;
     out.push(current.slice(0, cut).trim());

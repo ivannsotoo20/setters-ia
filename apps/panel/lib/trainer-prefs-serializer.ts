@@ -66,10 +66,18 @@ export interface TrainerPreferences {
   qualificationQuestionsEnabled: boolean;
   /** Preguntas adicionales antes de proponer la llamada (0-2). Solo aplica si qualificationQuestionsEnabled=true. */
   extraQuestionsBeforeCall: 0 | 1 | 2;
-  /** Sprint 2.5b/B — Longitud de mensajes: 0=cortos, 1=equilibrado (default), 2=amplios. */
-  messageLengthDensity: 0 | 1 | 2;
-  /** Sprint 2.5b/B — Registro tonal: 0=cercano-coloquial, 1=equilibrado (default), 2=profesional. */
-  toneRegister: 0 | 1 | 2;
+  // Hito 12.1 (2026-05-20): `messageLengthDensity` y `toneRegister` (Sprint 2.5b/B)
+  // ELIMINADOS del schema — Iván gestiona longitud y tono directamente desde
+  // `core_v5_base` y `coach_v5`. Datos legacy en JSONB se ignoran silenciosamente
+  // (parser ya no los lee). Migration 067 limpia las claves de tenants existentes.
+
+  // ----- Hito 12.1: cumplimiento estricto (max msgs + addressing + forbidden) -----
+  /** Hito 12.1 — Máximo de mensajes consecutivos por turno del setter (1-4). Default 4 (baseline = comportamiento previo). Enforce en 3 puntos: Generator instrucción, message_raw maxLength, Splitter maxParts. */
+  aiMessagesPerTurnMax: 1 | 2 | 3 | 4;
+  /** Hito 12.1 — Tratamiento que el setter usa al dirigirse al lead. 'mirror_lead' (default) detecta el uso del lead y propaga turno a turno desde el motor. Enforce con instrucción + validador V18 heurístico para tu/usted. */
+  addressingMode: 'tu' | 'usted' | 'mirror_lead';
+  /** Hito 12.1 — Palabras/frases que el setter NUNCA dirá al lead (0-10, cada una 1-40 chars, lowercase, dedupe). Enforce con instrucción + validador V17 post-LLM + 1 retry, luego degradación grácil. */
+  forbiddenPhrases: string[];
 
   // ----- Sprint Gamma 2.1: datos de contacto -----
   /** Nombre que la IA usará al referirse al trainer en handoff. null = "el equipo". */
@@ -217,6 +225,52 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, { label: s
   integration_down: { label: 'Integración caída', desc: 'Un conector (GHL/YCloud/ManyChat) lleva horas sin recibir webhooks. Revisa la automation en el proveedor.' },
 };
 
+// ----- Hito 12.1: cumplimiento estricto -----
+
+export const ADDRESSING_MODES = ['tu', 'usted', 'mirror_lead'] as const;
+export type AddressingMode = (typeof ADDRESSING_MODES)[number];
+
+export const ADDRESSING_MODE_LABELS: Record<AddressingMode, { label: string; desc: string }> = {
+  mirror_lead: {
+    label: 'Espejo del lead',
+    desc: 'El setter detecta cómo se dirige el lead (tú o usted) y le devuelve en el mismo registro. Recomendado para la mayoría de nichos hispanos — el lead no nota artificialidad.',
+  },
+  tu: {
+    label: 'Tutear siempre',
+    desc: 'El setter usa "tú" sin importar cómo escriba el lead. Para marcas casual, fitness, coaching joven, comunidades donde la cercanía es la norma.',
+  },
+  usted: {
+    label: 'Tratar de usted',
+    desc: 'El setter usa "usted" siempre. Para nichos formales: jurídico, B2B premium, medicina, sectores tradicionales o cuando tu cliente tipo es de generación mayor.',
+  },
+};
+
+export const AI_MESSAGES_PER_TURN_MAX_VALUES = [1, 2, 3, 4] as const;
+export type AiMessagesPerTurnMax = (typeof AI_MESSAGES_PER_TURN_MAX_VALUES)[number];
+
+export const AI_MESSAGES_PER_TURN_MAX_LABELS: Record<AiMessagesPerTurnMax, { label: string; hint: string; warning?: string }> = {
+  1: {
+    label: '1 mensaje',
+    hint: 'Ultra-conciso: máx 1-2 oraciones (~280 chars). El setter siempre responde en una sola burbuja.',
+    warning: 'Solo 1 mensaje por turno hace que el setter se perciba más robótico. Recomendado solo para nichos muy formales o cuando explícitamente quieres respuestas cortas.',
+  },
+  2: {
+    label: 'Hasta 2 mensajes',
+    hint: 'Respuesta corta-media. Total ~560 chars repartidos entre 1 o 2 burbujas según el momento.',
+  },
+  3: {
+    label: 'Hasta 3 mensajes',
+    hint: 'Respuesta moderada. Total ~840 chars. El setter usa 1, 2 o 3 según contexto.',
+  },
+  4: {
+    label: 'Hasta 4 mensajes',
+    hint: 'Default (baseline). Total ~1150 chars. Comportamiento previo a esta opción: el setter usa el número que pida el momento, hasta 4.',
+  },
+};
+
+export const MAX_FORBIDDEN_PHRASES = 10;
+export const MAX_FORBIDDEN_PHRASE_CHARS = 40;
+
 const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_booked', 'integration_down'];
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
@@ -226,8 +280,6 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   customEmojis: [],
   qualificationQuestionsEnabled: false,
   extraQuestionsBeforeCall: 0,
-  messageLengthDensity: 1,
-  toneRegister: 1,
   trainerName: null,
   trainerEmail: null,
   trainerPhone: null,
@@ -243,6 +295,14 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   // Hito 11: null = no elegido aún. UI muestra badge "Pendiente".
   schedulingMode: null,
   trainerTimezone: null,
+  // Hito 12.1: cumplimiento estricto (max msgs + addressing + forbidden).
+  // Defaults preservan comportamiento previo a Hito 12.1:
+  //   - aiMessagesPerTurnMax: 4 = baseline (mismo cap hardcoded del splitter pre-Hito 12.1).
+  //   - addressingMode: 'mirror_lead' = el setter espeja al lead, sin forzar registro.
+  //   - forbiddenPhrases: [] = no hay vocabulario prohibido, el setter usa criterio normal.
+  aiMessagesPerTurnMax: 4,
+  addressingMode: 'mirror_lead',
+  forbiddenPhrases: [],
 };
 
 const MAX_HANDOFF_CUSTOM_MESSAGE_CHARS = 250;
@@ -280,6 +340,59 @@ function parseHandoffCustomTemplate(raw: unknown): HandoffCustomTemplate {
     return raw as HandoffCustomTemplate;
   }
   return 'warm';
+}
+
+// ----- Hito 12.1 — parsers + sanitizers -----
+
+function parseAiMessagesPerTurnMax(raw: unknown): 1 | 2 | 3 | 4 {
+  if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 && raw <= 4) {
+    return raw as 1 | 2 | 3 | 4;
+  }
+  return 4;
+}
+
+function parseAddressingMode(raw: unknown): AddressingMode {
+  if (typeof raw === 'string' && (ADDRESSING_MODES as readonly string[]).includes(raw)) {
+    return raw as AddressingMode;
+  }
+  return 'mirror_lead';
+}
+
+/**
+ * Hito 12.1 — Sanitiza una frase prohibida individual:
+ *   - trim
+ *   - lowercase (matching es case-insensitive en V17, normalizamos al guardar)
+ *   - max 40 chars
+ *   - escape de tags reservados (defensa anti prompt-injection del trainer)
+ *   - rechaza strings vacíos tras trim
+ */
+export function sanitizeForbiddenPhrase(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  let trimmed = raw.trim().toLowerCase();
+  if (trimmed === '') return null;
+  if (trimmed.length > MAX_FORBIDDEN_PHRASE_CHARS) {
+    trimmed = trimmed.slice(0, MAX_FORBIDDEN_PHRASE_CHARS);
+  }
+  trimmed = trimmed.replace(
+    /<\/(system|message|user|assistant|core_v4_base|core_v5_base|output_contract_v5|coach_v3|coach_v5|admin_overrides_v1|trainer_prefs_v1|critical_rules|role|safety_first)>/gi,
+    '&lt;/$1&gt;',
+  );
+  return trimmed;
+}
+
+function parseForbiddenPhrases(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const item of raw) {
+    if (out.length >= MAX_FORBIDDEN_PHRASES) break;
+    const s = sanitizeForbiddenPhrase(item);
+    if (s == null) continue;
+    if (seen.has(s)) continue;
+    seen.add(s);
+    out.push(s);
+  }
+  return out;
 }
 
 const MAX_CLOSING_RESOURCE_URL_CHARS = 200;
@@ -498,19 +611,9 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   }
   out.callProposalMode = parseCallProposalMode(r.callProposalMode);
 
-  // Sprint Gamma 2.5b/B — sliders nuevos
-  if (typeof r.messageLengthDensity === 'number' && Number.isInteger(r.messageLengthDensity)) {
-    const n = r.messageLengthDensity;
-    if (n >= 0 && n <= 2) {
-      out.messageLengthDensity = n as 0 | 1 | 2;
-    }
-  }
-  if (typeof r.toneRegister === 'number' && Number.isInteger(r.toneRegister)) {
-    const n = r.toneRegister;
-    if (n >= 0 && n <= 2) {
-      out.toneRegister = n as 0 | 1 | 2;
-    }
-  }
+  // Hito 12.1 (2026-05-20): `messageLengthDensity` y `toneRegister` ELIMINADOS
+  // del parser. Datos legacy en JSONB se ignoran silenciosamente (Iván gestiona
+  // longitud y tono desde core_v5_base + coach_v5).
 
   // Sprint Gamma 2.6b — Comportamiento en handoff
   if (typeof r.handoffPersonalizationEnabled === 'boolean') {
@@ -547,6 +650,11 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
     const tz = r.trainerTimezone.trim();
     out.trainerTimezone = tz === '' ? null : tz;
   }
+
+  // Hito 12.1 — cumplimiento estricto (max msgs + addressing + forbidden).
+  out.aiMessagesPerTurnMax = parseAiMessagesPerTurnMax(r.aiMessagesPerTurnMax);
+  out.addressingMode = parseAddressingMode(r.addressingMode);
+  out.forbiddenPhrases = parseForbiddenPhrases(r.forbiddenPhrases);
 
   return out;
 }
@@ -603,17 +711,32 @@ export function isValidIanaTimezone(tz: string | null | undefined): boolean {
   }
 }
 
-const MESSAGE_LENGTH_DESCRIPTIONS = {
-  0: 'mensajes cortos y directos (1 frase por turno, máximo 2 si necesitas contexto). Evita párrafos.',
-  1: 'longitud equilibrada (1-2 frases por mensaje; si necesitas más contexto, parte en 2 mensajes consecutivos).',
-  2: 'mensajes algo más amplios cuando hace falta contexto (2-3 frases en un mismo mensaje, evitando parecer escueto).',
-} as const;
+// Hito 12.1 (2026-05-20): `MESSAGE_LENGTH_DESCRIPTIONS` y `TONE_DESCRIPTIONS`
+// eliminados — la longitud y el tono se gestionan en core_v5_base y coach_v5,
+// no como preferencias del trainer. El serializer ya no emite líneas para esos
+// dos campos en la sección "### Estilo" del markdown.
 
-const TONE_DESCRIPTIONS = {
-  0: 'cercano y coloquial, como un amigo del sector. Tutea, usa expresiones cotidianas. Sin exagerar (no insultos ni chistes).',
-  1: 'profesional pero cercano. Tutea por defecto. Evita jerga excesiva.',
-  2: 'profesional y elegante. Evita coloquialismos. Considera el usted si el lead lo usa primero.',
-} as const;
+/**
+ * Hito 12.1 — descripciones inyectadas al `trainer_prefs_v1` para que el setter
+ * conozca el techo de mensajes por turno. El motor enforcea adicionalmente
+ * con maxLength dinámico en el Generator + maxParts dinámico en el Splitter.
+ */
+const AI_MESSAGES_PER_TURN_MAX_DESCRIPTIONS: Record<1 | 2 | 3 | 4, string> = {
+  1: 'responde en COMO MUCHO 1 mensaje consecutivo (1 sola burbuja). Sé ultra-conciso: 1-2 oraciones, ~280 caracteres totales. Si necesitas decir algo más amplio, prioriza lo esencial y deja el resto para cuando el lead responda. ESTA REGLA ES ESTRICTA: el sistema valida el output antes de enviar.',
+  2: 'responde en COMO MUCHO 2 mensajes consecutivos. Toda tu respuesta debe caber en ~560 caracteres totales. El número real puede ser 1 cuando una frase basta — el cap es el techo, no la meta. ESTA REGLA ES ESTRICTA: el sistema valida el output antes de enviar.',
+  3: 'responde en COMO MUCHO 3 mensajes consecutivos. Toda tu respuesta debe caber en ~840 caracteres totales. Usa 1, 2 o 3 según el momento — el cap es el techo, no la meta. ESTA REGLA ES ESTRICTA: el sistema valida el output antes de enviar.',
+  4: 'responde en COMO MUCHO 4 mensajes consecutivos. Toda tu respuesta debe caber en ~1150 caracteres totales. Usa el número que pida el momento — el cap es el techo, no la meta. ESTA REGLA ES ESTRICTA: el sistema valida el output antes de enviar.',
+};
+
+/**
+ * Hito 12.1 — descripciones inyectadas al `trainer_prefs_v1` cuando addressingMode
+ * es 'tu' o 'usted'. Para 'mirror_lead' el motor inyecta una directiva dinámica
+ * turno a turno (no estática), basada en el último mensaje del lead.
+ */
+const ADDRESSING_MODE_DESCRIPTIONS: Record<'tu' | 'usted', string> = {
+  tu: 'trata SIEMPRE al lead de tú. Conjuga verbos en 2ª persona singular informal ("¿qué tal estás?", "te paso", "cuéntame", "tu objetivo"). NO uses "usted" ni conjugaciones formales aunque el lead las use — mantén siempre el tuteo. ESTA REGLA ES ESTRICTA: el sistema valida el output antes de enviar.',
+  usted: 'trata SIEMPRE al lead de usted. Conjuga verbos en 3ª persona singular formal ("¿cómo está usted?", "le paso", "cuénteme", "su objetivo"). NO uses "tú" ni conjugaciones informales aunque el lead tutee — mantén siempre el ustedeo. ESTA REGLA ES ESTRICTA: el sistema valida el output antes de enviar.',
+};
 
 /**
  * Convierte preferencias estructuradas + lista de instrucciones custom del
@@ -650,8 +773,14 @@ export function serializeTrainerPreferences(
     '- **Doble interrogación**: cuando termines una frase con pregunta, usa `??` en lugar de `?` ' +
       '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
   );
-  lines.push(`- **Longitud de mensajes**: ${MESSAGE_LENGTH_DESCRIPTIONS[prefs.messageLengthDensity]}`);
-  lines.push(`- **Tono**: ${TONE_DESCRIPTIONS[prefs.toneRegister]}`);
+  // Hito 12.1 (2026-05-20): líneas de longitud y tono ELIMINADAS — Iván las
+  // gestiona desde core_v5_base + coach_v5.
+  // Hito 12.1 — Máximo de mensajes por turno (cumplimiento ESTRICTO: instrucción + Generator maxLength + Splitter maxParts).
+  lines.push(`- **Máximo de mensajes por turno**: ${AI_MESSAGES_PER_TURN_MAX_DESCRIPTIONS[prefs.aiMessagesPerTurnMax]}`);
+  // Hito 12.1 — Tratamiento. Solo emitir si tu/usted; mirror_lead se inyecta dinámicamente desde el motor turno a turno (basado en detectAddressing del último mensaje del lead).
+  if (prefs.addressingMode === 'tu' || prefs.addressingMode === 'usted') {
+    lines.push(`- **Tratamiento al lead**: ${ADDRESSING_MODE_DESCRIPTIONS[prefs.addressingMode]}`);
+  }
   lines.push(
     '- **Acknowledge audios**: si el lead envía un audio, menciónalo explícitamente al inicio ' +
       'de tu respuesta (p.ej. "escuché tu audio…", "acabo de oír lo que mandas…").',
@@ -748,6 +877,24 @@ export function serializeTrainerPreferences(
       `- **Frase de cierre del trainer**: cuando vayas a compartir el enlace de cierre, ` +
         `di exactamente (o muy similar) esta frase: "${prefs.calendarClosingMessage}".`,
     );
+  }
+
+  // Hito 12.1 — Vocabulario prohibido (cumplimiento ESTRICTO vía validador V17).
+  // Solo se emite la sección si el trainer configuró al menos una frase prohibida.
+  if (prefs.forbiddenPhrases.length > 0) {
+    lines.push('');
+    lines.push('### Vocabulario prohibido');
+    lines.push('');
+    lines.push(
+      'El trainer ha indicado que las siguientes palabras o frases NUNCA deben aparecer en tus ' +
+        'mensajes al lead. Antes de enviar, revisa tu respuesta: si alguna de estas palabras aparece, ' +
+        'REESCRIBE usando un sinónimo o reformula la frase para evitarla. **ESTA REGLA ES ESTRICTA**: ' +
+        'el sistema valida el output antes de enviar y te obligará a reescribir si la incumples.',
+    );
+    lines.push('');
+    for (const phrase of prefs.forbiddenPhrases) {
+      lines.push(`- "${phrase}"`);
+    }
   }
 
   // Sprint Gamma 2.3 — Instrucciones libres del trainer (lista, una por bullet)

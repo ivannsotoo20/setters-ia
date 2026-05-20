@@ -3,37 +3,66 @@ import type { AnthropicTool } from './types.js';
 export const RESPOND_AS_SETTER_TOOL_NAME = 'respond_as_setter';
 
 /**
- * Definición JSON Schema de la tool que el Generator debe usar OBLIGATORIAMENTE
- * (forzado con `tool_choice: { type: 'tool', name: 'respond_as_setter' }`).
- *
- * El campo crítico es `message_raw`: la respuesta del setter al lead, antes de
- * que pase por el Judge (validador post-LLM) y el Splitter (1-4 mensajes 20-280 chars).
- *
- * Los otros campos son metadatos que el motor usa para:
- *  - actualizar `conversations.state`, `phase_number`, `is_qualified`, `is_handoff_to_human`
- *  - decidir si envía recursos adjuntos
- *  - registrar el reasoning para debug del comportamiento
+ * Hito 12.1 — Holgura sobre `maxParts × 280` para acomodar separadores `\n\n`
+ * entre partes consecutivas. 30 chars cubren hasta 10 separadores (3 chars c/u).
  */
-export const respondAsSetterTool: AnthropicTool = {
-  name: RESPOND_AS_SETTER_TOOL_NAME,
-  description:
-    'Genera el siguiente turno del setter. Devuelve la respuesta del setter (message_raw), el resumen del lead, ' +
-    'el estado de la conversación, la fase decidida tras el turno y opcionalmente recursos a enviar y motivo de handoff. ' +
-    'OBLIGATORIO usar esta tool en cada turno.',
-  input_schema: {
-    type: 'object',
-    required: ['message_raw', 'conversation_status', 'phase_decision'],
-    properties: {
-      message_raw: {
-        type: 'string',
-        description:
-          'Respuesta del setter al lead. Texto en lenguaje natural. Si vas a enviar 2-3 ' +
-          'mensajes consecutivos, sepáralos con doble salto de línea (\\n\\n). El splitter posterior los ' +
-          'particionará en burbujas de chat de 20-280 chars. NO incluyas placeholders [NOMBRE], [SITUACIÓN], etc. — ' +
-          'sustitúyelos por los valores reales tomados del coach y de la conversación.',
-        minLength: 1,
-        maxLength: 1500,
-      },
+const MESSAGE_RAW_HOLGURA_CHARS = 30;
+const MAX_CHARS_PER_PART = 280;
+const DEFAULT_MAX_PARTS: 1 | 2 | 3 | 4 = 4;
+
+/**
+ * Cap absoluto del `message_raw` por nivel de `aiMessagesPerTurnMax`:
+ *   - cap=1 → 310 chars
+ *   - cap=2 → 590 chars
+ *   - cap=3 → 870 chars
+ *   - cap=4 → 1150 chars
+ *
+ * Es lo que el SCHEMA de Anthropic acepta como `maxLength`. El modelo
+ * recibirá además una directriz en el system prompt (`trainer_prefs_v1`)
+ * con instrucciones explícitas (ESTRICTA).
+ */
+function computeMessageRawMaxLength(maxParts: 1 | 2 | 3 | 4): number {
+  return maxParts * MAX_CHARS_PER_PART + MESSAGE_RAW_HOLGURA_CHARS;
+}
+
+/**
+ * Hito 12.1 — Construye la definición de la tool `respond_as_setter` con
+ * `maxLength` dinámico del campo `message_raw` según el cap del trainer.
+ *
+ * Antes del Hito 12.1 el `maxLength` estaba hardcoded a 1500. Ahora es función
+ * de `aiMessagesPerTurnMax` (1-4) para que el cap se cumpla al 100%:
+ *  - Generator genera respuesta con techo de chars proporcional al cap.
+ *  - Splitter recibe `maxParts` coherente y particiona dentro del cap.
+ *  - Validador (V0-V16) no necesita conocer este cap (el Generator no podrá
+ *    pasarse del schema, Anthropic rechazaría el tool_use).
+ *
+ * El factory NO se memoiza — construir la tool es trivial (un object literal)
+ * y se llama 1 vez por turno. Sí se cachean los system prompts vía
+ * `cache_control: { type: 'ephemeral' }` en otro flujo.
+ */
+export function buildRespondAsSetterTool(opts: { maxParts: 1 | 2 | 3 | 4 } = { maxParts: DEFAULT_MAX_PARTS }): AnthropicTool {
+  const maxLength = computeMessageRawMaxLength(opts.maxParts);
+  return {
+    name: RESPOND_AS_SETTER_TOOL_NAME,
+    description:
+      'Genera el siguiente turno del setter. Devuelve la respuesta del setter (message_raw), el resumen del lead, ' +
+      'el estado de la conversación, la fase decidida tras el turno y opcionalmente recursos a enviar y motivo de handoff. ' +
+      'OBLIGATORIO usar esta tool en cada turno.',
+    input_schema: {
+      type: 'object',
+      required: ['message_raw', 'conversation_status', 'phase_decision'],
+      properties: {
+        message_raw: {
+          type: 'string',
+          description:
+            `Respuesta del setter al lead. Texto en lenguaje natural. Si vas a enviar varios ` +
+            `mensajes consecutivos, sepáralos con doble salto de línea (\\n\\n). El splitter posterior los ` +
+            `particionará en burbujas de chat de 20-280 chars (máximo ${opts.maxParts} burbujas). NO incluyas ` +
+            `placeholders [NOMBRE], [SITUACIÓN], etc. — sustitúyelos por los valores reales tomados del coach ` +
+            `y de la conversación.`,
+          minLength: 1,
+          maxLength,
+        },
       user_summary: {
         type: 'string',
         description:
@@ -170,4 +199,14 @@ export const respondAsSetterTool: AnthropicTool = {
     },
     additionalProperties: false,
   },
-};
+  };
+}
+
+/**
+ * Hito 12.1 — Export legacy de compatibilidad con consumidores que aún no
+ * propagan `maxParts`. Equivale al cap por defecto (4 = baseline pre-Hito 12.1).
+ * Tests existentes y código no migrado siguen funcionando sin cambios.
+ *
+ * Para enforce real del cap dinámico, el caller debe usar `buildRespondAsSetterTool({ maxParts })`.
+ */
+export const respondAsSetterTool: AnthropicTool = buildRespondAsSetterTool();

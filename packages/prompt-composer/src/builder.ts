@@ -145,6 +145,20 @@ export function buildComposedPrompt(
     });
   }
 
+  // Hito 12.1 — Si el caller pasó `extraSystemSuffix` (no vacío), lo añadimos
+  // como bloque sintético al final del array. Va OUT of cache porque típicamente
+  // cambia turno a turno (p.ej. directiva de mirror_lead basada en el último
+  // mensaje del lead). El `applyCacheStrategy` lo excluye del breakpoint final.
+  const suffix = options.extraSystemSuffix;
+  if (typeof suffix === 'string' && suffix.trim().length > 0) {
+    blocks.push({
+      key: 'extra_system_suffix',
+      text: suffix,
+      cached: false,
+      scope: 'tenant',
+    });
+  }
+
   applyCacheStrategy(blocks, cacheStrategy);
 
   const systemContent: SystemContentBlock[] = blocks.map((b) => {
@@ -179,9 +193,12 @@ function applyCacheStrategy(
   if (blocks.length === 0 || strategy === 'none') return;
 
   // trainer_prefs_v1 NUNCA se cachea: cambia con cada toggle del trainer y pesa poco.
-  // El breakpoint final se aplica al último bloque que NO sea trainer_prefs_v1.
+  // Hito 12.1 — extra_system_suffix tampoco se cachea: cambia turno a turno
+  // (mirror_lead detecta el tratamiento del lead y construye directiva ad-hoc).
+  // El breakpoint final se aplica al último bloque que NO sea OUT-of-cache.
+  const OUT_OF_CACHE_KEYS = new Set(['trainer_prefs_v1', 'extra_system_suffix']);
   let lastCacheableIdx = blocks.length - 1;
-  while (lastCacheableIdx >= 0 && blocks[lastCacheableIdx]!.key === 'trainer_prefs_v1') {
+  while (lastCacheableIdx >= 0 && OUT_OF_CACHE_KEYS.has(blocks[lastCacheableIdx]!.key)) {
     lastCacheableIdx--;
   }
 

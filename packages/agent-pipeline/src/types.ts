@@ -103,6 +103,14 @@ export interface GeneratorInput {
   /** Max tokens del response. Default 1024. */
   maxTokens?: number;
   /**
+   * Hito 12.1 — Cap dinámico de mensajes por turno (1-4). El motor lo lee de
+   * `trainer_preferences.preferences.aiMessagesPerTurnMax` y lo propaga al
+   * Generator (para construir la tool con `maxLength` ajustado en `message_raw`)
+   * y al Splitter (para limitar `maxItems` en su tool y respetar el cap).
+   * Default `undefined` → cap 4 (baseline pre-Hito 12.1).
+   */
+  aiMessagesPerTurnMax?: 1 | 2 | 3 | 4;
+  /**
    * Overrides que el motor inyecta al composer por turno (Cerebro v5).
    *
    * En v5 se eliminaron los flags `isHandoff/includeObjections/includeDescualificacion/includeOutputContract`:
@@ -145,6 +153,14 @@ export interface GeneratorInput {
     leadTimezoneLabel?: string | null;
     /** Hito 11 — Etiqueta humana de la timezone del TRAINER (ej: "hora España"). */
     trainerTimezoneLabel?: string | null;
+    /**
+     * Hito 12.1 — Texto markdown extra que se APPEND al final del system prompt
+     * compuesto como bloque adicional OUT of cache. Usado por el motor para
+     * inyectar la directiva dinámica de `mirror_lead` (detectAddressing del
+     * último mensaje del lead → directiva tú/usted con cumplimiento estricto).
+     * Si null/undefined/vacío, no se añade nada.
+     */
+    extraSystemSuffix?: string | null;
   };
 }
 
