@@ -195,6 +195,30 @@ describe('buildComposedPrompt — admin_overrides_v1', () => {
     expect(out.blocks).toHaveLength(3);
   });
 
+  it('omits admin_overrides_v1 when content is empty (defensa Claude API)', () => {
+    // Repro bug producción 2026-05-25: admin_overrides id=29 tenant=2 quedó con
+    // content='' is_active=true. El composer lo añadía y Claude API rechazaba
+    // con 400 "system: text content blocks must be non-empty". Tras el fix,
+    // un bloque admin_overrides con content vacío se omite silenciosamente.
+    const emptyOverrides = makeRow('admin_overrides_v1', 6, TENANT_ID, '');
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, emptyOverrides], {
+      tenantId: TENANT_ID,
+      currentPhase: 2,
+    });
+    expect(out.metadata.blocksLoaded).not.toContain('admin_overrides_v1');
+    const overridesBlock = out.blocks.find((b) => b.key === 'admin_overrides_v1');
+    expect(overridesBlock).toBeUndefined();
+  });
+
+  it('omits admin_overrides_v1 when content is whitespace only', () => {
+    const whitespaceOverrides = makeRow('admin_overrides_v1', 6, TENANT_ID, '   \n  \t ');
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, whitespaceOverrides], {
+      tenantId: TENANT_ID,
+      currentPhase: 2,
+    });
+    expect(out.metadata.blocksLoaded).not.toContain('admin_overrides_v1');
+  });
+
   it('ignores admin_overrides_v1 from a different tenant (security)', () => {
     const otherTenantOverrides = makeRow('admin_overrides_v1', 6, 999, '[other tenant overrides]');
     const out = buildComposedPrompt([...sharedRowsV5, coachRow, otherTenantOverrides], {
@@ -244,6 +268,15 @@ describe('buildComposedPrompt — trainer_prefs_v1', () => {
 
   it('omits trainer_prefs_v1 silently when not present', () => {
     const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
+      tenantId: TENANT_ID,
+      currentPhase: 1,
+    });
+    expect(out.metadata.blocksLoaded).not.toContain('trainer_prefs_v1');
+  });
+
+  it('omits trainer_prefs_v1 when content is empty (defensa Claude API)', () => {
+    const emptyPrefs = makeRow('trainer_prefs_v1', 110, TENANT_ID, '');
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow, emptyPrefs], {
       tenantId: TENANT_ID,
       currentPhase: 1,
     });

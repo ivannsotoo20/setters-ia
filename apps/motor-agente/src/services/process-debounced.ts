@@ -252,6 +252,16 @@ export async function processDebounced(
   const startedAtMs = Date.now();
   const run = await startPipelineRun(supabase, { tenantId, conversationId });
 
+  // Bug fix 2026-05-25 — Finally guard. Antes este flow tenía SOLO un try/catch
+  // alrededor de runPipeline; cualquier throw POST-runPipeline (p.ej. CHECK
+  // violation en insertScheduledParts) propagaba al cron sin llamar
+  // failPipelineRun → pipeline_runs quedaban 'in_progress' eternamente. El
+  // root cause original ya está arreglado (migration 070), pero este guard
+  // defensivo asegura que cualquier futuro throw post-runPipeline marque el
+  // run como failed antes de propagar.
+  let runResolved = false;
+
+  try {
   // 7. Ejecutar pipeline 3-LLM
   // NOTA: coachSummary y emojisWhitelist se dejan a undefined/null para que
   // sean derivados del coach del tenant cuando exista la pieza que los extrae
@@ -395,6 +405,7 @@ export async function processDebounced(
       outcome: classifyPipelineError(err),
       error: err,
     });
+    runResolved = true;
     throw err;
   }
 
@@ -653,6 +664,7 @@ export async function processDebounced(
     startedAtMs,
     multimodal: mediaResult,
   });
+  runResolved = true;
 
   return {
     conversationId,
@@ -664,6 +676,27 @@ export async function processDebounced(
     phase: newPhase,
     correlationId: run.correlationId,
   };
+  } catch (err) {
+    // Outer catch — captura cualquier throw post-runPipeline que no haya pasado
+    // por el catch interno (runResolved=false). Garantiza que pipeline_runs
+    // nunca queda en 'in_progress' zombie.
+    if (!runResolved && run.id !== 0) {
+      try {
+        await failPipelineRun(supabase, {
+          id: run.id,
+          startedAtMs,
+          outcome: classifyPipelineError(err),
+          error: err,
+        });
+      } catch (failErr) {
+        console.warn(
+          `[process-debounced] failPipelineRun in outer catch threw conv=${conversationId}:`,
+          failErr instanceof Error ? failErr.message : String(failErr),
+        );
+      }
+    }
+    throw err;
+  }
 }
 
 async function loadAudioLanguage(

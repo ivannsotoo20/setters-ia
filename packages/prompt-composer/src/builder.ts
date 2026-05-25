@@ -115,10 +115,18 @@ export function buildComposedPrompt(
       scope: row.tenant_id === null ? 'shared' : 'tenant',
     });
 
-    // Tras insertar 'coach_v5', si existe admin_overrides_v1 para este tenant, lo añadimos.
+    // Tras insertar 'coach_v5', si existe admin_overrides_v1 para este tenant
+    // CON contenido no vacío, lo añadimos. Defensa: Claude API rechaza system
+    // blocks con text vacío (`system: text content blocks must be non-empty`).
+    // Pasó en producción 2026-05-25 con admin_overrides id=29 tenant=2 vacío.
     if (key === 'coach_v5') {
       const overridesRow = byKey.get(OPTIONAL_AFTER_COACH);
-      if (overridesRow && overridesRow.tenant_id === tenantId) {
+      if (
+        overridesRow &&
+        overridesRow.tenant_id === tenantId &&
+        typeof overridesRow.content === 'string' &&
+        overridesRow.content.trim().length > 0
+      ) {
         blocks.push({
           key: OPTIONAL_AFTER_COACH,
           text: overridesRow.content,
@@ -133,10 +141,16 @@ export function buildComposedPrompt(
     throw new Error(`composePrompt: missing blocks for current options: ${missing.join(', ')}`);
   }
 
-  // Al final de todo, si existe trainer_prefs_v1 para este tenant, lo añadimos.
-  // OJO: queda fuera del cache (ver applyCacheStrategy).
+  // Al final de todo, si existe trainer_prefs_v1 para este tenant CON contenido
+  // no vacío, lo añadimos. OJO: queda fuera del cache (ver applyCacheStrategy).
+  // Defensa contra blocks vacíos a Claude API (ver nota en admin_overrides_v1).
   const prefsRow = byKey.get(OPTIONAL_AT_END);
-  if (prefsRow && prefsRow.tenant_id === tenantId) {
+  if (
+    prefsRow &&
+    prefsRow.tenant_id === tenantId &&
+    typeof prefsRow.content === 'string' &&
+    prefsRow.content.trim().length > 0
+  ) {
     blocks.push({
       key: OPTIONAL_AT_END,
       text: prefsRow.content,
