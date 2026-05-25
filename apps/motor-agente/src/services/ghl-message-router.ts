@@ -116,6 +116,23 @@ export function matchesAnyKeyword(body: string, keywords: AutomationKeywordRow[]
   return false;
 }
 
+/**
+ * Devuelve 'inbound' si `body` matchea con alguna keyword type='inbound'
+ * registrada para el tenant. Usada por el gate classified_only en
+ * `routeGhlInbound` y `webhook-manychat` para reconocer leads orgánicos que
+ * llegan directamente con palabras clave del trainer (ej. "info", "programa",
+ * "precio"). Resultado: conv clasificada como 'inbound' + IA activa sin
+ * intervención humana.
+ */
+export function classifyInboundOnly(
+  body: string,
+  keywords: AutomationKeywordRow[],
+): 'inbound' | null {
+  const inboundKeywords = keywords.filter((k) => k.type === 'inbound');
+  if (inboundKeywords.length === 0) return null;
+  return matchesAnyKeyword(body, inboundKeywords) ? 'inbound' : null;
+}
+
 export function normalizeForMatch(s: string): string {
   return s.toLowerCase().replace(/\s+/g, '');
 }
@@ -239,12 +256,16 @@ export async function routeGhlInbound(
       .eq('id', conversationId);
   }
 
-  // 4.7) Sprint B (Hito 9 + 2026-05-12) — Gate `ghl_inbound_mode='classified_only'`.
-  //      Si el tenant tiene el modo classified_only y la conv NO tiene origen
-  //      clasificado (ni el customData del webhook lo proporcionó), pausamos IA
-  //      ANTES de encolar debounce. Resultado: conv creada + lead persistido +
-  //      mensaje guardado, pero pipeline NO dispara. Trainer interviene a mano
-  //      desde panel si decide responder. Análogo a wa_inbound_mode form_only.
+  // 4.7) Sprint B (Hito 9, 2026-05-12) + Iván (2026-05-25) — Gate
+  //      `ghl_inbound_mode='classified_only'`. Si el tenant tiene el modo y la
+  //      conv NO tiene origen clasificado:
+  //        a) Intentar clasificar por keywords type='inbound' contra el texto
+  //           del mensaje. Si matchea ("info", "programa", "precio"...) →
+  //           setear conversation_source='inbound' y continuar (IA entra).
+  //        b) Si no matchea → pausar IA infinity. Resultado: conv creada +
+  //           lead persistido + mensaje guardado, pero pipeline NO dispara.
+  //           Trainer interviene a mano desde panel si decide responder.
+  //      Análogo a wa_inbound_mode form_only.
   const ghlInboundMode = await loadGhlInboundMode(supabase, inbound.tenantId);
   if (ghlInboundMode === 'classified_only') {
     const { data: convSourceCheck } = await supabase
@@ -256,21 +277,37 @@ export async function routeGhlInbound(
       (convSourceCheck?.conversation_source as string | null | undefined) ?? null;
     const alreadyPaused = Boolean(convSourceCheck?.ai_paused_until);
     if (!currentSource && !alreadyPaused) {
-      await supabase
-        .from('conversations')
-        .update({
-          ai_paused_until: 'infinity',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', conversationId);
-      logger.info(
-        {
-          tenantId: inbound.tenantId,
-          conversationId,
-          mode: 'classified_only',
-        },
-        'routeGhlInbound: conv sin source clasificada — IA pausada (modo classified_only)',
-      );
+      const inboundText = typeof inbound.message === 'string' ? inbound.message : '';
+      let classifiedByInboundKeyword: 'inbound' | null = null;
+      if (inboundText.trim().length > 0) {
+        const keywords = await loadAutomationKeywords(supabase, inbound.tenantId);
+        classifiedByInboundKeyword = classifyInboundOnly(inboundText, keywords);
+      }
+      if (classifiedByInboundKeyword === 'inbound') {
+        await supabase
+          .from('conversations')
+          .update({
+            conversation_source: 'inbound',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', conversationId);
+        logger.info(
+          { tenantId: inbound.tenantId, conversationId, mode: 'classified_only' },
+          'routeGhlInbound: inbound matched keyword type=inbound — conv clasificada inbound, IA activa',
+        );
+      } else {
+        await supabase
+          .from('conversations')
+          .update({
+            ai_paused_until: 'infinity',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', conversationId);
+        logger.info(
+          { tenantId: inbound.tenantId, conversationId, mode: 'classified_only' },
+          'routeGhlInbound: conv sin source clasificada — IA pausada (modo classified_only)',
+        );
+      }
     }
   }
 

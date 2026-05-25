@@ -524,6 +524,36 @@ Uso actual único: `buildMirrorLeadDirective(detected)` cuando `addressingMode='
 - `addressingMode='usted'` + lead tutea → verificar setter siempre usted (V18 log o retry-vacío).
 - `mirror_lead` + lead alterna tú/usted entre turnos → verificar setter cambia con el lead (directiva dinámica via extraSystemSuffix).
 
+## Hito 12.3 — Keywords type='inbound' disparan IA también en InboundMessage (2026-05-25)
+
+**Doctrina** (Iván 2026-05-25): el gate `classified_only` (GHL + ManyChat) ahora admite una nueva vía de clasificación. Antes solo aceptaba `conversation_source` seteado vía customData del Workflow GHL (lead magnet / bienvenida / inbound). Si un lead orgánico escribía directamente "info", "programa", "precio" a IG/FB/WA sin venir por canal conocido, la IA quedaba pausada hasta intervención manual del trainer. Caso real frecuente que perdía oportunidades.
+
+**Cambio**: las keywords `automation_keywords.type='inbound'` ahora también se evalúan contra el TEXTO del InboundMessage. Si matchea (substring case-insensitive sin espacios) → setear `conversation_source='inbound'` y NO pausar la IA. Si no matchea → comportamiento anterior (pausa infinity).
+
+**Semántica de los 3 tipos tras este cambio**:
+- `bienvenida`: SOLO OutboundMessage. Pablo escribe primero al lead con frase tipo "Hola gracias por escribir" → activa IA F1.
+- `lm`: SOLO OutboundMessage. Lead magnet (Workflow GHL captura comentario IG + body con keyword "CLASE") → activa IA F1 con flag lead magnet.
+- `inbound`: OutboundMessage + **InboundMessage** (nuevo). El lead orgánico escribe "info"/"programa" → activa IA. O el trainer escribe primero con esa palabra → idem.
+
+**Implementación**:
+- Helper nuevo `classifyInboundOnly(body, keywords)` en `apps/motor-agente/src/services/ghl-message-router.ts` — filtra keywords `type='inbound'` y devuelve `'inbound' | null`. Exportado para tests.
+- `routeGhlInbound` sección 4.7 (gate `ghl_inbound_mode='classified_only'`): antes de pausar, evalúa `classifyInboundOnly`. Si matchea → UPDATE `conversation_source='inbound'` + sigue flujo normal (encola debounce). Si no → pausa infinity como antes.
+- `webhook-manychat.ts` sección 4.7 (gate `manychat_inbound_mode='classified_only'`): mismo patrón. Importa `loadAutomationKeywords` + `classifyInboundOnly` desde `ghl-message-router.js`.
+- Panel `/keywords` page.tsx: descripciones actualizadas para reflejar que `inbound` aplica también a InboundMessage.
+- Tests: 6 nuevos casos en `ghl-message-router.test.ts` cubriendo match, case-insensitive, precedencia (ignora bienvenida/lm), null para edge cases.
+
+**Reglas que NO cambian**:
+- Conv ya pausada (`alreadyPaused`) NO se despausa retroactivamente — los inbound posteriores son ignorados igual. La pausa por intervención humana o Sprint Eta labels respect.
+- Conv ya con `currentSource` seteado NO se sobrescribe — preserva clasificación original (ej. lead vino por `lm`, luego pregunta "info" → sigue como `lm`, no se rebajada).
+- `bienvenida` y `lm` siguen aplicando SOLO a OutboundMessage — el cambio es opt-in vía type='inbound'.
+
+**Smoke E2E pendiente**:
+- Tenant 2 (Pablo) con keyword `INFO` type=inbound activa: mandar DM desde IG a su sub-cuenta con "info" → motor procesa → conv source='inbound' + IA activa + debounce + respuesta.
+- Tenant con keyword `programa` type=inbound: mandar "quiero saber del programa" → idem.
+- Tenant con conv ya pausada manualmente + keyword inbound: mandar "info" → la conv sigue pausada (no despausa).
+
+**Deploy**: el cambio vive en código local. Para aplicar a Pablo en producción VPS hace falta deploy del motor (bloqueo SSH residual del Hito 9 — `project_hito_9_oauth_pending`).
+
 ## Qué NO hacer
 
 - No añadir Prisma al motor sin conversación previa con Ivan.
