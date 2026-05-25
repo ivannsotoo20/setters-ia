@@ -69,11 +69,14 @@ export default async function KeywordsPage() {
             Patrones cargados ({keywords.length})
           </CardTitle>
           <CardDescription>
-            Cuando llega un mensaje OUTBOUND desde el chat (humano), el motor
-            normaliza el texto (lowercase + sin espacios) y comprueba si alguno de
-            estos patrones aparece como substring. Si match → clasifica el origen
-            de la conversación. Si no match → asume intervención humana y pausa
-            la IA.
+            El motor normaliza el texto (lowercase + sin espacios) y comprueba si
+            alguno de estos patrones aparece como substring. <strong>Bienvenida</strong>{' '}
+            y <strong>lm</strong> se aplican a mensajes OUTBOUND (cuando tú o un
+            automation escribís a un lead). <strong>Inbound</strong> también se
+            aplica a mensajes INBOUND del lead (ej. lead orgánico que escribe
+            &quot;info&quot;, &quot;programa&quot;, &quot;precio&quot;) → IA entra
+            automáticamente. Si nada matchea en un inbound bajo modo classified_only
+            → asume intervención humana y pausa la IA.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -101,15 +104,17 @@ export default async function KeywordsPage() {
         <CardContent className="text-sm text-muted-foreground space-y-3">
           <div>
             <p className="font-medium text-foreground mb-1">
-              📌 Keywords (esta página): clasifican el ORIGEN de un mensaje OUTBOUND del trainer
+              📌 Keywords (esta página): clasifican el ORIGEN de un mensaje del trainer o del lead
             </p>
             <p className="leading-relaxed">
-              Cuando GHL te avisa de un mensaje saliente (porque tú o un automation enviaste
-              algo a un lead via IG/FB/WA), el motor revisa el texto y lo clasifica. Si match
-              con &quot;bienvenida&quot; → activa la IA en F1. Si match con &quot;lm&quot; →
-              registra como entrega de lead magnet. Si no match → asume que escribiste a mano y
-              pausa la IA. <strong>Las keywords NO se aplican a conversaciones</strong> — son
-              filtros para clasificar los webhooks GHL al entrar.
+              Cuando GHL/ManyChat te avisa de un mensaje, el motor revisa el texto y lo
+              clasifica. <strong>Bienvenida</strong> aplica solo a OUTBOUND (tú escribís a un lead) → activa IA en F1.{' '}
+              <strong>Lm</strong> aplica solo a OUTBOUND → registra como entrega de lead magnet.{' '}
+              <strong>Inbound</strong> aplica tanto a OUTBOUND como a INBOUND del lead — útil para
+              que leads orgánicos que escriben &quot;info&quot;, &quot;programa&quot;,
+              &quot;precio&quot; activen la IA sin que el trainer tenga que intervenir manualmente.
+              Si nada matchea en un inbound bajo modo classified_only → IA pausada hasta que el
+              trainer decida.
             </p>
           </div>
           <div>
