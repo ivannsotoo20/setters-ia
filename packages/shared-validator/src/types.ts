@@ -42,21 +42,6 @@ export interface ValidationContext {
    * "expectativa" depende del lead, no es estática).
    */
   expectedAddressing?: 'tu' | 'usted';
-  /**
-   * Hito 12.2 — Nombre del lead detectado en F0 (de `leads.parsed_name`). Si
-   * presente, V19 cuenta sus menciones en este turno + `lastAssistantMessages`
-   * y avisa si supera `leadNameMaxMentions`. Si null/undefined o vacío, V19
-   * skipea silenciosamente (lead sin nombre usable o trainer en modo 'never').
-   */
-  leadParsedName?: string | null;
-  /**
-   * Hito 12.2 — Tope de menciones del nombre del lead permitidas en toda la
-   * conversación (0-5, del JSONB `trainer_preferences.leadNameMaxMentions`).
-   * V19 emite warn si las menciones acumuladas (este turno + historial bot)
-   * superan este valor. Severidad 'warn' (no retry) por design: la heurística
-   * es falible y el contexto puede justificar repetir.
-   */
-  leadNameMaxMentions?: number;
 }
 
 export interface RuleViolation {

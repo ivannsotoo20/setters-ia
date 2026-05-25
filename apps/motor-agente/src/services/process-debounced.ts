@@ -106,7 +106,7 @@ export async function processDebounced(
   //    Hito 11 — incluye `timezone` IANA (puede ser NULL si no se infirió aún).
   const { data: lead, error: leadErr } = await supabase
     .from('leads')
-    .select('id, external_id, first_name, last_name, phone, email, timezone, parsed_name, parsed_name_status, detected_gender')
+    .select('id, external_id, first_name, last_name, phone, email, timezone')
     .eq('id', Number(conv.lead_id))
     .maybeSingle();
   if (leadErr) throw new Error(`processDebounced: lead lookup ${leadErr.message}`);
@@ -373,11 +373,6 @@ export async function processDebounced(
           // Para mirror_lead, expectedAddressing queda undefined (V18 skip) porque
           // la directiva ya va inyectada al system prompt como extraSystemSuffix.
           expectedAddressing,
-          // Hito 12.2 — V19 cuenta menciones del nombre del lead vs cap.
-          // Skip silencioso si el lead no tiene parsed_name (lead nuevo sin
-          // inferencia todavía, o status='not_usable').
-          leadParsedName: (lead.parsed_name as string | null | undefined) ?? null,
-          leadNameMaxMentions: schedulingConfig.leadNameMaxMentions,
         },
         composeOverrides: {
           currentPhaseFocus,
@@ -792,12 +787,6 @@ async function loadSchedulingConfig(
    *    y construye directiva runtime via `buildMirrorLeadDirective`.
    */
   addressingMode: 'tu' | 'usted' | 'mirror_lead';
-  /**
-   * Hito 12.2 — Tope de menciones del nombre del lead permitidas en TODA la
-   * conversación (0-5, default 2). V19 cuenta menciones y emite warn si supera.
-   * El motor lo propaga a `validationContext.leadNameMaxMentions`.
-   */
-  leadNameMaxMentions: number;
 }> {
   const { data } = await supabase
     .from('trainer_preferences')
@@ -840,13 +829,6 @@ async function loadSchedulingConfig(
     rawAddressing === 'tu' || rawAddressing === 'usted' || rawAddressing === 'mirror_lead'
       ? rawAddressing
       : 'mirror_lead';
-  // Hito 12.2 — valida leadNameMaxMentions (0-5, default 2). Espejo del
-  // parser del panel apps/panel/lib/trainer-prefs-serializer.ts.
-  const rawNameMax = prefs.leadNameMaxMentions;
-  const leadNameMaxMentions =
-    typeof rawNameMax === 'number' && Number.isInteger(rawNameMax) && rawNameMax >= 0 && rawNameMax <= 5
-      ? rawNameMax
-      : 2;
   return {
     schedulingMode,
     trainerTimezone,
@@ -854,6 +836,5 @@ async function loadSchedulingConfig(
     aiMessagesPerTurnMax,
     forbiddenPhrases,
     addressingMode,
-    leadNameMaxMentions,
   };
 }

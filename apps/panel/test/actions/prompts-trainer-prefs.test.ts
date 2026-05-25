@@ -280,10 +280,6 @@ describe('saveTrainerPreferences', () => {
       aiMessagesPerTurnMax: 4,
       addressingMode: 'mirror_lead',
       forbiddenPhrases: [],
-      useLeadNameMode: 'auto',
-      leadNameMaxMentions: 2,
-      targetClientGender: 'mixed',
-      genderVerificationStyle: 'soft',
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });

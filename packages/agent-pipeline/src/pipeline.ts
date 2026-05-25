@@ -123,11 +123,6 @@ export async function runPipeline(
     locale: input.validationContext?.locale,
     // Hito 12.1 — V17 usa esta lista para detectar vocabulario prohibido.
     forbiddenPhrases: input.validationContext?.forbiddenPhrases,
-    // Hito 12.1 — V18 valida consistencia tu/usted si modo fijo.
-    expectedAddressing: input.validationContext?.expectedAddressing,
-    // Hito 12.2 — V19 cuenta menciones del nombre del lead vs cap.
-    leadParsedName: input.validationContext?.leadParsedName,
-    leadNameMaxMentions: input.validationContext?.leadNameMaxMentions,
   };
   const validatorOut = validateMessage(textAfterJudge, validatorCtx);
 

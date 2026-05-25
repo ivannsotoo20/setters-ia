@@ -21,7 +21,7 @@ DELETE FROM public.prompt_blocks
    AND block_key IN ('core_v5_base', 'output_contract_v5')
    AND version = 1;
 
--- core_v5_base (53695 chars) — fuente: 01-core.md
+-- core_v5_base (53196 chars) — fuente: 01-core.md
 INSERT INTO public.prompt_blocks (tenant_id, channel_override, block_key, content, sort_order, version, is_active)
 VALUES (NULL, NULL, 'core_v5_base', $FyzonCoreV5Block$<core_block>
 
@@ -312,14 +312,6 @@ mecánica, no la norma del idioma.
 - Reconducir la conversación si se sale del tema principal.
 
 </verbosity_controls>
-
-<lead_addressing priority="high">
-
-## Cómo dirigirte al lead por su nombre
-
-{{lead_addressing_directive|El trainer no ha configurado preferencias específicas sobre el uso del nombre del lead. Comportamiento por defecto: si los datos del lead aportan un nombre humano legible, puedes usarlo de forma natural en momentos clave (saludo, cierre). Si los datos solo aportan un handle de usuario tipo "user12345" o similar, NO inventes un nombre — dirígete al lead de forma neutra.}}
-
-</lead_addressing>
 
 <final_instructions priority="highest">
   <description>

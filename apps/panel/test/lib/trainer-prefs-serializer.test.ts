@@ -48,10 +48,6 @@ describe('parseTrainerPreferences', () => {
       aiMessagesPerTurnMax: 4,
       addressingMode: 'mirror_lead',
       forbiddenPhrases: [],
-      useLeadNameMode: 'auto',
-      leadNameMaxMentions: 2,
-      targetClientGender: 'mixed',
-      genderVerificationStyle: 'soft',
     };
     expect(parseTrainerPreferences(input)).toEqual(input);
   });
@@ -155,10 +151,6 @@ describe('serializeTrainerPreferences', () => {
       aiMessagesPerTurnMax: 4,
       addressingMode: 'mirror_lead',
       forbiddenPhrases: [],
-      useLeadNameMode: 'auto',
-      leadNameMaxMentions: 2,
-      targetClientGender: 'mixed',
-      genderVerificationStyle: 'soft',
     });
     expect(md.length).toBeGreaterThan(400);
     expect(md).toContain('Doble interrogación');
@@ -638,16 +630,11 @@ describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B + 2
       aiMessagesPerTurnMax: 1,
       addressingMode: 'usted',
       forbiddenPhrases: ['genial', 'perfecto', 'súper', 'guay', 'colega', 'tío', 'amigo', 'cariño', 'jefe', 'maestro'],
-      useLeadNameMode: 'always',
-      leadNameMaxMentions: 5,
-      targetClientGender: 'male',
-      genderVerificationStyle: 'direct',
     };
     const md = serializeTrainerPreferences(maxConfig, []);
     // Hito 12.1: añadidas secciones máx mensajes (~280c), tratamiento usted (~270c),
-    // vocabulario prohibido (~430c con 10 frases). Hito 12.2: nombre del lead (~470c),
-    // filtro género directo (~720c). Tope ajustado de 4500 → 6000.
-    expect(md.length).toBeLessThan(6000);
+    // vocabulario prohibido (~430c con 10 frases). Tope ajustado de 3000 → 4500.
+    expect(md.length).toBeLessThan(4500);
   });
 
   it('serializer determinístico: 2 invocaciones idénticas → mismo string', () => {

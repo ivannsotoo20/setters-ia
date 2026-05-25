@@ -1,7 +1,7 @@
 ---
 block_key: core_v5_base
 status: clean
-version: 2
+version: 1
 tenant_id: NULL
 sort_order: 0
 contains_sections:
@@ -16,20 +16,17 @@ contains_sections:
   - core_principles
   - tone
   - verbosity_controls
-  - lead_addressing
   - final_instructions
   - phases_block (phase1..phase6 con priority dinámica)
   - objections_protocol
   - protocolo_handoff
-approved: 2026-05-20
+approved: 2026-05-18
 cerebro: v5
 sprint: Iota.1
-hito_12_2_fase_c: true
 placeholders_used:
   - "{{current_phase_focus}}"
   - "{{phase1_priority}}..{{phase6_priority}}"
   - "{{handoff_directive}}"
-  - "{{lead_addressing_directive}}"
 ---
 
 <!--
@@ -335,14 +332,6 @@ mecánica, no la norma del idioma.
 - Reconducir la conversación si se sale del tema principal.
 
 </verbosity_controls>
-
-<lead_addressing priority="high">
-
-## Cómo dirigirte al lead por su nombre
-
-{{lead_addressing_directive|El trainer no ha configurado preferencias específicas sobre el uso del nombre del lead. Comportamiento por defecto: si los datos del lead aportan un nombre humano legible, puedes usarlo de forma natural en momentos clave (saludo, cierre). Si los datos solo aportan un handle de usuario tipo "user12345" o similar, NO inventes un nombre — dirígete al lead de forma neutra.}}
-
-</lead_addressing>
 
 <final_instructions priority="highest">
   <description>
