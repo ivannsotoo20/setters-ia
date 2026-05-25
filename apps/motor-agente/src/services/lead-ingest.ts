@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { InboundMessage } from '@fyzon/channel-adapters';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
+import { runLeadInference } from './lead-inference.js';
+import { logger } from '../lib/logger.js';
 
 export interface ResolveTenantResult {
   tenantId: number;
@@ -224,7 +226,31 @@ export async function upsertLead({
   if (insertError || !inserted) {
     throw new Error(`upsertLead insert failed: ${insertError?.message}`);
   }
-  return { leadId: Number(inserted.id), created: true };
+
+  const newLeadId = Number(inserted.id);
+
+  // Hito 12.2 Fase B — inferencia nombre + genero del lead nuevo en F0.
+  // Heurística sync rápida (<1ms) + Haiku fallback opcional (~500ms si
+  // ambiguo). Errores aquí NO rompen el flujo del webhook — son best-effort
+  // y la inferencia se reintentará al siguiente upsert si falla.
+  try {
+    await runLeadInference({
+      supabase,
+      leadId: newLeadId,
+      raw: {
+        username: username ?? null,
+        firstName: firstName ?? null,
+        lastName: lastName ?? null,
+      },
+    });
+  } catch (err) {
+    logger.warn(
+      { err, leadId: newLeadId, tenantId },
+      'lead-inference threw post-insert (continuing)',
+    );
+  }
+
+  return { leadId: newLeadId, created: true };
 }
 
 interface GetOrCreateConversationParams {

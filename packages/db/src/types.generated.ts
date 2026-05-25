@@ -1131,6 +1131,7 @@ export type Database = {
         Row: {
           channel_id: number
           created_at: string
+          detected_gender: string | null
           email: string | null
           external_id: string
           first_name: string | null
@@ -1138,7 +1139,10 @@ export type Database = {
           last_message_at: string | null
           last_name: string | null
           location: string | null
+          name_gender_detected_at: string | null
           notes: string | null
+          parsed_name: string | null
+          parsed_name_status: string | null
           phone: string | null
           source_channel: string | null
           tenant_id: number
@@ -1150,6 +1154,7 @@ export type Database = {
         Insert: {
           channel_id: number
           created_at?: string
+          detected_gender?: string | null
           email?: string | null
           external_id: string
           first_name?: string | null
@@ -1157,7 +1162,10 @@ export type Database = {
           last_message_at?: string | null
           last_name?: string | null
           location?: string | null
+          name_gender_detected_at?: string | null
           notes?: string | null
+          parsed_name?: string | null
+          parsed_name_status?: string | null
           phone?: string | null
           source_channel?: string | null
           tenant_id: number
@@ -1169,6 +1177,7 @@ export type Database = {
         Update: {
           channel_id?: number
           created_at?: string
+          detected_gender?: string | null
           email?: string | null
           external_id?: string
           first_name?: string | null
@@ -1176,7 +1185,10 @@ export type Database = {
           last_message_at?: string | null
           last_name?: string | null
           location?: string | null
+          name_gender_detected_at?: string | null
           notes?: string | null
+          parsed_name?: string | null
+          parsed_name_status?: string | null
           phone?: string | null
           source_channel?: string | null
           tenant_id?: number

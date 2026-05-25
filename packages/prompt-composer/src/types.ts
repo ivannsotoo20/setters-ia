@@ -113,6 +113,35 @@ export interface ComposeOptions {
    * Si `null` o `undefined`, no se agrega bloque extra. Si string vacío, igual.
    */
   extraSystemSuffix?: string | null;
+  /**
+   * Hito 12.2 — Resultado de la inferencia nombre + género del lead (persistido
+   * en `leads` por `services/lead-inference.ts`). Si presente, el composer
+   * construye la directiva de personalización por nombre y, si hay mismatch
+   * con `targetClientGender` del trainer, también la directiva de verificación.
+   *
+   * Si `null` o `undefined`, el composer lo carga vía supabase (lookup extra)
+   * usando `leadId`. Si `leadId` también ausente → ambas directivas caen a
+   * "no menciones nombre / no preguntes por género".
+   */
+  leadInference?: LeadInferenceContext | null;
+  /**
+   * Hito 12.2 — ID del lead activo. Necesario para carga lazy de `leads` si
+   * `leadInference` no se pasa explícito. El motor lo conoce desde el flujo
+   * de pipeline (`process-debounced.ts` carga el lead row antes de generator).
+   */
+  leadId?: number | null;
+}
+
+/**
+ * Hito 12.2 — Estado de inferencia del lead que el composer usa para
+ * construir las directivas de personalización (nombre) y verificación
+ * (género opuesto). Se carga de `leads.parsed_name` + `leads.parsed_name_status`
+ * + `leads.detected_gender`.
+ */
+export interface LeadInferenceContext {
+  parsedName: string | null;
+  parsedNameStatus: 'usable' | 'not_usable' | 'unknown' | null;
+  detectedGender: 'male' | 'female' | 'ambiguous' | 'unknown' | null;
 }
 
 /**
@@ -151,6 +180,16 @@ export interface TrainerContext {
   leadTimezoneLabel?: string | null;
   /** Hito 11 — Etiqueta humana de la timezone del trainer (ej: "hora España"). */
   trainerTimezoneLabel?: string | null;
+  /**
+   * Hito 12.2 — Directiva markdown completa de personalización con el nombre
+   * del lead. La construye el composer a partir de `leadInference` +
+   * `trainer_preferences.useLeadNameMode` + `leadNameMaxMentions`. Se inyecta
+   * en `{{lead_addressing_directive|fallback}}` del `core_v5_base`.
+   *
+   * Si null o ausente, el placeholder cae al fallback genérico (string vacío
+   * o instrucción "no menciones nombre").
+   */
+  leadAddressingDirective?: string | null;
 }
 
 export interface HandoffContext {

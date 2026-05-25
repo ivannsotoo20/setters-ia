@@ -524,6 +524,159 @@ Uso actual único: `buildMirrorLeadDirective(detected)` cuando `addressingMode='
 - `addressingMode='usted'` + lead tutea → verificar setter siempre usted (V18 log o retry-vacío).
 - `mirror_lead` + lead alterna tú/usted entre turnos → verificar setter cambia con el lead (directiva dinámica via extraSystemSuffix).
 
+## Hito 12.2 — Nombre del lead + filtro de público objetivo (Fase A: schema + UI, 2026-05-20)
+
+**Doctrina**: 2 nuevas dimensiones de preferencias del trainer, ambas **best effort** (heurística + LLM, no validador estricto en MVP). Plan ver mensaje en sesión 2026-05-20.
+
+### Sub-feature A — Uso del nombre del lead
+
+GHL/ManyChat/YCloud aportan dos campos por lead: `username/handle` (frecuentemente garbage tipo `andrea12345`) y `firstName/lastName` (más fiable cuando existe). El setter usa el nombre del lead en momentos clave de la conversación SOLO si los datos aportan un nombre humano legible. Si los datos son un handle (`user2381`, `🔥Andre🔥`), el setter no inventa nombre y trata al lead de forma neutra.
+
+| Key JSONB | Tipo | Default | Notas |
+|---|---|---|---|
+| `useLeadNameMode` | `'auto' \| 'always' \| 'never'` | `'auto'` | auto = solo si detectado usable; always = aunque parezca handle; never = nunca menciona el nombre |
+| `leadNameMaxMentions` | `0..5` | `2` | Tope en toda la conversación. 2 = saludo + 1 momento clave. 0 equivale a `'never'` |
+
+### Sub-feature B — Filtro de público objetivo + verificación de género
+
+Para trainers que trabajan solo con un género (típico programas dirigidos: fitness masculino, salud femenina). Si el setter detecta señal clara de mismatch (nombre del lead sugiere género opuesto al target), introduce una pregunta de verificación **en F1 (no F0 — confirmado por Iván 2026-05-20)**: "por curiosidad, ¿es para ti o para alguien cercano?" o variante directa. NO descarta el lead — solo confirma para no perder tiempo si es para un tercero del mismo género que escribe.
+
+| Key JSONB | Tipo | Default | Notas |
+|---|---|---|---|
+| `targetClientGender` | `'mixed' \| 'male' \| 'female'` | `'mixed'` | mixed = feature off de facto. Selector ternario (B vs toggle binario, confirmado por Iván 2026-05-20) |
+| `genderVerificationStyle` | `'soft' \| 'direct'` | `'soft'` | soft = pregunta natural sin mencionar filtro; direct = pregunta explícita mencionando "trabajo solo con X" |
+
+### Decisiones técnicas cerradas (Iván 2026-05-20)
+
+- **F1, no F0** para la pregunta de verificación de género (F0 brusco quema empatía; muchas mujeres son cliente final en programas masculinos aunque parezca lo contrario — auditoría Pablo lo confirmó).
+- **Selector ternario** `mixed | male | female` (no toggle binario).
+- **Heurística regex + Haiku fallback** para detectar nombre legible y género — el 80% se resuelve por regex (Andrea12345 → handle; "María José Pérez" → name). El 20% ambiguo va a Haiku barato (~$0.0001-0.0003/lead en F0). Acepta coste extra.
+- **Re-detección durante conversación**: NO en MVP. El setter usa el nombre del lead libremente si lo ve en el historial (lenguaje natural, no requiere placeholder). Fase 2 si fuera necesario.
+- **MVP best effort puro**: el setter aplica directivas markdown con su criterio. Fase B-C añadirá detección determinista + placeholders rich.
+
+### Fases (de las 5, completada Fase A)
+
+| Fase | Estado | Entrega |
+|---|---|---|
+| **A — Schema + UI** | ✅ 2026-05-20 | Migration 068 (COMMENT v8), 4 keys nuevas en parser/defaults/serializer markdown, 2 cards nuevas en preferences-form.tsx con EnforcementBadge `best_effort` |
+| **B — Detección + persistence** | ✅ 2026-05-20 | Migration 069 (4 columnas en `leads`), `lib/detect-name.ts` + `lib/detect-gender.ts` (heurística + Haiku 4.5 fallback), `services/lead-inference.ts` orquestador, integración en `upsertLead` post-insert con TTL skip 24h, 82 tests verdes |
+| **C — Composer + prompts** | ✅ 2026-05-20 | `core_v5_base` v2 con nueva sección `<lead_addressing>` + placeholder `{{lead_addressing_directive\|fallback}}`. Composer extendido con `LeadInferenceContext`, `leadId` carga lazy, `buildLeadAddressingDirective` + `buildGenderVerificationDirective`. Directiva género se inyecta vía `extraSystemSuffix` (OUT of cache, solo cuando aplica). 17 tests verdes |
+| **D — Validator V19** | ✅ 2026-05-20 | `V19-name-overuse.ts` warn-only (no retry, heurística falible). Cuenta menciones del nombre del lead en turno actual + `lastAssistantMessages` y avisa si supera `leadNameMaxMentions`. Motor pasa `leadParsedName` (del lead SELECT) y `leadNameMaxMentions` (del trainer prefs parser) al `validationContext`. 15 tests verdes |
+| **E — Smoke + memoria** | Pendiente | Fixtures (Andrea12345 con name="Andrea" → usable; "user2381" sin name → no usable; Andrea + target=male → soft question en F1). Update CLAUDE.md sección 12.2 con resultados smoke |
+
+### Fase B — Detalles técnicos
+
+**Detección en F0** (`apps/motor-agente/src/services/lead-inference.ts:runLeadInference`):
+1. Skip si `leads.parsed_name_status='usable'` y `name_gender_detected_at` < 24h. Re-detecta si status era 'unknown'/'not_usable' (el lead puede haber enriquecido sus datos en upsert posterior).
+2. `detectLeadName(raw, anthropic)`: heurística sync (regex sobre `firstName`/`lastName`/`fullName`/`username`); si 'not_usable' Y hay material aprovechable Y `anthropic` disponible → Haiku 4.5 (`claude-haiku-4-5-20251001`) intenta recuperar nombre humano de handles tipo "andrea12345" → "Andrea".
+3. Solo si `name.status='usable'`, `detectGender(name, anthropic)`: diccionario es-ES inline (~250 nombres top/género + 25 ambiguos hispano/anglo); si 'unknown' → Haiku fallback.
+4. UPDATE `leads.parsed_name` + `parsed_name_status` + `detected_gender` + `name_gender_detected_at`.
+
+**Integración** (`apps/motor-agente/src/services/lead-ingest.ts:upsertLead`):
+- Post-insert de lead nuevo, llamada sync con `await runLeadInference(...)` envuelta en try/catch silencioso (errores loggean pero no rompen webhook).
+- Latencia: ~1ms heurística pura; +500ms si Haiku para nombre Y +500ms si Haiku para género (peor caso, raro).
+- Existing leads (UPDATE branch) NO disparan inferencia — el resultado persistente sigue valid.
+
+**Helpers exportados**:
+- `detectLeadNameHeuristic(input)` — sync pura, para usos fuera del flujo principal.
+- `detectGenderHeuristic(name)` — sync pura.
+- `detectLeadName(input, anthropic?)` — async, heurística + LLM opcional.
+- `detectGender(name, anthropic?)` — async, heurística + LLM opcional.
+- `runLeadInference({ supabase, leadId, raw, anthropic? })` — orquestador completo con persistencia + TTL.
+
+**Heurística nombre** (`looksLikeHumanName`):
+- Longitud 2-80, sin dígitos, sin `@` ni `.`, ≥1 letra Unicode, ratio chars válidos ≥70%, sin secuencias de mismo char 4+ veces, al menos 1 vocal.
+- Prioridad de fuentes: `firstName+lastName` combinado > `fullName` > `firstName`/`lastName` sueltos > `username`. Capitalización normalizada (`andrea` → `Andrea`, `ANDREA` → `Andrea`, conserva tildes/ñ con `es-ES` locale).
+
+**Diccionario género**:
+- `NAMES_MALE`: ~250 nombres hispanos + ~100 anglo comunes (Sam queda en ambiguous).
+- `NAMES_FEMALE`: ~250 nombres hispanos + ~60 anglo.
+- `NAMES_AMBIGUOUS`: hispano usado ambos géneros (Yael, Cruz, Trinidad, Loreto) + anglo neutros (Sam, Alex, Jordan, Pat, Taylor, Morgan).
+- Match case-insensitive + accents stripped + solo sobre el primer token.
+
+**Cuándo se llama Haiku** (coste estimado):
+- Nombre: solo si heurística devuelve 'not_usable' (~15% leads) y hay candidato con letras. ~$0.0001/lead.
+- Género: solo si nombre es 'usable' y heurística género devuelve 'unknown' (~15% leads × 25% de los usables que no estén en dict). ~$0.0001/lead.
+- Coste total esperado: ~$0.0003/lead máximo en peor caso. ~$0/lead típico (heurística cubre ~80%).
+
+### Fase C — Detalles técnicos
+
+**Composer extensions** (`packages/prompt-composer/`):
+- `ComposeOptions.leadId?: number | null` — carga lazy de `leads.parsed_name`/`parsed_name_status`/`detected_gender` si el caller no pasa `leadInference` explícito.
+- `ComposeOptions.leadInference?: LeadInferenceContext | null` — el motor puede pre-cargar y pasarlo para evitar query extra.
+- `TrainerContext.leadAddressingDirective?: string | null` — directiva final que reemplaza `{{lead_addressing_directive}}` en `core_v5_base`.
+- Nuevo type exportado `LeadInferenceContext` con `parsedName | parsedNameStatus | detectedGender`.
+- Exports nuevos desde index: `buildLeadAddressingDirective`, `buildGenderVerificationDirective`, types `UseLeadNameMode | TargetClientGender | GenderVerificationStyle`.
+- Carga `trainer_preferences.preferences` UNA vez (cacheada in-function) y reusa entre el branch trainerContext auto-carga y el branch Hito 12.2 directivas — evita doble query.
+
+**Flujo composePrompt actualizado**:
+1. Auto-carga `trainer_preferences` si `trainerContext` undefined (existente).
+2. Inyecta campos Hito 10/10.6/11 según options (existente).
+3. **Hito 12.2 (nuevo)**: si `leadInference` ausente Y `leadId` presente → lee `leads` row. Si query falla, log silencioso y degrada a `null` (best-effort).
+4. Llama `buildLeadAddressingDirective` con `mode/maxMentions/leadInference`. Si devuelve string → mete en `trainerContext.leadAddressingDirective`. Si null → placeholder cae al fallback genérico del .md.
+5. Llama `buildGenderVerificationDirective` con `targetClientGender/style/leadInference`. Si devuelve string → concat al `extraSystemSuffix` existente (OUT of cache, solo cuando hay mismatch).
+
+**Decisión arquitectónica**: la directiva de género va a `extraSystemSuffix` y NO ocupa lugar en el bloque cacheado del `core_v5_base`. Razón: solo se usa en ~10-15% de conversaciones (cuando target≠mixed Y lead detectado opuesto). Cachear texto que solo aparece en un subset de turnos desperdicia presupuesto de cache write. El `lead_addressing_directive` SÍ va al CORE (siempre se inyecta — incluso si modo='never' tenemos una directiva concreta para inyectar).
+
+**Source del CORE** (`prompts/source/core-v5/01-core.md`):
+- Nueva sección `<lead_addressing priority="high">` entre `</verbosity_controls>` y `<final_instructions>`.
+- Contiene placeholder `{{lead_addressing_directive|<fallback genérico>}}`. Fallback genérico = comportamiento sensato cuando el composer no inyecta directiva (no debería ocurrir en producción ya que el composer siempre construye una).
+- Frontmatter actualizado: `version: 2`, `approved: 2026-05-20`, `hito_12_2_fase_c: true`, placeholder añadido a `placeholders_used`.
+
+**Persistencia BD**:
+- `prompt_blocks` id=32 (core_v5_base) — content actualizado con `replace()` (53196 → 53695 chars, +499 chars de la sección nueva).
+- `prompt_block_versions` snapshot v2 insertado con summary documental.
+- Seed `008-core-v5-blocks.sql` regenerado via `pnpm core:build-seed` para mantener coherencia.
+
+**Tests del composer**: 17 nuevos fixtures en `test/interpolate.test.ts` cubriendo todos los modos (`never/auto/always` × `usable/not_usable/unknown`) y el branching de gender (mixed/match/mismatch/ambiguous/unknown × soft/direct). Total composer: 99 tests verdes.
+
+**Total tests repo tras Fase C**: 1356 tests verdes (panel 560 + motor 471 + agent-pipeline 56 + channel-adapters 59 + ghl-client 52 + prompt-composer 99 + shared-validator 59).
+
+### Fase D — Detalles técnicos
+
+**V19 name overuse** (`packages/shared-validator/src/rules/V19-name-overuse.ts`):
+- Severidad `'warn'` (no retry). Razón: la heurística es falible (el contexto puede justificar repetir el nombre — confirmación de datos, lead con nombre compuesto, etc.). Un retry forzado generaría regresiones. Mantiene coherencia con `EnforcementBadge best_effort` que el trainer ve en el UI.
+- Cuenta menciones case-insensitive + word-boundary Unicode-aware (mismo patrón que V17 `containsAsWord`) sobre **el turno actual + `ctx.lastAssistantMessages`** (los últimos turnos del bot que el motor ya pasa). Suma total comparada vs `leadNameMaxMentions`.
+- Skip silencioso si `leadParsedName` ausente/vacío o `leadNameMaxMentions` no es entero ≥ 0. Caso especial `maxMentions=0` → cualquier mención dispara warn (alineado con directiva "no menciones nombre" del composer).
+- Acentos **estrictos** por design: "María" ≠ "Maria" sin tilde (evita falsos positivos en nombres donde el acento cambia semántica: Andrés vs Andres).
+
+**ValidationContext extension** (`packages/shared-validator/src/types.ts`):
+- Nuevos campos opcionales `leadParsedName?: string | null` y `leadNameMaxMentions?: number`.
+- Backwards-compat: si caller no los pasa, V19 skipea sin error.
+
+**Integración pipeline** (`packages/agent-pipeline/src/pipeline.ts`):
+- `validatorCtx` ahora forwardea `leadParsedName` + `leadNameMaxMentions` desde `input.validationContext`. También se añadió `expectedAddressing` que faltaba en el patrón.
+
+**Motor cabling** (`apps/motor-agente/src/services/process-debounced.ts`):
+- SELECT del lead (línea 109) extendido con `parsed_name, parsed_name_status, detected_gender` (las 3 columnas Fase B).
+- `loadSchedulingConfig` añade `leadNameMaxMentions: number` al return (validado 0-5, default 2).
+- `validationContext` que se pasa a `runPipeline` ahora incluye los 2 nuevos campos.
+
+**Cuándo V19 dispara realmente** (cadena de carga):
+1. Lead inferenciado en F0 por `runLeadInference` (Fase B) → `leads.parsed_name='Andrea'`, `parsed_name_status='usable'`.
+2. Trainer configuró `leadNameMaxMentions=2` (Fase A) y `useLeadNameMode='auto'` (defaults sanos).
+3. Composer (Fase C) ya inyectó directiva "usa el nombre máximo 2 veces" en `core_v5_base`.
+4. El setter genera output mencionando "Andrea" más de 2 veces (sumando historial).
+5. V19 dispara warn → motor loggea (no retry).
+
+**Total tests repo tras Fase D**: 1371 tests verdes (panel 560 + motor 471 + agent-pipeline 56 + channel-adapters 59 + ghl-client 52 + prompt-composer 99 + shared-validator 74).
+
+### Schema JSONB v8 (current state)
+
+Tras Hito 12.2 Fase A, el JSONB `preferences` tiene 4 nuevas keys (defaults sanos, parser tolera missing en tenants legacy). COMMENT actualizado vía migration 068:
+```
+v8: ... Nombre del lead (best effort): useLeadNameMode auto|always|never, leadNameMaxMentions 0-5. Filtro genero (best effort): targetClientGender mixed|male|female, genderVerificationStyle soft|direct. ...
+```
+
+### Smoke E2E pendiente (no bloquea cierre Fase A)
+
+- `useLeadNameMode='auto'` + lead GHL con username `andrea12345` + firstName=`Andrea` → setter debe decir "Andrea" 2 veces (saludo + cierre), no `andrea12345`.
+- `useLeadNameMode='auto'` + lead con username `user2381` + firstName vacío → setter NO debe mencionar nombre.
+- `useLeadNameMode='never'` → setter nunca menciona nombre aunque firstName válido.
+- `targetClientGender='male'` + lead llamado "Andrea" (probable mujer) → setter introduce pregunta verificación en F1 con estilo `soft`.
+- `targetClientGender='male'` + lead llamado "Carlos" (probable hombre) → setter NO pregunta, sigue flujo normal.
+
+
 ## Qué NO hacer
 
 - No añadir Prisma al motor sin conversación previa con Ivan.

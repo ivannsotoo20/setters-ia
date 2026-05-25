@@ -386,3 +386,118 @@ describe('validator V18 addressing consistency', () => {
     expect(vUsted?.suggestion).toContain('3ª persona');
   });
 });
+
+// =============================================================================
+// Hito 12.2 — V19 name overuse (lead name mention cap)
+// =============================================================================
+
+describe('validator V19 name overuse', () => {
+  const ctxWithName = (
+    name: string | null,
+    max: number | undefined,
+    history: string[] = [],
+  ): ValidationContext => ({
+    ...baseCtx,
+    leadParsedName: name,
+    leadNameMaxMentions: max,
+    lastAssistantMessages: history,
+  });
+
+  it('skipea cuando leadParsedName está ausente', () => {
+    const r = validateMessage('Hola Andrea, te paso info', { ...baseCtx });
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('skipea cuando leadParsedName es string vacío', () => {
+    const r = validateMessage('Hola', ctxWithName('', 2));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('skipea cuando leadNameMaxMentions no es entero', () => {
+    const r = validateMessage('Hola Andrea, Andrea', ctxWithName('Andrea', undefined));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('skipea cuando leadNameMaxMentions es negativo', () => {
+    const r = validateMessage('Hola Andrea, Andrea, Andrea', ctxWithName('Andrea', -1));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('OK cuando menciones <= cap (cap=2, 2 menciones en turno)', () => {
+    const r = validateMessage('Hola Andrea, te paso info, Andrea', ctxWithName('Andrea', 2));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('warn cuando menciones > cap en un solo turno', () => {
+    const r = validateMessage('Andrea, Andrea, Andrea', ctxWithName('Andrea', 2));
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v).toBeDefined();
+    expect(v?.severity).toBe('warn');
+    expect(v?.description).toContain('Andrea');
+    expect(v?.description).toContain('3 veces');
+    expect(v?.description).toContain('tope 2');
+  });
+
+  it('warn cuando menciones acumuladas (history + turno) > cap', () => {
+    // History: 2 menciones previas. Este turno: 1 mención. Cap: 2 → total 3 > 2.
+    const r = validateMessage('Vamos Andrea', ctxWithName('Andrea', 2, [
+      'Hola Andrea',
+      'Te paso info Andrea',
+    ]));
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v).toBeDefined();
+    expect(v?.description).toContain('3 veces');
+  });
+
+  it('OK cuando history acumula pero suma exacta == cap', () => {
+    const r = validateMessage('Te paso info', ctxWithName('Andrea', 2, [
+      'Hola Andrea',
+      'Por cierto Andrea',
+    ]));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('cap=0 → cualquier mención dispara warn', () => {
+    const r = validateMessage('Hola Andrea', ctxWithName('Andrea', 0));
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v).toBeDefined();
+    expect(v?.description).toContain('tope 0');
+  });
+
+  it('case-insensitive: "andrea" en minúsculas matchea contra parsedName="Andrea"', () => {
+    const r = validateMessage('hola andrea, hola andrea, hola andrea', ctxWithName('Andrea', 2));
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v).toBeDefined();
+    expect(v?.description).toContain('3 veces');
+  });
+
+  it('NO matchea substring (word boundary): "Andrea" en parsedName no matchea "Andreaina"', () => {
+    const r = validateMessage('Andreaina y Andreita son nombres', ctxWithName('Andrea', 0));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('matching es estricto en acentos: "María" vs "Maria" no matchea', () => {
+    const r = validateMessage('Hola Maria, Maria, Maria, Maria', ctxWithName('María', 0));
+    expect(r.violations.find((v) => v.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('severidad warn — no bloquea hasErrors', () => {
+    const r = validateMessage('Andrea Andrea Andrea Andrea', ctxWithName('Andrea', 1));
+    expect(r.hasErrors).toBe(false);
+  });
+
+  it('description incluye exceso y aporte del turno actual', () => {
+    const r = validateMessage('Hola Andrea, Andrea, Andrea', ctxWithName('Andrea', 1, ['Hola Andrea']));
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v?.description).toContain('4 veces');
+    expect(v?.description).toContain('exceso 3');
+    expect(v?.description).toContain('aporta 3');
+  });
+
+  it('suggestion sugiere reformular sin el nombre', () => {
+    const r = validateMessage('Andrea Andrea Andrea', ctxWithName('Andrea', 1));
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v?.suggestion).toContain('Andrea');
+    expect(v?.suggestion).toContain('Reformula');
+  });
+});

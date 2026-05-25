@@ -79,6 +79,49 @@ export interface TrainerPreferences {
   /** Hito 12.1 — Palabras/frases que el setter NUNCA dirá al lead (0-10, cada una 1-40 chars, lowercase, dedupe). Enforce con instrucción + validador V17 post-LLM + 1 retry, luego degradación grácil. */
   forbiddenPhrases: string[];
 
+  // ----- Hito 12.2: uso del nombre del lead (best effort) -----
+  /**
+   * Hito 12.2 — Modo de uso del nombre real del lead detectado en F0:
+   *   - 'auto' (default): el setter solo usa el nombre si la detección lo
+   *     marca usable (heurística + Haiku fallback en F0).
+   *   - 'always': el setter usa el nombre aunque la detección diga "no
+   *     usable" (riesgo: handles tipo "andrea12345" se usan literalmente).
+   *   - 'never': el setter nunca menciona el nombre al lead.
+   * Enforce best-effort vía instrucción markdown — el modelo respeta la
+   * directiva en ~95% de los casos; no hay validador post-LLM en MVP.
+   */
+  useLeadNameMode: UseLeadNameMode;
+  /**
+   * Hito 12.2 — Tope de menciones del nombre del lead en toda la conversación
+   * (0-5). 0 equivale a 'never'. Aplica solo si useLeadNameMode != 'never'.
+   * Default 2 = 1 mención al saludar + 1 mención en momento clave (cierre).
+   * Enforce best-effort vía instrucción markdown en MVP; futuro V19 validador
+   * hará count estricto en Fase D.
+   */
+  leadNameMaxMentions: LeadNameMaxMentions;
+
+  // ----- Hito 12.2: filtro público objetivo + verificación género (best effort) -----
+  /**
+   * Hito 12.2 — Género del público objetivo del trainer:
+   *   - 'mixed' (default): sin filtro, feature off de facto.
+   *   - 'male': el trainer trabaja solo con hombres.
+   *   - 'female': el trainer trabaja solo con mujeres.
+   * Si el lead detectado en F0 sugiere el género opuesto al target, el setter
+   * introduce una pregunta de verificación en F1 (no F0) para confirmar si es
+   * para sí mismo o para un tercero. NO descarta — solo pregunta.
+   */
+  targetClientGender: TargetClientGender;
+  /**
+   * Hito 12.2 — Estilo de la pregunta de verificación cuando hay mismatch de
+   * género entre lead y target:
+   *   - 'soft' (default): pregunta integrada al flujo natural ("por curiosidad,
+   *     ¿es para ti o para alguien cercano?").
+   *   - 'direct': pregunta explícita mencionando el filtro del trainer
+   *     ("Trabajo solo con [hombres/mujeres], ¿es para ti o para un familiar?").
+   * Aplica solo si targetClientGender != 'mixed'.
+   */
+  genderVerificationStyle: GenderVerificationStyle;
+
   // ----- Sprint Gamma 2.1: datos de contacto -----
   /** Nombre que la IA usará al referirse al trainer en handoff. null = "el equipo". */
   trainerName: string | null;
@@ -271,6 +314,72 @@ export const AI_MESSAGES_PER_TURN_MAX_LABELS: Record<AiMessagesPerTurnMax, { lab
 export const MAX_FORBIDDEN_PHRASES = 10;
 export const MAX_FORBIDDEN_PHRASE_CHARS = 40;
 
+// ----- Hito 12.2: uso del nombre del lead (best effort) -----
+
+export const USE_LEAD_NAME_MODES = ['auto', 'always', 'never'] as const;
+export type UseLeadNameMode = (typeof USE_LEAD_NAME_MODES)[number];
+
+export const USE_LEAD_NAME_MODE_LABELS: Record<UseLeadNameMode, { label: string; desc: string }> = {
+  auto: {
+    label: 'Automático (recomendado)',
+    desc: 'El setter usa el nombre del lead SOLO si lo detectamos como nombre humano legible (ej: "Andrea" sí, "andrea12345" no). Si la cuenta del lead no aporta un nombre real, el setter se dirige al lead sin mencionarlo.',
+  },
+  always: {
+    label: 'Siempre',
+    desc: 'El setter usa el nombre del lead aunque parezca un handle de usuario (ej: "andrea12345"). Usa esta opción solo si tus leads suelen tener nombres reales en GHL aunque sus usernames sean handles.',
+  },
+  never: {
+    label: 'Nunca',
+    desc: 'El setter no menciona el nombre del lead en ningún momento de la conversación. Útil si prefieres un trato más neutro o si tu nicho no encaja con personalización por nombre.',
+  },
+};
+
+export const LEAD_NAME_MAX_MENTIONS_VALUES = [0, 1, 2, 3, 4, 5] as const;
+export type LeadNameMaxMentions = (typeof LEAD_NAME_MAX_MENTIONS_VALUES)[number];
+
+export const LEAD_NAME_MAX_MENTIONS_LABELS: Record<LeadNameMaxMentions, { label: string; hint: string }> = {
+  0: { label: '0', hint: 'Sin menciones (equivale a "Nunca"). El setter no usa el nombre.' },
+  1: { label: '1', hint: 'Una sola mención — típicamente en el saludo. Muy sutil.' },
+  2: { label: '2', hint: 'Default. Saludo + un momento clave (cierre / propuesta de llamada). Personalización equilibrada.' },
+  3: { label: '3', hint: 'Saludo + 2 momentos clave. Más cercano sin sobrecargar.' },
+  4: { label: '4', hint: 'Uso frecuente. Útil en nichos donde la cercanía es valorada (coaching, comunidad).' },
+  5: { label: '5', hint: 'Máximo. El setter usa el nombre prácticamente cada turno relevante. Puede percibirse forzado si la conversación es corta.' },
+};
+
+// ----- Hito 12.2: filtro público objetivo + verificación género (best effort) -----
+
+export const TARGET_CLIENT_GENDERS = ['mixed', 'male', 'female'] as const;
+export type TargetClientGender = (typeof TARGET_CLIENT_GENDERS)[number];
+
+export const TARGET_CLIENT_GENDER_LABELS: Record<TargetClientGender, { label: string; desc: string }> = {
+  mixed: {
+    label: 'Mixto (sin filtro)',
+    desc: 'Trabajas con cualquier género. El setter no aplica ningún filtro — atiende al lead que escriba sin preguntar por terceros.',
+  },
+  male: {
+    label: 'Hombres',
+    desc: 'Trabajas SOLO con hombres. Si detectamos que el lead que escribe parece ser mujer (por nombre, perfil), el setter introduce una pregunta de verificación: "¿es para ti o para algún familiar/cercano?". Útil para descartar leads que escriben por su pareja, hermano, etc.',
+  },
+  female: {
+    label: 'Mujeres',
+    desc: 'Trabajas SOLO con mujeres. Si detectamos que el lead que escribe parece ser hombre, el setter introduce una pregunta de verificación. NO descarta el lead — solo confirma para que no pierdas tiempo si es para un tercero opuesto al target.',
+  },
+};
+
+export const GENDER_VERIFICATION_STYLES = ['soft', 'direct'] as const;
+export type GenderVerificationStyle = (typeof GENDER_VERIFICATION_STYLES)[number];
+
+export const GENDER_VERIFICATION_STYLE_LABELS: Record<GenderVerificationStyle, { label: string; desc: string }> = {
+  soft: {
+    label: 'Suave (recomendado)',
+    desc: 'La pregunta se integra naturalmente en el flujo en F1: "por curiosidad, ¿es para ti o para alguien cercano?". No menciona explícitamente que filtras por género — solo abre la conversación.',
+  },
+  direct: {
+    label: 'Directa',
+    desc: 'La pregunta menciona explícitamente tu público objetivo: "Trabajo solo con hombres / mujeres, ¿es para ti o para un familiar?". Más eficiente para descartar pronto pero menos amable. Útil si tu volumen es alto y prefieres filtrar rápido.',
+  },
+};
+
 const DEFAULT_SUBSCRIPTIONS: NotificationEventType[] = ['handoff', 'appointment_booked', 'integration_down'];
 
 export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
@@ -303,6 +412,16 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   aiMessagesPerTurnMax: 4,
   addressingMode: 'mirror_lead',
   forbiddenPhrases: [],
+  // Hito 12.2: uso del nombre del lead — defaults sanos para no romper tenants legacy.
+  //   - useLeadNameMode 'auto' = el setter solo usa el nombre si la detección lo marca usable.
+  //   - leadNameMaxMentions 2 = saludo + un momento clave (cierre típicamente).
+  useLeadNameMode: 'auto',
+  leadNameMaxMentions: 2,
+  // Hito 12.2: filtro genero — defaults = feature off de facto.
+  //   - targetClientGender 'mixed' = sin filtro; el setter no pregunta por terceros.
+  //   - genderVerificationStyle 'soft' = si en futuro se activa el filtro, pregunta natural.
+  targetClientGender: 'mixed',
+  genderVerificationStyle: 'soft',
 };
 
 const MAX_HANDOFF_CUSTOM_MESSAGE_CHARS = 250;
@@ -393,6 +512,36 @@ function parseForbiddenPhrases(raw: unknown): string[] {
     out.push(s);
   }
   return out;
+}
+
+// ----- Hito 12.2 — parsers nombre del lead + filtro genero -----
+
+function parseUseLeadNameMode(raw: unknown): UseLeadNameMode {
+  if (typeof raw === 'string' && (USE_LEAD_NAME_MODES as readonly string[]).includes(raw)) {
+    return raw as UseLeadNameMode;
+  }
+  return 'auto';
+}
+
+function parseLeadNameMaxMentions(raw: unknown): LeadNameMaxMentions {
+  if (typeof raw === 'number' && Number.isInteger(raw) && raw >= 0 && raw <= 5) {
+    return raw as LeadNameMaxMentions;
+  }
+  return 2;
+}
+
+function parseTargetClientGender(raw: unknown): TargetClientGender {
+  if (typeof raw === 'string' && (TARGET_CLIENT_GENDERS as readonly string[]).includes(raw)) {
+    return raw as TargetClientGender;
+  }
+  return 'mixed';
+}
+
+function parseGenderVerificationStyle(raw: unknown): GenderVerificationStyle {
+  if (typeof raw === 'string' && (GENDER_VERIFICATION_STYLES as readonly string[]).includes(raw)) {
+    return raw as GenderVerificationStyle;
+  }
+  return 'soft';
 }
 
 const MAX_CLOSING_RESOURCE_URL_CHARS = 200;
@@ -656,6 +805,12 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   out.addressingMode = parseAddressingMode(r.addressingMode);
   out.forbiddenPhrases = parseForbiddenPhrases(r.forbiddenPhrases);
 
+  // Hito 12.2 — uso del nombre del lead + filtro genero (best effort).
+  out.useLeadNameMode = parseUseLeadNameMode(r.useLeadNameMode);
+  out.leadNameMaxMentions = parseLeadNameMaxMentions(r.leadNameMaxMentions);
+  out.targetClientGender = parseTargetClientGender(r.targetClientGender);
+  out.genderVerificationStyle = parseGenderVerificationStyle(r.genderVerificationStyle);
+
   return out;
 }
 
@@ -817,6 +972,112 @@ export function serializeTrainerPreferences(
         lines.push(`  - ${e.emoji} → ${e.whenToUse}`);
       }
     }
+  }
+
+  // Hito 12.2 — Personalización con el nombre del lead (best effort).
+  // El motor en Fase B-C resolverá un placeholder con el nombre detectado;
+  // por ahora el setter lee el nombre del historial/contexto del lead que ya
+  // recibe y aplica la directiva con su criterio.
+  lines.push('');
+  lines.push('### Personalización con el nombre del lead');
+  lines.push('');
+  switch (prefs.useLeadNameMode) {
+    case 'never':
+      lines.push(
+        '- **Sin uso del nombre**: NO menciones el nombre del lead en ningún momento de la conversación, ' +
+          'aunque lo conozcas por GHL o por el propio mensaje del lead. Trato neutro siempre.',
+      );
+      break;
+    case 'always':
+      lines.push(
+        '- **Uso del nombre flexible**: usa el nombre del lead que aparezca en sus datos de contacto ' +
+          '(GHL/perfil de canal) aunque parezca un handle de usuario (ej: "andrea12345"). Solo evita ' +
+          'usar el nombre si claramente NO hay nada parecido a un nombre humano.',
+      );
+      break;
+    case 'auto':
+    default:
+      lines.push(
+        '- **Uso del nombre con criterio**: si los datos del lead aportan un nombre humano legible ' +
+          '(ej: "Andrea", "Andrea Martínez"), úsalo en momentos clave de la conversación. Si lo único ' +
+          'que tienes es un handle no legible (ej: "andrea12345", "user2381", "🔥Andre🔥"), NO inventes ' +
+          'un nombre — dirígete al lead de forma neutra sin mencionarlo.',
+      );
+      break;
+  }
+  if (prefs.useLeadNameMode !== 'never') {
+    const maxN = prefs.leadNameMaxMentions;
+    if (maxN === 0) {
+      lines.push(
+        '- **Tope de menciones**: 0 menciones. El trainer ha desactivado el uso del nombre con ' +
+          'este tope — comportamiento equivalente a "Sin uso del nombre". No menciones el nombre del lead.',
+      );
+    } else {
+      const word = maxN === 1 ? 'vez' : 'veces';
+      const hint =
+        maxN === 1
+          ? 'típicamente solo en el saludo inicial.'
+          : maxN === 2
+            ? 'típicamente: saludo + un momento clave (cierre / propuesta de llamada).'
+            : maxN === 3
+              ? 'distribuye entre: saludo + 2 momentos clave de la conversación.'
+              : maxN === 4
+                ? 'reparte a lo largo de la conversación, pero no en cada turno consecutivo — espacia las menciones.'
+                : 'puedes usarlo casi en cada turno relevante. NO uses el nombre dos turnos seguidos sin necesidad — espacia para que no se perciba forzado.';
+      lines.push(
+        `- **Tope de menciones del nombre**: usa el nombre del lead como máximo ${maxN} ${word} en toda la conversación. ${hint} ` +
+          'No abuses — la personalización funciona por contraste con turnos donde NO usas el nombre.',
+      );
+    }
+  }
+
+  // Hito 12.2 — Filtro de público objetivo + verificación de género (best effort).
+  // Solo se emite si el trainer activó el filtro. Modo 'mixed' (default) → no emite nada.
+  if (prefs.targetClientGender !== 'mixed') {
+    const targetLabel = prefs.targetClientGender === 'male' ? 'hombres' : 'mujeres';
+    const oppositeLabel = prefs.targetClientGender === 'male' ? 'mujer' : 'hombre';
+    lines.push('');
+    lines.push('### Filtro de público objetivo');
+    lines.push('');
+    lines.push(
+      `El trainer trabaja **SOLO con ${targetLabel}**. Si el lead que escribe parece ser ${oppositeLabel} ` +
+        '(por su nombre, foto de perfil, lenguaje, o cualquier señal disponible en el contexto), debes ' +
+        'introducir una pregunta de verificación en **Fase 1 (NO en Fase 0)** para confirmar si el lead ' +
+        'es para sí mismo o para un tercero (pareja, familiar, amistad). NO descartes el lead — solo pregunta.',
+    );
+    lines.push('');
+    if (prefs.genderVerificationStyle === 'direct') {
+      lines.push(
+        `- **Estilo directo**: menciona explícitamente al lead que el trainer trabaja solo con ` +
+          `${targetLabel}. Ejemplo: "Mira, te cuento — el programa es solo para ${targetLabel}. ` +
+          '¿Es para ti o estás escribiendo por algún familiar o pareja?". Más eficiente para filtrar pronto, ' +
+          'menos amable.',
+      );
+    } else {
+      lines.push(
+        '- **Estilo suave**: integra la pregunta naturalmente sin mencionar que filtras por género. ' +
+          'Ejemplo: "Por curiosidad antes de seguir, ¿estás escribiendo por ti misma/mismo o por algún ' +
+          'familiar / pareja / cercano?". Más amable, mantiene la conversación abierta.',
+      );
+    }
+    lines.push(
+      `- **Si confirma que es para sí**: continúa el flujo normal — aunque parezca ${oppositeLabel}, el ` +
+        'lead te dice que es para sí. Confía en lo que te diga y avanza.',
+    );
+    lines.push(
+      `- **Si confirma que es para un tercero ${targetLabel === 'hombres' ? 'hombre' : 'mujer'}**: ` +
+        'continúa cualificando al lead sobre la persona objetivo (no sobre quien escribe). Pregunta ' +
+        'por ese tercero como cliente final.',
+    );
+    lines.push(
+      `- **Si confirma que es para un tercero ${oppositeLabel}** (mismo género que quien escribe): ` +
+        'descarta amablemente — explica que el programa no encaja con ese perfil. Marca handoff / ' +
+        'descalificación según el flujo del Cerebro.',
+    );
+    lines.push(
+      '- **Si NO detectas señales claras del género del lead**: no introduzcas esta pregunta — sigue ' +
+        'el flujo normal. La pregunta solo es útil cuando hay mismatch evidente.',
+    );
   }
 
   lines.push('');

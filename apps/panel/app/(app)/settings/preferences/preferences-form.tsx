@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart, ChevronDown, CheckCircle2, Ban, MessageSquare, AlertTriangle } from 'lucide-react';
+import { Loader2, Save, RotateCcw, Mail, Phone, User, Bell, CalendarClock, Link as LinkIcon, Smile, Plus, Trash2, HandHeart, ChevronDown, CheckCircle2, Ban, MessageSquare, AlertTriangle, Tag, Users } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { CollapsibleCard } from '@/components/ui/collapsible-card';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,10 @@ import {
   type HandoffCustomTemplate,
   type AddressingMode,
   type AiMessagesPerTurnMax,
+  type UseLeadNameMode,
+  type LeadNameMaxMentions,
+  type TargetClientGender,
+  type GenderVerificationStyle,
   NOTIFICATION_EVENT_TYPES,
   NOTIFICATION_EVENT_LABELS,
   CALL_PROPOSAL_MODES,
@@ -35,6 +39,13 @@ import {
   ADDRESSING_MODE_LABELS,
   AI_MESSAGES_PER_TURN_MAX_VALUES,
   AI_MESSAGES_PER_TURN_MAX_LABELS,
+  USE_LEAD_NAME_MODES,
+  USE_LEAD_NAME_MODE_LABELS,
+  LEAD_NAME_MAX_MENTIONS_LABELS,
+  TARGET_CLIENT_GENDERS,
+  TARGET_CLIENT_GENDER_LABELS,
+  GENDER_VERIFICATION_STYLES,
+  GENDER_VERIFICATION_STYLE_LABELS,
   MAX_FORBIDDEN_PHRASES,
   MAX_FORBIDDEN_PHRASE_CHARS,
   DEFAULT_TRAINER_PREFERENCES,
@@ -403,6 +414,183 @@ export function PreferencesForm({ tenantId, initial }: Props) {
                 items={prefs.customEmojis}
                 onChange={(next) => update('customEmojis', next)}
               />
+            </div>
+          )}
+        </CardContent>
+      </CollapsibleCard>
+
+      {/* CARD NOMBRE DEL LEAD (Hito 12.2) — full width, best effort */}
+      <CollapsibleCard
+        title="Nombre del lead"
+        description="Decide cómo el setter usa el nombre del lead que viene de GHL, ManyChat o YCloud. Útil para evitar que el setter llame al lead con un handle de usuario tipo 'andrea12345' cuando los datos reales no aportan un nombre humano."
+        icon={<Tag className="size-4" />}
+        fullWidth
+      >
+        <CardContent className="flex flex-col gap-6">
+          {/* Modo de uso del nombre */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Modo de uso</Label>
+              <EnforcementBadge level="best_effort" />
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              El setter recibe el nombre del lead desde los datos de contacto del canal (GHL contact,
+              perfil de WhatsApp, handle de Instagram). En modo automático, si esos datos no aportan
+              un nombre humano legible (ej: <code className="font-mono text-foreground/80">user2381</code>,{' '}
+              <code className="font-mono text-foreground/80">andrea12345</code>), el setter NO inventa
+              un nombre y trata al lead de forma neutra.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {USE_LEAD_NAME_MODES.map((mode) => {
+                const meta = USE_LEAD_NAME_MODE_LABELS[mode];
+                const active = prefs.useLeadNameMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => update('useLeadNameMode', mode as UseLeadNameMode)}
+                    className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                    <span className="text-xs">{meta.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Slider tope de menciones — oculto si modo 'never' */}
+          {prefs.useLeadNameMode !== 'never' && (
+            <div className="flex flex-col gap-3 p-4 rounded-md border border-border/40 bg-muted/20">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm">Tope de menciones por conversación</Label>
+                <Badge variant="outline" className="font-mono text-xs">
+                  {prefs.leadNameMaxMentions === 0
+                    ? '0 (sin nombre)'
+                    : `${prefs.leadNameMaxMentions} ${prefs.leadNameMaxMentions === 1 ? 'mención' : 'menciones'}`}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Cuántas veces como máximo el setter usa el nombre del lead en toda la conversación.
+                La personalización funciona <strong className="text-foreground/80">por contraste</strong>:
+                si el setter repite el nombre cada turno, suena forzado y robótico. 2 menciones
+                (saludo + un momento clave) es lo recomendado.
+              </p>
+              <Slider
+                value={[prefs.leadNameMaxMentions]}
+                min={0}
+                max={5}
+                step={1}
+                onValueChange={(v) => {
+                  const n = v[0];
+                  if (n != null && n >= 0 && n <= 5) {
+                    update('leadNameMaxMentions', n as LeadNameMaxMentions);
+                  }
+                }}
+              />
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+                <span>0</span>
+                <span>1</span>
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+              </div>
+              <p className="text-xs text-muted-foreground italic">
+                {LEAD_NAME_MAX_MENTIONS_LABELS[prefs.leadNameMaxMentions].hint}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </CollapsibleCard>
+
+      {/* CARD PUBLICO OBJETIVO (Hito 12.2) — full width, best effort */}
+      <CollapsibleCard
+        title="Público objetivo"
+        description="Si trabajas SOLO con un género (típico en programas dirigidos: fitness masculino, salud femenina), el setter introduce una pregunta de verificación en cuanto detecta que el lead que escribe parece del género opuesto. Útil para no perder tiempo con leads que escriben por su pareja, familiar o cercano."
+        icon={<Users className="size-4" />}
+        fullWidth
+      >
+        <CardContent className="flex flex-col gap-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-sm">Género objetivo de tus clientes</Label>
+              <EnforcementBadge level="best_effort" />
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Si eliges &quot;Mixto&quot;, el setter no aplica ningún filtro — atiende a quien escriba sin
+              preguntar por terceros. Si eliges un género específico y detectamos que el lead parece
+              del opuesto, el setter pregunta en F1 (tras el primer intercambio) si es para sí mismo
+              o para un cercano. <strong className="text-foreground/80">No descarta — solo confirma.</strong>
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {TARGET_CLIENT_GENDERS.map((g) => {
+                const meta = TARGET_CLIENT_GENDER_LABELS[g];
+                const active = prefs.targetClientGender === g;
+                return (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => update('targetClientGender', g as TargetClientGender)}
+                    className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                      active
+                        ? 'border-primary bg-primary/10 text-foreground'
+                        : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                    }`}
+                  >
+                    <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                    <span className="text-xs">{meta.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Sub-panel estilo verificación — solo si target != mixed */}
+          {prefs.targetClientGender !== 'mixed' && (
+            <div className="flex flex-col gap-3 p-4 rounded-md border border-border/40 bg-muted/20">
+              <Label className="text-sm">Estilo de la pregunta de verificación</Label>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Cómo formula el setter la pregunta cuando detecta un posible mismatch de género entre
+                el lead y tu público objetivo. La pregunta se hace en F1 (después del primer
+                intercambio, no en el saludo) para no romper la empatía inicial.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {GENDER_VERIFICATION_STYLES.map((style) => {
+                  const meta = GENDER_VERIFICATION_STYLE_LABELS[style];
+                  const active = prefs.genderVerificationStyle === style;
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() =>
+                        update('genderVerificationStyle', style as GenderVerificationStyle)
+                      }
+                      className={`flex flex-col items-start gap-1 p-3 rounded-md border text-left transition-colors ${
+                        active
+                          ? 'border-primary bg-primary/10 text-foreground'
+                          : 'border-border/40 hover:border-border bg-transparent text-muted-foreground'
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-foreground">{meta.label}</span>
+                      <span className="text-xs">{meta.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                <AlertTriangle className="size-3.5 shrink-0 mt-0.5" />
+                <span>
+                  La detección de género es heurística (basada en el nombre del lead) y puede fallar
+                  en nombres ambiguos (Sam, Alex, Jordan) o cuando el contacto no aporta nombre real.
+                  El setter solo introduce la pregunta cuando detecta una señal clara — si no la hay,
+                  sigue el flujo normal.
+                </span>
+              </div>
             </div>
           )}
         </CardContent>

@@ -18,14 +18,19 @@ import { V15_phaseGhost } from './V15-phase-ghost.js';
 import { V16_memoryContamination } from './V16-memory-contamination.js';
 import { V17_forbiddenPhrases } from './V17-forbidden-phrases.js';
 import { V18_addressingConsistency } from './V18-addressing.js';
+import { V19_nameOveruse } from './V19-name-overuse.js';
 
 /**
- * Lista canónica de reglas V0-V18 en orden.
+ * Lista canónica de reglas V0-V19 en orden.
  * Las reglas con `stub: true` se ejecutan pero no devuelven violaciones todavía.
  *
- * Hito 12.1 — V17/V18 añadidas al final:
+ * Hito 12.1 — V17/V18 añadidas:
  * - V17: trainer-specific forbidden phrases (warn → orquestador hace retry).
  * - V18: consistencia tú/usted (warn → solo log, sin retry; heurístico).
+ *
+ * Hito 12.2 — V19 añadida:
+ * - V19: tope de menciones del nombre del lead (warn → solo log, sin retry;
+ *   heurístico best-effort, consistent con EnforcementBadge `best_effort` del UI).
  */
 export const DEFAULT_RULES: ValidationRule[] = [
   V00_empty,
@@ -47,6 +52,7 @@ export const DEFAULT_RULES: ValidationRule[] = [
   V16_memoryContamination,
   V17_forbiddenPhrases,
   V18_addressingConsistency,
+  V19_nameOveruse,
 ];
 
 export {
@@ -69,4 +75,5 @@ export {
   V16_memoryContamination,
   V17_forbiddenPhrases,
   V18_addressingConsistency,
+  V19_nameOveruse,
 };
