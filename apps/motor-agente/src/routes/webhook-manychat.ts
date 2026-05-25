@@ -12,10 +12,6 @@ import {
   resolveTenantByToken,
   upsertLead,
 } from '../services/lead-ingest.js';
-import {
-  classifyInboundOnly,
-  loadAutomationKeywords,
-} from '../services/ghl-message-router.js';
 
 const DEFAULT_DEBOUNCE_SECONDS = 25;
 
@@ -103,21 +99,18 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
         message,
       });
 
-      // 4.7. Sprint Iota.3 (Iván 2026-05-12) + Iván (2026-05-25) — Gate
-      // manychat_inbound_mode análogo a `ghl_inbound_mode='classified_only'`.
+      // 4.7. Sprint Iota.3 (Iván 2026-05-12) — Gate manychat_inbound_mode
+      // análogo a `ghl_inbound_mode='classified_only'` (migration 039).
       //
-      // Si conv NO tiene `conversation_source` clasificada y el modo es
-      // 'classified_only':
-      //   a) Intentar matchear el texto del inbound contra keywords
-      //      type='inbound' del tenant. Si matchea → setear
-      //      conversation_source='inbound' y continuar (IA entra).
-      //   b) Si no matchea → pausar IA infinity. Lead + mensaje quedan
-      //      persistidos para que el trainer los vea en panel, pero pipeline
-      //      NO dispara. Trainer activa IA manual si decide responder.
+      // Si conv NO tiene `conversation_source` clasificada (bienvenida/lm/
+      // inbound/manual) y el modo es 'classified_only', pausamos IA infinity
+      // ANTES de encolar debounce. Lead + mensaje quedan persistidos para que
+      // el trainer los vea en panel, pero pipeline NO dispara. Trainer activa
+      // IA manual si decide responder.
       //
       // Doctrina unificada: tras un GDPR delete + re-write del mismo
       // subscriber_id, el motor crea lead+conv nuevos sin source → bajo este
-      // gate la IA queda pausada (a) o se reclasifica (b) según contenido.
+      // gate la IA queda pausada hasta intervención humana.
       const { data: cfg } = await supabase
         .from('tenant_configs')
         .select('manychat_inbound_mode')
@@ -136,43 +129,26 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
           | { conversation_source: string | null; ai_paused_until: string | null }
           | null;
         if (row && row.conversation_source == null && row.ai_paused_until == null) {
-          const inboundText = typeof message.text === 'string' ? message.text : '';
-          let classifiedByInboundKeyword: 'inbound' | null = null;
-          if (inboundText.trim().length > 0) {
-            const keywords = await loadAutomationKeywords(supabase, tenantId);
-            classifiedByInboundKeyword = classifyInboundOnly(inboundText, keywords);
-          }
-          if (classifiedByInboundKeyword === 'inbound') {
-            await supabase
-              .from('conversations')
-              .update({ conversation_source: 'inbound' })
-              .eq('id', conversationId);
-            request.log.info(
-              { tenantId, conversationId, mode: manychatMode },
-              'webhook-manychat: inbound matched keyword type=inbound — conv clasificada inbound, IA activa',
-            );
-          } else {
-            await supabase
-              .from('conversations')
-              .update({ ai_paused_until: 'infinity' })
-              .eq('id', conversationId);
-            request.log.info(
-              { tenantId, conversationId, mode: manychatMode },
-              'webhook-manychat: conv sin source clasificada — IA pausada (classified_only)',
-            );
-            // 5b. Toca last_webhook_at + ack 200 sin encolar debounce.
-            await touchIntegrationLastWebhook(supabase, tenantId, 'manychat');
-            return reply.code(200).send({
-              ack: true,
-              deduped: false,
-              tenant_id: tenantId,
-              lead_id: leadId,
-              conversation_id: conversationId,
-              message_id: messageId,
-              skipped: 'manychat_inbound_classified_only',
-              received_at: new Date().toISOString(),
-            });
-          }
+          await supabase
+            .from('conversations')
+            .update({ ai_paused_until: 'infinity' })
+            .eq('id', conversationId);
+          request.log.info(
+            { tenantId, conversationId, mode: manychatMode },
+            'webhook-manychat: conv sin source clasificada — IA pausada (classified_only)',
+          );
+          // 5b. Toca last_webhook_at + ack 200 sin encolar debounce.
+          await touchIntegrationLastWebhook(supabase, tenantId, 'manychat');
+          return reply.code(200).send({
+            ack: true,
+            deduped: false,
+            tenant_id: tenantId,
+            lead_id: leadId,
+            conversation_id: conversationId,
+            message_id: messageId,
+            skipped: 'manychat_inbound_classified_only',
+            received_at: new Date().toISOString(),
+          });
         }
       }
 

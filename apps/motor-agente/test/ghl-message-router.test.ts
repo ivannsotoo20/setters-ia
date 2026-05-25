@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   classifyByKeywords,
-  classifyInboundOnly,
   inferContentTypeFromUrl,
   matchesAnyKeyword,
 } from '../src/services/ghl-message-router.js';
@@ -95,48 +94,6 @@ describe('matchesAnyKeyword (Hito 10 sub-fase 3 — gate WA inbound)', () => {
     ];
     expect(matchesAnyKeyword('vengo por la masterclass', withEmpty)).toBe(true);
     expect(matchesAnyKeyword('nada que matchee', withEmpty)).toBe(false);
-  });
-});
-
-describe('classifyInboundOnly (Iván 2026-05-25 — gate inbound IA por keyword)', () => {
-  const mixedKeywords = [
-    { type: 'bienvenida' as const, pattern: 'hola gracias' },
-    { type: 'lm' as const, pattern: 'CLASE' },
-    { type: 'inbound' as const, pattern: 'info' },
-    { type: 'inbound' as const, pattern: 'programa' },
-    { type: 'inbound' as const, pattern: 'precio' },
-  ];
-
-  it('returns "inbound" when body contains an inbound keyword', () => {
-    expect(classifyInboundOnly('quiero info', mixedKeywords)).toBe('inbound');
-    expect(classifyInboundOnly('cuanto cuesta el programa', mixedKeywords)).toBe('inbound');
-    expect(classifyInboundOnly('cual es el precio?', mixedKeywords)).toBe('inbound');
-  });
-
-  it('is case-insensitive and ignores spaces', () => {
-    expect(classifyInboundOnly('INFO PORFA', mixedKeywords)).toBe('inbound');
-    expect(classifyInboundOnly('me  interesa  el   PROGRAMA', mixedKeywords)).toBe('inbound');
-  });
-
-  it('ignores keywords of other types (bienvenida, lm) even if pattern matches body', () => {
-    // 'hola gracias' es type=bienvenida — NO debe disparar inbound classification
-    expect(classifyInboundOnly('hola gracias por escribir', mixedKeywords)).toBeNull();
-    // 'CLASE' es type=lm — tampoco
-    expect(classifyInboundOnly('quiero la clase gratis', mixedKeywords)).toBeNull();
-  });
-
-  it('returns null when body matches nothing', () => {
-    expect(classifyInboundOnly('hola que tal', mixedKeywords)).toBeNull();
-  });
-
-  it('returns null on empty body or no inbound keywords configured', () => {
-    expect(classifyInboundOnly('', mixedKeywords)).toBeNull();
-    const onlyBienvenida = [{ type: 'bienvenida' as const, pattern: 'hola' }];
-    expect(classifyInboundOnly('hola', onlyBienvenida)).toBeNull();
-  });
-
-  it('returns null with empty keywords list', () => {
-    expect(classifyInboundOnly('info programa precio', [])).toBeNull();
   });
 });
 
