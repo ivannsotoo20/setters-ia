@@ -14,8 +14,8 @@ CR8 (validación con tope), `verbosity_controls` (3 modos de apertura A/B/C, top
 muletilla), `objections_protocol` (PCSC/PSSC), fases F0–F6.
 
 Última actualización: 2026-06-12. Incorporados: postmortem Pablo López Fraga (v1→v8) + destilado de
-Daniel (segundo coach del avatar hombres). Los §13–§17 nacen del bloque de Daniel — confirmados como
-universales porque aplican a cualquier avatar, no solo masculino.
+Daniel (2.º coach hombres, §13–§17) + destilado de Julia/Mireya (2.º coach mujeres, §18 + eje de registro
+en §9 + modo de falla §11.9). Cada punto se confirma como universal porque aplica a cualquier avatar.
 
 ---
 
@@ -164,6 +164,15 @@ La cantidad de validación NO es universal — depende del avatar.
 validación) o "un experto que me marque la pauta" (poca validación, mucha dirección)? Se
 documenta como dato cuantificado en `coach_tone_voiceprint`, no se deja al modelo.
 
+**Segundo eje — registro AFECTIVO vs PROFESIONAL (no lo decide el género).** La proporción de validación y
+el REGISTRO son ejes DISTINTOS. Dentro del mismo avatar mujeres-pérdida-peso conviven María de Lluc
+(cálida, afectiva, "cielo", emojis cariñosos) y Julia/Mireya (cercano-profesional, NO afectivo, apelativos
+cariñosos prohibidos, emojis sobrios) — y las dos funcionan. "Mujer" ≠ "tono afectivo por defecto". El
+registro se diseña por el PERFIL REAL del lead (ansiedad/culpa → afectivo; "harta de dietas", profesional
+→ sobrio) y la marca de la entrenadora, igual que la proporción. Incluso con validación CONTENIDA se
+conecta mucho: validación por ASOCIACIÓN situacional, mujer-a-mujer ("eso de empezar bien el lunes y que
+el jueves se haya ido todo lo reconozco demasiado"), sin caer en lo afectivo.
+
 ---
 
 ## 10. El toque humano final es necesario
@@ -192,6 +201,10 @@ Lista cerrada de errores recurrentes. Aplicar como tests proactivos en cada coac
    excepción literal documentada.
 7. **Saltos de fase prematuros.** → Reglas de avance explícitas.
 8. **Preguntas sobre el pasado** ("¿qué has probado?"). → CR7 + exemplars solo en presente.
+9. **Heredar literales del canónico de OTRO coach sin adaptar el registro/voz.** Cierres cálidos, notia o
+   mensajes de fase calcados de otro coach contradicen el voiceprint del coach actual. Caso real: los
+   `coach_wclose` de Julia (registro profesional) vinieron en tono María (afectivo "cielo" + 🫶),
+   violando su propio voiceprint. → Cada mensaje literal pasa el voiceprint del coach AL QUE PERTENECE.
 
 ---
 
@@ -260,6 +273,23 @@ su lista en su voiceprint):
 
 Estos parámetros viven en `coach_tone_voiceprint` de cada coach; aquí van como principio universal de
 realismo de voz.
+
+## 18. Interpreta antes de preguntar + ancla situacional (anti-formulario)
+
+Destilado de Julia/Mireya. Hace que la conversación no huela a entrevista. Cuatro movimientos que mejoran
+cualquier registro (afectivo o profesional):
+- **Interpretar antes de preguntar:** observación del patrón que detectas → pregunta concreta; no arrancar
+  con la pregunta pelada. Ej: "Eso de cuidarte en semana y que el finde se desmonte muchas veces no es
+  falta de voluntad, es que no hay estructura que aguante ahí. ¿Cómo son tus findes normalmente?"
+- **Anclar situacional, no genérico/conceptual:** prohibidas las preguntas de formulario sin anclaje
+  ("¿qué te cuesta más?", "¿cómo va tu rutina?", "¿qué te frena?"). Sustituir por algo REAL y concreto
+  (findes, picoteo de tarde, energía a media tarde, horarios, cansancio).
+- **Reformular la opinión en pregunta reflexiva:** en vez de afirmar el problema, devolverlo como pregunta
+  para que lo verbalice el lead ("el problema es que has hecho dietas restrictivas" → "¿qué planes has
+  probado y qué notabas que no aguantabas?"). Es la cara operativa de la Lente 2 del Core (ayudar a verbalizar).
+- **Profundizar antes de avanzar:** si el lead suelta un dato concreto, profundizar ≥1 turno sobre eso
+  antes de cambiar de tema; nombrarlo como observación, no como eco. (No es anti-drilling al revés: no se
+  re-pregunta lo mismo, se evita abandonar un hilo jugoso demasiado pronto.)
 
 ---
 
