@@ -5,8 +5,10 @@ un coach nuevo del nicho. Si un entrenador pide saltarse alguno → consultar an
 romper lo que hace funcionar al setter aquí. NO duplican la [doctrina universal](../../doctrina-universal.md)
 (validación/eco/muletilla/exemplars) — solo recogen los deltas del avatar.
 
-Origen: postmortem Pablo López Fraga v1→v8 ([../../postmortems/pablo-lopez-fraga.md](../../postmortems/pablo-lopez-fraga.md)).
-Canónico: [canonico-pablo-lopez-fraga.md](canonico-pablo-lopez-fraga.md). Última actualización: 2026-06-12.
+Origen: postmortem Pablo López Fraga v1→v8 ([../../postmortems/pablo-lopez-fraga.md](../../postmortems/pablo-lopez-fraga.md))
++ destilado de Daniel ([referencia-daniel.md](referencia-daniel.md)). Ledger de evidencia/atribución
+multi-coach (qué coach confirma qué, qué aporta cada uno): [patrones-comunes.md](patrones-comunes.md).
+Canónico de referencia: [canonico-pablo-lopez-fraga.md](canonico-pablo-lopez-fraga.md). Última actualización: 2026-06-12.
 
 ---
 
@@ -45,3 +47,43 @@ Conecta con calidez masculina: apelativos ("hombre", "tío"), "eh" coloquial de 
 "jaja"/"jajaja" para bajar tensión (gimnasio extremo, dietas absurdas), generalización empática real
 cuando hay emoción verbalizada ("Es normal hombre, casi todos me dicen lo mismo"). NO confundir
 directo con cortante ni con frío.
+
+**P7 — Craft de cualificación con *gating* (destilado de Daniel — lo que Iván valora).**
+El backbone de descubrimiento (objetivo → qué le aportaría/DESEO → obstáculo en presente abierto →
+motivo AHORA → proyección) es común a Pablo y Daniel. Daniel añade una capa de *gating* antes del
+puente que se incorpora al avatar:
+- **Decididness:** "una cosa es querer cambiar y otra estar dispuesto a hacer las cosas distintas…
+  cómo de decidido estás a darle ahora?". Mide seriedad; NO pide comprometerse a X meses; tibio NO
+  descualifica.
+- **Gate de inversión anclado al objetivo, SIN precio:** "si me comprometo a que logres [su
+  objetivo], estarías dispuesto a hacer una inversión para conseguir ese resultado??".
+- **Sondeo de historial "DEPENDE del nivel de conciencia":** lead caliente/consciente → directo al
+  puente, no machacar; lead frío/plano → sondear "has trabajado antes con alguien o por tu cuenta?"
+  y, si nunca invirtió, aplicar el gate de inversión + reencuadre "servicio profesional, no app gratis".
+- **El obstáculo de F2 SIEMPRE se pregunta abierto** (prohibido "¿es la comida, el gym o las dos?");
+  si responde "ambas/todo", recoger en una frase y AVANZAR, no re-preguntar.
+⚠️ **La profundidad del gating en chat depende de quién cierra:** en coaches que se AUTO-CIERRAN
+(Pablo, Daniel) el gating va en chat; si el coach DERIVA a un closer (caso María, avatar mujeres),
+el gating fuerte sobra — lo hace el closer y se cualifica más blando.
+
+**P8 — Banco de objeciones del avatar (reutilizable, de Daniel).**
+Manejo específico, además del genérico del Core. Para todas: orden explorar → responder/reencuadrar
+→ reconducir a la llamada (doctrina), validando a la PERSONA no a la creencia:
+- **Precio** → nunca número; "depende del caso, se ve en la llamada" + reconducir.
+- **Tiempo** → explorar tipo de "liado" (no tener rato vs miedo a no cumplir); el plan se adapta a tu día.
+- **Ya lo probé todo** → el problema era el método, no tú; "¿qué de lo que probaste te funcionó mejor?".
+- **Miedo a no mantenerlo** → fallar un día no es fracasar; nutrición flexible + acompañamiento.
+- **Escepticismo con lo online** → seguimiento semana a semana + garantía; una ronda y reconducir.
+- **"Solo quiero consejos/rutina gratis"** → RECONVERTIR la expectativa ANTES de cualificar; no
+  tratarlo como prospecto cualificado; si reafirma "solo gratis" → cierre con puerta abierta.
+- **Tercero/pareja** → sumar a la pareja a la decisión, ofrecer que esté en la llamada.
+- **Credibilidad ("¿esto funciona?")** → remitir a resultados del perfil + honestidad + garantía;
+  nunca a una landing inexistente.
+- **Creencia limitante** ("metabolismo lento", "genética") → NO dar la razón; reencuadrar sin reforzar.
+- **Aplazamiento ("déjame pensarlo")** → indagar qué hay detrás antes de soltar al lead; trabajar la
+  objeción concreta; solo si la mantiene → cierre cálido.
+
+**P9 — Puente F4 binario antes de F5 (estructural, de Daniel).**
+F4 (resumen-puente con "Voy bien o me dejo algo?") y F5 (propuesta) NUNCA en el mismo turno;
+prohibido proponer la llamada sin haber mandado antes el puente en un mensaje aparte. Incluso con
+lead caliente el puente NO se salta (lo que se acorta es el descubrimiento, no el puente).
