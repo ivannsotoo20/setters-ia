@@ -10,6 +10,9 @@ Coaches incluidas hasta hoy (2026-06-12):
 - **Julia / Mireya ("Mujer en Forma")** — mujeres 35–60 pérdida peso/composición + fuerza, "hartas de
   dietas". Referencia: [`referencia-julia-mireya.md`](referencia-julia-mireya.md). Registro:
   **cercano-profesional / NO afectivo**, validación contenida. *Iván las trajo porque están encantadas.*
+- **Sandra Matías ("Revoluciona tu Reflejo")** — mujeres ~30-50 SANAS que YA entrenan/comen sano y no ven
+  resultados (estética). Referencia: [`referencia-sandra-matias.md`](referencia-sandra-matias.md). Registro:
+  **DIRECTO-cercano-gamberro**. *Primer coach producido por Claude (Flujo C: MODs 1-6 + B3 sobre el prompt de Iván).*
 
 Convención: lo **universal** vive en [`../../doctrina-universal.md`](../../doctrina-universal.md); lo
 **de avatar** en [`principios.md`](principios.md). Aquí va la **evidencia/atribución** (qué confirma cada una).
@@ -31,8 +34,22 @@ María y Julia son AMBAS mujeres-pérdida-peso y conectan muchísimo, pero con *
 
 → **Regla destilada (sube a doctrina §9):** el **registro afectivo vs profesional** es un eje que se
 **DISEÑA por el perfil real del lead y la marca de la entrenadora — NO se asume por género.** "Mujer"
-≠ "tono afectivo por defecto". Hay (al menos) **dos plantillas de registro** para este avatar; se elige
-la que encaje, no se aplica María a todas.
+≠ "tono afectivo por defecto". Hay **tres plantillas de registro conocidas** para este avatar — afectivo
+(María), profesional-sobrio (Julia), **directo-cercano-gamberro (Sandra)** —; se elige la que encaje (o el
+punto intermedio diseñado), no se aplica María a todas. Sandra y Julia son el polo directo; María el afectivo.
+
+**Sandra confirma el modo de falla §11.9 (caso vivo).** Su prompt original (hecho con otra herramienta)
+había DECIDIDO bien el registro directo en el voiceprint, pero la EJECUCIÓN lo traicionaba: exemplars y F1
+en el molde afectivo de María (validación en cada turno, emoción añadida). Se corrigió con las MODs 1-3 al
+producirla. Lección operativa: la decisión de registro en el voiceprint NO basta — exemplars, F1 y emojis
+tienen que ejecutar ESE registro, o el modelo replica el molde heredado.
+
+**Refinamiento de la regla self-close vs closer (de hombres/§4):** Sandra se AUTO-CIERRA (coordina la
+videollamada ella misma por DM, sin closer) Y es del avatar mujeres. Conclusión: una coach de mujeres que
+se auto-cierra SÍ necesita algo de *gating* en chat (una señal ligera de prioridad/compromiso, B3), aunque
+**más suave que el gating masculino de Daniel y SIN tocar dinero** (CR2). Es decir: el gating no lo decide
+el género, lo decide **quién cierra** (si hay closer detrás → blando; si se auto-cierra → señal de seriedad
+en chat), modulado por el registro del nicho.
 
 ---
 
@@ -122,5 +139,6 @@ reescribir wclose + notia en su registro profesional (sin "cielo", sin emojis ca
 
 ## 5. Próximas coaches (se añaden aquí)
 
-Cuando entre la 3.ª+ entrenadora de mujeres: añadir su fila a §1, anotar registro (afectivo/profesional/
-intermedio) y qué aporta de nuevo; promover a `principios.md`/doctrina lo que se repita en ≥2 coaches.
+Cuando entre la 4.ª+ entrenadora de mujeres: añadir su fila a §1, anotar registro (afectivo / profesional /
+directo / intermedio) y qué aporta de nuevo; promover a `principios.md`/doctrina lo que se repita en ≥2
+coaches. Ya hay 3 registros mapeados (María afectivo, Julia profesional, Sandra directo).

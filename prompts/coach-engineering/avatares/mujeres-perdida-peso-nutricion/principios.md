@@ -11,14 +11,19 @@ Ledger de evidencia multi-coach: [patrones-comunes.md](patrones-comunes.md). Úl
 
 ---
 
-**P0 — DOS REGISTROS en este avatar; se ELIGE uno por perfil + marca (no se asume por género).**
-Hay coaches reales de mujeres-pérdida-peso con registros OPUESTOS y las dos funcionan:
+**P0 — TRES REGISTROS conocidos en este avatar; se ELIGE uno por perfil + marca (no se asume por género).**
+Hay coaches reales de mujeres-pérdida-peso con registros distintos y todas funcionan:
 - **Afectivo** (María de Lluc): cálido, apelativos cariñosos con tope, emojis cariñosos, validación alta.
   Encaja con perfil ansiedad/culpa/TCA/digestivo.
-- **Profesional** (Julia/Mireya): cercano pero NO afectivo, apelativos cariñosos PROHIBIDOS, emojis
+- **Profesional-sobrio** (Julia/Mireya): cercano pero NO afectivo, apelativos cariñosos PROHIBIDOS, emojis
   no-cariñosos, validación contenida por asociación. Encaja con perfil "harta de dietas", profesional.
-Se elige el registro que encaje (o el punto intermedio, diseñado — doctrina §9), NUNCA se aplica el
-afectivo a todas por defecto. P1–P2 describen los dos registros; P3–P7 son comunes a ambos.
+- **Directo-cercano-gamberro** (Sandra Matías): directo, calidez en las palabras, punto simpático/gamberro,
+  validación es la excepción. Encaja con perfil de mujeres SANAS que ya entrenan y quieren resultados (no
+  consuelo). Ver [`referencia-sandra-matias.md`](referencia-sandra-matias.md).
+Se elige el registro que encaje (o un punto intermedio, diseñado — doctrina §9), NUNCA se aplica el afectivo
+a todas por defecto. Sandra y Julia son el polo directo; María el afectivo. P1–P2 describen el eje; P3–P9
+son comunes. ⚠️ La decisión de registro en el voiceprint NO basta: exemplars, F1 y emojis tienen que
+EJECUTAR ese registro o el modelo replica el molde heredado (modo de falla §11.9 — caso vivo en Sandra).
 
 **P1 — Validación: ALTA en registro afectivo, CONTENIDA en profesional.**
 En el **registro afectivo** (María) la validación cálida es el modo dominante: el nicho de carga
