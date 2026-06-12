@@ -98,6 +98,29 @@ El motor soporta **varios proveedores BSP** en paralelo, decididos por `integrat
 | **YCloud** | ✅ Sí | Header `YCloud-Signature: t=<unix_seconds>,s=<hmac_sha256_hex>`. Signed payload `{ts}.{rawBody}`. Secret se obtiene del panel YCloud (Retrieve a webhook endpoint API) y se guarda en `integration_accounts.webhook_secret`. Implementación: `apps/motor-agente/src/lib/webhook-verify.ts`. Modo configurable vía `YCLOUD_WEBHOOK_VERIFY_MODE=disabled\|warn\|enforce` (default `warn`). En `enforce`, requests sin firma o con firma inválida → 401. Tolerance default 300s anti-replay. |
 | **ManyChat** | ❌ No | ManyChat NO firma webhooks (verificado 2026-04-21). Protección única: token aleatorio en URL `/webhook/manychat/<tenant_token>`. Deuda asumida hasta que Pablo migre a YCloud / Meta Cloud / GHL (Fase 6). |
 
+## Autoría de bloques COACH (coach-engineering)
+
+La craft de autoría/reconciliación de bloques `coach_v5` (identidad, voz, fases,
+cualificación de cada entrenador) vive en `prompts/coach-engineering/`. **Leer su
+`README.md` antes de generar, reconciliar o modificar cualquier coach.** Contiene:
+- `doctrina-universal.md` — 12 principios de voz/conversación (validación≠eco,
+  muletilla≠introducción, los exemplars enseñan el patrón, la proporción validación/dirección
+  se diseña por avatar…).
+- `formato-saas-coach-v5.md` — la ley de formato: cómo un coach cae directo en el SaaS sin
+  romperse (frontmatter obligatorio, convención de headers — solo `coach_tone` usa sub-tags
+  XML, resto `##`/`###` —, `{{tracked_calendar_url}}` nunca hardcodeado, frontera
+  `coach_v5` vs `trainer_prefs_v1` vs `admin_overrides_v1`).
+- `checklist-auditoria.md` — auditoría pre-entrega (estructura + voz + formato SaaS).
+- `avatares/<avatar>/` — principios + plantilla + canónico por avatar (hombres pérdida peso,
+  mujeres pérdida peso/nutrición, adultos ocupados).
+- `postmortems/`, `ejemplos-formato-antiguo/`.
+
+Los coaches FINALES van a `prompts/source/coach-v5/<slug>.md` y se cargan con
+`scripts/build-coach-v5-seed.mjs` → MCP (o vía `/admin/cerebro`); nunca `UPDATE prompt_blocks`
+a pelo. El loop de aprendizaje (cada coach cerrado / corrección repetida → se destila a su
+capa, sin duplicar) está en el README §"Protocolo de aprendizaje". Memoria del proyecto:
+`project_coach_authoring_kb.md` + `reference_coach_authoring_system.md`.
+
 ## Editar prompts — Cerebro v5 (consolidado, 4 capas)
 
 El system prompt del setter se compone de bloques en `public.prompt_blocks` (ver
