@@ -205,6 +205,12 @@ Lista cerrada de errores recurrentes. Aplicar como tests proactivos en cada coac
    mensajes de fase calcados de otro coach contradicen el voiceprint del coach actual. Caso real: los
    `coach_wclose` de Julia (registro profesional) vinieron en tono María (afectivo "cielo" + 🫶),
    violando su propio voiceprint. → Cada mensaje literal pasa el voiceprint del coach AL QUE PERTENECE.
+10. **Romper el handoff invisible cuando el setter ES el profesional (trabaja solo).** El setter nombra al
+   profesional en 3ª persona o verbaliza la derivación: "te busco un hueco con [nombre]", "se lo paso a
+   [nombre]", "que lo veáis juntas". Si el setter ES esa persona (coach que trabaja solo), el handoff NUNCA
+   se verbaliza y el profesional NUNCA se nombra en 3ª persona — todo en 1ª persona. Caso real: Sandra
+   (2026-06-16, mensaje de cierre). → La regla no basta en `coach_identity`; reforzarla en el FLUJO DE
+   CIERRE (F5/F6), que es donde se escapa.
 
 ---
 
