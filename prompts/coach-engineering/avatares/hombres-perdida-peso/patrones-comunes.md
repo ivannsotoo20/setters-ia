@@ -126,10 +126,11 @@ Cuando entre el 3.º+ entrenador de hombres: añadir su fila a la tabla §1, ano
 núcleo común y qué aporta de nuevo, y promover a `principios.md`/doctrina lo que se repita en ≥2
 coaches. Si algo solo lo hace 1 → queda como diferencial de ese coach, no se generaliza todavía.
 
-Pendientes de adaptar a v2 (reunión Rubén 2026-06-18, ver §6): **Roberto Gordovilla** (se cambia
-primero, está más descontento) y **Alfonso Santos** (después, si Roberto v2 mejora). Sus prompts
-actuales viven en CloudChat/producción, no en este repo; cuando entren, se llevan a
-`prompts/source/coach-v5/<slug>.md` partiendo de la `plantilla.md` ya actualizada.
+Adaptación a v2 (reunión Rubén 2026-06-18, ver §6): **Roberto Cordobilla / "Rober"** (en la reunión se
+le llamó "Gordovilla"; su nombre real es Cordobilla) — v2 YA construido en
+[`../../../source/coach-v5/roberto-cordobilla.md`](../../../source/coach-v5/roberto-cordobilla.md)
+(status draft; TESTEAR antes de seedear + alta de tenant). **Alfonso Santos** queda para después, si
+Roberto v2 mejora. Aún NO se promueve Roberto al núcleo común §1 hasta validar con conversaciones reales.
 
 ---
 
@@ -159,5 +160,8 @@ preguntas con la palabra del lead), P7 acotado (criterios = una pregunta; fuera 
 intentos pasados), P10 nuevo (dirección masculina + leads cerrados). Matiz hombres/mujeres de Rubén:
 con hombres más dirección y menos ramas; mujeres igual + 1 profundización extra entre saltos.
 
-**Coach (queda en cada uno):** las 7 preguntas reales de Joseca + su marco mental (las extrae Iván,
-scaffold a rellenar) y la voz/links/cualificación de Roberto cuando se haga su v2.
+**Coach (queda en cada uno):** las 7 preguntas reales de Joseca + su marco mental YA destiladas en
+[`referencia-estructura-joseca.md`](referencia-estructura-joseca.md) (mapeadas a pérdida de peso, en
+presente). Roberto v2 YA construido con su voz real + el backbone de Joseca + §19–§25 en
+`prompts/source/coach-v5/roberto-cordobilla.md` (draft, pendiente de test). Joseca es de trail running;
+lo que transfiere es la ESTRUCTURA, no el nicho.
