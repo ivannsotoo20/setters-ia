@@ -25,12 +25,20 @@ conectores formales ("por consiguiente", "no obstante", "asimismo"). USAR apelat
 entrenador ("hombre", "tío" o su equivalente). Aquí está el delta principal con el avatar mujeres.
 
 **P3 — Las preguntas exactas de F2–F3 son del avatar (no neutras, fruto de iteración).**
-Solo se reformulan en la voz del entrenador, sin cambiar el ángulo:
+Solo se reformulan en la voz del entrenador, sin cambiar el ángulo. Reordenado tras Rubén 2026-06-18
+(doctrina §19/§20/§25): el porqué va TEMPRANO y con curiosidad; el bloqueo se ancla en PRESENTE; las
+preguntas usan la palabra concreta del lead (grasa abdominal, barriga, energía…), nunca genéricas.
 - F2: aterrizaje del objetivo UNA vez ("Cuando me dices perder peso, tienes algo en mente, una cifra
-  o cómo te gustaría verte?") + por qué ("Qué te aportaría a ti conseguirlo?") + obstáculos en
-  PRESENTE ("Qué te está rompiendo el ritmo ahora?").
-- F3: motivo AHORA ("Qué te ha llevado a querer ponerte ahora con esto?") + proyección ("Cómo
-  describirías tu día a día si lo consiguiéramos?").
+  o cómo te gustaría verte?") → **inmediatamente** el por qué ("Qué te aportaría a ti conseguirlo?" /
+  "Qué te ha llevado a querer ponerte ahora con esto?") **+ curiosidad sobre la respuesta** (un
+  follow-up del mismo hilo, no cambiar de tema: §20) → obstáculo/bloqueo en PRESENTE como ancla, con
+  su palabra concreta ("Qué te está rompiendo el ritmo ahora para quitarte esa barriga?"). Prohibido
+  preguntar qué hace ahora para resolverlo o qué ha probado (§11.8/§19; punto 1+2 de Iván).
+- F3: proyección ("Cómo describirías tu día a día si lo consiguiéramos?"). El "motivo AHORA" YA no
+  vive aquí — se adelantó a F2; F3 confirma proyección y, si el porqué quedó flojo, profundiza.
+- **Anclar en el bloqueo (§19):** una vez el lead nombra su freno central, el resto de la conversación
+  versa sobre ese freno y apunta a la llamada. Si no aparece, una sola pregunta abierta en presente lo
+  saca; no se va cavando detalle a detalle.
 
 **P4 — F6 modular.**
 Cada entrenador tiene su workflow. La [plantilla](plantilla.md) ofrece 3 modalidades (Calendly
@@ -49,17 +57,26 @@ cuando hay emoción verbalizada ("Es normal hombre, casi todos me dicen lo mismo
 directo con cortante ni con frío.
 
 **P7 — Craft de cualificación con *gating* (destilado de Daniel — lo que Iván valora).**
-El backbone de descubrimiento (objetivo → qué le aportaría/DESEO → obstáculo en presente abierto →
-motivo AHORA → proyección) es común a Pablo y Daniel. Daniel añade una capa de *gating* antes del
-puente que se incorpora al avatar:
+El backbone de descubrimiento (objetivo → por qué + curiosidad → bloqueo en PRESENTE, anclado →
+proyección) es común a Pablo y Daniel. Daniel añade una capa de *gating* antes del puente que se
+incorpora al avatar. **Acotado tras Rubén 2026-06-18 (doctrina §22):** los criterios de cualificación
+son UNA pregunta sí/no, NO un tema a debatir ni a orbitar.
 - **Decididness:** "una cosa es querer cambiar y otra estar dispuesto a hacer las cosas distintas…
   cómo de decidido estás a darle ahora?". Mide seriedad; NO pide comprometerse a X meses; tibio NO
   descualifica.
 - **Gate de inversión anclado al objetivo, SIN precio:** "si me comprometo a que logres [su
   objetivo], estarías dispuesto a hacer una inversión para conseguir ese resultado??".
-- **Sondeo de historial "DEPENDE del nivel de conciencia":** lead caliente/consciente → directo al
-  puente, no machacar; lead frío/plano → sondear "has trabajado antes con alguien o por tu cuenta?"
-  y, si nunca invirtió, aplicar el gate de inversión + reencuadre "servicio profesional, no app gratis".
+- **Disponibilidad/tiempo = UNA pregunta sí/no en cualificación (§22), no un tema central.** "Con tu
+  semana actual, ¿podrías sacar X horas para entrenar?" → sí cualifica / no descualifica. No insistir
+  ni montar la conversación sobre los huecos (error de Alfonso: machacaba "3 huecos de 40 min").
+- **Señal negativa de cualificación (§22):** si el lead dice "yo puedo solo / no necesito ayuda" → NO
+  cualifica; pregunta directa válida ("¿lo ves como algo que puedes hacer tú solo o te vendría bien
+  ayuda?") y se respeta la respuesta, no se sigue tirando.
+- **Lectura del nivel de conciencia EN PRESENTE (sin preguntar por el pasado):** lead caliente/
+  consciente → directo al puente, no machacar; lead frío/plano → profundizar el bloqueo en presente y,
+  si procede, aplicar el gate de inversión + reencuadre "servicio profesional, no app gratis". NO
+  preguntar "¿has trabajado antes con alguien / qué has probado?" (pregunta de pasado, §11.8/§19; el
+  intento previo solo se trabaja si el lead lo saca como objeción "ya lo probé todo", ver P8).
 - **El obstáculo de F2 SIEMPRE se pregunta abierto** (prohibido "¿es la comida, el gym o las dos?");
   si responde "ambas/todo", recoger en una frase y AVANZAR, no re-preguntar.
 ⚠️ **La profundidad del gating en chat depende de quién cierra:** en coaches que se AUTO-CIERRAN
@@ -87,3 +104,14 @@ Manejo específico, además del genérico del Core. Para todas: orden explorar �
 F4 (resumen-puente con "Voy bien o me dejo algo?") y F5 (propuesta) NUNCA en el mismo turno;
 prohibido proponer la llamada sin haber mandado antes el puente en un mensaje aparte. Incluso con
 lead caliente el puente NO se salta (lo que se acorta es el descubrimiento, no el puente).
+
+**P10 — Dirección masculina y leads cerrados (Rubén 2026-06-18).**
+Con hombres hay que llevar MÁS dirección y estructura, menos ramas: "a los tíos nos gusta que nos den
+el camino corto, no calentarnos la cabeza". El flujo encadenado (doctrina §25) es aquí más estricto que
+en el avatar mujeres (donde se permite 1 profundización extra entre saltos). Dos consecuencias:
+- **Estructura consistente:** las preguntas siguen el mismo backbone en todas las conversaciones, cada
+  una nace de la anterior (nada de 3 conversaciones con 3 estructuras distintas).
+- **Lead cerrado/escéptico (§24):** el hombre rara vez se abre con el primero que le escribe. Si tras
+  4–5 preguntas da respuestas de una palabra, NO seguir con preguntas cerradas: una pregunta súper
+  abierta que pide contexto ("cuéntame mejor tu situación"). Si no responde, eso cualifica — no se le
+  tira el enlace sin conexión ("sí, luego lo veo" no agenda).

@@ -14,7 +14,7 @@ para que el siguiente (mismo nicho o nuevo) salga mejor sin repetir explicacione
 ```
 prompts/coach-engineering/
   README.md                     ← este archivo (índice + método + protocolo de aprendizaje)
-  doctrina-universal.md         12 principios que aplican a CUALQUIER coach (validación, eco, muletilla, exemplars…)
+  doctrina-universal.md         25 principios que aplican a CUALQUIER coach (validación, eco, muletilla, exemplars, DIRECCIÓN §19–§25…)
   formato-saas-coach-v5.md      LA LEY DE FORMATO: cómo el coach cae directo en el SaaS sin romperse
   checklist-auditoria.md        checklist obligatorio antes de entregar (estructura + voz + formato SaaS)
   avatares/
@@ -76,8 +76,8 @@ avatar adultos ocupados), y la nomenclatura. Ver caveat de montefit.md en
   cross-ref con el Core, surgical edit copy-paste-ready, documentar para postmortem.
 - **Flujo D — cerrar postmortem:** destilar a 3 capas (universal → `doctrina-universal.md`;
   avatar → `avatares/<avatar>/`; coach → queda en el canónico). No duplicar entre capas.
-- **Flujo E — debug de conversación:** cruzar con los 8 modos de falla (doctrina §11), citar
-  el turno que falla, proponer el bloque exacto a cambiar.
+- **Flujo E — debug de conversación:** cruzar con los modos de falla (doctrina §11, 14 puntos) y la
+  DIRECCIÓN (§19–§25 / checklist sección 8), citar el turno que falla, proponer el bloque exacto a cambiar.
 - **Flujo F — elevar coach a canónico de avatar:** cabecera de metadatos (qué es del avatar /
   del entrenador), generar plantilla, principios del avatar.
 

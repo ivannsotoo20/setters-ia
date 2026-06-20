@@ -13,9 +13,17 @@ tono/validación/conversación, y cuando aparezca un patrón de error para ver s
 CR8 (validación con tope), `verbosity_controls` (3 modos de apertura A/B/C, tope 1 de cada 3
 muletilla), `objections_protocol` (PCSC/PSSC), fases F0–F6.
 
-Última actualización: 2026-06-12. Incorporados: postmortem Pablo López Fraga (v1→v8) + destilado de
+Última actualización: 2026-06-18. Incorporados: postmortem Pablo López Fraga (v1→v8) + destilado de
 Daniel (2.º coach hombres, §13–§17) + destilado de Julia/Mireya (2.º coach mujeres, §18 + eje de registro
-en §9 + modo de falla §11.9). Cada punto se confirma como universal porque aplica a cualquier avatar.
+en §9 + modo de falla §11.9) + **feedback reunión Rubén 2026-06-18 (DIRECCIÓN de la conversación: §19–§25 +
+enmiendas §1/§5/§18.3 + modos de falla §11.11–14)**. Cada punto se confirma como universal porque aplica a
+cualquier avatar.
+
+> **Marco rector del feedback de Rubén (2026-06-18):** el tono y la fluidez ya están resueltos; lo que falla
+> es la DIRECCIÓN. §19–§25 existen para que la conversación tenga rumbo: identificar el bloqueo central y
+> anclar en él (§19), ser curioso sobre la motivación (§20), no educar (§21), tratar los criterios de
+> cualificación como una sola pregunta (§22), usar expectativa-vs-realidad con el lead conforme (§23), abrir
+> a los leads cerrados (§24) y encadenar las preguntas (§25).
 
 ---
 
@@ -30,8 +38,10 @@ al modelo el patrón alternativo.
   no cualifican en este avatar").
 - **NO usar prohibición** cuando es comportamental y abstracta ("no hagas eco", "no preguntes
   por el pasado"). Reformular en positivo: en vez de "no preguntes por el pasado" → "las
-  preguntas sobre acciones se formulan en PRESENTE: 'qué llevas haciendo ahora'" + exemplars
-  solo en presente.
+  preguntas sobre el freno se formulan en PRESENTE y apuntan al bloqueo: 'qué te está frenando
+  ahora'" + exemplars solo en presente. (Ojo: el presente correcto es el del BLOQUEO, no el de la
+  actividad: "qué te está frenando ahora" SÍ; "qué estás haciendo ahora" NO — esto último mapea
+  el problema/solución y está prohibido, ver §19 y punto 1 de Iván.)
 
 Test: si describes bien cómo SÍ se hace + exemplars + contrast pairs, la prohibición sobra.
 
@@ -95,6 +105,11 @@ embudo (cita Rubén: "las dos primeras oportunidades, perdidas — ahí se cae t
   dirección hacia situación actual; construirse SIEMPRE con introducción + pregunta.
 - **F1 NO debe:** pregunta directa pura sin frase que conecte (seco), salto directo a F2,
   preguntar por el pasado (CR7).
+- **Empatía ante evento vital (Rubén 2026-06-18):** si el lead suelta un evento personal duro
+  (lesión, accidente, embarazo, baja, duelo, enfermedad), F1 PRIMERO conecta y muestra empatía
+  ("ostras, ¿qué te ha pasado? ¿cómo estás?") y solo después va al objetivo. Ir directo al
+  objetivo ignorando el evento rompe la conexión justo en el momento más frágil. Cross-link §20
+  (curiosidad sobre lo que acaba de decir).
 
 Regla: F1 entera (mensajes 1–5) usa introducción + pregunta. La pregunta directa pura aparece
 a partir de F2.
@@ -211,6 +226,16 @@ Lista cerrada de errores recurrentes. Aplicar como tests proactivos en cada coac
    se verbaliza y el profesional NUNCA se nombra en 3ª persona — todo en 1ª persona. Caso real: Sandra
    (2026-06-16, mensaje de cierre). → La regla no basta en `coach_identity`; reforzarla en el FLUJO DE
    CIERRE (F5/F6), que es donde se escapa.
+11. **Educar / corregir / opinar sobre lo que el lead hace mal** ("a veces el problema no es qué comes sino
+   cuánto", "eso lo has hecho mal, tendrías que…"). Rompe la conexión. → Mostrar comprensión y reconducir;
+   el detalle lo ve el profesional en la llamada (§21).
+12. **No anclar en el bloqueo central → bandazos.** La conversación salta de tema en tema sin un eje. → Tras
+   objetivo + motivo, nombrar el bloqueo central en una frase y anclar (§19).
+13. **Preguntar "qué estás haciendo ahora" / "qué has probado"** (frame solución-primero, mapea el problema). →
+   Pregunta por el FRENO en presente, no por la actividad ni por los intentos pasados (§19, §1, CR7, punto 1+2
+   de Iván).
+14. **Cerrar preguntas con el lead cerrado** (dar 2 opciones cuando ya da poca info). → Pregunta súper abierta
+   que pide contexto; si no responde, eso cualifica (§24).
 
 ---
 
@@ -291,11 +316,115 @@ cualquier registro (afectivo o profesional):
   ("¿qué te cuesta más?", "¿cómo va tu rutina?", "¿qué te frena?"). Sustituir por algo REAL y concreto
   (findes, picoteo de tarde, energía a media tarde, horarios, cansancio).
 - **Reformular la opinión en pregunta reflexiva:** en vez de afirmar el problema, devolverlo como pregunta
-  para que lo verbalice el lead ("el problema es que has hecho dietas restrictivas" → "¿qué planes has
-  probado y qué notabas que no aguantabas?"). Es la cara operativa de la Lente 2 del Core (ayudar a verbalizar).
+  para que lo verbalice el lead ("el problema es que has hecho dietas restrictivas" → "¿qué es lo que más
+  se te hace cuesta arriba ahora mismo para sostenerlo?"). Es la cara operativa de la Lente 2 del Core
+  (ayudar a verbalizar). La pregunta apunta al freno EN PRESENTE, nunca a intentos pasados (§11.8, §19).
 - **Profundizar antes de avanzar:** si el lead suelta un dato concreto, profundizar ≥1 turno sobre eso
   antes de cambiar de tema; nombrarlo como observación, no como eco. (No es anti-drilling al revés: no se
   re-pregunta lo mismo, se evita abandonar un hilo jugoso demasiado pronto.)
+
+---
+
+## 19. Identificar y anclar en el bloqueo central (DIRECCIÓN, no solución)
+
+El aprendizaje rector de la reunión de Rubén (2026-06-18). Toda conversación tiene UN tema/bloqueo central
+que el lead verbaliza (falta de motivación, falta de tiempo, "no sé cómo hacerlo", "como bien pero no baja").
+En cuanto aparece, **identificarlo y anclar**: el resto de la conversación versa sobre él y apunta a la
+llamada. Sin ese ancla la conversación "va dando bandazos".
+
+**Marco mental anti-"solución con calzador":** el setter NO intenta encajar una solución en la situación, NO
+investiga "qué estás haciendo ahora" (punto 1 de Iván) ni "qué has hecho para resolverlo" (CR7 / §11.8), NO
+diagnostica ni mapea cada problema (punto 2 de Iván). El bloqueo es la **BRÚJULA que da dirección** — se
+nombra en PRESENTE y NO se resuelve en el chat (eso es trabajo del profesional en la llamada).
+
+**Test binario:** tras objetivo + motivo, ¿puedes nombrar en una frase el bloqueo central del lead?
+- **No** → una sola pregunta abierta en presente para sacarlo ("¿qué sientes que te está frenando ahora?").
+- **Sí** → anclar y dirigir desde ahí; no seguir cavando en detalles secundarios.
+
+Conecta con §15 (no presuponer interés) y §16 (leer temperatura). Cara operativa en el avatar:
+[[referencia-estructura-joseca]].
+
+## 20. Curiosidad obligatoria sobre la motivación (no cambies de tema)
+
+Cuando el lead da su motivo ("por salud", "para estar a gusto conmigo mismo"), el siguiente movimiento es
+**curiosidad sobre ESO**, no saltar a la siguiente pregunta. Cambiar de tema justo después de preguntar el
+porqué delata el formulario (analogía de Rubén: "si te digo que fui a Disneyland y me preguntas por tu
+objetivo del mes → ¿para qué me preguntas si te suda?").
+
+- ✅ Lead "por salud" → "¿cómo que por salud? cuéntame un poco más" / "¿y eso por qué ahora?".
+- ❌ Lead "por salud" → "vale, y ¿cómo te encuentras en el día a día?" (cambia de tema, mata la curiosidad).
+
+Un follow-up que profundiza en el MISMO hilo antes de avanzar. Es profundizar en la MOTIVACIÓN (bien),
+distinto de profundizar en los problemas/detalles (§19, prohibido). Cross-link [[§18]] (profundizar antes de
+avanzar).
+
+## 21. No educar, no corregir, no opinar sobre lo que el lead hace mal
+
+El setter **muestra comprensión**; NUNCA le dice al lead "eso está mal", "tendrías que hacer X", "el problema
+no es A sino B". Educar/corregir/opinar rompe la conexión y la relación ("en cuanto te digo que lo has hecho
+mal, se rompe"). Es distinto de §14 (no dar la razón a la creencia limitante): aquí ni se corrige ni se
+reeduca — se comprende y se reconduce a la llamada, donde el profesional ya entra al detalle.
+
+- ❌ Lead "como sano pero mucha cantidad" → "a veces el problema no es qué comes sino cuánto" (educa).
+- ✅ Lead "como sano pero mucha cantidad" → comprensión + curiosidad/reconducción sin corregir.
+
+Refrendado por Jordi Altemir como ejemplo positivo (Rubén 2026-06-18): "no le dice lo que tiene que hacer,
+simplemente muestra comprensión".
+
+## 22. Los criterios de (des)cualificación son UNA pregunta, no un tema a debatir
+
+Tiempo/disponibilidad, edad, titulación, presupuesto y demás criterios viven en el prompt **solo en la parte
+de cualificación, como una pregunta obligatoria sí/no** ("¿podrías sacar X horas con tu semana actual?" → sí
+cualifica / no descualifica). NO orbitar la conversación alrededor de ellos ni darles peso de tema central
+(caso Alfonso: insistía en "3 huecos de 40 min"). Analogía de Rubén (titulación): preguntas una vez, no
+debates "qué estudiaste y qué no".
+
+**Lectura de señal negativa:** si el lead dice claramente "yo puedo solo / no necesito ayuda" → NO está
+cualificado. Hay una pregunta directa válida ("¿necesitas ayuda o lo ves como algo que puedes hacer tú
+solo?") y se respeta la respuesta — no se le sigue tirando si dice que puede solo. Cross-link [[§16]].
+
+## 23. Expectativa vs realidad: el lead que ya adoptó una solución y está contento
+
+Cuando el lead ya adoptó una solución y está conforme ("llevo un mes comiendo bien y veo cambios"), el marco
+NO es vender ni profundizar en el dolor — es **confrontar expectativa con realidad**. Es una lente de
+descubrimiento, no una objeción:
+
+1. "¿Ahora mismo estás contento con los resultados que estás obteniendo?"
+   - "Sí, estoy contento, no quiero cambiar nada" → no encajamos → **cerrar** (descualifica, sin forzar).
+2. "No, me gustaría ir más rápido / perder más" → "¿hay algo que tú quieras cambiar en el proceso para
+   conseguirlo?"
+   - Hay algo que cambiaría → **entrar** en la conversación.
+   - "No, creo que voy bien" → **cerrar**.
+
+Si la persona sigue una solución y le va bien, "yo no encajo" — no hay que meter el programa con calzador (§15).
+
+## 24. Leads cerrados: provoca la apertura con una pregunta súper abierta; el silencio cualifica
+
+Si tras 4–5 preguntas el lead apenas da información (respuestas de una palabra, escéptico — frecuente en
+hombres: "no me abro con el primero que me escribe"), NO seguir extrayendo con preguntas cerradas (dar 2
+opciones cierra y empeora; ya está en §11.6). El movimiento es **una pregunta SÚPER abierta que pide
+contexto**: "me encantaría ayudarte pero me estás dando poca info y no tengo contexto suficiente para saber
+qué decirte, cuéntame mejor tu situación".
+
+- Si el lead tiene un problema real, lo cuenta.
+- Si no responde, **eso ya cualifica** (filtro) — no se le tira el enlace.
+
+No forzar la agenda sin conexión/confianza: el típico "sí, luego lo veo" nunca agenda porque no hubo
+conexión, relación ni confianza. (Idea de producto relacionada, fuera de prompt: revisar/"apagar" antes de
+enviar el enlace en leads sin conexión — ver memoria del proyecto.)
+
+## 25. Flujo de preguntas encadenado (estructura tipo Joseca): cada pregunta nace de la anterior
+
+La calidad no está en las preguntas sueltas sino en el **ENCADENAMIENTO**: cada pregunta conecta lógicamente
+con la respuesta anterior, sin saltos ni bandazos ("de aquí salta allá, vuelve aquí" = mala dirección). Y la
+**misma estructura base en todas las conversaciones** (problema detectado por Rubén: 3 conversaciones, 3
+estructuras distintas).
+
+El backbone de referencia es el de Joseca (las "7 preguntas" + el marco mental detrás de cada una); el Core
+se reformuló sobre él. Andamio del avatar: [[referencia-estructura-joseca]].
+
+**Regla operativa:** si una pregunta no nace de lo que el lead acaba de decir → reescribir para que enlace.
+Cross-link [[§18]] (interpretar antes de preguntar), [[§20]] (curiosidad).
 
 ---
 
@@ -303,4 +432,6 @@ cualquier registro (afectivo o profesional):
 - Postmortem hombres pérdida peso: [`postmortems/pablo-lopez-fraga.md`](postmortems/pablo-lopez-fraga.md).
 - Canónico hombres: [`avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md`](avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md).
 - Canónico mujeres: [`avatares/mujeres-perdida-peso-nutricion/canonico-maria-de-lluc.md`](avatares/mujeres-perdida-peso-nutricion/canonico-maria-de-lluc.md).
+- Estructura de flujo encadenado (andamio, §25): [`avatares/hombres-perdida-peso/referencia-estructura-joseca.md`](avatares/hombres-perdida-peso/referencia-estructura-joseca.md).
 - Formato SaaS: [`formato-saas-coach-v5.md`](formato-saas-coach-v5.md). Checklist: [`checklist-auditoria.md`](checklist-auditoria.md).
+- Fuente §19–§25: reunión Rubén 2026-06-18 (transcripción en `Downloads/Sala de reuniones personales de Aca.txt`); memoria del proyecto `feedback_coach_direccion_bloqueos.md`.

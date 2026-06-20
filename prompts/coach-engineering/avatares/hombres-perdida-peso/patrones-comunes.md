@@ -125,3 +125,39 @@ al avatar (donde el coach se auto-cierra, como Pablo/Daniel; ver nota §4).
 Cuando entre el 3.º+ entrenador de hombres: añadir su fila a la tabla §1, anotar qué confirma del
 núcleo común y qué aporta de nuevo, y promover a `principios.md`/doctrina lo que se repita en ≥2
 coaches. Si algo solo lo hace 1 → queda como diferencial de ese coach, no se generaliza todavía.
+
+Pendientes de adaptar a v2 (reunión Rubén 2026-06-18, ver §6): **Roberto Gordovilla** (se cambia
+primero, está más descontento) y **Alfonso Santos** (después, si Roberto v2 mejora). Sus prompts
+actuales viven en CloudChat/producción, no en este repo; cuando entren, se llevan a
+`prompts/source/coach-v5/<slug>.md` partiendo de la `plantilla.md` ya actualizada.
+
+---
+
+## 6. Feedback transversal — reunión Rubén 2026-06-18 (DIRECCIÓN de la conversación)
+
+Fuente de evidencia: revisión en vivo de conversaciones reales de Alfonso Santos, Roberto Gordovilla
+y Jordi Altemir (transcripción `Downloads/Sala de reuniones personales de Aca.txt`). No es un coach
+destilado, es feedback de doctrina sobre varios coaches del avatar a la vez.
+
+**Diagnóstico:** tono y fluidez ✅ ("de puta madre"), DIRECCIÓN ❌ — el setter "va dando bandazos".
+Lo que confirma (y dónde quedó cada cosa, sin duplicar):
+
+| Aprendizaje | Capa | Dónde |
+|---|---|---|
+| Identificar y anclar en el bloqueo central (no "solución con calzador") | universal | doctrina §19 |
+| Curiosidad sobre la motivación (no cambiar de tema) | universal | doctrina §20 |
+| No educar / no corregir / no opinar (lo confirma Jordi en positivo) | universal | doctrina §21 |
+| Criterios de cualificación = UNA pregunta, no debate (error de Alfonso: huecos) | universal + avatar | doctrina §22 + principios P7 |
+| Expectativa vs realidad (lead que ya adoptó solución y está contento) | universal | doctrina §23 |
+| Leads cerrados (hombres): pregunta súper abierta, el silencio cualifica | universal + avatar | doctrina §24 + principios P10 |
+| Flujo de preguntas encadenado tipo Joseca; misma estructura en todas | universal + avatar | doctrina §25 + [`referencia-estructura-joseca.md`](referencia-estructura-joseca.md) |
+| Empatía ante evento vital en F1 (lesión/accidente) | universal | doctrina §5 (enmienda) |
+| Bloqueo en PRESENTE, nunca "qué haces ahora" / "qué has probado" | universal | doctrina §1/§11.8/§19 (resolución del choque pasado/presente) |
+
+**Avatar (deltas hombres):** P3 reordenado (porqué temprano + curiosidad + bloqueo presente +
+preguntas con la palabra del lead), P7 acotado (criterios = una pregunta; fuera el sondeo de
+intentos pasados), P10 nuevo (dirección masculina + leads cerrados). Matiz hombres/mujeres de Rubén:
+con hombres más dirección y menos ramas; mujeres igual + 1 profundización extra entre saltos.
+
+**Coach (queda en cada uno):** las 7 preguntas reales de Joseca + su marco mental (las extrae Iván,
+scaffold a rellenar) y la voz/links/cualificación de Roberto cuando se haga su v2.

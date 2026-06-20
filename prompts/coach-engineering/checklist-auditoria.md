@@ -115,13 +115,36 @@ Cruzar con [`formato-saas-coach-v5.md`](formato-saas-coach-v5.md):
 
 ---
 
+## SECCIÓN 8 — DIRECCIÓN DE LA CONVERSACIÓN (§19–§25, Rubén 2026-06-18)
+
+Auditar sobre conversaciones simuladas (no se ve solo leyendo el bloque). El tono puede estar bien
+y la dirección mal — esto audita la dirección.
+
+- [ ] ¿La conversación identifica y ANCLA en UN bloqueo central (en presente), o da bandazos? (§19).
+- [ ] ¿CERO preguntas "qué estás haciendo ahora [para resolverlo]" / "qué has probado"? El freno se
+  pregunta en PRESENTE, no se mapea el problema ni los intentos pasados (§1/§11.8/§19; puntos 1+2 de Iván).
+- [ ] ¿Hay curiosidad sobre la motivación — al menos 1 follow-up del porqué antes de avanzar, sin
+  cambiar de tema? (§20).
+- [ ] ¿CERO educar/corregir/opinar sobre lo que el lead hace mal? (muestra comprensión, reconduce) (§21).
+- [ ] ¿Los criterios de (des)cualificación (tiempo, edad…) se preguntan UNA vez, sin debatirse ni
+  orbitar la conversación? ¿Se lee la señal "yo puedo solo" como no-cualifica? (§22).
+- [ ] ¿El lead que ya adoptó solución y está contento se maneja con expectativa-vs-realidad, no con
+  más dolor ni venta forzada? (§23).
+- [ ] ¿Protocolo de lead cerrado: pregunta súper abierta + el silencio cualifica + no forzar el
+  enlace sin conexión? (§24).
+- [ ] ¿Flujo encadenado — cada pregunta nace de la anterior — y misma estructura base en todas las
+  conversaciones (no 3 conversaciones con 3 estructuras distintas)? (§25).
+- [ ] ¿Empatía ante evento vital (lesión/accidente/embarazo) en F1 ANTES de ir al objetivo? (§5).
+
+---
+
 ## MODO DE USO
 
 1. Leer el coach completo una vez.
 2. Rellenar cada punto ✅/❌.
 3. Si hay ❌ → corregir ANTES de entregar.
-4. Si todo ✅ → testear con ≥4 escenarios simulados:
-   - Lead con respuestas vagas/cortas (sin bucles).
-   - Lead que lo tiene todo claro (sin rellenar fases).
-   - Lead positivo sin dolor (sin forzar problemas).
-   - Conversación normal (fidelidad de voz — test de indistinguibilidad).
+4. Si todo ✅ → testear con ≥4 escenarios simulados (auditar la SECCIÓN 8 en cada uno):
+   - Lead con respuestas vagas/cortas (sin bucles; protocolo lead cerrado §24).
+   - Lead que lo tiene todo claro (sin rellenar fases; flujo encadenado §25).
+   - Lead positivo sin dolor / ya con solución y contento (expectativa-vs-realidad §23; sin forzar problemas).
+   - Conversación normal (fidelidad de voz — test de indistinguibilidad; anclaje en bloqueo §19).
