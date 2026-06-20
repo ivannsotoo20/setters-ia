@@ -351,12 +351,15 @@ Cuando el lead da su motivo ("por salud", "para estar a gusto conmigo mismo"), e
 porqué delata el formulario (analogía de Rubén: "si te digo que fui a Disneyland y me preguntas por tu
 objetivo del mes → ¿para qué me preguntas si te suda?").
 
-- ✅ Lead "por salud" → "¿cómo que por salud? cuéntame un poco más" / "¿y eso por qué ahora?".
+- ✅ Lead "por salud" → "Ahora que me dices que es por salud, ¿qué es exactamente lo que buscas conseguir?
+  ¿tienes algún objetivo en mente?" (recoge lo que dijo y profundiza/aterriza, en el mismo hilo).
 - ❌ Lead "por salud" → "vale, y ¿cómo te encuentras en el día a día?" (cambia de tema, mata la curiosidad).
+- ❌ Lead "por salud" → "¿cómo que por salud?" (repetirle su palabra en seco suena a reproche/cuestionamiento;
+  no es curiosidad, es eco-desafío).
 
-Un follow-up que profundiza en el MISMO hilo antes de avanzar. Es profundizar en la MOTIVACIÓN (bien),
-distinto de profundizar en los problemas/detalles (§19, prohibido). Cross-link [[§18]] (profundizar antes de
-avanzar).
+Un follow-up que profundiza en el MISMO hilo antes de avanzar (recogiendo lo que dijo, no repitiéndoselo en
+seco). Es profundizar en la MOTIVACIÓN (bien), distinto de profundizar en los problemas/detalles (§19,
+prohibido). Cross-link [[§18]] (profundizar antes de avanzar).
 
 ## 21. No educar, no corregir, no opinar sobre lo que el lead hace mal
 
