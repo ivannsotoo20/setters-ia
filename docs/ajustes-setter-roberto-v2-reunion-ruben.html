@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5">
+<meta name="theme-color" content="#1A1A2E">
+<title>Setter IA · Del tono a la dirección · Roberto v2 — Fyzon × Academia Entrenadores Online</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#1A1A2E; --blue:#2E3A8C; --blue-light:#4A5ABF; --blue-dark:#1E2766;
+    --offwhite:#F4F4F6; --g100:#E8E8EC; --g200:#D1D1D8; --g500:#6E6E80; --white:#fff;
+    --success:#2ECC71; --success-d:#27a35d; --error:#E74C3C; --error-d:#c0392b;
+    --rose-bg:#FDECEA; --rose-line:#F5C6C0; --green-bg:#E9F9F0; --green-line:#B8ECCD;
+    --r:8px; --r-lg:14px; --r-xl:22px;
+    --sh:0 2px 12px rgba(26,26,46,.07); --sh-lg:0 14px 40px rgba(26,26,46,.14);
+    --tr:all .28s cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--black);
+    background:var(--offwhite);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  /* NAV */
+  nav{position:sticky;top:0;z-index:50;background:rgba(26,26,46,.92);backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(255,255,255,.08)}
+  nav .row{max-width:1060px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:20px}
+  nav .brand{display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;font-size:15px;letter-spacing:.02em}
+  nav .brand .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--blue-light),var(--blue));
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff}
+  nav .links{margin-left:auto;display:flex;gap:6px}
+  nav .links a{color:#c7c9e0;font-size:13px;font-weight:600;text-decoration:none;padding:6px 12px;border-radius:999px;transition:var(--tr)}
+  nav .links a:hover{color:#fff;background:rgba(255,255,255,.1)}
+  @media(max-width:760px){nav .links{display:none}}
+
+  /* HERO */
+  header{position:relative;background:radial-gradient(1200px 500px at 80% -10%,rgba(74,90,191,.55),transparent 60%),
+    radial-gradient(900px 500px at 0% 110%,rgba(46,58,140,.5),transparent 55%),
+    linear-gradient(160deg,#15152b 0%,#1A1A2E 40%,#1E2766 100%);color:#fff;overflow:hidden}
+  header .glow{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;animation:float 9s ease-in-out infinite}
+  header .g1{width:300px;height:300px;background:#4A5ABF;top:-60px;right:8%}
+  header .g2{width:240px;height:240px;background:#2E3A8C;bottom:-80px;left:5%;animation-delay:-4s}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
+  header .inner{position:relative;max-width:1060px;margin:0 auto;padding:64px 22px 70px;text-align:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.18em;
+    font-size:11.5px;font-weight:700;color:#a9b2e8;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.14);padding:7px 15px;border-radius:999px;margin-bottom:24px}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(46,204,113,.25)}
+  header h1{font-size:46px;line-height:1.08;font-weight:900;letter-spacing:-.03em}
+  header h1 .hl{background:linear-gradient(120deg,#a5b4fc,#7c8cf0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  header p.sub{margin:18px auto 0;font-size:18px;color:#cdd0e8;max-width:660px}
+  .hero-stats{margin-top:38px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);border-radius:var(--r-lg);
+    padding:16px 22px;min-width:150px}
+  .stat .n{font-size:30px;font-weight:900;line-height:1;background:linear-gradient(120deg,#fff,#c7d0ff);
+    -webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .l{font-size:12.5px;color:#aab0d8;margin-top:7px;font-weight:600}
+  .hero-cta{margin-top:36px}
+  .hero-cta a{display:inline-flex;align-items:center;gap:9px;background:linear-gradient(120deg,var(--blue-light),var(--blue));
+    color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:15px 28px;border-radius:999px;
+    box-shadow:0 10px 30px rgba(46,58,140,.5);transition:var(--tr)}
+  .hero-cta a:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(46,58,140,.6)}
+  .hero-cta .arrow{animation:bob 1.6s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(4px)}}
+  @media(max-width:680px){header h1{font-size:32px}header p.sub{font-size:16px}}
+
+  /* SECTION SCAFFOLD */
+  section{padding:60px 0}
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  .kick{display:flex;align-items:center;gap:13px;margin-bottom:10px}
+  .kick .num{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--blue-dark));
+    color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:var(--sh)}
+  .kick h2{font-size:27px;font-weight:800;letter-spacing:-.02em}
+  .sec-lead{color:var(--g500);font-size:16.5px;margin:0 0 26px 51px;max-width:720px}
+  @media(max-width:680px){.sec-lead{margin-left:0}.kick h2{font-size:22px}}
+
+  /* DIAGNÓSTICO */
+  .diag{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .dcell{border-radius:var(--r-lg);padding:24px;position:relative;overflow:hidden}
+  .dcell.ok{background:linear-gradient(180deg,#fff,var(--green-bg));border:1px solid var(--green-line)}
+  .dcell.ko{background:linear-gradient(180deg,#fff,var(--rose-bg));border:1px solid var(--rose-line)}
+  .dcell .ic{font-size:24px;width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+  .ok .ic{background:rgba(46,204,113,.15)} .ko .ic{background:rgba(231,76,60,.13)}
+  .dcell .t{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+  .ok .t{color:var(--success-d)} .ko .t{color:var(--error-d)}
+  .dcell .big{font-size:20px;font-weight:800;margin:3px 0 7px}
+  .dcell p{font-size:14.5px;color:var(--g500)}
+  .quote{grid-column:1/-1;margin-top:4px;background:#fff;border:1px solid var(--g100);border-left:4px solid var(--blue);
+    border-radius:0 var(--r-lg) var(--r-lg) 0;padding:18px 22px;font-size:15.5px;font-style:italic;color:var(--blue-dark);box-shadow:var(--sh)}
+  .quote b{font-style:normal;color:var(--black)}
+
+  /* SIMULADOR */
+  .sim-wrap{background:linear-gradient(180deg,#fff,#fbfbfd);border:1px solid var(--g100);border-radius:var(--r-xl);
+    padding:26px;box-shadow:var(--sh-lg)}
+  .sim-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .sim-bar .tag{background:var(--black);color:#fff;font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;
+    display:flex;align-items:center;gap:7px}
+  .sim-bar .tag .pulse{width:7px;height:7px;border-radius:50%;background:var(--success);animation:pulse 1.4s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(46,204,113,.5)}70%{box-shadow:0 0 0 7px rgba(46,204,113,0)}100%{box-shadow:0 0 0 0 rgba(46,204,113,0)}}
+  .sim-hint{font-size:13.5px;color:var(--g500);margin-bottom:14px}
+  .chips{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{background:var(--white);border:1.5px solid var(--g200);color:var(--blue-dark);font-size:13px;font-weight:600;
+    padding:9px 14px;border-radius:999px;cursor:pointer;transition:var(--tr)}
+  .chip:hover{border-color:var(--blue-light);background:#f3f4fc;transform:translateY(-1px)}
+  .chip:active{transform:translateY(0)}
+  .sim-input{display:flex;gap:10px;margin-bottom:18px}
+  .sim-input input{flex:1;border:1.5px solid var(--g200);border-radius:999px;padding:13px 18px;font-size:14.5px;
+    font-family:inherit;outline:none;transition:var(--tr)}
+  .sim-input input:focus{border-color:var(--blue-light);box-shadow:0 0 0 4px rgba(74,90,191,.12)}
+  .sim-input button{background:linear-gradient(120deg,var(--blue-light),var(--blue));color:#fff;border:none;
+    border-radius:999px;padding:0 22px;font-size:14.5px;font-weight:700;cursor:pointer;transition:var(--tr)}
+  .sim-input button:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(46,58,140,.35)}
+  .sim-input button:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+
+  .threads{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .thread{border-radius:var(--r-lg);overflow:hidden;border:1px solid var(--g100);background:#fff;display:flex;flex-direction:column}
+  .thread .thd{padding:13px 16px;font-size:13.5px;font-weight:800;display:flex;align-items:center;gap:9px;color:#fff}
+  .thread.before .thd{background:linear-gradient(120deg,var(--error),var(--error-d))}
+  .thread.after .thd{background:linear-gradient(120deg,var(--blue),var(--blue-dark))}
+  .thread .thd .badge{margin-left:auto;font-size:10.5px;font-weight:700;background:rgba(255,255,255,.22);padding:3px 9px;border-radius:999px}
+  .chat{padding:16px;min-height:240px;display:flex;flex-direction:column;gap:10px;background:
+    linear-gradient(180deg,#fafafb,#f4f4f6)}
+  .b{font-size:14px;padding:10px 13px;border-radius:15px;max-width:88%;line-height:1.45;animation:pop .3s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+  .b.lead{align-self:flex-start;background:#fff;border:1px solid var(--g200);color:var(--black);border-bottom-left-radius:4px}
+  .before .b.setter{align-self:flex-end;background:#fff;border:1px solid var(--rose-line);color:var(--error-d);border-bottom-right-radius:4px}
+  .after .b.setter{align-self:flex-end;background:linear-gradient(120deg,var(--blue),var(--blue-dark));color:#fff;border-bottom-right-radius:4px}
+  .typing{align-self:flex-end;display:inline-flex;gap:4px;padding:11px 14px;background:#fff;border:1px solid var(--g200);border-radius:15px}
+  .typing span{width:7px;height:7px;border-radius:50%;background:var(--g500);animation:td 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes td{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-4px)}}
+  .verdict{margin:2px 6px 0;font-size:12px;font-weight:600;display:flex;align-items:flex-start;gap:7px;
+    padding:9px 11px;border-radius:10px;animation:pop .4s ease}
+  .before .verdict{background:var(--rose-bg);color:var(--error-d);border:1px solid var(--rose-line)}
+  .after .verdict{background:var(--green-bg);color:var(--success-d);border:1px solid var(--green-line)}
+  .verdict .vi{font-weight:900}
+  .empty{color:var(--g500);font-size:13.5px;text-align:center;margin:auto;padding:20px;font-style:italic}
+  @media(max-width:680px){.threads{grid-template-columns:1fr}.diag{grid-template-columns:1fr}}
+
+  /* AJUSTES ACCORDION */
+  .adj{background:#fff;border:1px solid var(--g100);border-radius:var(--r-lg);margin-bottom:11px;overflow:hidden;transition:var(--tr)}
+  .adj.open{box-shadow:var(--sh);border-color:var(--blue-light)}
+  .adj .head{display:flex;align-items:center;gap:15px;padding:18px 20px;cursor:pointer;user-select:none}
+  .adj .head .n{flex:none;width:34px;height:34px;border-radius:9px;background:var(--offwhite);color:var(--blue);
+    font-weight:900;display:flex;align-items:center;justify-content:center;font-size:15px;transition:var(--tr)}
+  .adj.open .head .n{background:linear-gradient(135deg,var(--blue),var(--blue-dark));color:#fff}
+  .adj .head .ti{font-size:16px;font-weight:700;flex:1}
+  .adj .head .ch{color:var(--g500);transition:var(--tr);font-size:18px}
+  .adj.open .head .ch{transform:rotate(180deg);color:var(--blue)}
+  .adj .body{max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .adj .body .inner{padding:0 20px 20px 69px}
+  .adj .body .what{font-size:14.5px}.adj .body .what b{color:var(--blue-dark)}
+  .adj .body .why{font-size:13.5px;color:var(--g500);margin-top:9px;border-top:1px dashed var(--g100);padding-top:9px}
+  @media(max-width:680px){.adj .body .inner{padding:0 18px 18px 18px}}
+
+  /* JOSECA STEPPER */
+  .jos{background:#fff;border:1px solid var(--g100);border-radius:var(--r-xl);padding:26px;box-shadow:var(--sh)}
+  .jos-dots{display:flex;gap:7px;margin-bottom:22px;flex-wrap:wrap}
+  .jos-dots button{flex:1;min-width:34px;height:42px;border:1.5px solid var(--g200);background:#fff;border-radius:10px;
+    font-weight:800;color:var(--g500);cursor:pointer;transition:var(--tr);position:relative;font-size:15px;font-family:inherit}
+  .jos-dots button:hover{border-color:var(--blue-light)}
+  .jos-dots button.active{background:linear-gradient(135deg,var(--blue),var(--blue-dark));color:#fff;border-color:transparent;transform:translateY(-2px);box-shadow:var(--sh)}
+  .jos-dots button .star{position:absolute;top:-7px;right:-5px;background:var(--success);color:#fff;font-size:9px;
+    padding:2px 5px;border-radius:6px;font-weight:800}
+  .jos-stage{min-height:160px}
+  .jos-card{display:none;animation:fade .4s ease}
+  .jos-card.show{display:block}
+  @keyframes fade{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:none}}
+  .jos-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px}
+  .jos-box{border-radius:var(--r-lg);padding:17px}
+  .jos-box.tr{background:var(--offwhite);border:1px solid var(--g100)}
+  .jos-box.pe{background:linear-gradient(180deg,#fff,var(--green-bg));border:1px solid var(--green-line)}
+  .jos-box .lab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--g500);margin-bottom:7px}
+  .jos-box.pe .lab{color:var(--success-d)}
+  .jos-box .qt{font-size:15px;font-weight:600;color:var(--black)}
+  .jos-why{margin-top:14px;background:var(--blue);color:#fff;border-radius:10px;padding:12px 15px;font-size:13.5px;display:flex;gap:9px;align-items:center}
+  .jos-why .pill{background:rgba(255,255,255,.2);padding:2px 9px;border-radius:6px;font-weight:700;font-size:11px;flex:none}
+  @media(max-width:680px){.jos-grid{grid-template-columns:1fr}}
+
+  /* KEEP / CHANGE */
+  .kc{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .kc .box{border-radius:var(--r-lg);padding:24px}
+  .keep{background:linear-gradient(180deg,#fff,var(--green-bg));border:1px solid var(--green-line)}
+  .change{background:linear-gradient(180deg,#fff,#eef0fb);border:1px solid #cdd3f3}
+  .kc h3{font-size:17px;font-weight:800;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+  .keep h3{color:var(--success-d)}.change h3{color:var(--blue-dark)}
+  .kc ul{list-style:none}.kc li{font-size:14.5px;padding:7px 0 7px 27px;position:relative}
+  .keep li::before{content:"✓";position:absolute;left:0;color:var(--success-d);font-weight:900}
+  .change li::before{content:"↻";position:absolute;left:2px;color:var(--blue);font-weight:900}
+
+  /* PLAN */
+  .plan{background:linear-gradient(160deg,#1A1A2E,#1E2766);color:#fff;border-radius:var(--r-xl);padding:34px;box-shadow:var(--sh-lg)}
+  .plan h2{font-size:24px;font-weight:800;margin-bottom:8px}
+  .plan>p{color:#c7cbe6;font-size:15.5px;max-width:680px}
+  .steps{margin-top:24px;display:grid;gap:13px}
+  .pstep{display:flex;gap:15px;align-items:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+    border-radius:var(--r-lg);padding:17px 19px}
+  .pstep .d{flex:none;width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--blue-light),var(--blue));
+    font-weight:900;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .pstep p{font-size:15px;color:#e4e6f5}.pstep p b{color:#fff}
+  .pill-state{display:inline-block;background:rgba(46,204,113,.18);color:#8ef0b6;border:1px solid rgba(46,204,113,.35);
+    font-size:12px;font-weight:700;padding:5px 13px;border-radius:999px;margin-top:18px}
+
+  footer{background:var(--black);color:#9a9db8;text-align:center;padding:34px 22px;font-size:13px}
+  footer b{color:#fff}
+  footer .fl{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;color:#fff;font-weight:800}
+  footer .fl .logo{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--blue-light),var(--blue));
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+
+  @media print{
+    nav,.hero-cta,.sim-input,.chips{display:none}
+    body{background:#fff}.reveal{opacity:1;transform:none}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="row">
+    <div class="brand"><span class="logo">F</span> Fyzon · Setter IA</div>
+    <div class="links">
+      <a href="#diag">Diagnóstico</a>
+      <a href="#sim">Simulador</a>
+      <a href="#ajustes">Los 7 ajustes</a>
+      <a href="#joseca">Método Joseca</a>
+      <a href="#plan">Plan</a>
+    </div>
+  </div>
+</nav>
+
+<header>
+  <span class="glow g1"></span><span class="glow g2"></span>
+  <div class="inner">
+    <div class="eyebrow"><span class="dot"></span> Fyzon × Academia Entrenadores Online · 18 jun 2026</div>
+    <h1>Del <span class="hl">tono</span> a la <span class="hl">dirección</span></h1>
+    <p class="sub">Lo que sacamos de la reunión y del prompt de Joseca, aplicado al nuevo bloque de Rober. Y un simulador en vivo para que lo veas tú mismo.</p>
+    <div class="hero-stats">
+      <div class="stat"><div class="n" data-count="7">0</div><div class="l">ajustes de dirección</div></div>
+      <div class="stat"><div class="n">Tono ✓</div><div class="l">ya resuelto</div></div>
+      <div class="stat"><div class="n">Roberto v2</div><div class="l">listo para testear</div></div>
+    </div>
+    <div class="hero-cta"><a href="#sim">Probar el simulador <span class="arrow">↓</span></a></div>
+  </div>
+</header>
+
+<!-- 1. DIAGNÓSTICO -->
+<section id="diag"><div class="wrap reveal">
+  <div class="kick"><div class="num">1</div><h2>El diagnóstico, en una frase</h2></div>
+  <p class="sec-lead">Resuelto el tono, el siguiente salto es darle rumbo a la conversación.</p>
+  <div class="diag">
+    <div class="dcell ok"><div class="ic">✅</div><div class="t">Ya resuelto</div>
+      <div class="big">El tono y la fluidez</div>
+      <p>Cómo conecta, las introducciones, cómo suena. Eso ya estaba conseguido y no se ha tocado.</p></div>
+    <div class="dcell ko"><div class="ic">🎯</div><div class="t">Lo que fallaba</div>
+      <div class="big">La dirección</div>
+      <p>"Iba dando bandazos": no identificaba el problema central, daba consejos y no leía cuándo el lead no encajaba.</p></div>
+    <div class="quote">"A nivel de tono, de fluidez, de cómo va diciendo las introducciones, está perfecto. Pero no tiene una dirección." <b>— Rubén, en la reunión.</b> Todo lo de abajo son formas de devolverle esa dirección.</div>
+  </div>
+</div></section>
+
+<!-- 2. SIMULADOR -->
+<section id="sim"><div class="wrap reveal">
+  <div class="kick"><div class="num">2</div><h2>Pruébalo: el setter de antes vs Roberto v2</h2></div>
+  <p class="sec-lead">Escribe como si fueras un lead (o pulsa un escenario) y mira, lado a lado, cómo responde cada uno. Mismo mensaje, dos direcciones.</p>
+  <div class="sim-wrap">
+    <div class="sim-bar">
+      <span class="tag"><span class="pulse"></span> SIMULADOR EN VIVO</span>
+      <span class="sim-hint">Pulsa un escenario o escribe tu propio mensaje de lead 👇</span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <form class="sim-input" id="simForm" autocomplete="off">
+      <input id="simInput" type="text" placeholder="Escribe aquí como si fueras un lead… ej: 'me cuesta sacar tiempo'">
+      <button type="submit" id="simSend">Enviar</button>
+    </form>
+    <div class="threads">
+      <div class="thread before">
+        <div class="thd">✗ Setter ACTUAL <span class="badge">va dando bandazos</span></div>
+        <div class="chat" id="chatBefore"><div class="empty">Envía un mensaje para ver la respuesta del setter actual…</div></div>
+      </div>
+      <div class="thread after">
+        <div class="thd">✓ Roberto v2 <span class="badge">con dirección</span></div>
+        <div class="chat" id="chatAfter"><div class="empty">…y, en paralelo, la del nuevo bloque.</div></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<!-- 3. LOS 7 AJUSTES -->
+<section id="ajustes"><div class="wrap reveal">
+  <div class="kick"><div class="num">3</div><h2>Los 7 ajustes que aplicamos</h2></div>
+  <p class="sec-lead">Pulsa cada uno para ver qué hacía mal y qué hace ahora. Salen todos de lo que comentaste en la reunión.</p>
+  <div id="adjList"></div>
+</div></section>
+
+<!-- 4. JOSECA -->
+<section id="joseca"><div class="wrap reveal">
+  <div class="kick"><div class="num">4</div><h2>El método de Joseca, paso a paso</h2></div>
+  <p class="sec-lead">Sus 7 preguntas ya hacían todo esto: por eso le funcionan. Joseca es de trail, así que copiamos su estructura (no el nicho) y la bajamos a pérdida de peso. Recorre las 7 👇</p>
+  <div class="jos">
+    <div class="jos-dots" id="josDots"></div>
+    <div class="jos-stage" id="josStage"></div>
+  </div>
+</div></section>
+
+<!-- 5. KEEP / CHANGE -->
+<section><div class="wrap reveal">
+  <div class="kick"><div class="num">5</div><h2>Qué cambió y qué NO en su bloque</h2></div>
+  <div class="kc">
+    <div class="box keep"><h3>🛟 Lo que NO tocamos · su voz</h3>
+      <ul>
+        <li>Su forma de hablar: "Muy buenas!!", "palante", "tenemos que ponerle remedio"</li>
+        <li>Conectar desde su experiencia ("yo también lo viví")</li>
+        <li>Sus emojis en espejo y su registro de colega</li>
+        <li>Su cierre: Calendly → pedir número → "nos vemos en la llamada"</li>
+      </ul></div>
+    <div class="box change"><h3>🎯 Lo que SÍ cambiamos · la dirección</h3>
+      <ul>
+        <li>Los 7 ajustes, metidos en el orden de las preguntas</li>
+        <li>El backbone encadenado de Joseca, bajado a su nicho</li>
+        <li>La regla "no educar / no dar consejos" en el descubrimiento</li>
+        <li>La rama de expectativa vs realidad para el lead contento</li>
+        <li>Hilar las frases con comas, no cortarlas con puntos</li>
+      </ul></div>
+  </div>
+</div></section>
+
+<!-- 6. PLAN -->
+<section id="plan"><div class="wrap reveal">
+  <div class="plan">
+    <h2>Estado y siguiente paso</h2>
+    <p>El bloque v2 de Rober está hecho, pero es un borrador para probar, no para producción todavía. Seguimos el plan que acordamos: probar uno primero.</p>
+    <div class="steps">
+      <div class="pstep"><div class="d">1</div><p><b>Probar Roberto v2</b> con conversaciones (lead vago, cerrado, contento sin dolor, normal) y revisarlas contigo.</p></div>
+      <div class="pstep"><div class="d">2</div><p>Si mejora respecto a su versión actual, <b>lo aplicamos a Alfonso</b> (el siguiente más parecido).</p></div>
+      <div class="pstep"><div class="d">3</div><p>Cuando esté validado, llevamos estos cambios al <b>"cerebro" común</b> que comparten todos los setters.</p></div>
+    </div>
+    <span class="pill-state">● Estado actual: Roberto v2 en borrador · pendiente de test</span>
+  </div>
+</div></section>
+
+<footer>
+  <div class="fl"><span class="logo">F</span> Fyzon</div>
+  <p><b>Setter IA — Academia Entrenadores Online</b> · Documento interno · 20 jun 2026</p>
+  <p style="margin-top:6px">Basado en la reunión del 18 jun con Rubén + el system message de Joseca. Coach: Roberto Cordobilla (Rober).</p>
+</footer>
+
+<script>
+/* ---------- SCENARIOS (datos) ---------- */
+const SCENARIOS = [
+  {
+    key:'ejercicios', chip:'🏋️ Pregunto por ejercicios',
+    lead:'¿qué abdominales hago para bajar barriga?',
+    before:{ msg:'Te entiendo, las abdominales no valen de mucho… lo que de verdad funciona es combinar bien la alimentación.',
+      v:'Le corrige y le da la solución (le educa). El lead siente que lo que dice "no vale" → se rompe la conexión.' },
+    after:{ msg:'Te entiendo y esa es justo la razón de por qué vemos esos casos tan en detalle, y ya por curiosidad, qué dirías que es lo que más se te está atascando ahora para bajar esa barriga??',
+      v:'Comprende, no corrige, y ancla en el bloqueo. El detalle se ve en la llamada.' }
+  },
+  {
+    key:'contento', chip:'😌 Voy contento, ya como bien',
+    lead:'llevo un mes comiendo bien y me está bajando, voy por buen camino',
+    before:{ msg:'¿y qué crees que te está frenando para dar el último paso?',
+      v:'Sigue empujando a alguien que no ha pedido ayuda. No lee que no encaja.' },
+    after:{ msg:'Me alegra que ya estés notando cambios, y siendo sincero, estás contento del todo con cómo va o te gustaría ir más rápido??',
+      v:'Expectativa vs realidad. Si va bien y no quiere cambiar nada, se cierra con elegancia: no encajamos.' }
+  },
+  {
+    key:'salud', chip:'❤️ Te doy mi motivo (salud)',
+    lead:'quiero perder peso por salud',
+    before:{ msg:'vale. ¿y cómo te encuentras de energía en el día a día?',
+      v:'Cambia de tema justo después de preguntar el porqué. Suena a formulario.' },
+    after:{ msg:'Ahora que me dices que lo quieres por salud, qué es exactamente lo que buscas conseguir, tienes algún objetivo en mente??',
+      v:'Recoge lo que el lead acaba de decir y aterriza el objetivo, sin cambiar de tema.' }
+  },
+  {
+    key:'cerrado', chip:'🤐 Respondo seco / cerrado',
+    lead:'info',
+    before:{ msg:'¿es la alimentación o el entreno lo que más te cuesta?',
+      v:'Cierra la pregunta dándole 2 opciones. A un lead cerrado le cuesta todavía más abrirse.' },
+    after:{ msg:'Para poder echarte una mano de verdad necesito entender un poco mejor tu situación, cómo es tu día a día con esto y qué es lo que más te gustaría cambiar??',
+      v:'Pregunta súper abierta que invita a abrirse. Si no responde, eso ya cualifica: no se le tira el enlace sin conexión.' }
+  },
+  {
+    key:'tiempo', chip:'⏰ No tengo tiempo',
+    lead:'me interesa pero no tengo nada de tiempo entre el curro y los críos',
+    before:{ msg:'necesitas mínimo 3 huecos de 40 minutos a la semana, ¿los puedes sacar?',
+      v:'Convierte el tiempo en el tema central y le mete la solución con calzador.' },
+    after:{ msg:'Te entiendo, casi todos los que me escriben me dicen lo mismo, y dime una cosa, con todo eso encima qué es lo que más te frena ahora mismo para ponerte??',
+      v:'El tiempo es una sola pregunta de cualificación, no el eje. Ancla en el bloqueo real.' }
+  }
+];
+const DEFAULT = {
+  before:{ msg:'vale. ¿y qué más?', v:'Sin dirección: recoge y sigue sin anclar en nada. Da bandazos.' },
+  after:{ msg:'Cuando me dices eso, qué dirías que es lo que más te está frenando ahora mismo para conseguirlo??', v:'Ancla en el bloqueo en presente y dirige la conversación hacia la llamada.' }
+};
+const MATCH = [
+  {k:'ejercicios', re:/abdominal|ejercicio|rutina|entren|gym|gimnasio|pesas/i},
+  {k:'contento', re:/voy bien|buen camino|comiendo bien|contento|ya me baja|bajando|estoy bien|me va bien/i},
+  {k:'salud', re:/salud|por salud|me lo ha dicho el m[eé]dico|colesterol|tensi[oó]n/i},
+  {k:'cerrado', re:/^(info|hola|buenas|precio|\?|ok|si|sí)\.?$/i},
+  {k:'tiempo', re:/tiempo|liado|ocupad|no puedo sacar|trabajo mucho|cr[ií]os|hijos|curro/i}
+];
+function resolve(text){
+  for(const m of MATCH){ if(m.re.test(text.trim())){ return SCENARIOS.find(s=>s.key===m.k); } }
+  return null;
+}
+
+/* ---------- SIMULADOR ---------- */
+const chatBefore=document.getElementById('chatBefore');
+const chatAfter=document.getElementById('chatAfter');
+const input=document.getElementById('simInput');
+const sendBtn=document.getElementById('simSend');
+let busy=false, started=false;
+
+function clearEmpty(){ if(!started){ chatBefore.innerHTML=''; chatAfter.innerHTML=''; started=true; } }
+function bubble(container,cls,text){ const d=document.createElement('div'); d.className='b '+cls; d.textContent=text; container.appendChild(d); container.scrollTop=container.scrollHeight; return d; }
+function typingDots(container){ const d=document.createElement('div'); d.className='typing'; d.innerHTML='<span></span><span></span><span></span>'; container.appendChild(d); container.scrollTop=container.scrollHeight; return d; }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+async function typeInto(el,text,speed){ el.textContent=''; for(let i=0;i<text.length;i++){ el.textContent+=text[i]; if(i%2===0){ el.parentElement.scrollTop=el.parentElement.scrollHeight; } await sleep(speed); } }
+function verdict(container,cls,vi,text){ const d=document.createElement('div'); d.className='verdict'; d.innerHTML='<span class="vi">'+vi+'</span><span>'+text+'</span>'; container.appendChild(d); container.scrollTop=container.scrollHeight; }
+
+async function respond(container,who,data){
+  const dots=typingDots(container);
+  await sleep(620 + Math.floor(data.msg.length*4));
+  dots.remove();
+  const b=bubble(container,'setter','');
+  await typeInto(b, data.msg, who==='after'?16:20);
+  await sleep(180);
+  verdict(container, who, who==='after'?'✓':'✗', data.v);
+}
+async function run(leadText, scenario){
+  if(busy) return; busy=true; sendBtn.disabled=true; input.disabled=true;
+  clearEmpty();
+  bubble(chatBefore,'lead',leadText);
+  bubble(chatAfter,'lead',leadText);
+  await sleep(260);
+  await Promise.all([
+    respond(chatBefore,'before',scenario?scenario.before:DEFAULT.before),
+    respond(chatAfter,'after',scenario?scenario.after:DEFAULT.after)
+  ]);
+  busy=false; sendBtn.disabled=false; input.disabled=false; input.value=''; input.focus();
+}
+document.getElementById('simForm').addEventListener('submit',e=>{
+  e.preventDefault(); const t=input.value.trim(); if(!t||busy) return; run(t, resolve(t));
+});
+const chips=document.getElementById('chips');
+SCENARIOS.forEach(s=>{ const b=document.createElement('button'); b.className='chip'; b.type='button'; b.textContent=s.chip;
+  b.addEventListener('click',()=>{ if(!busy) run(s.lead,s); }); chips.appendChild(b); });
+
+/* ---------- 7 AJUSTES ---------- */
+const ADJ=[
+  {t:'Anclar en el bloqueo central',what:'En cuanto el lead dice su problema (tiempo, motivación, "no sé cómo"), <b>se ancla ahí</b> y toda la conversación gira en torno a eso, dirigida a la llamada.',why:'Antes metía la solución con calzador e investigaba qué hace el lead. Ahora el bloqueo es la brújula, no algo que se resuelve por chat.'},
+  {t:'Curiosidad sobre la motivación',what:'Cuando el lead da su porqué, el setter <b>recoge eso mismo</b> y profundiza/aterriza el objetivo antes de pasar a otra cosa.',why:'Cambiar de tema justo tras el porqué delata el formulario. Tu ejemplo: "si te digo que fui a Disneyland y me preguntas por tu objetivo… ¿para qué me preguntas?".'},
+  {t:'No educar, no dar consejos',what:'El setter <b>muestra comprensión y reconduce</b>; nunca le dice al lead que lo que hace está mal ni le suelta la solución.',why:'Decirle "esto lo haces mal, lo que funciona es X" rompe la conexión. El detalle lo ve el profesional en la llamada.'},
+  {t:'Cualificar = una pregunta, no debatir',what:'El tiempo, la edad, etc. son <b>una sola pregunta de sí/no</b>. No se monta la conversación alrededor de ellos.',why:'El caso de Alfonso machacando "tres huecos de 40 minutos". Como con la titulación: preguntas una vez, no debates.'},
+  {t:'Expectativa vs realidad',what:'Si el lead ya va contento, el setter <b>confronta</b>: "¿vas al ritmo que te gustaría o te has estancado?". Si está bien y no quiere cambiar nada → se cierra.',why:'El lead que decía "llevo un mes comiendo bien y me baja" no estaba cualificado, y el setter seguía empujando.'},
+  {t:'Leads cerrados: abrir, no insistir',what:'Si el lead da respuestas de una palabra, <b>una pregunta súper abierta</b> que pida contexto. Si no responde, eso ya cualifica.',why:'Dar dos opciones cierra todavía más. Y a un cerrado sin conexión no se le tira el enlace ("sí, luego lo veo" no agenda).'},
+  {t:'Flujo encadenado tipo Joseca',what:'Cada pregunta <b>nace de la respuesta anterior</b>, sin saltos, y la misma estructura base en todas las conversaciones.',why:'El problema de Roberto: "salta aquí, vuelve allá". Y tres conversaciones con tres estructuras distintas.'}
+];
+const adjList=document.getElementById('adjList');
+ADJ.forEach((a,i)=>{
+  const el=document.createElement('div'); el.className='adj';
+  el.innerHTML='<div class="head"><div class="n">'+(i+1)+'</div><div class="ti">'+a.t+'</div><div class="ch">⌄</div></div>'+
+    '<div class="body"><div class="inner"><div class="what">'+a.what+'</div><div class="why">'+a.why+'</div></div></div>';
+  const head=el.querySelector('.head'), body=el.querySelector('.body');
+  head.addEventListener('click',()=>{ const open=el.classList.contains('open');
+    document.querySelectorAll('.adj').forEach(x=>{x.classList.remove('open');x.querySelector('.body').style.maxHeight=null;});
+    if(!open){ el.classList.add('open'); body.style.maxHeight=body.scrollHeight+'px'; }
+  });
+  adjList.appendChild(el);
+});
+adjList.querySelector('.adj .head').click();
+
+/* ---------- JOSECA STEPPER ---------- */
+const JOS=[
+  {tr:'¿Qué objetivos tienes a la vista?',use:'Abrir por lo que el lead quiere',pe:'¿Qué te gustaría conseguir o cambiar?'},
+  {tr:'¿Llevas mucho tiempo corriendo?',use:'Contexto del lead con el tema',pe:'¿Llevas tiempo intentando cuidarte o quieres retomarlo ahora?'},
+  {tr:'¿En qué sientes que necesitas más ayuda?',use:'El bloqueo → anclar aquí',pe:'¿Qué sientes que te está frenando más ahora?',star:'= bloqueo'},
+  {tr:'¿Estás mejorando todo lo que te gustaría?',use:'Expectativa vs realidad',pe:'¿Estás viendo los avances que te gustaría o te has estancado?',star:'= expectativa/realidad'},
+  {tr:'¿Tienes alguna molestia o lesión?',use:'Caso sensible: una pregunta, se ve en llamada',pe:'¿Alguna molestia o lesión que tengamos en cuenta?'},
+  {tr:'¿Comes bien según lo que entrenas?',use:'El área clave del nicho',pe:'¿Cómo llevas la alimentación en tu día a día?'},
+  {tr:'¿Te sientes con compromiso de apostar?',use:'Compromiso / decisión',pe:'¿Te sientes con ganas de apostar de verdad por esto ahora?'}
+];
+const josDots=document.getElementById('josDots'), josStage=document.getElementById('josStage');
+JOS.forEach((j,i)=>{
+  const btn=document.createElement('button'); btn.innerHTML=(i+1)+(j.star?'<span class="star">★</span>':'');
+  btn.addEventListener('click',()=>showJos(i)); josDots.appendChild(btn);
+  const card=document.createElement('div'); card.className='jos-card'; card.dataset.i=i;
+  card.innerHTML='<div class="jos-grid">'+
+    '<div class="jos-box tr"><div class="lab">Joseca (trail)</div><div class="qt">'+j.tr+'</div></div>'+
+    '<div class="jos-box pe"><div class="lab">Rober (pérdida de peso, en presente)</div><div class="qt">'+j.pe+'</div></div>'+
+    '</div><div class="jos-why"><span class="pill">PREGUNTA '+(i+1)+(j.star?' '+j.star:'')+'</span> '+j.use+'</div>';
+  josStage.appendChild(card);
+});
+function showJos(i){
+  document.querySelectorAll('.jos-card').forEach(c=>c.classList.toggle('show',+c.dataset.i===i));
+  josDots.querySelectorAll('button').forEach((b,bi)=>b.classList.toggle('active',bi===i));
+}
+showJos(0);
+
+/* ---------- COUNT-UP + REVEAL ---------- */
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.12});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+document.querySelectorAll('[data-count]').forEach(el=>{
+  const end=+el.dataset.count; let cur=0; const step=Math.max(1,Math.round(end/30));
+  const t=setInterval(()=>{cur+=step; if(cur>=end){cur=end;clearInterval(t);} el.textContent=cur;},40);
+});
+</script>
+</body>
+</html>
