@@ -56,6 +56,10 @@ esto audita el Coach.
   claro para quién es / no es)?
 - [ ] ¿`coach_objections` (si se rellena) aporta manejo específico de nicho, no solo repite
   el protocolo genérico del Core?
+- [ ] ¿Las frases de objeción van HILADAS (cálidas, lógica lineal, cerrando en redirección/pregunta),
+  no troceadas en frases secas separadas por puntos? (§27).
+- [ ] ¿Cada objeción recupera el control con una pregunta anclada al objetivo/bloqueo si es rebatible, o
+  cierra con cariño si es descualificación blanda ("no es mi momento")? (§28).
 
 ---
 
@@ -66,6 +70,8 @@ esto audita el Coach.
 - [ ] ¿Ningún mensaje literal viola una CR (precios, fechas, diagnóstico, número de teléfono)?
 - [ ] ¿Las excepciones a reglas del Core (ej: pregunta con opciones, propuesta en 2 mensajes)
   están marcadas como excepción única y acotada?
+- [ ] ¿Ninguna respuesta de objeción (precio u otra) nombra "videollamada / llamada / el programa"
+  antes de F5? Antes de F5 la objeción reconduce al descubrimiento SIN nombrar la llamada (§26).
 
 ---
 
@@ -115,7 +121,7 @@ Cruzar con [`formato-saas-coach-v5.md`](formato-saas-coach-v5.md):
 
 ---
 
-## SECCIÓN 8 — DIRECCIÓN DE LA CONVERSACIÓN (§19–§25, Rubén 2026-06-18)
+## SECCIÓN 8 — DIRECCIÓN DE LA CONVERSACIÓN (§19–§29, Rubén 2026-06-18 + academia 2026-07-13)
 
 Auditar sobre conversaciones simuladas (no se ve solo leyendo el bloque). El tono puede estar bien
 y la dirección mal — esto audita la dirección.
@@ -135,6 +141,14 @@ y la dirección mal — esto audita la dirección.
 - [ ] ¿Flujo encadenado — cada pregunta nace de la anterior — y misma estructura base en todas las
   conversaciones (no 3 conversaciones con 3 estructuras distintas)? (§25).
 - [ ] ¿Empatía ante evento vital (lesión/accidente/embarazo) en F1 ANTES de ir al objetivo? (§5).
+- [ ] Si se profundiza en el bloqueo, ¿es sobre impacto/consecuencia/motivación/duración EN PRESENTE, y
+  NUNCA autopsia del método pasado ("qué probaste / por qué no te funcionó")? (§19).
+- [ ] ¿Curiosidad sobre un dato/actividad/interés personal en F2 con tope de 2 preguntas y sin asumir la
+  actividad (se pregunta cuál es)? (§20).
+- [ ] ¿Cero preguntas muertas/vagas ("qué cambiaría en tu día a día/vida")? Proyección en clave EMOCIONAL
+  ("cómo te sentirías cuando lo consigas") (§11.15).
+- [ ] "No es el momento" con un EVENTO concreto (oposición, cita médica) → ¿compromiso bidireccional anclado
+  a la fecha, no cierre pasivo? (§29).
 
 ---
 

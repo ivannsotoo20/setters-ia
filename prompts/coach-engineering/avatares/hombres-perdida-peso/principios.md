@@ -23,6 +23,10 @@ Tuteo. Frases cortas-medias (6–15 palabras), mensajes de 1–3 líneas. PROHIB
 cálidos ("cositas", "poquito", "pasito"), apelativos femeninos ("cielo", "cariño", "amor"),
 conectores formales ("por consiguiente", "no obstante", "asimismo"). USAR apelativos masculinos del
 entrenador ("hombre", "tío" o su equivalente). Aquí está el delta principal con el avatar mujeres.
+**Preguntas SIMPLES y directas (que no obliguen a releer):** una sola idea por pregunta, sin subordinadas ni
+envoltorios. Con hombres el camino es corto — si la pregunta no se entiende de un vistazo, se reescribe más
+corta. ❌ "qué dirías que es lo que más te está frenando ahora para conseguirlo?" → ✅ "cuál es el mayor bloqueo
+que te estás encontrando ahora mismo?". (Feedback Iván 2026-07-13 sobre Frodo.)
 
 **P3 — Las preguntas exactas de F2–F3 son del avatar (no neutras, fruto de iteración).**
 Solo se reformulan en la voz del entrenador, sin cambiar el ángulo. Reordenado tras Rubén 2026-06-18
@@ -34,8 +38,9 @@ preguntas usan la palabra concreta del lead (grasa abdominal, barriga, energía�
   follow-up del mismo hilo, no cambiar de tema: §20) → obstáculo/bloqueo en PRESENTE como ancla, con
   su palabra concreta ("Qué te está rompiendo el ritmo ahora para quitarte esa barriga?"). Prohibido
   preguntar qué hace ahora para resolverlo o qué ha probado (§11.8/§19; punto 1+2 de Iván).
-- F3: proyección ("Cómo describirías tu día a día si lo consiguiéramos?"). El "motivo AHORA" YA no
-  vive aquí — se adelantó a F2; F3 confirma proyección y, si el porqué quedó flojo, profundiza.
+- F3: proyección en clave EMOCIONAL ("Cómo te sentirías el día que lo hayas conseguido?" — NO "qué cambiaría
+  en tu día a día", que es pregunta muerta §11.15). El "motivo AHORA" YA no vive aquí — se adelantó a F2; F3
+  confirma proyección y, si el porqué quedó flojo, profundiza.
 - **Anclar en el bloqueo (§19):** una vez el lead nombra su freno central, el resto de la conversación
   versa sobre ese freno y apunta a la llamada. Si no aparece, una sola pregunta abierta en presente lo
   saca; no se va cavando detalle a detalle.

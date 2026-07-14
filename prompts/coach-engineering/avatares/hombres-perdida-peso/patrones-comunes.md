@@ -165,3 +165,35 @@ con hombres más dirección y menos ramas; mujeres igual + 1 profundización ext
 presente). Roberto v2 YA construido con su voz real + el backbone de Joseca + §19–§25 en
 `prompts/source/coach-v5/roberto-cordobilla.md` (draft, pendiente de test). Joseca es de trail running;
 lo que transfiere es la ESTRUCTURA, no el nicho.
+
+---
+
+## 7. Feedback transversal — ronda coaches academia 2026-07-13 (objeciones + agendamiento)
+
+Fuente: feedback del trainer **Alfonso Santos** (#64, 6 puntos) + reunión Rubén 13-jul (revisión B2C: Andrea
+Oliver, Frodo) + estilo de objeciones de Miguel Aguado. No es un coach destilado: es feedback de doctrina sobre
+objeciones y agendamiento sobre varios coaches del avatar. Coaches tocados: **Alfonso 2.0**, **Roberto 3.0**, **Frodo** (13-jul).
+
+| Aprendizaje | Capa | Dónde |
+|---|---|---|
+| No nombrar la llamada/programa antes de F5 (fallo: objeción de precio en F2/F3 "eso lo vemos en la videollamada") | universal | doctrina §26 |
+| Frases de objeción HILADAS, no troceadas (ref. Miguel Aguado RAM+deflexión; Roberto ya lo tiene en voiceprint) | universal | doctrina §27 |
+| Rebatir vs cerrar con cariño (leer si hay compromiso; Rubén alabó el cierre digno de Andrea) | universal | doctrina §28 |
+| "No es el momento" con evento concreto → compromiso bidireccional anclado a la fecha (recontacto_programado) | universal | doctrina §29 |
+| Pregunta muerta "qué cambiaría en tu día a día" → proyección emocional "cómo te sentirías" | universal + avatar | doctrina §11.15 + principios P3/F3 |
+| Curiosidad F2 con tope de 2 preguntas + no asumir la actividad (Frodo: "montaña" → qué actividad) | universal | doctrina §20 (enmienda) |
+| Profundizar SÍ pero impacto-presente, NUNCA autopsia del método (reconcilia el feedback #2 de Alfonso con el gate no-método) | universal | doctrina §19 (enmienda) |
+| Agendamiento sin enlace: pedir el WhatsApp del lead, el trainer contacta (método Andrea Oliver) | coach | Alfonso F6, Roberto 3.0 F6 |
+
+**Avatar (deltas hombres):** P3/F3 — la proyección pasa a clave emocional ("cómo te sentirías", no "qué
+cambiaría"). **P2 — preguntas SIMPLES y directas que no obliguen a releer** (feedback Iván 13-jul sobre Frodo:
+"cuál es el mayor bloqueo que te estás encontrando ahora mismo?" en vez de envoltorios largos). El resto son
+universales (objeciones/agendamiento aplican a cualquier avatar). **Frodo (13-jul):** se quitaron las preguntas
+de PROCESO que Rubén le marcó en la reunión ("vienes entrenando?", "qué estás haciendo?") → freno en presente,
+simple; + pregunta muerta → emocional; + curiosidad F2 (caso "montaña"); Calendly se MANTIENE (no se cambió su
+agendamiento, a diferencia de Roberto).
+
+**Coach (queda en cada uno):** el método de agendamiento (Calendly vs pedir WhatsApp vs formulario) es del
+coach. Alfonso 2.0 y Roberto 3.0 piden el WhatsApp del lead y el trainer contacta (método Andrea Oliver, sin
+enlace); el override explícito de CR5/CR6 vive en su `coach_structural_modifications_handoff`. Nota: Alfonso 2.0
+y Roberto 3.0 son coaches de la ACADEMIA (formato XML, despliega Iván en Automatía), NO tenants del SaaS Fyzon.
