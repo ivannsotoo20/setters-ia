@@ -15,9 +15,27 @@ Despliega Iván, a mano, en Automatía.
 Están aquí por dos razones: son el corpus real donde se practica la craft de
 [`prompts/coach-engineering/`](../README.md), y necesitan viajar entre máquinas.
 
-**Trampa conocida:** `roberto.md` (aquí) **no es** [`prompts/source/coach-v5/roberto-cordobilla.md`](../../source/coach-v5/roberto-cordobilla.md).
-Son dos personas y dos sistemas distintos. El de `source/coach-v5/` es un draft del SaaS Fyzon;
-este es el coach de la academia (hombres con sobrepeso, +100 kg).
+**Trampa conocida — los dos Roberto.** `roberto.md` (aquí) y
+[`prompts/source/coach-v5/roberto-cordobilla.md`](../../source/coach-v5/roberto-cordobilla.md)
+son **la misma persona**: Roberto Cordobilla, "Rober". Lo que cambia es el sistema, el formato
+y — lo que de verdad importa — **la fecha**:
+
+| | `academia/roberto.md` | `source/coach-v5/roberto-cordobilla.md` |
+|---|---|---|
+| Sistema | Automatía (n8n) — **vivo** | SaaS Fyzon — `status: draft`, nunca seedeado |
+| Formato | `<coach_block>` XML | `coach_v5` (frontmatter + sub-tags) |
+| Viene de | `coach_block_roberto_3.0.md` | `coach_block_roberto.txt` (junio) |
+| Última ronda | **2026-07-13** (agendamiento método Andrea) | 2026-06-18 (reunión Rubén) |
+
+**El draft del SaaS va por detrás**: es la reconciliación v2 de la reunión de Rubén y **no
+lleva la ronda del método Andrea** (pedir WhatsApp, sin Calendly). Si algún día se seedea tal
+cual, se despliega un Rober desactualizado. Su `tenant_slug` sigue en `[PENDIENTE]` y su propio
+frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejora, propagar a Alfonso)"*.
+
+> Nota de corrección (2026-07-15): la primera versión de este README afirmaba que eran "dos
+> personas distintas". **Era falso** — se dedujo de una nota de memoria que decía "distinto del
+> roberto-cordobilla.md" queriendo decir *otro fichero*, no *otra persona*. Verificado contra
+> ambos ficheros: los dos son Roberto Cordobilla.
 
 ## Qué hay
 

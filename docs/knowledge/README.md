@@ -84,7 +84,9 @@ valor, nunca el valor. Escanear antes de commitear.
 
 - [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Ronda 2026-07-13.
 - [Roberto](project_roberto_coach_feedback.md) — hombres +100kg. Ronda 2026-07-13, número de
-  Rober **pendiente**. Ojo: distinto del `roberto-cordobilla.md` del repo.
+  Rober **pendiente**. Ojo: hay **dos ficheros del mismo Rober** (una persona, dos sistemas) —
+  el vivo en `academia/roberto.md` y el draft del SaaS `source/coach-v5/roberto-cordobilla.md`,
+  que va por detrás. Ver la tabla en el [README de academia](../../prompts/coach-engineering/academia/README.md).
 - [Frodo](project_frodo_coach_feedback.md) — hombres recomposición, sin emojis ni minúsculas.
 - [Chema](project_chema_coach_feedback_loop.md) — Programa Fénix. Llega feedback en `.docx`.
 - [Luis Royán — menopausia](project_luis_royan_coach_menopausia.md) — avatar nuevo (el 4º).

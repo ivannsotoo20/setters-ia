@@ -9,8 +9,8 @@ metadata:
 
 Roberto "Rober" Cordobilla = coach academia/Automatía (hombres con sobrepeso/obesidad, mayoría +100 kg, pérdida de grasa/energía, historial de dietas que no sostiene), formato full-XML `<coach_block>`, hermano de [[project_alfonso_coach_feedback]] / [[project_chema_coach_feedback_loop]] / Juan Gil. **NO es el coach_v5 del SaaS Fyzon**; Iván lo despliega en Automatía. Mismo loop de reconciliación (informe → Iván aprueba → cambios + diff → backup `*.pre-<fecha>.bak`).
 
-⚠️ **DOS Robertos distintos, no confundir:**
-1. El que DESPLIEGA en Automatía = `C:\Users\sotob\Downloads\coach_block_roberto_3.0.md` (academia, XML, VIGENTE; hay `coach_block_roberto2.0.txt` y `coach_block_roberto.txt` que quedan atrás). El CORE de ese sistema = `Downloads/core_block_roberto.md`.
+⚠️ **DOS FICHEROS del mismo Rober, no confundir** (una persona, dos artefactos — esta nota decía antes "dos Robertos distintos" y se malinterpretó como dos personas; son el mismo Roberto Cordobilla):
+1. El que DESPLIEGA en Automatía = [`prompts/coach-engineering/academia/roberto.md`](../../prompts/coach-engineering/academia/roberto.md) en el repo desde 2026-07-15 (venía de `Downloads/coach_block_roberto_3.0.md`; academia, XML, VIGENTE; `coach_block_roberto2.0.txt` y `coach_block_roberto.txt` quedan atrás). El CORE de ese sistema = `Downloads/core_block_roberto.md`, que NO se versiona (ver [[project_academia_core_overhaul]]).
 2. `prompts/source/coach-v5/roberto-cordobilla.md` en el repo = reconciliación Fyzon-SaaS (formato coach_v5, `{{tracked_calendar_url}}`, status draft, tenant pendiente, **NO desplegado**). Es la v2 de la reunión de Rubén ([[feedback_coach_direccion_bloqueos]]).
 
 **Ronda 2026-07-13 — agendamiento método Andrea Oliver** (pasar de Calendly a pedir el WhatsApp del lead y que Rober contacte él; Andrea Oliver no envía enlace, pide el número directamente; es el mismo método que ya tiene Alfonso). Backup = `coach_block_roberto_3.0.pre-2026-07-13.bak.md`. Cambios (+34/−24):
