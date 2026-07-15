@@ -38,6 +38,18 @@ coverage/
 *.tmp
 .tmp/
 
+# Trabajo que NO es de este repo y aterriza en la raíz al arrastrar ficheros.
+# La academia corre sobre Automatía (n8n + Anthropic), no sobre el motor Fyzon:
+# sus bloques no se versionan aquí para no crear una segunda fuente de verdad del CORE.
+core_block_*.md
+prompt_filtro_*.md
+prompt-tania-*.txt
+
+# Staging del paquete distribuible al Claude de la empresa (coach-authoring.zip).
+# Es un derivado FILTRADO de prompts/coach-engineering/ + prompts/source/: versionarlo
+# duplicaría la KB con omisiones deliberadas. La fuente de verdad es el repo.
+_pkg-coach-authoring/
+
 # Tunneling local (cloudflared / ngrok)
 *.cloudflared.log
 

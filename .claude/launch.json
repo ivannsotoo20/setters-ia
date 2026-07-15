@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@fyzon/panel", "dev"],
       "port": 3000
+    },
+    {
+      "name": "docs-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4321", "--directory", "docs"],
+      "port": 4321
     }
   ]
 }

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5">
+<meta name="theme-color" content="#1A1A2E">
+<title>CORE · Cambios propuestos · Fyzon × Academia Entrenadores Online</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --black:#1A1A2E; --blue:#2E3A8C; --blue-light:#4A5ABF; --blue-dark:#1E2766;
+    --offwhite:#F4F4F6; --g100:#E8E8EC; --g200:#D1D1D8; --g500:#6E6E80; --white:#fff;
+    --success:#2ECC71; --success-d:#27a35d; --error:#E74C3C; --error-d:#c0392b;
+    --amber:#d97706; --amber-d:#b45309;
+    --rose-bg:#FDECEA; --rose-line:#F5C6C0; --green-bg:#E9F9F0; --green-line:#B8ECCD;
+    --r:8px; --r-lg:14px; --r-xl:22px;
+    --sh:0 2px 12px rgba(26,26,46,.07); --sh-lg:0 14px 40px rgba(26,26,46,.14);
+    --tr:all .25s cubic-bezier(.4,0,.2,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--black);
+    background:var(--offwhite);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden;padding-bottom:72px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  nav{position:sticky;top:0;z-index:50;background:rgba(26,26,46,.92);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.08)}
+  nav .row{max-width:1060px;margin:0 auto;padding:12px 22px;display:flex;align-items:center;gap:20px}
+  nav .brand{display:flex;align-items:center;gap:10px;font-weight:800;color:#fff;font-size:15px}
+  nav .brand .logo{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--blue-light),var(--blue));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900}
+  nav .links{margin-left:auto;display:flex;gap:6px}
+  nav .links a{color:#c7c9e0;font-size:13px;font-weight:600;text-decoration:none;padding:6px 12px;border-radius:999px;transition:var(--tr)}
+  nav .links a:hover{color:#fff;background:rgba(255,255,255,.1)}
+  @media(max-width:760px){nav .links{display:none}}
+
+  header{position:relative;background:radial-gradient(1200px 500px at 80% -10%,rgba(74,90,191,.55),transparent 60%),radial-gradient(900px 500px at 0% 110%,rgba(46,58,140,.5),transparent 55%),linear-gradient(160deg,#15152b,#1A1A2E 40%,#1E2766);color:#fff;overflow:hidden}
+  header .glow{position:absolute;border-radius:50%;filter:blur(60px);opacity:.5;animation:float 9s ease-in-out infinite}
+  header .g1{width:300px;height:300px;background:#4A5ABF;top:-60px;right:8%}
+  header .g2{width:240px;height:240px;background:#2E3A8C;bottom:-80px;left:5%;animation-delay:-4s}
+  @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-22px)}}
+  header .inner{position:relative;max-width:1060px;margin:0 auto;padding:60px 22px 64px;text-align:center}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.18em;font-size:11.5px;font-weight:700;color:#a9b2e8;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);padding:7px 15px;border-radius:999px;margin-bottom:22px}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px rgba(46,204,113,.25)}
+  header h1{font-size:42px;line-height:1.1;font-weight:900;letter-spacing:-.03em}
+  header h1 .hl{background:linear-gradient(120deg,#a5b4fc,#7c8cf0);-webkit-background-clip:text;background-clip:text;color:transparent}
+  header p.sub{margin:16px auto 0;font-size:17px;color:#cdd0e8;max-width:680px}
+  .hero-stats{margin-top:34px;display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+  .stat{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);border-radius:var(--r-lg);padding:15px 22px;min-width:130px}
+  .stat .n{font-size:28px;font-weight:900;line-height:1;background:linear-gradient(120deg,#fff,#c7d0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .l{font-size:12px;color:#aab0d8;margin-top:6px;font-weight:600}
+  @media(max-width:680px){header h1{font-size:30px}}
+
+  section{padding:54px 0}
+  .reveal{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+  .reveal.in{opacity:1;transform:none}
+  .kick{display:flex;align-items:center;gap:13px;margin-bottom:10px}
+  .kick .num{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--blue),var(--blue-dark));color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:var(--sh)}
+  .kick h2{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .sec-lead{color:var(--g500);font-size:16px;margin:0 0 24px 51px;max-width:740px}
+  @media(max-width:680px){.sec-lead{margin-left:0}.kick h2{font-size:21px}}
+
+  /* YA CUBIERTO */
+  .covered{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .cv{background:linear-gradient(180deg,#fff,var(--green-bg));border:1px solid var(--green-line);border-radius:var(--r-lg);padding:16px 18px;display:flex;gap:12px;align-items:flex-start}
+  .cv .ck{flex:none;width:26px;height:26px;border-radius:50%;background:var(--success);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .cv b{display:block;font-size:14.5px}.cv span{font-size:13px;color:var(--g500)}
+  @media(max-width:680px){.covered{grid-template-columns:1fr}}
+
+  /* PROPOSAL CARDS */
+  .prop{background:#fff;border:1px solid var(--g100);border-radius:var(--r-lg);padding:22px 24px;margin-bottom:16px;box-shadow:var(--sh);transition:var(--tr);border-left:5px solid var(--g200)}
+  .prop[data-state="ok"]{border-left-color:var(--success);background:linear-gradient(90deg,var(--green-bg),#fff 14%)}
+  .prop[data-state="no"]{border-left-color:var(--error);background:linear-gradient(90deg,var(--rose-bg),#fff 14%)}
+  .prop[data-state="dudo"]{border-left-color:var(--amber);background:linear-gradient(90deg,#fff8ec,#fff 14%)}
+  .prop-head{display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:14px}
+  .prop-head .n{flex:none;width:30px;height:30px;border-radius:8px;background:var(--black);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:14px}
+  .prop-head h3{font-size:17px;font-weight:800;flex:1;min-width:200px}
+  .ptag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:999px}
+  .ptag.nueva{background:#eef0fb;color:var(--blue-dark)}
+  .ptag.ajuste{background:#fff3e0;color:var(--amber-d)}
+  .ptag.retoque{background:var(--green-bg);color:var(--success-d)}
+  .where{font-size:12px;color:var(--g500);font-weight:600;background:var(--offwhite);padding:4px 10px;border-radius:6px}
+  .ba2{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+  .ba2 .c{border-radius:11px;padding:14px 15px}
+  .ba2 .antes{background:var(--rose-bg);border:1px solid var(--rose-line)}
+  .ba2 .desp{background:var(--green-bg);border:1px solid var(--green-line)}
+  .ba2 .lbl{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .ba2 .antes .lbl{color:var(--error-d)}.ba2 .desp .lbl{color:var(--success-d)}
+  .ba2 p{font-size:13.5px;color:var(--black)}
+  .why{font-size:13.5px;color:var(--g500);background:var(--offwhite);border-radius:10px;padding:11px 14px;margin-bottom:15px}
+  .why b{color:var(--black)}
+  .decision{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .decision button{font-family:inherit;font-size:13.5px;font-weight:700;border:1.5px solid var(--g200);background:#fff;color:var(--g500);
+    padding:9px 15px;border-radius:999px;cursor:pointer;transition:var(--tr)}
+  .decision button:hover{transform:translateY(-1px)}
+  .decision button[data-v="ok"].on{background:var(--success);border-color:var(--success);color:#fff}
+  .decision button[data-v="no"].on{background:var(--error);border-color:var(--error);color:#fff}
+  .decision button[data-v="dudo"].on{background:var(--amber);border-color:var(--amber);color:#fff}
+  .decision .cmt{flex:1;min-width:160px;border:1.5px solid var(--g200);border-radius:999px;padding:9px 15px;font-family:inherit;font-size:13.5px;outline:none;transition:var(--tr)}
+  .decision .cmt:focus{border-color:var(--blue-light);box-shadow:0 0 0 4px rgba(74,90,191,.12)}
+  @media(max-width:680px){.ba2{grid-template-columns:1fr}}
+
+  /* TENSION CALLOUT */
+  .tension{background:#fff8ec;border:1px solid #fde0a8;border-left:4px solid var(--amber);border-radius:0 var(--r-lg) var(--r-lg) 0;padding:16px 20px;margin-top:6px}
+  .tension b{color:var(--amber-d)}
+
+  /* STICKY TALLY */
+  .tally{position:fixed;bottom:0;left:0;right:0;z-index:60;background:rgba(26,26,46,.96);backdrop-filter:blur(10px);
+    border-top:1px solid rgba(255,255,255,.12);color:#fff;padding:11px 22px}
+  .tally .row{max-width:1060px;margin:0 auto;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  .tally .counts{display:flex;gap:14px;font-size:13.5px;font-weight:700}
+  .tally .counts .ok{color:#8ef0b6}.tally .counts .no{color:#f7a99f}.tally .counts .dudo{color:#fcd581}.tally .counts .pend{color:#aab0d8}
+  .tally .bar{flex:1;min-width:120px;height:8px;border-radius:999px;background:rgba(255,255,255,.12);overflow:hidden;display:flex}
+  .tally .bar i{height:100%;transition:width .4s ease}
+  .tally .bar .bok{background:var(--success)}.tally .bar .bno{background:var(--error)}.tally .bar .bdudo{background:var(--amber)}
+  .tally button{font-family:inherit;font-weight:700;font-size:13.5px;border:none;border-radius:999px;padding:10px 18px;cursor:pointer;
+    background:linear-gradient(120deg,var(--blue-light),var(--blue));color:#fff;transition:var(--tr)}
+  .tally button:hover{transform:translateY(-1px)}
+  @media(max-width:680px){.tally .counts{font-size:12px;gap:9px}}
+
+  /* MODAL */
+  .modal{position:fixed;inset:0;z-index:100;background:rgba(26,26,46,.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;padding:22px}
+  .modal.show{display:flex}
+  .modal .box{background:#fff;border-radius:var(--r-xl);max-width:620px;width:100%;padding:26px;box-shadow:var(--sh-lg);max-height:86vh;overflow:auto}
+  .modal h3{font-size:20px;font-weight:800;margin-bottom:6px}
+  .modal p{font-size:14px;color:var(--g500);margin-bottom:14px}
+  .modal textarea{width:100%;height:240px;border:1.5px solid var(--g200);border-radius:12px;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;resize:vertical}
+  .modal .acts{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+  .modal .acts button{font-family:inherit;font-weight:700;font-size:14px;border-radius:999px;padding:11px 20px;cursor:pointer;border:1.5px solid var(--g200);background:#fff;transition:var(--tr)}
+  .modal .acts .primary{background:linear-gradient(120deg,var(--blue-light),var(--blue));color:#fff;border-color:transparent}
+  .modal .acts button:hover{transform:translateY(-1px)}
+
+  /* PLAN */
+  .plan{background:linear-gradient(160deg,#1A1A2E,#1E2766);color:#fff;border-radius:var(--r-xl);padding:32px;box-shadow:var(--sh-lg)}
+  .plan h2{font-size:23px;font-weight:800;margin-bottom:8px}
+  .plan>p{color:#c7cbe6;font-size:15px;max-width:700px}
+  .plan .warn{margin-top:16px;background:rgba(231,76,60,.14);border:1px solid rgba(231,76,60,.32);border-radius:12px;padding:14px 17px;font-size:14px;color:#fbc9c2}
+  .plan .warn b{color:#fff}
+  .steps{margin-top:18px;display:grid;gap:11px}
+  .pstep{display:flex;gap:14px;align-items:flex-start;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r-lg);padding:15px 18px}
+  .pstep .d{flex:none;width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--blue-light),var(--blue));font-weight:900;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .pstep p{font-size:14.5px;color:#e4e6f5}.pstep p b{color:#fff}
+
+  footer{background:var(--black);color:#9a9db8;text-align:center;padding:32px 22px;font-size:13px}
+  footer b{color:#fff}
+  footer .fl{display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:10px;color:#fff;font-weight:800}
+  footer .fl .logo{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--blue-light),var(--blue));display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900}
+
+  @media print{nav,.tally,.decision,.modal{display:none}.reveal{opacity:1;transform:none}body{background:#fff;padding-bottom:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style>
+</head>
+<body>
+
+<nav><div class="row">
+  <div class="brand"><span class="logo">F</span> Fyzon · CORE</div>
+  <div class="links">
+    <a href="#cubierto">Ya cubierto</a>
+    <a href="#props">Propuestas</a>
+    <a href="#plan">Plan</a>
+  </div>
+</div></nav>
+
+<header>
+  <span class="glow g1"></span><span class="glow g2"></span>
+  <div class="inner">
+    <div class="eyebrow"><span class="dot"></span> Fyzon × Academia Entrenadores Online · Revisión del CORE</div>
+    <h1>Cambios propuestos al <span class="hl">cerebro común</span></h1>
+    <p class="sub">El CORE es el prompt universal que comparten TODOS los setters. Aquí están los ajustes que sacamos de la reunión y de Joseca. Revisa cada uno y dinos si lo aprobamos.</p>
+    <div class="hero-stats">
+      <div class="stat"><div class="n" data-count="8">0</div><div class="l">cambios propuestos</div></div>
+      <div class="stat"><div class="n" data-count="6">0</div><div class="l">cosas que YA cubre</div></div>
+      <div class="stat"><div class="n">1×</div><div class="l">afecta a todos</div></div>
+    </div>
+  </div>
+</header>
+
+<!-- YA CUBIERTO -->
+<section id="cubierto"><div class="wrap reveal">
+  <div class="kick"><div class="num">1</div><h2>Antes de nada: lo que el CORE YA hace bien</h2></div>
+  <p class="sec-lead">Para que se vea que esto no es rehacerlo. Tu CORE ya está muy "joseca-izado". Esto ya está dentro y no se toca:</p>
+  <div class="covered">
+    <div class="cv"><div class="ck">✓</div><div><b>Anclar en el bloqueo central</b><span>El "tema principal único" ya es exactamente eso (CR1 + interpretación).</span></div></div>
+    <div class="cv"><div class="ck">✓</div><div><b>Expectativa vs realidad</b><span>Ya está en Fase 2: "¿estás contento con los resultados que has obtenido?".</span></div></div>
+    <div class="cv"><div class="ck">✓</div><div><b>No validar de más</b><span>CR8 ya pone tope: máximo 1 de cada 3 mensajes abre validando.</span></div></div>
+    <div class="cv"><div class="ck">✓</div><div><b>Cualificar con una sola pregunta</b><span>Fase 3 ya es "una pregunta sutil", no un interrogatorio.</span></div></div>
+    <div class="cv"><div class="ck">✓</div><div><b>Estructura consistente</b><span>Las fases F0→F6 ya dan el mismo esqueleto en todas las conversaciones.</span></div></div>
+    <div class="cv"><div class="ck">✓</div><div><b>No vender, no presuponer</b><span>CR3 + las lentes ya impiden vender el programa o dar por hecho el interés.</span></div></div>
+  </div>
+</div></section>
+
+<!-- PROPUESTAS -->
+<section id="props"><div class="wrap reveal">
+  <div class="kick"><div class="num">2</div><h2>Los 8 cambios propuestos</h2></div>
+  <p class="sec-lead">Cada uno con lo que el CORE hace hoy vs la propuesta. Pulsa <b>Aprobar / Rechazar / Comentar</b> en cada uno; abajo se va llevando la cuenta y al final generas el resumen para devolvérnoslo.</p>
+  <div id="propList"></div>
+  <div class="tension">
+    <b>⚠️ Un punto donde quiero tu criterio (cambio 7):</b> hoy el CORE trata "creo que puedo solo" como una <b>objeción a trabajar</b> (se rebate, no se cierra). Tú en la reunión dijiste que ese lead <b>no cualifica</b>. La propuesta lo concilia: se explora UNA vez y, si el lead reafirma que no quiere ayuda, ahí sí se cierra (no se sigue empujando). Si prefieres que se cierre directo sin explorar, márcalo en el comentario.
+  </div>
+</div></section>
+
+<!-- PLAN -->
+<section id="plan"><div class="wrap reveal">
+  <div class="plan">
+    <h2>Cómo y cuándo se aplicaría</h2>
+    <p>Estos cambios van al CORE, que comparten TODOS los setters. Por eso el orden importa y no se toca a lo loco.</p>
+    <div class="warn">⚠️ <b>El CORE afecta a todos los entrenadores a la vez.</b> Cualquier cambio se valida primero contra las 3 conversaciones de control (las "10/10") para asegurar que no rompe nada antes de subirlo.</div>
+    <div class="steps">
+      <div class="pstep"><div class="d">1</div><p><b>Vosotros revisáis</b> estos 8 cambios aquí y nos devolvéis el resumen (aprobado / rechazado / comentarios).</p></div>
+      <div class="pstep"><div class="d">2</div><p>Primero validamos <b>Roberto v2</b> (que ya os pasamos) con conversaciones reales. Si mejora, confirma que la dirección funciona.</p></div>
+      <div class="pstep"><div class="d">3</div><p>Con vuestro OK + Roberto validado, aplicamos los cambios aprobados al CORE, pasamos el control de calidad y lo subimos.</p></div>
+    </div>
+  </div>
+</div></section>
+
+<footer>
+  <div class="fl"><span class="logo">F</span> Fyzon</div>
+  <p><b>Setter IA — Academia Entrenadores Online</b> · Revisión del CORE · documento interno · 20 jun 2026</p>
+  <p style="margin-top:6px">Basado en la reunión del 18 jun con Rubén + el system message de Joseca. Hermano de este doc: el de Roberto Cordobilla (v2).</p>
+</footer>
+
+<!-- TALLY -->
+<div class="tally"><div class="row">
+  <div class="counts">
+    <span class="ok">✓ <b id="cOk">0</b></span>
+    <span class="no">✗ <b id="cNo">0</b></span>
+    <span class="dudo">✎ <b id="cDudo">0</b></span>
+    <span class="pend">○ <b id="cPend">8</b> sin decidir</span>
+  </div>
+  <div class="bar"><i class="bok" id="barOk" style="width:0"></i><i class="bno" id="barNo" style="width:0"></i><i class="bdudo" id="barDudo" style="width:0"></i></div>
+  <button id="genBtn">Generar decisiones →</button>
+</div></div>
+
+<!-- MODAL -->
+<div class="modal" id="modal"><div class="box">
+  <h3>Resumen de decisiones</h3>
+  <p>Copia este texto y pásanoslo (WhatsApp / el grupo) para que apliquemos solo lo aprobado.</p>
+  <textarea id="out" readonly></textarea>
+  <div class="acts">
+    <button class="primary" id="copyBtn">📋 Copiar al portapapeles</button>
+    <button id="closeBtn">Cerrar</button>
+  </div>
+</div></div>
+
+<script>
+const PROPS=[
+  {id:1,tag:'nueva',title:'No educar ni dar consejos',where:'Regla nueva · Fases 1–4',
+   antes:'El CORE prohíbe diagnosticar y recetar pautas (CR4), pero no prohíbe explícitamente corregir al lead o darle la solución ("lo que de verdad funciona es X").',
+   desp:'Regla nueva: el setter muestra comprensión y reconduce; nunca le dice al lead que lo que hace está mal ni le da la solución. El detalle se ve en la llamada.',
+   why:'Fue el fallo más repetido (lo viste en Roberto). Decirle "esto lo haces mal" rompe la conexión y la relación.'},
+  {id:2,tag:'ajuste',title:'El bloqueo, en presente',where:'CR7 + Fase 2',
+   antes:'CR7 y la Fase 2 permiten alguna pregunta de pasado "para entender el contexto" (máx. 1 breve).',
+   desp:'El bloqueo se identifica y se nombra en PRESENTE. Nada de "qué estás haciendo ahora para resolverlo" ni "qué has probado". El bloqueo da dirección, no se diagnostica.',
+   why:'Tus 2 apuntes previos a la reunión + evitar el marco de "meter la solución con calzador".'},
+  {id:3,tag:'nueva',title:'Curiosidad sobre la motivación',where:'Fase 2',
+   antes:'Existe el patrón "Cuando dices…" (1-2 veces) y la Lente 1, pero no una regla de profundizar en el porqué antes de avanzar.',
+   desp:'Cuando el lead da su motivo, un follow-up del mismo hilo antes de cambiar de tema ("ahora que me dices que es por salud, qué buscas conseguir exactamente?").',
+   why:'Cambiar de tema justo después de preguntar el porqué suena a formulario (la analogía de Disneyland).'},
+  {id:4,tag:'ajuste',title:'Leads cerrados: abrir, no insistir',where:'Fase 1 (imprevistos)',
+   antes:'Hoy: respuestas cortas → "cambia de ángulo"; tras 2 cambios → handoff (cierre).',
+   desp:'No seguir con preguntas cerradas: UNA pregunta súper abierta que pida contexto. Si no responde, eso ya cualifica. No tirar el enlace sin conexión.',
+   why:'A un lead cerrado (sobre todo hombres) las preguntas cerradas con 2 opciones lo cierran todavía más.'},
+  {id:5,tag:'ajuste',title:'Flujo de preguntas encadenado',where:'Lentes de interpretación · Fases 1-2',
+   antes:'La Lente 1 dice "sigue el hilo del lead", pero no hay una regla explícita de encadenar pregunta a pregunta.',
+   desp:'Cada pregunta nace de lo que el lead acaba de decir; si no enlaza, se reescribe. Misma estructura base en todas las conversaciones (modelo Joseca).',
+   why:'El problema de Roberto: "salta aquí, vuelve allá", y tres conversaciones con tres estructuras distintas.'},
+  {id:6,tag:'ajuste',title:'Empatía ante un evento vital',where:'Fase 1',
+   antes:'La Fase 1 promueve conexión y empatía en general.',
+   desp:'Si el lead suelta un evento vital (lesión, accidente, baja, embarazo), conectar y empatizar PRIMERO ("ostras, qué te ha pasado? cómo estás?") antes de ir al objetivo.',
+   why:'El caso de la pierna/accidente: ir directo al objetivo ignorando el evento rompe la conexión en el momento más frágil.'},
+  {id:7,tag:'ajuste',title:'Criterios = una pregunta + leer "puedo solo"',where:'Fases 2 y 3',
+   antes:'La cualificación ya es "una sola pregunta sutil" (bien). Pero no advierte contra convertir el tiempo en tema central, y "creo que puedo solo" se trata como objeción a trabajar sin fin.',
+   desp:'Criterios como el tiempo = una pregunta de sí/no, sin orbitar. Y si el lead reafirma "puedo solo / no necesito ayuda" tras explorarlo una vez → no cualifica, no se sigue empujando.',
+   why:'El caso de Alfonso machacando los huecos + el lead que decía "yo puedo" y el setter seguía tirándole.'},
+  {id:8,tag:'retoque',title:'Expectativa vs realidad: cerrar el bucle',where:'Fase 2 (ya existe)',
+   antes:'El CORE YA confronta ("¿estás contento con los resultados?") — esto ya lo tienes. Pero no dice qué hacer después.',
+   desp:'Añadir el desenlace: si confirma que está contento y no quiere cambiar nada → cierre cálido; si quiere ir más rápido → entrar en la conversación.',
+   why:'Solo completar el caso del lead que ya va bien. Es un retoque, no un cambio grande.'}
+];
+const state={};
+const propList=document.getElementById('propList');
+PROPS.forEach(p=>{
+  state[p.id]={v:null,cmt:''};
+  const el=document.createElement('div');el.className='prop';el.dataset.id=p.id;
+  el.innerHTML=
+    '<div class="prop-head"><div class="n">'+p.id+'</div><h3>'+p.title+'</h3>'+
+      '<span class="ptag '+p.tag+'">'+p.tag+'</span><span class="where">'+p.where+'</span></div>'+
+    '<div class="ba2"><div class="c antes"><div class="lbl">Hoy el CORE…</div><p>'+p.antes+'</p></div>'+
+      '<div class="c desp"><div class="lbl">Propuesta</div><p>'+p.desp+'</p></div></div>'+
+    '<div class="why"><b>Por qué:</b> '+p.why+'</div>'+
+    '<div class="decision">'+
+      '<button data-v="ok">✓ Aprobar</button>'+
+      '<button data-v="no">✗ Rechazar</button>'+
+      '<button data-v="dudo">✎ Comentar</button>'+
+      '<input class="cmt" placeholder="comentario (opcional)">'+
+    '</div>';
+  el.querySelectorAll('.decision button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const v=btn.dataset.v; state[p.id].v=v; el.dataset.state=v;
+      el.querySelectorAll('.decision button').forEach(b=>b.classList.toggle('on',b===btn));
+      updateTally();
+    });
+  });
+  el.querySelector('.cmt').addEventListener('input',e=>{state[p.id].cmt=e.target.value;});
+  propList.appendChild(el);
+});
+function updateTally(){
+  let ok=0,no=0,dudo=0;
+  Object.values(state).forEach(s=>{if(s.v==='ok')ok++;else if(s.v==='no')no++;else if(s.v==='dudo')dudo++;});
+  const total=PROPS.length, pend=total-ok-no-dudo;
+  document.getElementById('cOk').textContent=ok;
+  document.getElementById('cNo').textContent=no;
+  document.getElementById('cDudo').textContent=dudo;
+  document.getElementById('cPend').textContent=pend;
+  document.getElementById('barOk').style.width=(ok/total*100)+'%';
+  document.getElementById('barNo').style.width=(no/total*100)+'%';
+  document.getElementById('barDudo').style.width=(dudo/total*100)+'%';
+}
+const LABELS={ok:'APROBADO',no:'RECHAZADO',dudo:'A COMENTAR',null:'SIN DECIDIR'};
+function buildSummary(){
+  let t='DECISIONES SOBRE LOS CAMBIOS DEL CORE — Academia Entrenadores Online\n';
+  t+='(reunión 18 jun + Joseca · revisado por el equipo)\n\n';
+  PROPS.forEach(p=>{
+    const s=state[p.id];
+    t+=p.id+'. '+p.title+' → '+(LABELS[s.v]||'SIN DECIDIR')+'\n';
+    if(s.cmt.trim()) t+='   Comentario: '+s.cmt.trim()+'\n';
+  });
+  const c={ok:0,no:0,dudo:0,pend:0};
+  Object.values(state).forEach(s=>{c[s.v||'pend']=(c[s.v||'pend']||0)+1;});
+  t+='\nResumen: '+ (c.ok||0)+' aprobados · '+(c.no||0)+' rechazados · '+(c.dudo||0)+' a comentar · '+(c.pend||0)+' sin decidir.';
+  return t;
+}
+const modal=document.getElementById('modal');
+document.getElementById('genBtn').addEventListener('click',()=>{document.getElementById('out').value=buildSummary();modal.classList.add('show');});
+document.getElementById('closeBtn').addEventListener('click',()=>modal.classList.remove('show'));
+modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('show');});
+document.getElementById('copyBtn').addEventListener('click',async()=>{
+  const ta=document.getElementById('out');ta.select();
+  let okCopy=false;
+  try{await navigator.clipboard.writeText(ta.value);okCopy=true;}catch(e){try{okCopy=document.execCommand('copy');}catch(e2){}}
+  const btn=document.getElementById('copyBtn');const old=btn.textContent;
+  btn.textContent=okCopy?'✓ Copiado':'Selecciona y copia manualmente';
+  setTimeout(()=>btn.textContent=old,2200);
+});
+
+const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{threshold:.1});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+document.querySelectorAll('[data-count]').forEach(el=>{const end=+el.dataset.count;let cur=0;const t=setInterval(()=>{cur++;if(cur>=end){cur=end;clearInterval(t);}el.textContent=cur;},90);});
+updateTally();
+</script>
+</body>
+</html>
