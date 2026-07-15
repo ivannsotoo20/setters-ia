@@ -1,14 +1,16 @@
 # CLAUDE.md — Setters IA SaaS
 
-Reglas operativas para Claude Code cuando trabajes en este repo. Complemento (no reemplazo) de `~/.claude/CLAUDE.md` y de la memoria del proyecto en `~/.claude/projects/C--Users-sotob-setters-ia/memory/`.
+Reglas operativas para Claude Code cuando trabajes en este repo. Complemento (no reemplazo) de `~/.claude/CLAUDE.md`.
 
 ## Qué es esto
 
 SaaS multi-tenant de setters IA para entrenadores. Reemplaza la infra actual de n8n + Supabase + GHL + WhatsApp con código propio controlado. Proyecto estratégico de Fyzon, carrera de fondo.
 
-**Plan maestro**: `~/.claude/plans/lo-que-te-voy-shimmering-toucan.md` (todo cambio se registra en la sección 8 Log).
-**Plan del Hito actual (3)**: `~/.claude/plans/retomamos-setters-ia-vamos-frolicking-pudding.md`.
+**Conocimiento del proyecto**: `docs/knowledge/` ([índice](docs/knowledge/README.md)) — el porqué de las decisiones, los loops abiertos con cada coach (Alfonso, Roberto, Frodo, Chema, Luis Royán), la doctrina de dirección de la conversación y el contexto que no se deduce del código. **Leer el índice al abrir cualquier sesión de este proyecto.** Antes vivía en la memoria local de Claude Code, atada a una sola máquina; desde 2026-07-15 está versionado aquí y viaja con el repo.
+
 **Supabase**: `ppujrqxiizgfqclbuxet` (MCP `supabase-fyzon` en `.mcp.json`).
+
+**Estado del proyecto**: se lee del `git log` + este fichero. El último hito documentado es el **12.3**. Los planes que este documento citaba (`~/.claude/plans/*.md`) eran locales de la máquina de Iván y **ya no existen en disco** (verificado 2026-07-15); las referencias se retiraron en vez de dejar enlaces muertos. La doctrina que sobrevivió a cada plan está recogida en las secciones de Hitos de abajo.
 
 ## Estructura del monorepo
 
@@ -368,7 +370,7 @@ Plantilla en `.env.example`. `.env.local` es gitignored — Ivan lo rellena con 
 
 ## Hito 9 — GHL/YCloud como conectores de origen + bienvenida WA por formulario
 
-**Doctrina** (decidida 2026-05-10): el SaaS Setters IA es el CRM. **GHL NO se usa como CRM** — solo como conector de origen (lead magnet IG/FB, bienvenidas manuales del trainer en chat IG/FB). YCloud es la pasarela WhatsApp (hasta API Meta directa BSP). Toda la gestión de contactos, conversaciones, pipeline y etiquetas vive en el panel Fyzon. Ver plan: `~/.claude/plans/arranquemos-el-hito-9-eventual-stearns.md`.
+**Doctrina** (decidida 2026-05-10): el SaaS Setters IA es el CRM. **GHL NO se usa como CRM** — solo como conector de origen (lead magnet IG/FB, bienvenidas manuales del trainer en chat IG/FB). YCloud es la pasarela WhatsApp (hasta API Meta directa BSP). Toda la gestión de contactos, conversaciones, pipeline y etiquetas vive en el panel Fyzon.
 
 **Endpoint nuevo `POST /automations/lead-form/:tenant_token`** (`apps/motor-agente/src/routes/automation-lead-form.ts`): recibe leads de formularios externos (n8n / GHL Workflow / Tally / Meta Lead Ads) → crea lead WA + envía plantilla bienvenida YCloud + crea conv F1 outbound + activa IA. Opcional shared-secret en header `X-Form-Secret` validado contra `integration_accounts.webhook_secret` de la cuenta YCloud activa, modo `LEAD_FORM_VERIFY_MODE` (warn|enforce|disabled, default warn).
 
@@ -412,7 +414,7 @@ Plantilla en `.env.example`. `.env.local` es gitignored — Ivan lo rellena con 
 
 ## Hito 10 — Calendarios GHL + trazabilidad de bookings
 
-**Doctrina** (decidida 2026-05-14): el SaaS muestra y trackea las citas GHL. La fuente sigue siendo GHL (solo lectura este hito). Cuando un lead reserva en el calendario GHL del trainer, el SaaS lo detecta vía webhook AppointmentCreate, matchea al lead concreto (mecanismo híbrido `fyzon_lead_uuid` slug + phone prefilled), mueve la conversación a F7 + pausa IA + handoff causa A. Trainer ve lista + calendario mes en `/calendars` sin abrir GHL. Plan: `~/.claude/plans/ahora-me-gustar-a-avanzar-swift-feigenbaum.md`.
+**Doctrina** (decidida 2026-05-14): el SaaS muestra y trackea las citas GHL. La fuente sigue siendo GHL (solo lectura este hito). Cuando un lead reserva en el calendario GHL del trainer, el SaaS lo detecta vía webhook AppointmentCreate, matchea al lead concreto (mecanismo híbrido `fyzon_lead_uuid` slug + phone prefilled), mueve la conversación a F7 + pausa IA + handoff causa A. Trainer ve lista + calendario mes en `/calendars` sin abrir GHL.
 
 **Tablas nuevas**:
 - `calendar_accounts` (migration 047, nombre MCP `035_calendar_accounts`): calendarios GHL vinculados por tenant. `is_default=TRUE` marca el que usa el setter en F6 (UNIQUE parcial garantiza solo uno por tenant). `widget_base_url` es la base del widget GHL.
@@ -497,7 +499,7 @@ Los `coach_v3` se migraron a `coach_v5` (monolítico inline con 9 sub-secciones 
 
 ## Hito 12.1 — Cumplimiento estricto: max msgs + addressing + forbidden phrases (2026-05-20)
 
-**Doctrina**: 3 preferencias del trainer con cumplimiento ESTRICTO (enforce en código), no best effort. El trainer las configura en `/settings/preferences` y el motor las valida a nivel código antes de enviar el mensaje al lead. Plan: `~/.claude/plans/me-gustar-a-configurar-dentro-memoized-cascade.md`.
+**Doctrina**: 3 preferencias del trainer con cumplimiento ESTRICTO (enforce en código), no best effort. El trainer las configura en `/settings/preferences` y el motor las valida a nivel código antes de enviar el mensaje al lead.
 
 ### Nuevas keys en `trainer_preferences.preferences` JSONB
 
@@ -546,6 +548,12 @@ Uso actual único: `buildMirrorLeadDirective(detected)` cuando `addressingMode='
 - `forbiddenPhrases=['genial','perfecto']` → forzar conversación que invite a usarlas → verificar log V17_retry y output sin las palabras.
 - `addressingMode='usted'` + lead tutea → verificar setter siempre usted (V18 log o retry-vacío).
 - `mirror_lead` + lead alterna tú/usted entre turnos → verificar setter cambia con el lead (directiva dinámica via extraSystemSuffix).
+
+## Hito 12.2 — REVERTIDO (no existe en el código)
+
+El Hito 12.2 (uso del nombre del lead + filtro de género del público objetivo) se aplicó en `c19751a` y se **revirtió** en `f8bdfd8`. El 12.3 se re-aplicó después en `2e3f11b` explícitamente "sin Hito 12.2". Por eso la numeración salta de 12.1 a 12.3.
+
+No hay `useLeadNameMode`, ni `targetClientGender`, ni validador **V19** — los validadores llegan hasta V18. Si algún documento afirma que el 12.2 está entregado, está desactualizado. El diseño (ya debatido y cerrado) se conserva en [`docs/knowledge/project_hito_12_2_name_gender_prefs.md`](docs/knowledge/project_hito_12_2_name_gender_prefs.md) por si se retoma; si se retoma, se re-implementa desde cero.
 
 ## Hito 12.3 — Keywords type='inbound' disparan IA también en InboundMessage (2026-05-25)
 

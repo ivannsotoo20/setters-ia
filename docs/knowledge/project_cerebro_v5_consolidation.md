@@ -1,0 +1,54 @@
+---
+name: Cerebro v5 — consolidación CORE + COACH (Sprint Iota, 2026-05-18)
+description: Migración big-bang del Cerebro v4 (11 bloques shared fragmentados) al v5 (1 CORE consolidado + 1 output_contract separado + 1 coach_v5 monolítico per tenant). Marker dinámico de fase activa via placeholder + atributo XML. Sin compat v4.
+type: project
+originSessionId: 8b10d4c4-8cd6-4767-b7f8-cffa33b5a61e
+---
+Sprint Iota completado el 2026-05-18. Iván consolidó la arquitectura de prompts del SaaS Setters IA:
+
+**Decisión fundamental**: pasar de 11 bloques shared (`core_v4_base` + 6 × `fase_N_v4` + 4 protocolos) + 1 `coach_v3` per tenant a una arquitectura de **2 bloques shared** (`core_v5_base` + `output_contract_v5`) + **1 `coach_v5` per tenant** (monolítico inline con 9 sub-secciones canónicas).
+
+**Why**: (a) cache hit rate más alto (prefix invariante durante toda la conversación, sin re-cache por cambio de fase), (b) modelo "hace más caso" al prompt porque ve el panorama completo en vez de fragmentos, (c) operativa más simple (2 .md vs 11 .md para editar el core).
+
+**Trade-off resuelto**: el CORE consolidado pesa ~53k chars (~13k tokens) vs ~5k del `core_v4_base` solo. Cache write cost 25% extra primera vez es trivial (~$0.30/día por tenant a 20 conv/día). Cache read se amortiza desde el segundo turno.
+
+**Decisiones del usuario validadas en plan-mode**:
+- Big-bang sin feature flag. Conversaciones existentes eran de testeo, no producción.
+- `output_contract_v5` SEPARADO del CORE narrativo (JSON schema técnico no debe mezclarse con voz conversacional).
+- No regresión C1/C2/C3 explícita. Iván trabajó el contenido del CORE para que represente lo que busca.
+
+**Marker dinámico de fase activa** (≈ 0 tokens extra, dos mecanismos combinados):
+1. `{{current_phase_focus}}` — placeholder rich con instrucción focal corta inyectada por turno desde `apps/motor-agente/src/lib/phase-focus.ts` (función `buildPhaseFocusInstruction(currentPhase, isHandoff)` con 6 instrucciones + handoff override).
+2. `priority="{{phaseN_priority|reference}}"` en cada etiqueta `<phaseN>`. El composer (`interpolatePhasePriorities` en `packages/prompt-composer/src/interpolate.ts`) reemplaza solo la fase actual con `priority="active"`. Las inactivas caen al fallback `reference`. Anthropic respeta el atributo XML y baja atención sobre las inactivas.
+
+**Cache strategy two-point mantenida**: breakpoint tras `core_v5_base` (cachea cerebro universal compartido entre tenants) + breakpoint tras `output_contract_v5` (cachea el prefix invariante de la conversación). `trainer_prefs_v1` sigue OUT of cache. Beneficio clave: cuando Ivan edita `coach_v5` de un tenant, el primer breakpoint sigue válido → el CORE no se recalienta.
+
+**Cambios composer** (`packages/prompt-composer/`):
+- `REQUIRED_BLOCK_KEYS = ['core_v5_base', 'coach_v5']`.
+- `wantedKeys = ['core_v5_base', 'coach_v5', 'output_contract_v5']` + opcionales `admin_overrides_v1` (post coach) y `trainer_prefs_v1` (final).
+- Eliminados flags `isHandoff/includeObjections/includeDescualificacion/includeOutputContract` de `ComposeOptions`.
+- `INTERPOLATABLE_BLOCK_KEYS = ['core_v5_base', 'coach_v5']` (ambos llevan placeholders).
+
+**Aplicado a BD**:
+- Seed 008 → carga `core_v5_base` (53196 chars) + `output_contract_v5` (2820 chars).
+- Migration 058 → deactivate 11 bloques v4 shared + snapshot v1 de los v5.
+- Seeds 009/010 → carga `coach_v5` Pablo Montenegro (tenant slug `montefit`, 18784 chars) + ivan-dev (tenant slug `ivan-dev`, 17635 chars).
+- Migration 059 → deactivate `coach_v3` para Pablo + ivan-dev.
+
+**María Lluc**: el ejemplo definitivo del usuario en `Downloads/bloques (1).md` está disponible como `prompts/source/coach-v5/montefit.md` y compilado en `schema/v1/seeds/011-coach-v5-montefit.sql` con tenant slug `maria-lluc` (NO existe en BD aún — Iván decide cuándo darlo de alta).
+
+**Lo que NO se tocó** (intacto):
+- `trainer_preferences.preferences` JSONB schema (todos los toggles: emojis, callProposalMode, schedulingMode, handoffMode, etc.).
+- `apps/panel/lib/trainer-prefs-serializer.ts`.
+- `admin_overrides_v1` (block_key, comportamiento, UI).
+- Lógica del motor sobre callProposalMode/schedulingMode/handoffMode/API booking/calendar matching/lead-form/timezones Hito 11.
+- Cache TTL = `'1h'`.
+
+**Cuándo consultar esta memoria**:
+- Antes de editar `prompt_blocks` v5 vía MCP.
+- Antes de añadir un placeholder rich nuevo en CORE o COACH.
+- Antes de modificar `phase-focus.ts` (las 6 instrucciones focales).
+- Si surge debate de si retomar arquitectura fragmentada — la decisión big-bang ya está tomada y no se vuelve atrás sin razón fuerte.
+- Si Iván pide migrar un trainer nuevo a v5: usar `scripts/build-coach-v5-seed.mjs`.
+
+**Rollback de emergencia** (si v5 rompe en producción, MUY improbable): documentado en `prompts/source/core-v5/README.md`. Implica reactivar v4 shared + coach_v3 + revertir el package `@fyzon/prompt-composer` al commit anterior.
