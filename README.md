@@ -3,8 +3,14 @@
 > SaaS multi-tenant de **setters IA conversacionales** para entrenadores online.
 > Reemplaza la infraestructura n8n + Supabase + GHL + WhatsApp con código TypeScript propio bajo control total del agente.
 
-**Estado actual**: Fase 1 cerrada en código (motor + pipeline 3-LLM + outbound + scheduler) · Fase 2 arrancada (auth panel).
-Tests: 110/110 verde · Typecheck: 8/8 paquetes OK.
+**Snapshot: 2026-07-16.** Este README es una foto en el tiempo. La **fuente de verdad viva**
+es, por orden: el código → `git log` → [CLAUDE.md](CLAUDE.md) → [docs/knowledge/](docs/knowledge/README.md).
+Si algo aquí contradice a esos, ganan ellos (y conviene corregir este fichero).
+
+**Estado**: último hito documentado **12.3** · Cerebro **v5** consolidado en código.
+Tests **1264/1264 verde** (86 ficheros) · typecheck limpio en todo el monorepo.
+Pendientes que bloquean *producción* (no código): smokes E2E reales + pasar los
+`*_VERIFY_MODE` a `enforce`, atados al acceso SSH al VPS.
 
 ---
 
@@ -13,50 +19,66 @@ Tests: 110/110 verde · Typecheck: 8/8 paquetes OK.
 Una conversación real entre el setter y un lead de fitness:
 
 ```
-Lead (IG): "Hola"
-  ↓ webhook ManyChat → motor Fastify
+Lead (IG/WA/FB): "Hola"
+  ↓ webhook (ManyChat / YCloud / GHL Marketplace) → motor Fastify
+  ↓ routing multi-tenant por proveedor + gate de clasificación (keywords)
   ↓ debounce 25s (Redis sorted set)
   ↓ Generator (Sonnet 4.5 + prompt caching) → message_raw + phase_decision
-  ↓ Judge (Haiku 4.5) → pass/fix/reject según 8 guardrails
-  ↓ Splitter (Haiku 4.5) → 1-4 mensajes naturales 20-280 chars
-  ↓ Validator V0-V16 (TS puro) → red de seguridad
-  ↓ Scheduler (typing delay 30s + 10s entre partes)
-  ↓ ManyChat sendContent → IG/WA/FB del lead
+  ↓ Judge (Haiku) → pass/fix/reject según guardrails
+  ↓ Splitter (Haiku) → 1-N burbujas (cap por trainer, 20-280 chars)
+  ↓ Validator V0-V18 (TS puro) → red de seguridad post-LLM
+  ↓ Scheduler (typing delay natural + delay entre partes)
+  ↓ adapter del proveedor (ManyChat sendContent / YCloud sendDirectly) → IG/WA/FB del lead
 Bot: "Genial 💪 Cuéntame, ¿qué haces ahora de ejercicio?"
 ```
 
-Multi-tenant: cada trainer (`tenant`) tiene su propio `coach_v3` (Bloque 2: identidad, nicho, tono, banco frases, criterios cualificación) que se compila desde un panel y se inyecta en el prompt junto al `core_v3` (Fyzon, 11 bloques compartidos: 11 reglas, 9 pre-checks, fases F0-F7, hand-off, pipeline GHL, RAM Bloque 7, objeciones).
+**Multi-tenant — el system prompt se compone en 4 capas (Cerebro v5):**
+
+1. `core_v5_base` + `output_contract_v5` — **compartidos** (`tenant_id IS NULL`): cerebro
+   narrativo con las 6 fases inline + reglas críticas/condicionales + objeciones + handoff, y
+   el contrato JSON de salida separado.
+2. `coach_v5` — **por trainer**: identidad, voz (voiceprint/lexicon/exemplars), fases,
+   enlaces, cualificación, programa, objeciones.
+3. `admin_overrides_v1` — **solo el agency admin** (Iván) por tenant, opcional.
+4. `trainer_prefs_v1` — **autogenerado** desde `/settings/preferences` (fuera del cache).
+
+Prompt caching `ephemeral` con 2 breakpoints (tras el CORE y tras el contrato) → cuando se
+edita el coach de un tenant, el CORE cacheado no se recalienta.
 
 ## Stack
 
 | Capa | Tech |
 |---|---|
-| Motor agente (headless) | TypeScript 5.9 · Node 22 · Fastify 5 · Anthropic SDK · ioredis · Zod · Vitest |
+| Motor agente (headless) | TypeScript · Node 22 · Fastify 5 · Anthropic SDK · ioredis · Zod · Vitest |
 | Panel SaaS (trainer-facing) | Next.js 16 (App Router + Turbopack) · Tailwind 4 · Supabase Auth (`@supabase/ssr`) |
-| DB / Auth / Storage / Realtime | Supabase (Postgres) — proyecto `ppujrqxiizgfqclbuxet` |
-| Modelos IA | Sonnet 4.5 (Generator) · Haiku 4.5 (Judge + Splitter) · prompt caching `ephemeral` |
-| Canales | ManyChat (WhatsApp + Instagram + Facebook). Adapter pattern → migración a Meta Cloud API directo en Fase 6 sin tocar el resto |
-| Orquestación | pnpm workspaces · Turborepo |
+| DB / Auth / Storage / Realtime | Supabase (Postgres) — proyecto `ppujrqxiizgfqclbuxet` (MCP `supabase-fyzon`) |
+| Modelos IA | Sonnet 4.5 (Generator) · Haiku (Judge + Splitter) · prompt caching `ephemeral` |
+| Canales (multi-provider) | ManyChat (WA/IG/FB, legacy) · **YCloud** (WA, BSP oficial Meta) · Meta Cloud / GHL (futuro). Elegido por `integration_accounts.provider`; adapter pattern en `packages/channel-adapters`. |
+| CRM / conectores | GHL Agency (sub-cuenta por trainer) como **conector de origen** — el CRM es el propio SaaS. Calendarios GHL en solo-lectura (Hito 10). |
+| Orquestación | pnpm workspaces · Turborepo · Trigger.dev (outbound opcional) |
 | Deploy | Panel: Vercel · Motor: VPS Contabo (Docker Compose) |
 
 ## Estructura
 
 ```
 apps/
-  panel/                 Next.js 16 — trainer-facing (auth + onboarding + configurador)
-  motor-agente/          Fastify — webhook receiver + pipeline + scheduler
+  panel/                 Next.js 16 — trainer-facing (auth, onboarding, /admin/cerebro,
+                         conversations, contacts, calendars, keywords, labels, settings, GDPR)
+  motor-agente/          Fastify — webhooks + pipeline 3-LLM + scheduler + booking + follow-ups
 packages/
   db/                    Tipos TS generados de Supabase (vía MCP)
-  shared-validator/      V0-V16 post-LLM (red de seguridad)
-  channel-adapters/      ManyChatWhatsAppAdapter / ManyChatInstagramAdapter / Meta Cloud (Fase 6)
-  agent-pipeline/        Generator + Judge + Splitter + runPipeline
-  prompt-composer/       Ensambla core + coach + fase + condicionales con cache breakpoints
-  ghl-client/            Wrapper REST GoHighLevel (Fase 3)
-prompts/source/core-v3/  Markdown fuente del Core (NUNCA editar bloques en Supabase a mano)
-prompts/source/coach-v3/ Markdown fuente del coach por trainer
-schema/v1/migrations/    Migrations SQL numeradas
-schema/v1/seeds/         Seeds idempotentes (Core v3 base + tenants + coaches)
-scripts/                 build-core-v3-seed.mjs · build-coach-seed.mjs · generate-db-types.mjs
+  shared-validator/      V0-V18 post-LLM (red de seguridad)
+  channel-adapters/      manychat/ · ycloud/ · ghl/ (adapter por provider)
+  agent-pipeline/        Generator + Judge + Splitter + runPipeline + cost
+  prompt-composer/       Ensambla las 4 capas del Cerebro v5 con cache breakpoints
+  ghl-client/            Wrapper REST GoHighLevel (OAuth + calendars + contacts)
+prompts/source/core-v5/  Markdown fuente del Cerebro v5 (NUNCA editar bloques en Supabase a mano)
+prompts/source/coach-v5/ Markdown fuente del coach por trainer
+prompts/coach-engineering/ KB de autoría de coaches (doctrina + avatares + checklist)
+schema/v1/migrations/    Migrations SQL numeradas (aplicadas vía MCP)
+schema/v1/seeds/         Seeds idempotentes (008-core-v5-blocks.sql + coaches v5)
+scripts/                 build-core-v5-seed.mjs · build-coach-v5-seed.mjs · generate-db-types.mjs
+docs/knowledge/          Conocimiento versionado del proyecto (el porqué + loops abiertos)
 ```
 
 ## Quick start
@@ -69,19 +91,24 @@ pnpm install
 
 # 2. Copiar y rellenar env
 cp .env.example .env.local
-# Pide a Ivan los valores reales
+# Pide a Ivan los valores reales (.env.local es gitignored)
 
 # 3. Levantar motor + redis con Docker
 docker compose up --build
 
 # 4. Smoke test motor
 curl http://localhost:3001/health
-# → { "status":"ok", "supabase_reachable":true, "prompt_blocks_count":11 }
+# → { "status":"ok", "supabase_reachable":true, ... }
 
 # 5. En otra terminal, panel Next.js
 pnpm --filter @fyzon/panel dev
 # → http://localhost:3000 (te redirige a /login)
 ```
+
+> Los tests son unitarios (mocks) y no necesitan `.env.local`, salvo el motor: su
+> `src/config/env.ts` valida el entorno al importar y hace `process.exit(1)` si faltan
+> `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` o `ANTHROPIC_API_KEY`. En CI/local basta
+> exportar valores *placeholder* (no reales) para esas tres.
 
 > **Setup completo paso a paso para una persona nueva**: ver [ONBOARDING.md](ONBOARDING.md).
 
@@ -90,10 +117,11 @@ pnpm --filter @fyzon/panel dev
 | Archivo | Para qué |
 |---|---|
 | [README.md](README.md) | Esto — visión 30s + quick start |
-| [ONBOARDING.md](ONBOARDING.md) | Setup local de cero a productivo (Node, pnpm, Docker, env, Supabase, primer arranque) |
-| [ROADMAP.md](ROADMAP.md) | Estado de hitos cerrados · Fase 1/2/3/4/5/6 detalle · plan a 6 meses · decisiones D1-D29 |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow Core v3 · convenciones commit · branch model · code review · cómo iterar el coach |
-| [CLAUDE.md](CLAUDE.md) | Reglas operativas para Claude Code (no negociables, complemento al global) |
+| [ONBOARDING.md](ONBOARDING.md) | Setup local de cero a productivo |
+| [ROADMAP.md](ROADMAP.md) | Estado de hitos + fases + decisiones (snapshot; ver git log para lo vivo) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Workflow de prompts · convenciones commit · branch model · code review |
+| [CLAUDE.md](CLAUDE.md) | Reglas operativas + doctrina vigente (arquitectura, 4 capas, MCP, seguridad, hitos) |
+| [docs/knowledge/](docs/knowledge/README.md) | El porqué de las decisiones + loops abiertos por coach + contexto no deducible del código |
 
 ## Comandos útiles
 
@@ -103,54 +131,44 @@ pnpm dev                                  # turbo run dev (motor + panel paralel
 pnpm --filter @fyzon/motor-agente dev     # solo motor (puerto 3001)
 pnpm --filter @fyzon/panel dev            # solo panel (puerto 3000)
 pnpm typecheck                            # tsc --noEmit en todo el monorepo
-pnpm test                                 # vitest run en todos los paquetes
+pnpm -r test                              # vitest run en todos los paquetes
 pnpm build                                # turbo run build
 pnpm db:generate-types                    # regenera packages/db/src/types.generated.ts
-pnpm core:build-seed                      # regenera schema/v1/seeds/002-core-v3-blocks.sql
+pnpm core:build-seed                      # regenera schema/v1/seeds/008-core-v5-blocks.sql
+node scripts/build-coach-v5-seed.mjs --trainer <slug> --tenant-slug <slug> --seed-number <NNN>
 docker compose up --build                 # motor + redis locales
 ```
 
-## Smoke E2E (sin auth)
+## Reglas no negociables (resumen — el detalle vive en [CLAUDE.md](CLAUDE.md))
 
-```bash
-# Pipeline completo Generator + Judge + Splitter contra Anthropic real
-pnpm --filter @fyzon/motor-agente run-pipeline \
-  --tenant 2 \
-  --phase 1 \
-  --message "Hola"
-# Coste real ~$0.01-0.05 por turno con prompt caching activo
-
-# Forzar tick de debounce y outbound manualmente (para pruebas locales)
-pnpm --filter @fyzon/motor-agente run-debounce-tick
-pnpm --filter @fyzon/motor-agente run-outbound-tick
-```
-
-## Reglas no negociables
-
-1. **Core v3 NUNCA se edita directo en Supabase**. Workflow: editar `.md` → `node scripts/build-core-v3-seed.mjs` → revisar diff → aplicar via MCP. Detalles en [CONTRIBUTING.md](CONTRIBUTING.md).
-2. **`SUPABASE_SERVICE_ROLE_KEY` solo en motor**. Nunca en el panel. Nunca en browser.
-3. **Fixtures C1/C2/C3 son bloqueantes** una vez existan (G6 pendiente). Cualquier PR que toque pipeline o coach debe pasar la regresión contra las 3 antes de mergear.
-4. **Prompt caching activado siempre**. Sin él, no entramos en economía viable: ver `packages/prompt-composer` y D26-D28.
-5. **No metemos Prisma** sin conversación previa. Hoy `@supabase/supabase-js` con service_role en el motor.
-6. **No commits sin que Ivan los pida**. Preparamos cambios, Ivan revisa, Ivan aprueba.
+1. **Cerebro v5 NUNCA se edita directo en Supabase**. Los bloques shared (`core_v5_base`,
+   `output_contract_v5`) se editan por el flujo versionado: `.md` en `prompts/source/core-v5/`
+   → `pnpm core:build-seed` → revisar diff → aplicar vía MCP + snapshot en `prompt_block_versions`.
+   Los `coach_v5` se cargan por UI (`/admin/cerebro`) o `build-coach-v5-seed.mjs`, nunca a pelo.
+2. **`SUPABASE_SERVICE_ROLE_KEY` solo en motor**. Nunca en el panel. Nunca en browser (panel = anon + RLS).
+3. **Fixtures C1/C2/C3 son bloqueantes**. Cualquier PR que toque pipeline o coach pasa la regresión contra las 3 antes de mergear.
+4. **Prompt caching activado siempre**. Sin él, la economía no es viable.
+5. **Seguridad dura**: tablas nuevas con `tenant_id` → RLS obligatorio; comparación de tokens → `isValidBearer`/`timingSafeEqual`, nunca `===`; logs de payload → `safeLogBody`. Ver §Seguridad de CLAUDE.md.
+6. **No metemos Prisma** sin conversación previa. Hoy `@supabase/supabase-js` con service_role en el motor.
+7. **No commits sin que Ivan los pida**. Preparamos cambios, Ivan revisa, Ivan aprueba.
 
 ## Estado en una página
 
 ```
-✅ Hito 1 — tenant + profile + RLS
-✅ Hito 2 — Core v3 cargado en Supabase (11 bloques, 59k chars)
-✅ Hito 3 — Scaffold monorepo (motor + panel + 6 packages + Docker)
-✅ Hito 4 — Webhook receiver ManyChat + tenant Pablo Montenegro/Montefit
-✅ Hito 5 — Prompt composer (cache 2 breakpoints, ~90% ahorro)
-✅ Hito 6 — Generator (Sonnet 4.5 + tool-forced output + cost calc)
-✅ Hito 7 — Judge + Splitter + Validator V0-V16 + runPipeline
-✅ Hito 8 — Outbound ManyChat + scheduler debounce (loop cerrado en código)
-🔨 Fase 2 — Panel SaaS v1 (auth scaffold listo, falta wizard onboarding + configurador)
-⏳ Smoke E2E real (manual de Ivan: cloudflared + IG real)
-⏳ G6 — fixtures C1/C2/C3 10/10 (bloqueante para iterar coach v2)
+✅ Hito 1-3  — foundations: tenant + RLS · Cerebro cargado en Supabase · scaffold monorepo
+✅ Hito 4-8  — motor: webhook ManyChat + composer + Generator + Judge/Splitter/Validator + outbound/scheduler
+✅ Hito 9    — OAuth Marketplace GHL + YCloud como conectores de origen + bienvenida WA por formulario
+               (OAuth cerrado 2026-05-12; onboarding trainer = 1 click "Install")
+✅ Hito 10   — Calendarios GHL + trazabilidad de bookings (webhook AppointmentCreate → F7 + handoff)
+✅ Hito 11   — Timezone-awareness lead/trainer en el prompt
+✅ Hito 12   — Cerebro v5 consolidado (2 bloques shared + coach_v5 monolítico, marker dinámico de fase)
+✅ Hito 12.1 — cumplimiento estricto: max msgs/turno + tratamiento tú/usted + vocabulario prohibido (V17/V18)
+⛔ Hito 12.2 — REVERTIDO (nombre del lead + filtro de género): NO está en el código; diseño conservado por si se retoma
+✅ Hito 12.3 — keywords type='inbound' disparan IA también en InboundMessage (leads orgánicos)
+⏳ Producción — smokes E2E reales + pasar *_VERIFY_MODE a enforce (bloqueado por acceso SSH al VPS)
 ```
 
-Detalle completo en [ROADMAP.md](ROADMAP.md).
+Detalle e historia en [ROADMAP.md](ROADMAP.md) y, para el estado vivo, en `git log` + [CLAUDE.md](CLAUDE.md).
 
 ## Licencia
 
