@@ -55,6 +55,10 @@ _pkg-coach-authoring/
 
 .vercel
 
-# Excepcion: el dist de Tania se versiona (es lo que se pega en n8n)
+# Excepcion: el dist de Tania se versiona (es lo que se pega en n8n) y su script
+# de build es codigo fuente, no un artefacto — "build/" arriba lo estaba
+# tragando en silencio (detectado 2026-07-23: nunca habia llegado a subirse).
 !prompts/tania/dist/
 !prompts/tania/dist/**
+!prompts/tania/build/
+!prompts/tania/build/**
