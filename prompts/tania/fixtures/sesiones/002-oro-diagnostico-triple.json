@@ -1,7 +1,7 @@
 {
   "id": "002-oro-diagnostico-triple",
   "session_id_origen": "1972466661",
-  "variante": "wa-inbound-leadform",
+  "variante": "whatsapp",
   "descripcion": "Lead abre con diagnóstico triple (dos hernias discales, escoliosis, discopatía). v3 preguntó '¿cuánto tiempo llevas con dolor?' (dato secundario). v4 debe validar reflejando SUS palabras y tirar del impacto en presente o del objetivo, sin re-preguntar zona/diagnóstico ni duración.",
   "historial": [],
   "estado": {

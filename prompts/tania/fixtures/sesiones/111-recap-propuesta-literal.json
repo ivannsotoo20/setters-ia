@@ -1,7 +1,7 @@
 {
   "id": "111-recap-propuesta-literal",
   "session_id_origen": "18197918074",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead acaba de confirmar el recap-espejo ('Si, es eso'). El siguiente mensaje debe ser la propuesta de videollamada anclada con AL MENOS un elemento literal del caso del lead (pesas, abdominales, entrenar, correr, mareos), no una propuesta genérica de plantilla.",
   "historial": [
     { "role": "user", "content": "Necesito ejercicios que me reestablezcan para disminuir las hernias" },

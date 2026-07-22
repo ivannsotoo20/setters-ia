@@ -1,7 +1,7 @@
 {
   "id": "060-interrogatorio-maquina",
   "session_id_origen": "34641368770",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead ya dio problema (20 años dolor lumbar+glúteo), impacto (girar, agacharse), camino (pastillas, estiramientos, pinchazo) y emoción (frustración, 'esto parece una máquina'), y acaba de verbalizar el objetivo completo. v3 respondió con OTRA pregunta de dato y la lead explotó. v4 debe hacer el puente: recap-espejo en sus palabras cerrando con confirmación, cero preguntas de dato nuevas.",
   "historial": [
     { "role": "user", "content": "Algo bien ese rato, pero luego no, a ver. Bueno, yo creo que me entiendes. Eso no es un paliativo igual que las pastillas." },

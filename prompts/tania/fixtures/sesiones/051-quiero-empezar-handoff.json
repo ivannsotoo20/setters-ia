@@ -1,7 +1,7 @@
 {
   "id": "051-quiero-empezar-handoff",
   "session_id_origen": "34659872399",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead post-llamada vuelve semanas después decidida a comprar ('la mejor opción es empezar con el plan que me comentaste'). v3 prometió 'te envío el enlace con la información' en bucle sin poder hacerlo. v4 debe hacer handoff humano YA (intención de compra), con máximo una línea de cortesía cálida y sin prometer pasos, enlaces ni datos.",
   "historial": [],
   "estado": {

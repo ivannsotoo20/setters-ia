@@ -22,9 +22,10 @@
 -- stage_v4            etapa v4 (enum soft, ver CHECK más abajo); la columna
 --                     vieja pipeline_stage se mantiene como espejo para GHL
 -- fuente_v4           variante de origen del lead: 'ig-inbound' | 'ig-bienvenidas' |
---                     'wa-outbound' | 'wa-inbound-leadform'. Se fija al PRIMER
---                     contacto (COALESCE en los upserts) y ya no cambia: decide
---                     qué dist/system prompt usa el compose para ese lead
+--                     'whatsapp' (WhatsApp es un unico prompt para ambos sentidos;
+--                     el propio prompt infiere outbound/inbound del historial).
+--                     Se fija al PRIMER contacto (COALESCE en los upserts) y ya
+--                     no cambia: decide qué dist/system prompt usa el compose
 -- link_enviado_fecha  fecha del PRIMER envío del link de agenda
 -- booking_status      none | booked | cancelled | no_show (webhook booking)
 -- proximo_recontacto  cuándo debe mirarlo el workflow de seguimiento (NULL = no tocar)

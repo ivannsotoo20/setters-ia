@@ -7,7 +7,7 @@
         "path": "tania-v4-booking",
         "options": {}
       },
-      "id": "1f3a9208-f113-44a1-a12f-74bb668d230b",
+      "id": "9b6542f7-73e4-4271-abf4-ae1f1818554f",
       "name": "Webhook booking",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -15,13 +15,13 @@
         0,
         300
       ],
-      "webhookId": "9a4e94b1-41e1-4551-add6-5b3cd514a2b1"
+      "webhookId": "3b563125-9f7b-42e6-8532-57226de17350"
     },
     {
       "parameters": {
         "jsCode": "// Payload esperado (workflow nativo de GHL -> Custom Webhook):\n//   { \"contact_id\": \"...\", \"start_time\": \"2026-08-01T17:00:00+02:00\", \"tipo\": \"booked|cancelled|no_show\" }\n// Se toleran variantes de nombre y los tipos nativos de GHL (AppointmentCreate...).\nconst body = $json.body || {};\nconst contactId = body.contact_id || body.contactId || (body.contact && body.contact.id) || null;\nconst startTime = body.start_time || body.startTime || (body.calendar && body.calendar.startTime) || null;\nlet tipo = String(body.tipo || body.type || body.event || body.status || '').toLowerCase();\nif (/(no.?show)/.test(tipo)) tipo = 'no_show';\nelse if (/(cancel)/.test(tipo)) tipo = 'cancelled';\nelse if (/(book|creat|confirm)/.test(tipo)) tipo = 'booked';\nelse tipo = 'desconocido';\nreturn [{ json: { contact_id: contactId, start_time: startTime, tipo: tipo } }];"
       },
-      "id": "97ec894d-6ea9-4c48-911e-de273da62ffa",
+      "id": "c49aa99e-8bf6-4983-a797-8601747339d3",
       "name": "normalizar booking",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -41,7 +41,7 @@
           },
           "conditions": [
             {
-              "id": "692ecaa5-35e7-46bc-a283-a4958b99ee3c",
+              "id": "2bde8310-bba0-41ef-a73f-e7b4f29f8ff4",
               "leftValue": "={{ !!$json.contact_id && $json.tipo !== 'desconocido' }}",
               "rightValue": "",
               "operator": {
@@ -55,7 +55,7 @@
         },
         "options": {}
       },
-      "id": "01832ddb-9ef9-4ae3-b9c8-251a43d87894",
+      "id": "378c8deb-a96f-460a-b34c-312399282fb0",
       "name": "¿datos válidos?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -66,7 +66,7 @@
     },
     {
       "parameters": {},
-      "id": "093e0716-d533-46c2-b904-516d4e5e22df",
+      "id": "1ad4b6b6-e4ab-4f7d-9f4f-d8f3c276ff50",
       "name": "fin: payload inválido",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -89,7 +89,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "fa4c69d4-cb2d-4e49-86c7-a9cb63d7bc88",
+                    "id": "533bb65d-c174-48d9-8b32-47ab75df2b5f",
                     "leftValue": "={{ $json.tipo }}",
                     "rightValue": "booked",
                     "operator": {
@@ -114,7 +114,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "dafe52b1-88ac-4def-949d-b680b98548b0",
+                    "id": "48d0859d-8412-46d1-9906-249aef2a221f",
                     "leftValue": "={{ $json.tipo }}",
                     "rightValue": "cancelled",
                     "operator": {
@@ -139,7 +139,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "fb448154-6f7f-47ef-b532-f85eba1aeb36",
+                    "id": "478ec5de-0d66-4755-af1b-ee615d9c9f10",
                     "leftValue": "={{ $json.tipo }}",
                     "rightValue": "no_show",
                     "operator": {
@@ -158,7 +158,7 @@
         },
         "options": {}
       },
-      "id": "88ac7430-f1d2-40f7-b64d-a9e380f8e90f",
+      "id": "12adc495-a2b7-4609-a761-1d8bcfd0a166",
       "name": "¿tipo de evento?",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
@@ -175,7 +175,7 @@
           "queryReplacement": "={{ [ $('normalizar booking').first().json.contact_id ] }}"
         }
       },
-      "id": "4c2918bb-8cfc-46c9-a539-8243881a8d30",
+      "id": "42091f04-6052-4737-be3e-c858f582a1a8",
       "name": "crm: agendado",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -202,7 +202,7 @@
           },
           "conditions": [
             {
-              "id": "fef1304e-e857-406c-a195-72ec12d36d1d",
+              "id": "cd30a3b2-351e-4485-8cf7-60b53e70470b",
               "leftValue": "={{ ($json.id || '') + '' }}",
               "rightValue": "",
               "operator": {
@@ -216,7 +216,7 @@
         },
         "options": {}
       },
-      "id": "7c8113de-45f1-4a5f-9253-8649bc758e60",
+      "id": "a8d497e5-4e08-4b68-88f9-c0519f986088",
       "name": "¿lead encontrado?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -227,7 +227,7 @@
     },
     {
       "parameters": {},
-      "id": "6ed07c7e-2eb6-4156-a6aa-006cfc9e03f5",
+      "id": "4e65f6b2-bcc8-462f-ac6a-174de746bcc0",
       "name": "fin: contacto sin lead",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -240,7 +240,7 @@
       "parameters": {
         "jsCode": "// Plantilla fija calida de confirmacion, con la fecha bonita en es-ES (hora Madrid).\nconst lead = $input.first().json;\nconst start = $('normalizar booking').first().json.start_time;\nlet fechaBonita = '';\nif (start) {\n  const d = new Date(start);\n  if (!isNaN(d.getTime())) fechaBonita = d.toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });\n}\nconst nombre = String(lead.nombre || '').split(' ')[0];\nconst texto = (nombre ? nombre + ', ' : '') +\n  '¡reserva confirmada! 🎉 Tu videollamada con Tania queda agendada' +\n  (fechaBonita ? ' para el ' + fechaBonita + ' (hora España)' : '') +\n  '. Si te surge cualquier cosa antes, escríbeme por aquí. ¡Nos vemos muy pronto! 💛';\nreturn [{ json: {\n  id: lead.id,\n  texto: texto,\n  es_whatsapp: String(lead.id).startsWith(String.fromCharCode(43)),\n} }];"
       },
-      "id": "3e2576df-8958-452f-9821-513880849473",
+      "id": "9a129783-59ae-4c95-ada7-016f93440d18",
       "name": "mensaje confirmación",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -260,7 +260,7 @@
           },
           "conditions": [
             {
-              "id": "e25b0edb-24b1-43e7-a368-d9d3bbbd1ff3",
+              "id": "7e015360-c58f-4a46-9cd0-159497581fc3",
               "leftValue": "={{ $json.es_whatsapp === true }}",
               "rightValue": "",
               "operator": {
@@ -274,7 +274,7 @@
         },
         "options": {}
       },
-      "id": "7e3aac46-73a1-441c-9a40-fa2bdb057652",
+      "id": "1670e63a-2f21-4688-9488-83da7e8fee16",
       "name": "¿es WhatsApp?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -294,7 +294,7 @@
         "jsonBody": "={\n  \"from\": \"+34912649668\",\n  \"to\": \"{{ $('mensaje confirmación').first().json.id }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": {{ JSON.stringify($('mensaje confirmación').first().json.texto) }}, \"preview_url\": false }\n}",
         "options": {}
       },
-      "id": "eae1aa09-9d9a-4f38-80a1-cd8a020b3376",
+      "id": "e2d62c67-eb28-4c3d-8216-933180885597",
       "name": "confirmación WA (YCloud)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -320,7 +320,7 @@
         "jsonBody": "={\n  \"subscriber_id\": \"{{ $('mensaje confirmación').first().json.id }}\",\n  \"data\": {\n    \"version\": \"v2\",\n    \"content\": {\n      \"type\": \"instagram\",\n      \"messages\": [ { \"type\": \"text\", \"text\": {{ JSON.stringify($('mensaje confirmación').first().json.texto) }} } ]\n    }\n  }\n}",
         "options": {}
       },
-      "id": "5a01a366-36fd-4e54-8388-bef245a021e8",
+      "id": "8df60c17-f7d0-435d-8191-83bc860a1381",
       "name": "confirmación IG (ManyChat)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -343,7 +343,7 @@
           "queryReplacement": "={{ [ $('mensaje confirmación').first().json.id, $('mensaje confirmación').first().json.texto ] }}"
         }
       },
-      "id": "3162c2f1-cf19-4eb1-a4e7-68ee9ed3e691",
+      "id": "7a356a49-4676-4342-9968-ae5de88bc1bc",
       "name": "historial confirmación (ai)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -367,7 +367,7 @@
           "queryReplacement": "={{ [ $('normalizar booking').first().json.contact_id ] }}"
         }
       },
-      "id": "50cff2d4-6298-481d-99db-06751f19e07a",
+      "id": "f8f613b6-a992-4ef6-9961-10544b0207c3",
       "name": "crm: cancelada",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -391,7 +391,7 @@
           "queryReplacement": "={{ [ $('normalizar booking').first().json.contact_id ] }}"
         }
       },
-      "id": "84d7a3df-0ec1-4753-bf76-cf613bfac490",
+      "id": "165a97b8-c155-43f2-a2b3-a71112ef5fb4",
       "name": "crm: no acudió",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -413,7 +413,7 @@
         "width": 520,
         "height": 330
       },
-      "id": "83cc3042-2a43-4f19-9274-f29604693a9a",
+      "id": "f47765b5-2b96-415d-ac7c-1cf653607a82",
       "name": "Sticky — booking webhook",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -428,7 +428,7 @@
         "width": 460,
         "height": 220
       },
-      "id": "9b5fdf23-f092-4b0a-883d-91d913168b1a",
+      "id": "426597bb-6781-4e21-a445-4e3fc4d0f2fd",
       "name": "Sticky — número emisor WA",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,

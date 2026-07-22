@@ -1,7 +1,7 @@
 {
   "id": "021-franja-manana-sin-link",
   "session_id_origen": "59165814065",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead cambia de franja ('Esta bien en la mañana igual') con la URL ya pegada dos veces en los últimos mensajes. v3 respondió re-pegando el link por tercera vez. v4 debe reconocer la franja de mañana y guiar SIN volver a pegar la URL (está en los últimos 3 mensajes) y sin inventar disponibilidad.",
   "historial": [
     { "role": "user", "content": "En la tarde esta bien" },

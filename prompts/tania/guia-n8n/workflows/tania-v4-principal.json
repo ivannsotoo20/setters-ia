@@ -7,7 +7,7 @@
         "path": "tania-v4",
         "options": {}
       },
-      "id": "650a95d5-4fc3-4ea1-86b2-56a0e539cc5c",
+      "id": "9ae38d28-0f14-47ec-b433-004a0c06cc64",
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2.1,
@@ -15,13 +15,13 @@
         0,
         300
       ],
-      "webhookId": "6a88a5ea-8673-4f20-88be-301a327ef5ff"
+      "webhookId": "1e031389-070c-4176-9d98-4064ea8eb4d4"
     },
     {
       "parameters": {
-        "jsCode": "// Normaliza el payload entrante (YCloud WA / ManyChat IG) a un shape unico.\nfunction djb2(str) { let h = 5381; for (let i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; } return h.toString(36); }\nconst body = $json.body || {};\nconst out = { canal: '', message_id: '', dedup_key: '', session_id: '', texto: '', nombre: null, origen: 'inbound', flujo: null, es_opener: false, opener_texto: null, bot_off: false, wa_business: null, tipo_mensaje: 'text' };\nif (body.whatsappInboundMessage) {\n  const m = body.whatsappInboundMessage;\n  out.canal = 'whatsapp';\n  out.session_id = String(m.from || '');\n  out.wa_business = String(m.to || '');\n  out.nombre = (m.customerProfile && m.customerProfile.name) || null;\n  out.message_id = String(m.wamid || m.id || '');\n  out.tipo_mensaje = String(m.type || 'text');\n  if (out.tipo_mensaje === 'text') { out.texto = (m.text && m.text.body) || ''; }\n  else { out.texto = '[' + out.tipo_mensaje + ' recibido]'; } // audio/imagen: la transcripcion sigue en v3 (ver sticky)\n  out.flujo = null;\n} else if (body.user_id) {\n  out.canal = 'instagram';\n  out.session_id = String(body.user_id);\n  out.nombre = body.name || body.username || null;\n  out.texto = String(body.message || '');\n  if (body.bienvenida && !body.message) { out.es_opener = true; out.opener_texto = String(body.bienvenida); }\n  out.origen = body.lead === 'Outbound' ? 'outbound' : 'inbound';\n  // el flow de bienvenida de ManyChat DEBE incluir \"flujo\":\"bienvenida\" en el body (ver guia)\n  out.flujo = body.flujo || (body.bienvenida ? 'bienvenida' : null);\n  try { out.bot_off = body.conversation.messages[0].sender.custom_attributes.bot === 'off'; } catch (e) { out.bot_off = false; }\n  // ManyChat no manda id de mensaje: derivamos uno estable (usuario + hash del texto + minuto)\n  out.message_id = 'ig:' + out.session_id + ':' + djb2(out.texto || out.opener_texto || '') + ':' + Math.floor(Date.now() / 60000);\n}\nout.dedup_key = 'dedup:' + out.message_id;\nreturn [{ json: out }];"
+        "jsCode": "// Normaliza el payload entrante (YCloud WA / ManyChat IG) a un shape unico.\nfunction djb2(str) { let h = 5381; for (let i = 0; i < str.length; i++) { h = ((h << 5) + h + str.charCodeAt(i)) >>> 0; } return h.toString(36); }\nconst body = $json.body || {};\nconst out = { canal: '', message_id: '', dedup_key: '', session_id: '', texto: '', nombre: null, origen: 'inbound', flujo: null, es_opener: false, opener_texto: null, bot_off: false, wa_business: null, tipo_mensaje: 'text' };\nif (body.whatsappInboundMessage) {\n  const m = body.whatsappInboundMessage;\n  out.canal = 'whatsapp';\n  out.session_id = String(m.from || '');\n  out.wa_business = String(m.to || '');\n  out.nombre = (m.customerProfile && m.customerProfile.name) || null;\n  out.message_id = String(m.wamid || m.id || '');\n  out.tipo_mensaje = String(m.type || 'text');\n  if (out.tipo_mensaje === 'text') { out.texto = (m.text && m.text.body) || ''; }\n  else { out.texto = '[' + out.tipo_mensaje + ' recibido]'; } // audio/imagen: la transcripcion sigue en v3 (ver sticky)\n  out.flujo = null;\n} else if (body.user_id) {\n  out.canal = 'instagram';\n  out.session_id = String(body.user_id);\n  out.nombre = body.name || body.username || null;\n  out.texto = String(body.message || '');\n  if (body.bienvenida && !body.message) { out.es_opener = true; out.opener_texto = String(body.bienvenida); }\n  out.origen = body.lead === 'Outbound' ? 'outbound' : 'inbound'; // solo se usa para IG (bienvenidas vs inbound); WA infiere del historial en el propio prompt\n  // el flow de bienvenida de ManyChat DEBE incluir \"flujo\":\"bienvenida\" en el body (ver guia)\n  out.flujo = body.flujo || (body.bienvenida ? 'bienvenida' : null);\n  try { out.bot_off = body.conversation.messages[0].sender.custom_attributes.bot === 'off'; } catch (e) { out.bot_off = false; }\n  // ManyChat no manda id de mensaje: derivamos uno estable (usuario + hash del texto + minuto)\n  out.message_id = 'ig:' + out.session_id + ':' + djb2(out.texto || out.opener_texto || '') + ':' + Math.floor(Date.now() / 60000);\n}\nout.dedup_key = 'dedup:' + out.message_id;\nreturn [{ json: out }];"
       },
-      "id": "4432a904-fbe6-4377-9610-33a3c347be2f",
+      "id": "3bd3cdbb-1734-4441-8849-0204ff651e3f",
       "name": "normalizar",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -41,7 +41,7 @@
           },
           "conditions": [
             {
-              "id": "847e8b65-3cfa-482d-9ffc-e4d374fb775e",
+              "id": "3c272497-9147-4a49-953c-71cfa2d75e1a",
               "leftValue": "={{ $json.canal || '' }}",
               "rightValue": "",
               "operator": {
@@ -55,7 +55,7 @@
         },
         "options": {}
       },
-      "id": "c05cf4fb-33d0-4efb-9e26-a2c224b42b42",
+      "id": "3012b177-4ff3-41f2-8323-919c62d09e01",
       "name": "¿payload reconocido?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -66,7 +66,7 @@
     },
     {
       "parameters": {},
-      "id": "b95004f1-1e79-4cbe-8680-14bdf179ec33",
+      "id": "88edac1a-9505-447d-a3d0-35969ac8f180",
       "name": "fin: payload desconocido",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -86,7 +86,7 @@
           },
           "conditions": [
             {
-              "id": "1572ba2a-9c4b-4bd3-b2a6-f081343f7454",
+              "id": "dfcd1426-722d-457d-8f11-c725445c98d4",
               "leftValue": "={{ $json.es_opener === true }}",
               "rightValue": "",
               "operator": {
@@ -100,7 +100,7 @@
         },
         "options": {}
       },
-      "id": "c561989e-6a4c-4d6f-977f-39d8d067bf9f",
+      "id": "9f57fb12-cd4d-45ea-b9e5-7dbebb79f9d8",
       "name": "¿es opener?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -117,7 +117,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id, $('normalizar').first().json.nombre ] }}"
         }
       },
-      "id": "c388e4a3-13d1-41ec-a3d0-bc09e8157e11",
+      "id": "16f3d688-662d-42a6-8248-296fe39fa71e",
       "name": "opener: upsert CRM",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -140,7 +140,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id, $('normalizar').first().json.opener_texto ] }}"
         }
       },
-      "id": "a3c823ff-7105-49dd-9707-bd945d3169a3",
+      "id": "f2b0a14a-019e-496d-9c3c-0837bd766634",
       "name": "opener: historial (ai)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -162,7 +162,7 @@
         "expire": true,
         "ttl": 3600
       },
-      "id": "2ebd854b-074c-465d-8d9b-8e4b1d828e2b",
+      "id": "1539bc25-567e-469b-a65c-af13236aa069",
       "name": "dedup Redis (INCR≈SETNX)",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -181,7 +181,7 @@
       "parameters": {
         "jsCode": "// El nodo Redis INCR devuelve el contador bajo un nombre de propiedad que depende de la key.\n// 1 = primera vez que vemos este message_id; >1 = duplicado (reintento del proveedor).\nconst norm = $('normalizar').first().json;\nconst raw = $input.first().json || {};\nlet count = null;\nfor (const v of Object.values(raw)) {\n  if (typeof v === 'number') { count = v; break; }\n  const n = Number(v);\n  if (!Number.isNaN(n) && v !== '' && v !== null) { count = n; break; }\n}\nreturn [{ json: Object.assign({}, norm, { dedup_count: count === null ? 1 : count }) }];"
       },
-      "id": "c1601a18-5a04-4b6a-abf2-136e4cd5c274",
+      "id": "845ea923-242f-4437-a882-328386c33a08",
       "name": "evaluar dedup",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -201,7 +201,7 @@
           },
           "conditions": [
             {
-              "id": "de98fa91-5cec-43ea-a47b-ef13d0e855fe",
+              "id": "3e16aa55-bcd3-41aa-ad5f-267cb02ca6cc",
               "leftValue": "={{ $json.dedup_count }}",
               "rightValue": 1,
               "operator": {
@@ -214,7 +214,7 @@
         },
         "options": {}
       },
-      "id": "e719e9df-72b1-44ad-948d-b5f5c3bb0415",
+      "id": "d6c89aa9-341d-4f2f-a23c-e1dfd311f565",
       "name": "¿duplicado?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -225,7 +225,7 @@
     },
     {
       "parameters": {},
-      "id": "3f86bc74-17bd-41c2-9727-6e305e5b9552",
+      "id": "e5d7db2e-09a0-44a0-a556-241bb661e042",
       "name": "fin: duplicado",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -242,7 +242,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.message_id, $('normalizar').first().json.session_id, $('normalizar').first().json.canal ] }}"
         }
       },
-      "id": "60efcb96-a598-4e97-acf7-045b671e163e",
+      "id": "82d69734-653d-4385-8c9c-b30611404f1e",
       "name": "dedup persistente (Postgres)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -269,7 +269,7 @@
           },
           "conditions": [
             {
-              "id": "261483e2-4790-42a3-a776-ff949f81d979",
+              "id": "48a84e8d-1f94-41f4-9f98-5d66a2fee5a3",
               "leftValue": "={{ ($json.message_id || '') + '' }}",
               "rightValue": "",
               "operator": {
@@ -283,7 +283,7 @@
         },
         "options": {}
       },
-      "id": "b519a71c-077c-4988-a5c5-c8cd131d5da0",
+      "id": "8d0cb509-dfb1-4118-8f8e-c1914ced1b90",
       "name": "¿mensaje nuevo?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -294,7 +294,7 @@
     },
     {
       "parameters": {},
-      "id": "21276629-6d41-4ed6-8081-d06f5678f18d",
+      "id": "c94e9265-0440-4638-a37a-a94646d7e443",
       "name": "fin: ya procesado",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -310,7 +310,7 @@
         "messageData": "={{ $('normalizar').first().json.texto }}",
         "tail": true
       },
-      "id": "50cef5a7-0ff6-4a43-a5da-583845264c04",
+      "id": "9b1893ee-d95f-472b-b7ad-7c53a318606e",
       "name": "buffer: RPUSH",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -333,7 +333,7 @@
         "expire": true,
         "ttl": 600
       },
-      "id": "7ba4ec4c-573f-4dd0-8de9-f5e87a349d2d",
+      "id": "fb1ef0bb-ea2f-490e-9b1f-bb3419aefb6d",
       "name": "buffer: SET last",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -352,7 +352,7 @@
       "parameters": {
         "amount": 30
       },
-      "id": "bb2e0649-2037-4342-9678-be29ab21f86f",
+      "id": "abb8b742-728e-4a80-bdfb-4e1bb9b71580",
       "name": "esperar ráfaga (30s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -360,7 +360,7 @@
         2420,
         300
       ],
-      "webhookId": "3a18bd30-0552-4190-bb03-62090b38ea9b"
+      "webhookId": "beed8460-490a-4228-b69f-df722f6cdf62"
     },
     {
       "parameters": {
@@ -369,7 +369,7 @@
         "key": "=last:{{ $('normalizar').first().json.session_id }}",
         "options": {}
       },
-      "id": "32990083-9d99-4097-91fa-7307965d1b83",
+      "id": "9d3d8b0a-0967-45f2-9062-733f551161db",
       "name": "leer last",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -395,7 +395,7 @@
           },
           "conditions": [
             {
-              "id": "016af166-299f-4dcf-b121-23aa1150b639",
+              "id": "1113fba1-5543-4392-8362-2ff4b6f16403",
               "leftValue": "={{ ($json.last_message_id || '') + '' }}",
               "rightValue": "={{ $('normalizar').first().json.message_id }}",
               "operator": {
@@ -409,7 +409,7 @@
         },
         "options": {}
       },
-      "id": "5033dc24-0c28-43e2-abfd-d29724405af8",
+      "id": "830f4bc7-64f5-4100-8df3-ba2e86a587b7",
       "name": "¿soy el último?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -420,7 +420,7 @@
     },
     {
       "parameters": {},
-      "id": "0660dac7-7fbc-4587-8186-e4e21dff5e82",
+      "id": "3c09a1ac-a6c9-4560-9b62-a6e987218f20",
       "name": "fin: llegó otro mensaje",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -436,7 +436,7 @@
         "key": "=buffer:{{ $('normalizar').first().json.session_id }}",
         "options": {}
       },
-      "id": "eb076e39-c9c5-4201-a7ef-013d2038beeb",
+      "id": "769e2ad9-8a98-435a-a4e6-334c4a926b31",
       "name": "leer ráfaga",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -456,7 +456,7 @@
         "operation": "delete",
         "key": "=buffer:{{ $('normalizar').first().json.session_id }}"
       },
-      "id": "a08b0e4c-b20a-4c6a-8b3b-f41ce5d3644c",
+      "id": "9fc36313-74ac-4d65-9096-522a81366eaf",
       "name": "borrar buffer",
       "type": "n8n-nodes-base.redis",
       "typeVersion": 1,
@@ -479,7 +479,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "7b48b852-b371-43ab-86a7-3dd855e1120e",
+      "id": "197e603a-66f3-4b3e-9d26-d13b6f8e589b",
       "name": "lock: intento 1",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -506,7 +506,7 @@
           },
           "conditions": [
             {
-              "id": "55e5bd3b-9ae7-467b-acea-b2e47eb5dfd1",
+              "id": "3ae5a42a-251f-4466-b0a2-0c954691fdb3",
               "leftValue": "={{ ($json.session_id || '') + '' }}",
               "rightValue": "",
               "operator": {
@@ -520,7 +520,7 @@
         },
         "options": {}
       },
-      "id": "20d24b78-0494-421b-9d95-c81efea145a9",
+      "id": "b7e7e4f1-3037-420b-9d2a-9277849590ac",
       "name": "¿lock ok? (1)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -533,7 +533,7 @@
       "parameters": {
         "amount": 10
       },
-      "id": "d078c64f-cc78-488c-a9fe-be92dd9e20a6",
+      "id": "d9c6a9cc-5a38-48c5-b8e7-c1f7f93f6abd",
       "name": "esperar lock (10s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -541,7 +541,7 @@
         3740,
         560
       ],
-      "webhookId": "58d8b5e1-a6fe-4d1b-a23b-36ba91132f7f"
+      "webhookId": "9d383851-8e13-4f42-b4bb-1f458273fc00"
     },
     {
       "parameters": {
@@ -551,7 +551,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "9f53fe1a-ab35-4264-a0d9-29ab5f9e9530",
+      "id": "4a1de7b7-5de0-4b30-9098-808d2960cf76",
       "name": "lock: intento 2",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -578,7 +578,7 @@
           },
           "conditions": [
             {
-              "id": "e87b007e-7f75-4f15-855b-a30be22a369b",
+              "id": "e1becb20-f685-4de7-a6fd-a5717148388a",
               "leftValue": "={{ ($json.session_id || '') + '' }}",
               "rightValue": "",
               "operator": {
@@ -592,7 +592,7 @@
         },
         "options": {}
       },
-      "id": "1b9289fe-33fd-40f3-88ed-a5c30f09a69a",
+      "id": "eda68639-e22f-458f-992f-066c65921bec",
       "name": "¿lock ok? (2)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -605,7 +605,7 @@
       "parameters": {
         "amount": 10
       },
-      "id": "a89b8965-4063-4bc0-85c7-dc1d06692c5a",
+      "id": "d2965b35-af1f-41cb-b489-ed1566fcd908",
       "name": "esperar lock 2 (10s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -613,7 +613,7 @@
         4180,
         800
       ],
-      "webhookId": "e83ccaeb-e96a-4b22-bae7-e84e3e6cd4ac"
+      "webhookId": "38b0cd73-e164-46f9-af17-5e5a62d1db68"
     },
     {
       "parameters": {
@@ -623,7 +623,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "f1a2ee95-fdab-44d2-a3b9-082b2f0c256f",
+      "id": "80cf81ee-14f9-49ab-9613-6bf886543726",
       "name": "lock: intento 3",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -650,7 +650,7 @@
           },
           "conditions": [
             {
-              "id": "d35641b9-d2e1-4058-9ea9-c0538cda9e3d",
+              "id": "6abba43a-853d-431c-8de6-d6bd9065b9f2",
               "leftValue": "={{ ($json.session_id || '') + '' }}",
               "rightValue": "",
               "operator": {
@@ -664,7 +664,7 @@
         },
         "options": {}
       },
-      "id": "a42848ba-4505-4780-8380-84e19beb4895",
+      "id": "30ea1e84-959e-47b4-a8a6-48afa01ef059",
       "name": "¿lock ok? (3)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -675,7 +675,7 @@
     },
     {
       "parameters": {},
-      "id": "4cb0d858-fb58-4154-a55f-41710ae31f40",
+      "id": "e23c7177-c177-45d9-8db3-13f8ef439234",
       "name": "fin: sesión bloqueada",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -695,7 +695,7 @@
           },
           "conditions": [
             {
-              "id": "ec1aaa1d-97c8-438b-87e7-305de3494836",
+              "id": "f1aad431-cfae-491c-b51c-5384c81120bb",
               "leftValue": "={{ $('normalizar').first().json.bot_off === true }}",
               "rightValue": "",
               "operator": {
@@ -709,7 +709,7 @@
         },
         "options": {}
       },
-      "id": "0273614b-5896-4b25-afe4-8cd80cf0fbd5",
+      "id": "b13236b2-1c2b-4d6f-a0c6-45ba0b47e802",
       "name": "boton_on/off (¿bot apagado?)",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -726,7 +726,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id, ($('leer ráfaga').first().json.rafaga || [ $('normalizar').first().json.texto ]).join('\\n') ] }}"
         }
       },
-      "id": "4a4beacb-dcff-47f0-8d08-eff1da6042ab",
+      "id": "2e601b76-c65c-4135-9810-2367e450b837",
       "name": "bot off: guardar human",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -749,7 +749,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "8eacbb1e-7a3e-4d40-b538-77793ba27767",
+      "id": "9c3454b9-2713-47ed-9285-3c1918eeb0ca",
       "name": "bot off: liberar lock",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -773,7 +773,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "af5dbc60-f58b-48c1-9944-7584c4280821",
+      "id": "fbf31b3d-f454-4396-9f3b-7e012db75f0a",
       "name": "cargar crm",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -797,7 +797,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "d3b84ecf-ff16-4191-bb5c-c9e9acc0790a",
+      "id": "d1813998-4b23-4ac4-b6fa-f88cb685e748",
       "name": "cargar historial",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -815,9 +815,9 @@
     },
     {
       "parameters": {
-        "jsCode": "// ============================================================================\n// COMPOSE v4 - construye system + messages para POST /v1/messages (Anthropic).\n// n8n NO lee ficheros del repo: ETAPAS_FOCO y DIST van COPIADOS aqui.\n//  - ETAPAS_FOCO: copia de prompts/tania/tools/etapas-foco.json.\n//    Si ese fichero cambia -> RE-PEGAR aqui el objeto entero.\n//  - DIST: pegar el objeto COMPLETO de cada variante desde prompts/tania/dist/\n//    (shape: {\"variante\",\"model\",\"max_tokens\",\"thinking\",\"system\":[2 bloques con\n//    cache_control ephemeral ttl 1h]}). Mientras esten a null, este nodo lanza error.\n// ============================================================================\nconst ETAPAS_FOCO = {\n  \"conexion\": \"Conecta con calidez profesional y consigue que se abra: zona + tiempo llegarán solos. Nada de cualificar todavía.\",\n  \"descubrimiento\": \"Busca las 3 señales (problema + impacto + apertura emocional) anclando cada pregunta en lo último que dijo. Si ya las tienes, pasa al puente: NO sigas preguntando.\",\n  \"cualificacion\": \"UNA pregunta de disposición (satisfacción con su camino actual). Sin debate. Si ya mostró disposición, salta directamente al puente.\",\n  \"puente\": \"Recap-espejo en SUS palabras (situación + camino + impacto) cerrando con confirmación. Tras su sí, el siguiente mensaje es la propuesta.\",\n  \"llamada_ofrecida\": \"Propuesta hecha: gestiona la respuesta. Si acepta → link. Si duda → un argumento nuevo anclado a su caso, nunca el mismo. Si pregunta precio → la videollamada es gratuita, dilo YA.\",\n  \"link_enviado\": \"Ya tiene el link: consigue un micro-compromiso de CUÁNDO va a reservar. No re-pegues la URL si está en los últimos 3 mensajes. Nunca te despidas mientras no haya reserva o negativa explícita.\",\n  \"agendado\": \"Reserva confirmada: mensaje de cierre cálido y FIN. No sigas conversando salvo que pregunte algo.\",\n  \"realizada\": \"La videollamada ya ocurrió. Si escribe, calidez y aviso a Tania (handoff humano si pide algo concreto).\",\n  \"derivado_medico\": \"Derivado a su médico SIN cerrar la puerta: interés genuino por lo que le digan, retomamos cuando tenga respuestas.\",\n  \"en_espera_hito\": \"Hay un evento con fecha capturado. Si escribe antes, atiende con normalidad; el recontacto llegará solo.\",\n  \"dormido\": \"Lead inactivo que reengancha: retoma desde su último dato real, sin reproches ni '¿leíste mi mensaje?'.\",\n  \"perdido\": \"Cerró con negativa explícita. Si vuelve a escribir con contenido nuevo, reactiva con naturalidad desde donde lo dejó.\",\n  \"cliente_activo\": \"Es CLIENTA, no lead: soporte y logística en tono cálido. Cero preguntas de venta/urgencia. Ante dudas de programa → handoff humano.\",\n  \"handoff_humano\": \"Tania debe intervenir. Si el lead escribe mientras tanto: una línea de cortesía como máximo, sin prometer nada.\"\n};\n\nconst DIST = {\n  'ig-inbound': null,          // << PEGAR AQUI prompts/tania/dist/tania-v4-ig-inbound.system.json\n  'ig-bienvenidas': null,       // << PEGAR AQUI prompts/tania/dist/tania-v4-ig-bienvenidas.system.json\n  'wa-outbound': null,          // << PEGAR AQUI prompts/tania/dist/tania-v4-wa-outbound.system.json\n  'wa-inbound-leadform': null,  // << PEGAR AQUI prompts/tania/dist/tania-v4-wa-inbound-leadform.system.json\n};\n\n// ---- limpieza de turnos v3 (historial n8n_chat_histories_tania) ----\nfunction limpiarHuman(content) {\n  const s = String(content == null ? '' : content);\n  const idx = s.indexOf('MENSAJE_USUARIO:');\n  if (idx >= 0) return s.slice(idx + 'MENSAJE_USUARIO:'.length).trim();\n  return s.trim();\n}\nfunction limpiarAi(content) {\n  const s = String(content == null ? '' : content).trim();\n  if (s.startsWith('{')) {\n    try {\n      const j = JSON.parse(s);\n      const out = j.output || j;\n      if (typeof out.mensaje_whatsapp === 'string') return out.mensaje_whatsapp.trim();\n      if (out.response && typeof out.response === 'object') {\n        return Object.keys(out.response).sort()\n          .map(function (k) { return out.response[k]; })\n          .filter(function (v) { return typeof v === 'string' && v.trim(); })\n          .join('\\n\\n').trim();\n      }\n    } catch (e) { /* no era JSON v3: se usa tal cual */ }\n  }\n  return s;\n}\nfunction turnosDesdeHistorial(rows) {\n  const turnos = [];\n  let prevHuman = null;\n  for (const row of rows) {\n    let msg = row.message;\n    if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }\n    if (!msg || !msg.type) continue;\n    const bruto = msg.content == null ? '' : msg.content;\n    if (String(bruto).startsWith('Le hemos hecho al usuario')) continue; // nota interna v3: se salta\n    if (msg.type === 'human') {\n      const limpio = limpiarHuman(bruto);\n      if (!limpio) continue;\n      if (limpio === prevHuman) continue; // dedup de humans consecutivos identicos\n      prevHuman = limpio;\n      turnos.push({ role: 'user', text: limpio });\n    } else if (msg.type === 'ai') {\n      const limpio = limpiarAi(bruto);\n      if (!limpio) continue;\n      prevHuman = null;\n      turnos.push({ role: 'assistant', text: limpio });\n    }\n  }\n  // la API exige alternancia estricta user/assistant: se fusionan consecutivos del mismo rol\n  const merged = [];\n  for (const t of turnos) {\n    const last = merged[merged.length - 1];\n    if (last && last.role === t.role) last.text += '\\n\\n' + t.text;\n    else merged.push({ role: t.role, text: t.text });\n  }\n  // ... y que el primer mensaje sea user\n  if (merged.length && merged[0].role === 'assistant') {\n    merged.unshift({ role: 'user', text: '[Conversacion iniciada por Tania]' });\n  }\n  return merged;\n}\nfunction fechaMadrid() {\n  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));\n  const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];\n  const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');\n  return { iso: iso, dia: DIAS[d.getDay()] };\n}\n\nconst norm = $('normalizar').first().json;\nconst crmRow = $('cargar crm').first().json || {};\nconst crm = crmRow.id ? crmRow : {};\nconst histRows = $input.all().map(function (i) { return i.json; }).filter(function (r) { return r && r.message; });\n\nlet rafaga = [];\ntry { rafaga = $('leer ráfaga').first().json.rafaga || []; } catch (e) { rafaga = []; }\nif (!Array.isArray(rafaga)) rafaga = [String(rafaga)];\nrafaga = rafaga.map(function (t) { return String(t).trim(); }).filter(Boolean);\nif (rafaga.length === 0 && norm.texto) rafaga = [String(norm.texto).trim()];\nconst textoRafaga = rafaga.join('\\n');\n\n// ---- seleccion de variante de dist ----\n// La fuente queda FIJADA en clientes_crm_tania.fuente_v4 al primer contacto;\n// si aun no existe, se decide por canal/origen/flujo de este payload.\nlet variante = (crmRow && crmRow.fuente_v4) || null;\nif (!variante) {\n  if (norm.canal === 'whatsapp') variante = (norm.origen === 'inbound') ? 'wa-inbound-leadform' : 'wa-outbound';\n  else variante = (norm.flujo === 'bienvenida') ? 'ig-bienvenidas' : 'ig-inbound';\n}\nconst dist = DIST[variante];\nif (!dist || !Array.isArray(dist.system)) {\n  throw new Error('DIST no configurado para la variante \"' + variante + '\". Pega el contenido de prompts/tania/dist/tania-v4-' + variante + '.system.json en el nodo compose.');\n}\n\nconst merged = turnosDesdeHistorial(histRows);\n// si el historial termina en turno user (p.ej. bot apagado un rato), se pliega en el turno actual\nlet prefijoPendiente = '';\nif (merged.length && merged[merged.length - 1].role === 'user') { prefijoPendiente = merged.pop().text; }\nconst textoTurno = [prefijoPendiente, textoRafaga].filter(Boolean).join('\\n');\n\n// ---- bloque <estado_conversacion> (contrato cerrado) ----\nconst stage = crm.stage_v4 || 'conexion';\nconst foco = ETAPAS_FOCO[stage] || ETAPAS_FOCO.conexion;\nconst slots = (crm.slots && typeof crm.slots === 'object') ? crm.slots : {};\nconst slotsLineas = Object.entries(slots)\n  .filter(function (e) { return e[1] !== null && e[1] !== undefined && String(e[1]).trim() !== ''; })\n  .map(function (e) { return '- ' + e[0] + ': ' + e[1]; });\nconst f = fechaMadrid();\nconst linkLinea = crm.link_enviado_fecha ? ('enviado el ' + String(crm.link_enviado_fecha).slice(0, 10)) : 'no enviado';\nconst RESERVA = { none: 'sin reserva', booked: 'reservada', no_show: 'no acudió', cancelled: 'cancelada' };\nconst estado = [\n  '<estado_conversacion>',\n  'FECHA: ' + f.iso + ' (' + f.dia + ')',\n  'ETAPA: ' + stage,\n  'FOCO: ' + foco,\n  'DATOS CONFIRMADOS (PROHIBIDO re-preguntar):',\n].concat(slotsLineas.length ? slotsLineas : ['- (aún ninguno)']).concat([\n  'LINK DE AGENDA: ' + linkLinea,\n  'RESERVA: ' + (RESERVA[crm.booking_status || 'none'] || 'sin reserva'),\n  '</estado_conversacion>',\n]).join('\\n');\n\n// ---- messages: historial limpio + turno actual (estado + rafaga) ----\nconst messages = merged.map(function (t) { return { role: t.role, content: t.text }; });\nmessages.push({\n  role: 'user',\n  content: [\n    { type: 'text', text: estado },\n    { type: 'text', text: textoTurno || '(el lead no envió texto)' },\n  ],\n});\n// breakpoint 3 de cache (movil): ultimo bloque del PENULTIMO turno, ttl 1h.\n// Los breakpoints 1 y 2 vienen dentro de dist.system. Total 3 <= 4 permitidos.\nif (messages.length >= 2) {\n  const pen = messages[messages.length - 2];\n  const blocks = typeof pen.content === 'string' ? [{ type: 'text', text: pen.content }] : pen.content;\n  blocks[blocks.length - 1].cache_control = { type: 'ephemeral', ttl: '1h' };\n  pen.content = blocks;\n}\n\nreturn [{ json: {\n  model: dist.model,\n  max_tokens: dist.max_tokens || 1024,\n  system_blocks: dist.system,\n  messages: messages,\n  session_id: norm.session_id,\n  canal: norm.canal,\n  variante: variante,\n  texto_rafaga: textoTurno,\n  stage_actual: stage,\n  slots_previos: slots,\n  link_enviado_fecha: crm.link_enviado_fecha || null,\n  booking_status: crm.booking_status || 'none',\n  contact_id: crm.contact_id || null,\n  nombre: norm.nombre || crm.nombre || null,\n} }];"
+        "jsCode": "// ============================================================================\n// COMPOSE v4 - construye system + messages para POST /v1/messages (Anthropic).\n// n8n NO lee ficheros del repo: ETAPAS_FOCO y DIST van COPIADOS aqui.\n//  - ETAPAS_FOCO: copia de prompts/tania/tools/etapas-foco.json.\n//    Si ese fichero cambia -> RE-PEGAR aqui el objeto entero.\n//  - DIST: pegar el objeto COMPLETO de cada variante desde prompts/tania/dist/\n//    (shape: {\"variante\",\"model\",\"max_tokens\",\"thinking\",\"system\":[2 bloques con\n//    cache_control ephemeral ttl 1h]}). Mientras esten a null, este nodo lanza error.\n// ============================================================================\nconst ETAPAS_FOCO = {\n  \"conexion\": \"Conecta con calidez profesional y consigue que se abra: zona + tiempo llegarán solos. Nada de cualificar todavía.\",\n  \"descubrimiento\": \"Busca las 3 señales (problema + impacto + apertura emocional) anclando cada pregunta en lo último que dijo. Si ya las tienes, pasa al puente: NO sigas preguntando.\",\n  \"cualificacion\": \"UNA pregunta de disposición (satisfacción con su camino actual). Sin debate. Si ya mostró disposición, salta directamente al puente.\",\n  \"puente\": \"Recap-espejo en SUS palabras (situación + camino + impacto) cerrando con confirmación. Tras su sí, el siguiente mensaje es la propuesta.\",\n  \"llamada_ofrecida\": \"Propuesta hecha: gestiona la respuesta. Si acepta → link. Si duda → un argumento nuevo anclado a su caso, nunca el mismo. Si pregunta precio → la videollamada es gratuita, dilo YA.\",\n  \"link_enviado\": \"Ya tiene el link: consigue un micro-compromiso de CUÁNDO va a reservar. No re-pegues la URL si está en los últimos 3 mensajes. Nunca te despidas mientras no haya reserva o negativa explícita.\",\n  \"agendado\": \"Reserva confirmada: mensaje de cierre cálido y FIN. No sigas conversando salvo que pregunte algo.\",\n  \"realizada\": \"La videollamada ya ocurrió. Si escribe, calidez y aviso a Tania (handoff humano si pide algo concreto).\",\n  \"derivado_medico\": \"Derivado a su médico SIN cerrar la puerta: interés genuino por lo que le digan, retomamos cuando tenga respuestas.\",\n  \"en_espera_hito\": \"Hay un evento con fecha capturado. Si escribe antes, atiende con normalidad; el recontacto llegará solo.\",\n  \"dormido\": \"Lead inactivo que reengancha: retoma desde su último dato real, sin reproches ni '¿leíste mi mensaje?'.\",\n  \"perdido\": \"Cerró con negativa explícita. Si vuelve a escribir con contenido nuevo, reactiva con naturalidad desde donde lo dejó.\",\n  \"cliente_activo\": \"Es CLIENTA, no lead: soporte y logística en tono cálido. Cero preguntas de venta/urgencia. Ante dudas de programa → handoff humano.\",\n  \"handoff_humano\": \"Tania debe intervenir. Si el lead escribe mientras tanto: una línea de cortesía como máximo, sin prometer nada.\"\n};\n\nconst DIST = {\n  'ig-inbound': null,      // << PEGAR AQUI prompts/tania/dist/tania-v4-ig-inbound.system.json\n  'ig-bienvenidas': null,  // << PEGAR AQUI prompts/tania/dist/tania-v4-ig-bienvenidas.system.json\n  'whatsapp': null,        // << PEGAR AQUI prompts/tania/dist/tania-v4-whatsapp.system.json\n};\n\n// ---- limpieza de turnos v3 (historial n8n_chat_histories_tania) ----\nfunction limpiarHuman(content) {\n  const s = String(content == null ? '' : content);\n  const idx = s.indexOf('MENSAJE_USUARIO:');\n  if (idx >= 0) return s.slice(idx + 'MENSAJE_USUARIO:'.length).trim();\n  return s.trim();\n}\nfunction limpiarAi(content) {\n  const s = String(content == null ? '' : content).trim();\n  if (s.startsWith('{')) {\n    try {\n      const j = JSON.parse(s);\n      const out = j.output || j;\n      if (typeof out.mensaje_whatsapp === 'string') return out.mensaje_whatsapp.trim();\n      if (out.response && typeof out.response === 'object') {\n        return Object.keys(out.response).sort()\n          .map(function (k) { return out.response[k]; })\n          .filter(function (v) { return typeof v === 'string' && v.trim(); })\n          .join('\\n\\n').trim();\n      }\n    } catch (e) { /* no era JSON v3: se usa tal cual */ }\n  }\n  return s;\n}\nfunction turnosDesdeHistorial(rows) {\n  const turnos = [];\n  let prevHuman = null;\n  for (const row of rows) {\n    let msg = row.message;\n    if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }\n    if (!msg || !msg.type) continue;\n    const bruto = msg.content == null ? '' : msg.content;\n    if (String(bruto).startsWith('Le hemos hecho al usuario')) continue; // nota interna v3: se salta\n    if (msg.type === 'human') {\n      const limpio = limpiarHuman(bruto);\n      if (!limpio) continue;\n      if (limpio === prevHuman) continue; // dedup de humans consecutivos identicos\n      prevHuman = limpio;\n      turnos.push({ role: 'user', text: limpio });\n    } else if (msg.type === 'ai') {\n      const limpio = limpiarAi(bruto);\n      if (!limpio) continue;\n      prevHuman = null;\n      turnos.push({ role: 'assistant', text: limpio });\n    }\n  }\n  // la API exige alternancia estricta user/assistant: se fusionan consecutivos del mismo rol\n  const merged = [];\n  for (const t of turnos) {\n    const last = merged[merged.length - 1];\n    if (last && last.role === t.role) last.text += '\\n\\n' + t.text;\n    else merged.push({ role: t.role, text: t.text });\n  }\n  // ... y que el primer mensaje sea user\n  if (merged.length && merged[0].role === 'assistant') {\n    merged.unshift({ role: 'user', text: '[Conversacion iniciada por Tania]' });\n  }\n  return merged;\n}\nfunction fechaMadrid() {\n  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));\n  const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];\n  const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');\n  return { iso: iso, dia: DIAS[d.getDay()] };\n}\n\nconst norm = $('normalizar').first().json;\nconst crmRow = $('cargar crm').first().json || {};\nconst crm = crmRow.id ? crmRow : {};\nconst histRows = $input.all().map(function (i) { return i.json; }).filter(function (r) { return r && r.message; });\n\nlet rafaga = [];\ntry { rafaga = $('leer ráfaga').first().json.rafaga || []; } catch (e) { rafaga = []; }\nif (!Array.isArray(rafaga)) rafaga = [String(rafaga)];\nrafaga = rafaga.map(function (t) { return String(t).trim(); }).filter(Boolean);\nif (rafaga.length === 0 && norm.texto) rafaga = [String(norm.texto).trim()];\nconst textoRafaga = rafaga.join('\\n');\n\n// ---- seleccion de variante de dist ----\n// WhatsApp es un unico prompt para ambos sentidos (el propio prompt infiere\n// outbound/inbound mirando quien escribio primero en el historial). IG SI se\n// separa por flujo (bienvenidas vs inbound), asi que ahi el origen importa.\n// La fuente queda FIJADA en clientes_crm_tania.fuente_v4 al primer contacto;\n// si aun no existe, se decide por canal/flujo de este payload.\nlet variante = (crmRow && crmRow.fuente_v4) || null;\nif (!variante) {\n  if (norm.canal === 'whatsapp') variante = 'whatsapp';\n  else variante = (norm.flujo === 'bienvenida') ? 'ig-bienvenidas' : 'ig-inbound';\n}\nconst dist = DIST[variante];\nif (!dist || !Array.isArray(dist.system)) {\n  throw new Error('DIST no configurado para la variante \"' + variante + '\". Pega el contenido de prompts/tania/dist/tania-v4-' + variante + '.system.json en el nodo compose.');\n}\n\nconst merged = turnosDesdeHistorial(histRows);\n// si el historial termina en turno user (p.ej. bot apagado un rato), se pliega en el turno actual\nlet prefijoPendiente = '';\nif (merged.length && merged[merged.length - 1].role === 'user') { prefijoPendiente = merged.pop().text; }\nconst textoTurno = [prefijoPendiente, textoRafaga].filter(Boolean).join('\\n');\n\n// ---- bloque <estado_conversacion> (contrato cerrado) ----\nconst stage = crm.stage_v4 || 'conexion';\nconst foco = ETAPAS_FOCO[stage] || ETAPAS_FOCO.conexion;\nconst slots = (crm.slots && typeof crm.slots === 'object') ? crm.slots : {};\nconst slotsLineas = Object.entries(slots)\n  .filter(function (e) { return e[1] !== null && e[1] !== undefined && String(e[1]).trim() !== ''; })\n  .map(function (e) { return '- ' + e[0] + ': ' + e[1]; });\nconst f = fechaMadrid();\nconst linkLinea = crm.link_enviado_fecha ? ('enviado el ' + String(crm.link_enviado_fecha).slice(0, 10)) : 'no enviado';\nconst RESERVA = { none: 'sin reserva', booked: 'reservada', no_show: 'no acudió', cancelled: 'cancelada' };\nconst estado = [\n  '<estado_conversacion>',\n  'FECHA: ' + f.iso + ' (' + f.dia + ')',\n  'ETAPA: ' + stage,\n  'FOCO: ' + foco,\n  'DATOS CONFIRMADOS (PROHIBIDO re-preguntar):',\n].concat(slotsLineas.length ? slotsLineas : ['- (aún ninguno)']).concat([\n  'LINK DE AGENDA: ' + linkLinea,\n  'RESERVA: ' + (RESERVA[crm.booking_status || 'none'] || 'sin reserva'),\n  '</estado_conversacion>',\n]).join('\\n');\n\n// ---- messages: historial limpio + turno actual (estado + rafaga) ----\nconst messages = merged.map(function (t) { return { role: t.role, content: t.text }; });\nmessages.push({\n  role: 'user',\n  content: [\n    { type: 'text', text: estado },\n    { type: 'text', text: textoTurno || '(el lead no envió texto)' },\n  ],\n});\n// breakpoint 3 de cache (movil): ultimo bloque del PENULTIMO turno, ttl 1h.\n// Los breakpoints 1 y 2 vienen dentro de dist.system. Total 3 <= 4 permitidos.\nif (messages.length >= 2) {\n  const pen = messages[messages.length - 2];\n  const blocks = typeof pen.content === 'string' ? [{ type: 'text', text: pen.content }] : pen.content;\n  blocks[blocks.length - 1].cache_control = { type: 'ephemeral', ttl: '1h' };\n  pen.content = blocks;\n}\n\nreturn [{ json: {\n  model: dist.model,\n  max_tokens: dist.max_tokens || 1024,\n  system_blocks: dist.system,\n  messages: messages,\n  session_id: norm.session_id,\n  canal: norm.canal,\n  variante: variante,\n  texto_rafaga: textoTurno,\n  stage_actual: stage,\n  slots_previos: slots,\n  link_enviado_fecha: crm.link_enviado_fecha || null,\n  booking_status: crm.booking_status || 'none',\n  contact_id: crm.contact_id || null,\n  nombre: norm.nombre || crm.nombre || null,\n} }];"
       },
-      "id": "6269e9dc-7538-4f27-a769-0268361a539e",
+      "id": "54f877a1-a11d-4810-bed2-6737295c2a76",
       "name": "compose",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -848,7 +848,7 @@
           "timeout": 60000
         }
       },
-      "id": "db8e3569-cd02-47ec-aab4-fb1f550b0db2",
+      "id": "fe5d5da5-2ffa-4178-b7c0-9436cbe5bfb7",
       "name": "llamar Anthropic (Sonnet)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -870,7 +870,7 @@
       "parameters": {
         "jsCode": "// ============================================================================\n// PARSE - extrae el tool_use responder_lead, valida enums, clampa burbujas,\n// calcula proximo_recontacto y el mapper stage_v4 -> pipeline_stage viejo (GHL).\n// ============================================================================\nconst res = $input.first().json;\nconst comp = $('compose').first().json;\n\nconst STAGES = ['conexion', 'descubrimiento', 'cualificacion', 'puente', 'llamada_ofrecida', 'link_enviado', 'agendado', 'realizada', 'derivado_medico', 'en_espera_hito', 'dormido', 'perdido', 'cliente_activo', 'handoff_humano'];\nconst HANDOFFS = ['none', 'agenda', 'descualificado', 'silencioso', 'humano'];\n// mapper transitorio (2 semanas tras el corte) al custom field viejo de GHL:\nconst GHL_STAGE_MAP = {\n  conexion: 'descubrimiento', descubrimiento: 'descubrimiento',\n  cualificacion: 'cualificacion', puente: 'cualificacion',\n  llamada_ofrecida: 'llamada_ofrecida', link_enviado: 'link_enviado',\n  agendado: 'agendado', realizada: 'agendado',\n  derivado_medico: 'descubrimiento', en_espera_hito: 'descubrimiento', dormido: 'descubrimiento',\n  perdido: 'perdido', cliente_activo: 'agendado', handoff_humano: 'agendado',\n};\nconst SLOT_KEYS = ['zona', 'tiempo_evolucion', 'diagnostico', 'impacto', 'camino_recorrido', 'miedo', 'objetivo', 'pais', 'fecha_hito', 'hito_descripcion'];\n\nfunction clamp300(m) {\n  m = String(m).trim();\n  if (m.length <= 300) return m;\n  const corte = m.lastIndexOf(' ', 297);\n  return m.slice(0, corte > 200 ? corte : 297) + '…';\n}\nfunction fechaHoyMadrid() {\n  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));\n  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');\n}\n\nlet error = null;\nconst block = (res.content || []).find(function (b) { return b.type === 'tool_use' && b.name === 'responder_lead'; });\nconst input = block && block.input ? block.input : null;\nif (!input) error = 'sin_tool_use';\n\nlet mensajes = [];\nlet stage = comp.stage_actual;\nlet handoff = 'none';\nconst slotsNuevos = {};\nif (input) {\n  mensajes = Array.isArray(input.mensajes) ? input.mensajes.filter(function (m) { return typeof m === 'string' && m.trim(); }) : [];\n  // clamp de seguridad: max 3 burbujas, max 300 chars por burbuja\n  mensajes = mensajes.slice(0, 3).map(clamp300);\n  if (STAGES.indexOf(input.pipeline_stage) >= 0) stage = input.pipeline_stage; else error = error || 'stage_invalido';\n  if (HANDOFFS.indexOf(input.handoff) >= 0) handoff = input.handoff; else error = error || 'handoff_invalido';\n  const sn = input.slots_nuevos || {};\n  for (const k of SLOT_KEYS) {\n    const v = sn[k];\n    if (v !== null && v !== undefined && String(v).trim() !== '') slotsNuevos[k] = String(v).trim();\n  }\n}\nif (handoff === 'silencioso') mensajes = [];\n\nconst slotsMerged = Object.assign({}, comp.slots_previos, slotsNuevos);\nconst aiText = mensajes.join('\\n\\n');\nconst linkEnviadoAhora = mensajes.some(function (m) { return m.indexOf('leadconnectorhq') >= 0; });\nconst linkFechaNueva = linkEnviadoAhora ? fechaHoyMadrid() : null;\nconst linkAlguna = linkEnviadoAhora || !!comp.link_enviado_fecha;\n\n// ---- regla de proximo_recontacto ----\nconst H = 3600 * 1000;\nlet proximo = null;\nlet motivo = null;\nif (['agendado', 'realizada', 'perdido', 'handoff_humano', 'cliente_activo', 'dormido'].indexOf(stage) >= 0\n    || ['agenda', 'humano', 'descualificado'].indexOf(handoff) >= 0) {\n  proximo = null; motivo = null;\n} else if (stage === 'en_espera_hito' && slotsMerged.fecha_hito) {\n  const fh = new Date(String(slotsMerged.fecha_hito) + 'T09:00:00');\n  proximo = isNaN(fh.getTime()) ? new Date(Date.now() + 48 * H) : new Date(fh.getTime() + 24 * H);\n  motivo = 'hito';\n} else if (stage === 'derivado_medico') {\n  proximo = new Date(Date.now() + 8 * 24 * H); motivo = 'derivado_medico';\n} else if (stage === 'link_enviado' || linkAlguna) {\n  proximo = new Date(Date.now() + 24 * H); motivo = 'post_link';\n} else {\n  proximo = new Date(Date.now() + 48 * H); motivo = 'post_conv'; // conversacion activa sin cierre\n}\n\nconst usage = res.usage || {};\nreturn [{ json: {\n  mensajes: mensajes,\n  ai_text: aiText,\n  stage_v4: stage,\n  handoff: handoff,\n  slots_nuevos: slotsNuevos,\n  slots_nuevos_json: JSON.stringify(slotsNuevos),\n  ghl_stage: GHL_STAGE_MAP[stage] || 'descubrimiento',\n  link_enviado_fecha_nueva: linkFechaNueva,\n  proximo_recontacto: proximo ? proximo.toISOString() : null,\n  recontacto_motivo: motivo,\n  session_id: comp.session_id,\n  canal: comp.canal,\n  model: comp.model,\n  input_tokens: usage.input_tokens != null ? usage.input_tokens : null,\n  output_tokens: usage.output_tokens != null ? usage.output_tokens : null,\n  cache_creation_input_tokens: usage.cache_creation_input_tokens != null ? usage.cache_creation_input_tokens : null,\n  cache_read_input_tokens: usage.cache_read_input_tokens != null ? usage.cache_read_input_tokens : null,\n  stop_reason: res.stop_reason || null,\n  num_burbujas: mensajes.length,\n  error: error,\n} }];"
       },
-      "id": "ddb80424-a7e9-45c7-b355-7e32765fefc6",
+      "id": "52def76c-a7be-42d4-9338-85c071d8637b",
       "name": "parse",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -887,7 +887,7 @@
           "queryReplacement": "={{ [ $json.session_id, $json.canal, $json.model, $json.input_tokens, $json.output_tokens, $json.cache_creation_input_tokens, $json.cache_read_input_tokens, $json.stop_reason, $json.stage_v4, $json.handoff, $json.num_burbujas, $json.error ] }}"
         }
       },
-      "id": "de4db481-6820-4d00-8827-3edaab6a251b",
+      "id": "6a161e45-2d07-4253-98ae-b8203158c87c",
       "name": "log LLM (tania_llm_calls)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -913,7 +913,7 @@
           },
           "conditions": [
             {
-              "id": "38b0fa61-761a-471b-883b-294ece5eeee1",
+              "id": "a32265ce-61dc-49bb-a70c-d58d70041d4f",
               "leftValue": "={{ $('parse').first().json.mensajes.length > 0 }}",
               "rightValue": "",
               "operator": {
@@ -927,7 +927,7 @@
         },
         "options": {}
       },
-      "id": "17044c21-2449-4a5c-b79d-ea192e2f2022",
+      "id": "04a6ca29-b708-42fd-85d7-248789747d58",
       "name": "¿hay burbujas?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -940,7 +940,7 @@
       "parameters": {
         "jsCode": "const p = $('parse').first().json;\nreturn p.mensajes.map(function (texto, i) {\n  return { json: { texto: texto, indice: i + 1, total: p.mensajes.length } };\n});"
       },
-      "id": "245d3802-1f03-4a80-be39-86a1922456f7",
+      "id": "2427b5a3-fc95-4623-b81c-1c95e85e642a",
       "name": "preparar burbujas",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -954,7 +954,7 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "c2bc8927-c677-4633-a30f-66e731ce7b88",
+      "id": "0fb445f2-9ce8-4068-96be-d297c57780b0",
       "name": "burbujas (1 a 1)",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
@@ -977,7 +977,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "9ea9bbbd-377d-4ec2-9943-bd5a4ee8850a",
+                    "id": "bb0be6e1-c2a7-4103-b35d-40494cfab415",
                     "leftValue": "={{ $('normalizar').first().json.canal }}",
                     "rightValue": "whatsapp",
                     "operator": {
@@ -1002,7 +1002,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "29add221-1e65-43a9-bb16-c8e5d42eb120",
+                    "id": "483e1e09-545f-4c71-96b3-9b68f34fcb57",
                     "leftValue": "={{ $('normalizar').first().json.canal }}",
                     "rightValue": "instagram",
                     "operator": {
@@ -1021,7 +1021,7 @@
         },
         "options": {}
       },
-      "id": "739e5b2a-df9f-41fb-8740-cb040cabc444",
+      "id": "b9d762a1-bf8a-4f62-b2eb-515db98ed347",
       "name": "¿canal?",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
@@ -1041,7 +1041,7 @@
         "jsonBody": "={\n  \"from\": \"{{ $('normalizar').first().json.wa_business }}\",\n  \"to\": \"{{ $('normalizar').first().json.session_id }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": {{ JSON.stringify($json.texto) }}, \"preview_url\": true }\n}",
         "options": {}
       },
-      "id": "451160c1-9e66-4a5a-9643-44cdfb1791a7",
+      "id": "783438e8-fcb7-4026-8f62-76b0211eda83",
       "name": "enviar_texto (YCloud WA)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -1067,7 +1067,7 @@
         "jsonBody": "={\n  \"subscriber_id\": \"{{ $('normalizar').first().json.session_id }}\",\n  \"data\": {\n    \"version\": \"v2\",\n    \"content\": {\n      \"type\": \"instagram\",\n      \"messages\": [ { \"type\": \"text\", \"text\": {{ JSON.stringify($json.texto) }} } ]\n    }\n  }\n}",
         "options": {}
       },
-      "id": "60cebb56-afa3-4ef9-bbc8-9b8605eac1ea",
+      "id": "51992119-3d5b-450d-9e8c-8657bcbc7830",
       "name": "enviar_texto (ManyChat IG)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -1086,7 +1086,7 @@
       "parameters": {
         "amount": "={{ 2 + Math.floor(Math.random() * 3) }}"
       },
-      "id": "f483849e-cefe-40a3-afa3-ee3477a5c982",
+      "id": "dedd9aac-ebcf-43e5-80b1-a9ea213d0cf0",
       "name": "pausa humana (2-4s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -1094,7 +1094,7 @@
         7480,
         140
       ],
-      "webhookId": "0d2c1fa0-97ff-47c6-8a38-b87747181f85"
+      "webhookId": "175d4415-2fbb-4007-8a0d-988efc249ca8"
     },
     {
       "parameters": {
@@ -1104,7 +1104,7 @@
           "queryReplacement": "={{ [ $('compose').first().json.session_id, $('compose').first().json.texto_rafaga, $('parse').first().json.ai_text ] }}"
         }
       },
-      "id": "84411900-21c5-4669-8222-923cb384cfe9",
+      "id": "bc586aca-5bcd-4146-bae0-0e6a6959f20c",
       "name": "guardar historial",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -1129,7 +1129,7 @@
           "queryReplacement": "={{ [ $('compose').first().json.session_id, $('compose').first().json.nombre, $('parse').first().json.slots_nuevos_json, $('parse').first().json.stage_v4, $('parse').first().json.ghl_stage, $('parse').first().json.link_enviado_fecha_nueva, $('parse').first().json.proximo_recontacto, $('parse').first().json.recontacto_motivo, $('compose').first().json.variante ] }}"
         }
       },
-      "id": "0a96128c-347b-4ff4-b9e8-bf14f459a4c7",
+      "id": "13bb53a7-a232-46f5-81e5-59ed5d758f8e",
       "name": "actualizar CRM",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -1156,7 +1156,7 @@
           },
           "conditions": [
             {
-              "id": "dbca18f1-f67d-4630-84b0-6462764d0a8f",
+              "id": "ae9218be-d255-49a0-81de-3cea7b4d2091",
               "leftValue": "={{ ($('cargar crm').first().json.contact_id || '') + '' }}",
               "rightValue": "",
               "operator": {
@@ -1170,7 +1170,7 @@
         },
         "options": {}
       },
-      "id": "63f1beec-9783-435f-aacc-abe69fd99561",
+      "id": "08a26007-9e97-40d1-a891-f058c064ab94",
       "name": "¿tiene contact_id GHL?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1200,7 +1200,7 @@
         "jsonBody": "={\n  \"customFields\": [\n    { \"id\": \"dxMWq0IfosX5dK6VER8W\", \"value\": \"{{ $('parse').first().json.ghl_stage }}\" }\n  ]\n}",
         "options": {}
       },
-      "id": "310a7d4b-064c-4555-ade9-b85543e7348d",
+      "id": "67b65e84-cb28-43ea-99a6-92ad2d26e199",
       "name": "espejo GHL (stage)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -1224,7 +1224,7 @@
           "queryReplacement": "={{ [ $('normalizar').first().json.session_id ] }}"
         }
       },
-      "id": "96941ca3-b200-4d5e-934f-8bb1260cd662",
+      "id": "be395fc9-c737-41e9-ab8d-e40d63d15e68",
       "name": "liberar lock",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -1252,7 +1252,7 @@
           },
           "conditions": [
             {
-              "id": "d1bd0ce0-845c-4eca-be67-cba58b10f01e",
+              "id": "103f9449-6285-4e91-89e5-fdced52dee43",
               "leftValue": "={{ $('parse').first().json.handoff }}",
               "rightValue": "humano",
               "operator": {
@@ -1266,7 +1266,7 @@
         },
         "options": {}
       },
-      "id": "9ad7e39a-2a74-4876-bc3c-d569e3836af9",
+      "id": "33609fc5-bc2e-4420-8000-9ff5bbff19a6",
       "name": "¿handoff humano?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -1284,7 +1284,7 @@
         "jsonBody": "={\n  \"evento\": \"handoff_humano\",\n  \"lead\": \"{{ $('compose').first().json.session_id }}\",\n  \"nombre\": {{ JSON.stringify($('compose').first().json.nombre) }},\n  \"canal\": \"{{ $('compose').first().json.canal }}\",\n  \"etapa\": \"{{ $('parse').first().json.stage_v4 }}\",\n  \"ultimo_mensaje_lead\": {{ JSON.stringify($('compose').first().json.texto_rafaga) }}\n}",
         "options": {}
       },
-      "id": "a3518e55-b415-446c-94c8-1786a3c31c87",
+      "id": "6b749c8f-1601-466c-9160-20ee57f2a64c",
       "name": "notificar a Tania (CONFIGURAR)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -1296,7 +1296,7 @@
     },
     {
       "parameters": {},
-      "id": "fef83c88-3d11-455f-a984-65dd6e22d83c",
+      "id": "adff9d91-8900-436d-bc8c-48b2627321b6",
       "name": "fin",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -1311,7 +1311,7 @@
         "width": 480,
         "height": 320
       },
-      "id": "381554bb-0291-4303-8964-1bd1d05e3b15",
+      "id": "d307cb93-ca43-4ce6-80c9-1bcb0c951414",
       "name": "Sticky — resumen",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1322,11 +1322,11 @@
     },
     {
       "parameters": {
-        "content": "## Qué pegar dónde (n8n no lee ficheros)\n1. **Nodo `compose`** → `DIST`: pegar el objeto completo de las 4 variantes de `prompts/tania/dist/`:\n   - `ig-inbound` ← `tania-v4-ig-inbound.system.json`\n   - `ig-bienvenidas` ← `tania-v4-ig-bienvenidas.system.json`\n   - `wa-outbound` ← `tania-v4-wa-outbound.system.json`\n   - `wa-inbound-leadform` ← `tania-v4-wa-inbound-leadform.system.json`\n   Hasta entonces el nodo lanza error a propósito. La variante se fija en `clientes_crm_tania.fuente_v4` al primer contacto; si es NULL se decide por canal/origen/flujo (el flow de bienvenida de ManyChat debe mandar `\"flujo\":\"bienvenida\"` en el body).\n2. **Nodo `compose`** → `ETAPAS_FOCO`: ya viene copiado de `prompts/tania/tools/etapas-foco.json`. Si ese fichero cambia en el repo → **re-pegar aquí** (o regenerar con `scripts/build-workflows.mjs`).\n3. **Nodo `llamar Anthropic`** → el tool schema `responder_lead` ya va inline en el body. Si cambia `prompts/tania/tools/responder_lead.schema.json` → ídem.\n4. **Credencial `Anthropic Tania`**: Header Auth, nombre `x-api-key`, valor `sk-ant-...`.",
+        "content": "## Qué pegar dónde (n8n no lee ficheros)\n1. **Nodo `compose`** → `DIST`: pegar el objeto completo de los 3 prompts de `prompts/tania/dist/`:\n   - `ig-inbound` ← `tania-v4-ig-inbound.system.json`\n   - `ig-bienvenidas` ← `tania-v4-ig-bienvenidas.system.json`\n   - `whatsapp` ← `tania-v4-whatsapp.system.json` (unico prompt para ambos sentidos de WA)\n   Hasta entonces el nodo lanza error a propósito. La variante se fija en `clientes_crm_tania.fuente_v4` al primer contacto; si es NULL se decide por canal/flujo (el flow de bienvenida de ManyChat debe mandar `\"flujo\":\"bienvenida\"` en el body; WA siempre usa `whatsapp`).\n2. **Nodo `compose`** → `ETAPAS_FOCO`: ya viene copiado de `prompts/tania/tools/etapas-foco.json`. Si ese fichero cambia en el repo → **re-pegar aquí** (o regenerar con `scripts/build-workflows.mjs`).\n3. **Nodo `llamar Anthropic`** → el tool schema `responder_lead` ya va inline en el body. Si cambia `prompts/tania/tools/responder_lead.schema.json` → ídem.\n4. **Credencial `Anthropic Tania`**: Header Auth, nombre `x-api-key`, valor `sk-ant-...`.",
         "width": 520,
         "height": 360
       },
-      "id": "338e4423-3021-4ae6-bda7-cc9536e5e344",
+      "id": "8d9fa9d7-f780-4572-8795-f7a0cb9420ac",
       "name": "Sticky — qué pegar dónde",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1341,7 +1341,7 @@
         "width": 440,
         "height": 240
       },
-      "id": "48280c67-244c-4c42-8906-e2fb900e6359",
+      "id": "eadde00f-a9cd-45e6-8593-54aac1156fff",
       "name": "Sticky — dedup",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1356,7 +1356,7 @@
         "width": 440,
         "height": 210
       },
-      "id": "8f5d54fa-d1bf-4fd4-acee-839e3d21306f",
+      "id": "943d6958-dc6b-4a54-85c4-ad10b64cc1a5",
       "name": "Sticky — buffer de ráfaga",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1371,7 +1371,7 @@
         "width": 440,
         "height": 220
       },
-      "id": "b19db2bc-9e99-4f69-b198-741eb0b4f11f",
+      "id": "b1e18c02-70fb-4b2e-a650-6007423159a3",
       "name": "Sticky — lock de sesión",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1386,7 +1386,7 @@
         "width": 460,
         "height": 230
       },
-      "id": "0fa3ef8e-fbbc-4c16-b58c-bea55a1456b0",
+      "id": "876a5869-a3f9-4132-a9aa-27709563918e",
       "name": "Sticky — botón on/off",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1401,7 +1401,7 @@
         "width": 460,
         "height": 290
       },
-      "id": "034e746f-b546-4d61-be11-ab968f9c382e",
+      "id": "dbe811f0-87b9-42e6-ad21-0659b2577a88",
       "name": "Sticky — caché Anthropic",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -1416,7 +1416,7 @@
         "width": 540,
         "height": 320
       },
-      "id": "dd6af941-f11f-41fa-9b3c-a4617f875922",
+      "id": "47437523-c454-4c23-98c4-48d28e2cf671",
       "name": "Sticky — envío + CRM + GHL",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,

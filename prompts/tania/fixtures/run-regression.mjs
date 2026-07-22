@@ -25,7 +25,7 @@ const RESULTS_DIR = join(FIXTURES_DIR, '.results');
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const DELAY_MS = 500;
-const VARIANTES = ['wa-outbound', 'wa-inbound-leadform', 'ig-inbound', 'ig-bienvenidas'];
+const VARIANTES = ['whatsapp', 'ig-inbound', 'ig-bienvenidas'];
 
 // ---------------------------------------------------------------------------
 // CLI

@@ -1,7 +1,7 @@
 {
   "id": "050-pago-klarna-handoff",
   "session_id_origen": "34626126189",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead post-llamada con intención de PAGO real (Klarna le rechaza las tarjetas). v3 se lió durante 20 turnos prometiendo 'te paso los datos de la cuenta' que nunca llegaban, hasta que el lead sospechó que era una máquina. v4 debe hacer handoff humano YA: máximo una línea de cortesía, sin prometer enviar datos ni enlaces.",
   "historial": [
     { "role": "user", "content": "Perfecto, muchas gracias!" },

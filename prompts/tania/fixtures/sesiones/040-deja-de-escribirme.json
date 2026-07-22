@@ -1,7 +1,7 @@
 {
   "id": "040-deja-de-escribirme",
   "session_id_origen": "+528262615974",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead ya se despidió varias veces y pidió explícitamente que pare ('Dios mio ya deje de escribir'). v3 siguió contestando a cada 'bye' (6 respuestas). v4 debe devolver mensajes:[] (array vacío = no responder) y stage perdido.",
   "historial": [
     { "role": "user", "content": "Olvidelo, grac" },

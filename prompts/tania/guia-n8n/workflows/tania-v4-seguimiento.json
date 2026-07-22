@@ -12,7 +12,7 @@
           ]
         }
       },
-      "id": "7bb85bfc-b594-4538-830f-86b932bd3815",
+      "id": "0c3954ae-2fb6-4a02-8b8b-87c00576b691",
       "name": "Cada 15 min",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
@@ -25,7 +25,7 @@
       "parameters": {
         "jsCode": "// Gate horario: solo entre las 9:00 y las 21:00 Europe/Madrid (L-D).\nconst hora = Number(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid', hour: '2-digit', hour12: false }));\nreturn [{ json: { hora: hora, permitido: hora >= 9 && hora < 21 } }];"
       },
-      "id": "e3e5226a-03d0-4dc9-9871-b8d76e0c5010",
+      "id": "aa408535-1b09-41d3-a9cd-d290ed297902",
       "name": "¿hora Madrid?",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -45,7 +45,7 @@
           },
           "conditions": [
             {
-              "id": "7453d10f-cc33-4593-95c5-cabf80cb9c24",
+              "id": "df1f849c-0687-4296-9fe9-696216d4922d",
               "leftValue": "={{ $json.permitido === true }}",
               "rightValue": "",
               "operator": {
@@ -59,7 +59,7 @@
         },
         "options": {}
       },
-      "id": "4a78e90c-2cf2-4147-a1dc-e9a7860b4392",
+      "id": "00b6467b-7417-49a2-9492-e4356b6ce8c6",
       "name": "¿en horario?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -70,7 +70,7 @@
     },
     {
       "parameters": {},
-      "id": "25513dd5-495a-40aa-bf27-86a50bcbf714",
+      "id": "549d79a8-77d5-44e0-a72b-1cc2dd06353f",
       "name": "fin: fuera de horario",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -85,7 +85,7 @@
         "query": "-- Leads con recontacto vencido y cupo de followups disponible.\n-- Caps por etapa: link_enviado 2; resto (post_conv / hito / derivado_medico) 1.\n-- booking_status: ademas de 'none', entran cancelled/no_show marcados 'reagenda'\n-- por el webhook de booking (si no, ese recontacto de +4h no se enviaria nunca).\nSELECT id, nombre, contact_id, slots, stage_v4, booking_status,\n       followups_enviados, recontacto_motivo,\n       (id LIKE '+%') AS es_whatsapp\nFROM public.clientes_crm_tania\nWHERE proximo_recontacto IS NOT NULL\n  AND proximo_recontacto <= now()\n  AND (\n    booking_status = 'none'\n    OR (booking_status IN ('cancelled', 'no_show') AND recontacto_motivo = 'reagenda')\n  )\n  AND stage_v4 IN ('conexion', 'descubrimiento', 'cualificacion', 'puente',\n                   'llamada_ofrecida', 'link_enviado', 'derivado_medico', 'en_espera_hito')\n  AND followups_enviados < (CASE WHEN stage_v4 = 'link_enviado' THEN 2 ELSE 1 END)\nORDER BY proximo_recontacto ASC\nLIMIT 20;",
         "options": {}
       },
-      "id": "d8d0546c-b059-4c3f-b278-0763e60da7ec",
+      "id": "3e670003-a4b3-489a-8a97-7282147a0cc7",
       "name": "candidatos",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -105,7 +105,7 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "31012ee4-2318-4851-81f6-89c1230f1d55",
+      "id": "871e0c9f-6c9b-4cef-ab53-d65ecef8783c",
       "name": "leads (1 a 1)",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
@@ -116,7 +116,7 @@
     },
     {
       "parameters": {},
-      "id": "2f1bfa0e-9739-4930-abac-3e1d9e96bc24",
+      "id": "ee376a38-6828-4e65-826c-d87d9abeec49",
       "name": "fin: ciclo completado",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -133,7 +133,7 @@
           "queryReplacement": "={{ [ $json.id ] }}"
         }
       },
-      "id": "b810d32d-8d6b-4d8f-a92b-36fe902121ac",
+      "id": "c5fcf0b1-e7dd-425c-a31e-1c1016235abe",
       "name": "últimos 12 turnos",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -153,7 +153,7 @@
       "parameters": {
         "jsCode": "// ============================================================================\n// COMPOSE SEGUIMIENTO - historial corto limpio + contexto -> request Haiku.\n// DIST_SEGUIMIENTO: pegar el objeto completo de\n// prompts/tania/dist/tania-v4-seguimiento.system.json (lo genera el build de\n// prompts; mientras este a null, este nodo lanza error a proposito).\n// ============================================================================\nconst DIST_SEGUIMIENTO = null; // << PEGAR AQUI prompts/tania/dist/tania-v4-seguimiento.system.json\n\nconst ETAPAS_FOCO = {\n  \"conexion\": \"Conecta con calidez profesional y consigue que se abra: zona + tiempo llegarán solos. Nada de cualificar todavía.\",\n  \"descubrimiento\": \"Busca las 3 señales (problema + impacto + apertura emocional) anclando cada pregunta en lo último que dijo. Si ya las tienes, pasa al puente: NO sigas preguntando.\",\n  \"cualificacion\": \"UNA pregunta de disposición (satisfacción con su camino actual). Sin debate. Si ya mostró disposición, salta directamente al puente.\",\n  \"puente\": \"Recap-espejo en SUS palabras (situación + camino + impacto) cerrando con confirmación. Tras su sí, el siguiente mensaje es la propuesta.\",\n  \"llamada_ofrecida\": \"Propuesta hecha: gestiona la respuesta. Si acepta → link. Si duda → un argumento nuevo anclado a su caso, nunca el mismo. Si pregunta precio → la videollamada es gratuita, dilo YA.\",\n  \"link_enviado\": \"Ya tiene el link: consigue un micro-compromiso de CUÁNDO va a reservar. No re-pegues la URL si está en los últimos 3 mensajes. Nunca te despidas mientras no haya reserva o negativa explícita.\",\n  \"agendado\": \"Reserva confirmada: mensaje de cierre cálido y FIN. No sigas conversando salvo que pregunte algo.\",\n  \"realizada\": \"La videollamada ya ocurrió. Si escribe, calidez y aviso a Tania (handoff humano si pide algo concreto).\",\n  \"derivado_medico\": \"Derivado a su médico SIN cerrar la puerta: interés genuino por lo que le digan, retomamos cuando tenga respuestas.\",\n  \"en_espera_hito\": \"Hay un evento con fecha capturado. Si escribe antes, atiende con normalidad; el recontacto llegará solo.\",\n  \"dormido\": \"Lead inactivo que reengancha: retoma desde su último dato real, sin reproches ni '¿leíste mi mensaje?'.\",\n  \"perdido\": \"Cerró con negativa explícita. Si vuelve a escribir con contenido nuevo, reactiva con naturalidad desde donde lo dejó.\",\n  \"cliente_activo\": \"Es CLIENTA, no lead: soporte y logística en tono cálido. Cero preguntas de venta/urgencia. Ante dudas de programa → handoff humano.\",\n  \"handoff_humano\": \"Tania debe intervenir. Si el lead escribe mientras tanto: una línea de cortesía como máximo, sin prometer nada.\"\n};\n\n// ---- limpieza de turnos v3 (historial n8n_chat_histories_tania) ----\nfunction limpiarHuman(content) {\n  const s = String(content == null ? '' : content);\n  const idx = s.indexOf('MENSAJE_USUARIO:');\n  if (idx >= 0) return s.slice(idx + 'MENSAJE_USUARIO:'.length).trim();\n  return s.trim();\n}\nfunction limpiarAi(content) {\n  const s = String(content == null ? '' : content).trim();\n  if (s.startsWith('{')) {\n    try {\n      const j = JSON.parse(s);\n      const out = j.output || j;\n      if (typeof out.mensaje_whatsapp === 'string') return out.mensaje_whatsapp.trim();\n      if (out.response && typeof out.response === 'object') {\n        return Object.keys(out.response).sort()\n          .map(function (k) { return out.response[k]; })\n          .filter(function (v) { return typeof v === 'string' && v.trim(); })\n          .join('\\n\\n').trim();\n      }\n    } catch (e) { /* no era JSON v3: se usa tal cual */ }\n  }\n  return s;\n}\nfunction turnosDesdeHistorial(rows) {\n  const turnos = [];\n  let prevHuman = null;\n  for (const row of rows) {\n    let msg = row.message;\n    if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }\n    if (!msg || !msg.type) continue;\n    const bruto = msg.content == null ? '' : msg.content;\n    if (String(bruto).startsWith('Le hemos hecho al usuario')) continue; // nota interna v3: se salta\n    if (msg.type === 'human') {\n      const limpio = limpiarHuman(bruto);\n      if (!limpio) continue;\n      if (limpio === prevHuman) continue; // dedup de humans consecutivos identicos\n      prevHuman = limpio;\n      turnos.push({ role: 'user', text: limpio });\n    } else if (msg.type === 'ai') {\n      const limpio = limpiarAi(bruto);\n      if (!limpio) continue;\n      prevHuman = null;\n      turnos.push({ role: 'assistant', text: limpio });\n    }\n  }\n  // la API exige alternancia estricta user/assistant: se fusionan consecutivos del mismo rol\n  const merged = [];\n  for (const t of turnos) {\n    const last = merged[merged.length - 1];\n    if (last && last.role === t.role) last.text += '\\n\\n' + t.text;\n    else merged.push({ role: t.role, text: t.text });\n  }\n  // ... y que el primer mensaje sea user\n  if (merged.length && merged[0].role === 'assistant') {\n    merged.unshift({ role: 'user', text: '[Conversacion iniciada por Tania]' });\n  }\n  return merged;\n}\nfunction fechaMadrid() {\n  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));\n  const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];\n  const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');\n  return { iso: iso, dia: DIAS[d.getDay()] };\n}\n\nconst cand = $('leads (1 a 1)').first().json;\nif (!DIST_SEGUIMIENTO || !Array.isArray(DIST_SEGUIMIENTO.system)) {\n  throw new Error('DIST_SEGUIMIENTO no configurado. Pega prompts/tania/dist/tania-v4-seguimiento.system.json en el nodo compose seguimiento.');\n}\n\nconst rows = $input.all().map(function (i) { return i.json; }).filter(function (r) { return r && r.message; });\nrows.reverse(); // venian DESC -> cronologico\n\n// hora del ultimo mensaje del LEAD (para la ventana de 24h de WhatsApp)\nlet ultHumanTs = null;\nfor (const row of rows) {\n  let msg = row.message;\n  if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }\n  if (msg && msg.type === 'human' && row.fecha_mensaje) ultHumanTs = row.fecha_mensaje;\n}\nconst horasDesdeLead = ultHumanTs ? (Date.now() - new Date(ultHumanTs).getTime()) / 3600000 : null;\nconst esWa = String(cand.id).startsWith(String.fromCharCode(43)); // \"+\"\nconst dentroVentana = esWa && horasDesdeLead !== null && horasDesdeLead < 24;\n\nconst merged = turnosDesdeHistorial(rows);\n\nconst stage = cand.stage_v4 || 'conexion';\nconst foco = ETAPAS_FOCO[stage] || ETAPAS_FOCO.conexion;\nconst slots = (cand.slots && typeof cand.slots === 'object') ? cand.slots : {};\nconst slotsLineas = Object.entries(slots)\n  .filter(function (e) { return e[1] !== null && e[1] !== undefined && String(e[1]).trim() !== ''; })\n  .map(function (e) { return '- ' + e[0] + ': ' + e[1]; });\nconst f = fechaMadrid();\nconst contexto = [\n  '<contexto_seguimiento>',\n  'FECHA: ' + f.iso + ' (' + f.dia + ')',\n  'ETAPA: ' + stage,\n  'FOCO: ' + foco,\n  'DATOS CONFIRMADOS:',\n].concat(slotsLineas.length ? slotsLineas : ['- (aún ninguno)']).concat([\n  'FOLLOWUPS YA ENVIADOS: ' + (cand.followups_enviados || 0),\n  'MOTIVO DEL RECONTACTO: ' + (cand.recontacto_motivo || 'post_conv'),\n  'HORAS DESDE EL ÚLTIMO MENSAJE DEL LEAD: ' + (horasDesdeLead === null ? 'desconocido' : Math.round(horasDesdeLead)),\n  '</contexto_seguimiento>',\n  '',\n  '[Genera el toque de seguimiento ahora, o mensaje=null si no procede.]',\n]).join('\\n');\n\n// el ultimo mensaje del request debe ser user: el contexto va como turno user final\nconst messages = merged.map(function (t) { return { role: t.role, content: t.text }; });\nif (messages.length && messages[messages.length - 1].role === 'user') {\n  messages[messages.length - 1].content += '\\n\\n' + contexto;\n} else {\n  messages.push({ role: 'user', content: contexto });\n}\n\nreturn [{ json: {\n  model: DIST_SEGUIMIENTO.model || 'claude-haiku-4-5',\n  max_tokens: DIST_SEGUIMIENTO.max_tokens || 512,\n  system_blocks: DIST_SEGUIMIENTO.system,\n  messages: messages,\n  session_id: cand.id,\n  nombre: cand.nombre || null,\n  stage_v4: stage,\n  es_whatsapp: esWa,\n  enviar_plantilla: esWa && !dentroVentana,\n  canal: esWa ? 'whatsapp' : 'instagram',\n} }];"
       },
-      "id": "b28c0746-3273-4eb4-8db8-41144dcd6c8f",
+      "id": "850f4da4-f307-46f2-bfe7-f741a12ba2ae",
       "name": "compose seguimiento",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -184,7 +184,7 @@
           "timeout": 60000
         }
       },
-      "id": "fc138f71-99fe-4a1e-920a-0699505a9ced",
+      "id": "48624687-c5d0-4887-8096-bc1890e0f21a",
       "name": "llamar Anthropic (Haiku)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -206,7 +206,7 @@
       "parameters": {
         "jsCode": "const res = $input.first().json;\nconst comp = $('compose seguimiento').first().json;\nfunction clamp300(m) {\n  m = String(m).trim();\n  if (m.length <= 300) return m;\n  const corte = m.lastIndexOf(' ', 297);\n  return m.slice(0, corte > 200 ? corte : 297) + '…';\n}\nconst block = (res.content || []).find(function (b) { return b.type === 'tool_use' && b.name === 'toque_seguimiento'; });\nlet mensaje = null;\nif (block && block.input && typeof block.input.mensaje === 'string' && block.input.mensaje.trim()) {\n  mensaje = clamp300(block.input.mensaje);\n}\nconst usage = res.usage || {};\nreturn [{ json: {\n  mensaje: mensaje,\n  hay_mensaje: !!mensaje,\n  session_id: comp.session_id,\n  canal: comp.canal,\n  model: comp.model,\n  stage_v4: comp.stage_v4,\n  input_tokens: usage.input_tokens != null ? usage.input_tokens : null,\n  output_tokens: usage.output_tokens != null ? usage.output_tokens : null,\n  cache_creation_input_tokens: usage.cache_creation_input_tokens != null ? usage.cache_creation_input_tokens : null,\n  cache_read_input_tokens: usage.cache_read_input_tokens != null ? usage.cache_read_input_tokens : null,\n  stop_reason: res.stop_reason || null,\n} }];"
       },
-      "id": "209d0b9c-4896-4b47-bfc8-e9b4077ba056",
+      "id": "1bc5925e-7f54-4db6-993a-0b566ac35fbd",
       "name": "parse seguimiento",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -223,7 +223,7 @@
           "queryReplacement": "={{ [ $json.session_id, $json.canal, $json.model, $json.input_tokens, $json.output_tokens, $json.cache_creation_input_tokens, $json.cache_read_input_tokens, $json.stop_reason, $json.stage_v4, $json.hay_mensaje ? 1 : 0 ] }}"
         }
       },
-      "id": "e36b7d87-b8be-476b-883c-318bebad98ef",
+      "id": "3407c19b-49a0-4d72-b0ef-3b966a8b275f",
       "name": "log LLM (seguimiento)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -249,7 +249,7 @@
           },
           "conditions": [
             {
-              "id": "d206c097-82a7-46f9-9c56-1602bc33810c",
+              "id": "d6c93ccb-d18d-4775-9850-6532f23ae408",
               "leftValue": "={{ $('parse seguimiento').first().json.hay_mensaje === true }}",
               "rightValue": "",
               "operator": {
@@ -263,7 +263,7 @@
         },
         "options": {}
       },
-      "id": "575c2250-a47c-44f6-8cdb-ac4f8506aa18",
+      "id": "e0439120-6722-4ff1-83fb-4f5323d39a7f",
       "name": "¿hay mensaje?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -280,7 +280,7 @@
           "queryReplacement": "={{ [ $('parse seguimiento').first().json.session_id ] }}"
         }
       },
-      "id": "1879bac7-fe1d-4b02-b569-8d0195dd65e1",
+      "id": "ce4be95f-5e2f-49e2-b1fd-8052758ac2d6",
       "name": "posponer sin enviar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -306,7 +306,7 @@
           },
           "conditions": [
             {
-              "id": "0eb50c7d-4a3e-47db-b083-838f618df3e0",
+              "id": "1838d842-f81a-4a7f-8a34-34aac6515146",
               "leftValue": "={{ $('compose seguimiento').first().json.enviar_plantilla === true }}",
               "rightValue": "",
               "operator": {
@@ -320,7 +320,7 @@
         },
         "options": {}
       },
-      "id": "041e0d20-6fda-46f5-9d41-f1d55529f817",
+      "id": "baee3d4b-a562-475c-87b9-64d4464a9b8e",
       "name": "¿WA fuera de ventana 24h?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
@@ -340,7 +340,7 @@
         "jsonBody": "={\n  \"from\": \"+34912649668\",\n  \"to\": \"{{ $('parse seguimiento').first().json.session_id }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"PLANTILLA_SEGUIMIENTO_TANIA\",\n    \"language\": { \"code\": \"es\", \"policy\": \"deterministic\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": {{ JSON.stringify(($('compose seguimiento').first().json.nombre || 'hola').split(' ')[0]) }} }\n        ]\n      }\n    ]\n  }\n}",
         "options": {}
       },
-      "id": "1154ab50-7717-4dd7-81b1-8c89b395405d",
+      "id": "f079862b-567a-46db-ac7a-83e0b5c2d455",
       "name": "enviar plantilla (YCloud)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -358,7 +358,7 @@
     },
     {
       "parameters": {},
-      "id": "7d6e0a31-a942-4afd-9bf0-831c543a611f",
+      "id": "a4b1f8c5-2114-427c-ba51-bf07e2c73137",
       "name": "plantilla no configurada",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
@@ -381,7 +381,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "3d1c4c18-0318-4d77-bc18-e68ad9f081fc",
+                    "id": "0d15c244-9362-4b59-b5f0-c65d07167526",
                     "leftValue": "={{ $('compose seguimiento').first().json.canal }}",
                     "rightValue": "whatsapp",
                     "operator": {
@@ -406,7 +406,7 @@
                 },
                 "conditions": [
                   {
-                    "id": "33bef80e-90db-4538-839d-fe26c8e00603",
+                    "id": "a19e7e24-33c0-4a80-a062-9518138432b1",
                     "leftValue": "={{ $('compose seguimiento').first().json.canal }}",
                     "rightValue": "instagram",
                     "operator": {
@@ -425,7 +425,7 @@
         },
         "options": {}
       },
-      "id": "0637309e-f71b-46c6-a2e2-270183a93c93",
+      "id": "df40ccda-11eb-4e89-b04d-c1a26447e756",
       "name": "¿canal? (seguimiento)",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
@@ -445,7 +445,7 @@
         "jsonBody": "={\n  \"from\": \"+34912649668\",\n  \"to\": \"{{ $('parse seguimiento').first().json.session_id }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": {{ JSON.stringify($('parse seguimiento').first().json.mensaje) }}, \"preview_url\": true }\n}",
         "options": {}
       },
-      "id": "1256f17d-89c9-4bbf-9a1b-e42a72db45a0",
+      "id": "db9bed3f-c577-45ff-a78b-56a12ce95f84",
       "name": "enviar_texto (YCloud) seg",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -471,7 +471,7 @@
         "jsonBody": "={\n  \"subscriber_id\": \"{{ $('parse seguimiento').first().json.session_id }}\",\n  \"data\": {\n    \"version\": \"v2\",\n    \"content\": {\n      \"type\": \"instagram\",\n      \"messages\": [ { \"type\": \"text\", \"text\": {{ JSON.stringify($('parse seguimiento').first().json.mensaje) }} } ]\n    }\n  }\n}",
         "options": {}
       },
-      "id": "0a0130db-e8be-48c3-b745-2b58564a8014",
+      "id": "38f007e8-1aad-40c6-8f4e-753c19e8d657",
       "name": "enviar_texto (ManyChat) seg",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.3,
@@ -494,7 +494,7 @@
           "queryReplacement": "={{ [ $('parse seguimiento').first().json.session_id, $('parse seguimiento').first().json.mensaje ] }}"
         }
       },
-      "id": "d4331ba4-7a03-4b7c-bd26-7f791aaea3b0",
+      "id": "1d0d7913-51a5-48f0-9fb6-0be36ca9f0ef",
       "name": "guardar historial (seg)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -518,7 +518,7 @@
           "queryReplacement": "={{ [ $('parse seguimiento').first().json.session_id ] }}"
         }
       },
-      "id": "2666790f-1601-488f-b245-5074505de85e",
+      "id": "8f548ebc-7069-4653-8475-fadb59cd50e7",
       "name": "actualizar contador",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
@@ -538,7 +538,7 @@
       "parameters": {
         "amount": 3
       },
-      "id": "8a4007bb-1c56-4450-9096-bc8a8e98b467",
+      "id": "d9799dfa-8630-4744-a51f-4e02b3633d9c",
       "name": "pausa entre leads (3s)",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
@@ -546,7 +546,7 @@
         3520,
         300
       ],
-      "webhookId": "38fe845a-f723-471a-ba65-1512b4559143"
+      "webhookId": "f08a66fc-fb28-4e1f-9beb-4aa2b71e6d9f"
     },
     {
       "parameters": {
@@ -554,7 +554,7 @@
         "width": 480,
         "height": 300
       },
-      "id": "1a662089-ce36-44c8-b53a-d00bbfe22caf",
+      "id": "5c387371-6e7a-4fa5-bd1e-1424a160ff2f",
       "name": "Sticky — seguimiento v4",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -569,7 +569,7 @@
         "width": 460,
         "height": 240
       },
-      "id": "b1cfc4d8-c635-4250-b103-8b5fed09feb7",
+      "id": "a9ee4c2e-1262-4c24-8389-e08fbd0f1895",
       "name": "Sticky — pegar dist seguimiento",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
@@ -584,7 +584,7 @@
         "width": 460,
         "height": 260
       },
-      "id": "a85fdc67-8489-4ba1-b499-84c2cce56be0",
+      "id": "2e7107d2-317e-44fc-9899-58f5d6cfd928",
       "name": "Sticky — ventana 24h WA",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,

@@ -1,7 +1,7 @@
 {
   "id": "063-pff-demasiadas-preguntas",
   "session_id_origen": "+528262615974",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Lead protesta por el interrogatorio ('Pff. Demasiadas preguntas'). v3 pidió disculpas... y remató con otra pregunta con opciones. v4 debe soltar el guion: validar la queja y, como mucho, UNA pregunta súper abierta ligera o un cierre de tensión sin pregunta. Nunca otra pregunta de dato del checklist, nunca marcar perdido (no hay negativa explícita).",
   "historial": [
     { "role": "user", "content": "En la cervical y zona lumbar" },

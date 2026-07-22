@@ -180,18 +180,17 @@ Después revisar los nodos importados que las usan (llamar Anthropic, enviar_tex
 
 ### Paso 4 — Pegar los system prompts desde `dist/`
 
-Los system prompts NO viven en los workflows: se pegan desde los ficheros compilados de `prompts/tania/dist/` (shape `{"variante","model","max_tokens":1024,"thinking":{"type":"disabled"},"system":[2 bloques text con cache_control ephemeral ttl 1h]}`). El build genera **4 variantes para el principal** + 1 para seguimiento, y **todas existen ya** en `prompts/tania/dist/`.
+Los system prompts NO viven en los workflows: se pegan desde los ficheros compilados de `prompts/tania/dist/` (shape `{"variante","model","max_tokens":1024,"thinking":{"type":"disabled"},"system":[2 bloques text con cache_control ephemeral ttl 1h]}`). El build genera **3 variantes para el principal** (los 3 prompts reales: Instagram Inbound, Instagram outbound/bienvenidas, WhatsApp) + 1 para seguimiento, y **todas existen ya** en `prompts/tania/dist/`.
 
 1. **`tania-v4-principal`** → abrir el nodo `compose` → pegar el objeto completo de cada fichero en su clave del const `DIST`:
 
    | Clave en `DIST` | Fichero en `prompts/tania/dist/` | Cuándo se usa |
    |---|---|---|
-   | `'ig-inbound'` | `tania-v4-ig-inbound.system.json` | leads IG de flujos outbound/orgánico |
-   | `'ig-bienvenidas'` | `tania-v4-ig-bienvenidas.system.json` | leads IG que entran por el flow de bienvenida |
-   | `'wa-outbound'` | `tania-v4-wa-outbound.system.json` | leads WA contactados primero por Tania |
-   | `'wa-inbound-leadform'` | `tania-v4-wa-inbound-leadform.system.json` | leads WA que escriben primero (formulario/lead magnet) |
+   | `'ig-inbound'` | `tania-v4-ig-inbound.system.json` | leads IG que escriben primero (orgánico) |
+   | `'ig-bienvenidas'` | `tania-v4-ig-bienvenidas.system.json` | leads IG que entran por el flow de bienvenida (Tania abre) |
+   | `'whatsapp'` | `tania-v4-whatsapp.system.json` | TODOS los leads de WhatsApp — el propio prompt distingue outbound/inbound mirando el historial (quién escribió primero), no hace falta separarlo aquí |
 
-   **Cómo elige el compose**: primero mira `clientes_crm_tania.fuente_v4` (la variante queda **fijada al primer contacto** y ya no cambia a mitad de conversación). Si es NULL (lead nuevo), decide por el payload: WA + inbound → `wa-inbound-leadform`; WA outbound → `wa-outbound`; IG con `flujo=bienvenida` → `ig-bienvenidas`; resto IG → `ig-inbound`. El upsert del CRM la persiste con `COALESCE(fuente_v4, <variante>)`.
+   **Cómo elige el compose**: primero mira `clientes_crm_tania.fuente_v4` (la variante queda **fijada al primer contacto** y ya no cambia a mitad de conversación). Si es NULL (lead nuevo), decide por el payload: canal WhatsApp → siempre `whatsapp`; IG con `flujo=bienvenida` → `ig-bienvenidas`; resto IG → `ig-inbound`. El upsert del CRM la persiste con `COALESCE(fuente_v4, <variante>)`.
 
 2. **`tania-v4-seguimiento`** → nodo `compose seguimiento` → pegar `tania-v4-seguimiento.system.json` en `DIST_SEGUIMIENTO`.
 3. Mientras alguna clave esté a `null`, el compose lanza error indicando qué fichero falta (imposible activar a medias sin darse cuenta).

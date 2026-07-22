@@ -1,7 +1,7 @@
 {
   "id": "030-redflag-cronico-fuerza",
   "session_id_origen": "34609779930",
-  "variante": "wa-outbound",
+  "variante": "whatsapp",
   "descripcion": "Red flag en CRÓNICO: pérdida de fuerza y masa muscular en la pierna desde hace 2 años. NO es una urgencia aguda: v4 debe derivar al médico con calma (stage derivado_medico), SIN frases alarmistas ('urgencias', 'no lo dejes', 'grave') y SIN cerrar la puerta (perdido prohibido). v3 mandó a urgencias con tono de alarma.",
   "historial": [
     { "role": "user", "content": "la espalda me duele poco es sobre todo la pierna" },

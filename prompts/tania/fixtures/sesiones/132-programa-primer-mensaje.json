@@ -1,7 +1,7 @@
 {
   "id": "132-programa-primer-mensaje",
   "session_id_origen": "414331302",
-  "variante": "wa-inbound-leadform",
+  "variante": "whatsapp",
   "descripcion": "Lead abre pidiendo que le expliquen el programa. v4 debe responder la pregunta directa (qué es, breve, sin precios ni detalle operativo) y devolver el control con UNA pregunta sobre su situación. Baseline de comportamiento correcto que v3 ya hacía bien: sirve de canario de regresión.",
   "historial": [],
   "estado": {
