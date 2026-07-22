@@ -54,3 +54,7 @@ _pkg-coach-authoring/
 *.cloudflared.log
 
 .vercel
+
+# Excepcion: el dist de Tania se versiona (es lo que se pega en n8n)
+!prompts/tania/dist/
+!prompts/tania/dist/**
