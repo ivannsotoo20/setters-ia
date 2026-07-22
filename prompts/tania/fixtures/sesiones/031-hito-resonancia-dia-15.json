@@ -1,0 +1,40 @@
+{
+  "id": "031-hito-resonancia-dia-15",
+  "session_id_origen": "1669059574",
+  "variante": "ig-inbound",
+  "descripcion": "Lead da un evento con fecha ('me lo van a mirar, el día 15 voy' — resonancia). v4 debe capturar fecha_hito (2026-06-15, resuelta desde FECHA=2026-06-05) + hito_descripcion en slots_nuevos, pasar a en_espera_hito y cerrar con compromiso bidireccional anclado a la fecha, no con cierre pasivo. v3 lo dejó pasar y siguió preguntando.",
+  "historial": [
+    { "role": "user", "content": "Hola cuándo estoy sentada un rato y me levanto, me hago resonáncia en 1 semana" },
+    { "role": "assistant", "content": "Hola, por lo que comentas ya notas molestias al levantarte después de estar sentada. ¿En qué zona de la espalda notas el dolor más claro ahora mismo?" },
+    { "role": "user", "content": "No, de momento no. Lo que pasa es que tuve un accidente de moto, un coche me dio un topetazo y bueno, aparte del accidente me han dicho que tengo escoliosis, también daño cervical, me van a hacer la resonancia ahora de cervical dorsal y lumbar, a ver, pero el tema de andar, andaba bien, pero no como yo andaba." },
+    { "role": "assistant", "content": "Vaya, lo del accidente tuvo que ser un buen susto, y encima con todo lo que ya arrastrabas de espalda. ¿Qué es lo que más se te está haciendo cuesta arriba ahora mismo en el día a día?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-05",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "lumbar (L4 y L5), también cervical",
+      "tiempo_evolucion": "unos 10 años",
+      "diagnostico": "escoliosis, daño cervical, hernias L4-L5; accidente de moto reciente",
+      "impacto": "trabajo de limpieza muy físico; volvió hace mes y medio tras 2 años de baja; va con faja y parches"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Pues, exactamente, que se me vaya el dolor de las lumbares y coger fuerza, sí, sí. Sobre todo es el dolor lumbar, muchísimo me duele. También me engorda mucho, estoy en la menopausia, entonces todo tiene que ver, pero están ahí las hernias que con el accidente me empeoró, no sé, me lo van a mirar, el día 15 voy a por la resonancia.",
+  "asserts": {
+    "stage_in": ["en_espera_hito"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": [
+      "(?i)d[ií]a 15|resonancia",
+      "(?i)te escribo|te pregunto|me cuentas|cu[eé]ntame|me dices|escr[ií]beme|hablamos"
+    ],
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["fecha_hito", "hito_descripcion"],
+    "slots_nuevos_regex": { "fecha_hito": "^2026-06-15$" },
+    "no_preguntar_slots_confirmados": true
+  }
+}

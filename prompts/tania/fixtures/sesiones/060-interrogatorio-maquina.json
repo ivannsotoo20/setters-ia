@@ -1,0 +1,38 @@
+{
+  "id": "060-interrogatorio-maquina",
+  "session_id_origen": "34641368770",
+  "variante": "wa-outbound",
+  "descripcion": "Lead ya dio problema (20 años dolor lumbar+glúteo), impacto (girar, agacharse), camino (pastillas, estiramientos, pinchazo) y emoción (frustración, 'esto parece una máquina'), y acaba de verbalizar el objetivo completo. v3 respondió con OTRA pregunta de dato y la lead explotó. v4 debe hacer el puente: recap-espejo en sus palabras cerrando con confirmación, cero preguntas de dato nuevas.",
+  "historial": [
+    { "role": "user", "content": "Algo bien ese rato, pero luego no, a ver. Bueno, yo creo que me entiendes. Eso no es un paliativo igual que las pastillas." },
+    { "role": "assistant", "content": "Te entiendo. ¿Qué te gustaría poder hacer en tu día a día que ahora mismo ese dolor no te permite hacer tranquila?" },
+    { "role": "user", "content": "Madre mía, esto parece una máquina, ya te estoy diciendo, ya te he repetido, ahí está, ahí está, o sea, ve, madre mía." },
+    { "role": "assistant", "content": "Veo que te está cansando contestar así. Para no alargarlo más por aquí, ¿qué es lo que más te gustaría cambiar ahora mismo de cómo estás con la espalda?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-11",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "espalda baja y glúteo derecho",
+      "tiempo_evolucion": "casi 20 años (glúteo unos 5)",
+      "impacto": "le cuesta girar y agacharse; se gira la espalda cada rato para descomprimir",
+      "camino_recorrido": "muchas pastillas, estiramientos por su cuenta, pinchazo por el ciático; todo paliativo",
+      "miedo": "que siga ahí y no pueda hacer todo con normalidad"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Porque no me duela, o sea, ya dejar que me duela, una terapia que me quite el dolor, las inflamaciones en las vértebras, la parte baja, o el nervio ciático que me pincharon y ya está. O sea, eso, estar bien. Hacer todo con normalidad, ni más ni menos.",
+  "asserts": {
+    "stage_in": ["puente"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)es as[ií]|lo he entendido|me dejo algo|¿correcto|lo resumo",
+    "no_debe_regex": "(?i)qu[eé] has probado|has hecho alg[uú]n|alguna prueba|qu[eé] te han dicho",
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["objetivo"],
+    "no_preguntar_slots_confirmados": true
+  }
+}

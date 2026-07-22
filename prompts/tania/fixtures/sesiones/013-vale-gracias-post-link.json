@@ -1,0 +1,40 @@
+{
+  "id": "013-vale-gracias-post-link",
+  "session_id_origen": "1562308382",
+  "variante": "ig-inbound",
+  "descripcion": "Lead responde 'Vale gracias' con el link recién enviado (está en los últimos 3 mensajes). v3 cerró en pasivo ('cuando reserves te llegará la confirmación'). v4 debe pedir micro-compromiso de CUÁNDO, sin re-pegar la URL y sin despedirse.",
+  "historial": [
+    { "role": "user", "content": "Claro" },
+    { "role": "assistant", "content": "Con todo lo que me has contado hasta ahora, tiene sentido que quieras recuperar tu trabajo y dejar de depender solo de medicación y calor. Si te parece, en una videollamada puedo valorar tu caso con más detalle y explicarte qué opciones tendrías para avanzar. ¿Te gustaría que lo veamos en una llamada tranquila conmigo?" },
+    { "role": "user", "content": "Porque el horario es importante" },
+    { "role": "assistant", "content": "Tiene sentido que el horario sea importante para ti, sobre todo si estás pensando en la vuelta al trabajo. Te paso un enlace donde puedes ver directamente los huecos disponibles y elegir el que mejor te encaje: https://api.leadconnectorhq.com/widget/booking/Ur6y2sCkndEVLLQJ8n05" }
+  ],
+  "estado": {
+    "fecha": "2026-06-16",
+    "stage": "link_enviado",
+    "slots": {
+      "zona": "espalda baja lado derecho",
+      "tiempo_evolucion": "desde hace tiempo",
+      "impacto": "de baja laboral; su prioridad es reincorporarse a su trabajo",
+      "camino_recorrido": "fomentos de agua caliente y medicinas",
+      "objetivo": "incorporarse a su trabajo"
+    },
+    "link_enviado_fecha": "2026-06-16",
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Vale gracias",
+  "asserts": {
+    "stage_in": ["link_enviado"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)cu[aá]ndo|qu[eé] d[ií]a|hoy|ma[ñn]ana|esta (tarde|noche|semana)",
+    "no_debe_regex": [
+      "(?i)lo dejamos aqu[ií]|quedamos (entonces )?a la espera|te deseo lo mejor|cuando (te venga bien|puedas|quieras)",
+      "https?:\\/\\/"
+    ],
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

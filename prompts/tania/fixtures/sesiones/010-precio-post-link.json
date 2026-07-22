@@ -1,0 +1,39 @@
+{
+  "id": "010-precio-post-link",
+  "session_id_origen": "117473009",
+  "variante": "ig-inbound",
+  "descripcion": "Lead pregunta el precio tras recibir el link ('Cuanto çusta ?'). v3 murió esquivando ('el coste depende de lo que necesites... lo vemos en la videollamada'). v4 debe decir YA que la videollamada es gratuita, sin evasivas.",
+  "historial": [
+    { "role": "user", "content": "Si ,claro" },
+    { "role": "assistant", "content": "Creo que en tu caso tiene sentido que lo veamos con calma en una videollamada, porque por aquí ya estás haciendo muchas cosas pero sigues dependiendo del tramadol y con tanta carga física es importante ajustar bien el plan. ¿Te gustaría que lo veamos en una videollamada?" },
+    { "role": "user", "content": "Si 😔ya son dos dosis menos q me he quitado por mi cuenta" },
+    { "role": "assistant", "content": "Has hecho un esfuerzo enorme tú sola para llegar hasta aquí. Te dejo el enlace para que puedas agendar cuando mejor te venga:\nhttps://api.leadconnectorhq.com/widget/booking/Ur6y2sCkndEVLLQJ8n05" },
+    { "role": "user", "content": "Solo puedo después de las 18:30" },
+    { "role": "assistant", "content": "Anotado, a partir de las 18:30. En la agenda ves los huecos reales de cada día, elige el que te encaje a partir de esa hora." }
+  ],
+  "estado": {
+    "fecha": "2026-06-12",
+    "stage": "link_enviado",
+    "slots": {
+      "diagnostico": "hernias en la espalda (diagnosticadas hace 18 meses)",
+      "tiempo_evolucion": "18 meses desde el diagnóstico",
+      "camino_recorrido": "ejercicios por su cuenta, gym 3x/semana, fisioterapeuta; tramadol reducido de 3 a 1 dosis/día",
+      "impacto": "se levanta dolorida; recoger más de 3 platos le tira la espalda; camarera + limpieza, 10h/día",
+      "objetivo": "quitarse la dosis de tramadol que le queda"
+    },
+    "link_enviado_fecha": "2026-06-12",
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Cuanto çusta ?",
+  "asserts": {
+    "stage_in": ["link_enviado"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)gratuita|gratis|sin coste|no cuesta",
+    "no_debe_regex": "(?i)lo vemos en la (video)?llamada|depende de lo que necesites",
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

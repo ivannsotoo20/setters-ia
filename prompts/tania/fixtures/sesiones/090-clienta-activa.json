@@ -1,0 +1,26 @@
+{
+  "id": "090-clienta-activa",
+  "session_id_origen": "34634116928",
+  "variante": "wa-outbound",
+  "descripcion": "CLIENTA activa del programa escribe sobre logística (formulario enviado, dolores nuevos en tobillos, va a grabar vídeos de ejercicios). v4 debe responder en modo soporte cálido: cero preguntas de venta, cero videollamada/link/urgencia. Ante dudas del programa, handoff humano; aquí basta acompañar.",
+  "historial": [],
+  "estado": {
+    "fecha": "2026-06-09",
+    "stage": "cliente_activo",
+    "slots": {
+      "zona": "lumbar (usa talonera para aliviarla)"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Hola Tania! Acabo de mandarte el formulario, solo que se me olvidó mencionar en lo de los dolores actuales los que tengo en los 2 pies al rededor de los tobillos en el lado exterior cuando estoy de pie mucho rato. Van y vienen no es constante. Mañana intento grabar los ejercicios cuando tengo un momento sola. Un abrazo",
+  "asserts": {
+    "stage_in": ["cliente_activo"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 2,
+    "max_chars_por_burbuja": 220,
+    "no_debe_regex": "(?i)videollamada|agendar|enlace|reservar|est[aá]s buscando (algo|una soluci[oó]n)|qu[eé] te preocupa de seguir as[ií]",
+    "max_preguntas": 1
+  }
+}

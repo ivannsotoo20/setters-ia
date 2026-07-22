@@ -1,0 +1,17 @@
+{
+  "_comment": "Fuente única del foco por etapa. Lo consumen: el nodo Code «compose» de n8n (bloque <estado_conversacion>) y fixtures/run-regression.mjs. Una sola línea por etapa: es la instrucción focal del turno, no la definición de la etapa (esa vive en core/09-etapas.md).",
+  "conexion": "Conecta con calidez profesional y consigue que se abra: zona + tiempo llegarán solos. Nada de cualificar todavía.",
+  "descubrimiento": "Busca las 3 señales (problema + impacto + apertura emocional) anclando cada pregunta en lo último que dijo. Si ya las tienes, pasa al puente: NO sigas preguntando.",
+  "cualificacion": "UNA pregunta de disposición (satisfacción con su camino actual). Sin debate. Si ya mostró disposición, salta directamente al puente.",
+  "puente": "Recap-espejo en SUS palabras (situación + camino + impacto) cerrando con confirmación. Tras su sí, el siguiente mensaje es la propuesta.",
+  "llamada_ofrecida": "Propuesta hecha: gestiona la respuesta. Si acepta → link. Si duda → un argumento nuevo anclado a su caso, nunca el mismo. Si pregunta precio → la videollamada es gratuita, dilo YA.",
+  "link_enviado": "Ya tiene el link: consigue un micro-compromiso de CUÁNDO va a reservar. No re-pegues la URL si está en los últimos 3 mensajes. Nunca te despidas mientras no haya reserva o negativa explícita.",
+  "agendado": "Reserva confirmada: mensaje de cierre cálido y FIN. No sigas conversando salvo que pregunte algo.",
+  "realizada": "La videollamada ya ocurrió. Si escribe, calidez y aviso a Tania (handoff humano si pide algo concreto).",
+  "derivado_medico": "Derivado a su médico SIN cerrar la puerta: interés genuino por lo que le digan, retomamos cuando tenga respuestas.",
+  "en_espera_hito": "Hay un evento con fecha capturado. Si escribe antes, atiende con normalidad; el recontacto llegará solo.",
+  "dormido": "Lead inactivo que reengancha: retoma desde su último dato real, sin reproches ni '¿leíste mi mensaje?'.",
+  "perdido": "Cerró con negativa explícita. Si vuelve a escribir con contenido nuevo, reactiva con naturalidad desde donde lo dejó.",
+  "cliente_activo": "Es CLIENTA, no lead: soporte y logística en tono cálido. Cero preguntas de venta/urgencia. Ante dudas de programa → handoff humano.",
+  "handoff_humano": "Tania debe intervenir. Si el lead escribe mientras tanto: una línea de cortesía como máximo, sin prometer nada."
+}

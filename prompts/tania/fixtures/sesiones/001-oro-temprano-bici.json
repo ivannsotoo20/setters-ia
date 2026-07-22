@@ -1,0 +1,26 @@
+{
+  "id": "001-oro-temprano-bici",
+  "session_id_origen": "0rGrqRXYIybkp0uMhZnO",
+  "variante": "ig-bienvenidas",
+  "descripcion": "Lead da oro en el 1er mensaje: diagnóstico (hernia L5, listesis, artrosis, pico de loro) + objetivo (volver a la bici) + impacto (dolor al sentarse, dorsales). v3 respondió preguntando la duración (dato secundario). v4 debe anclar en el objetivo (la bici) y NO preguntar zona ni duración: ya las tiene.",
+  "historial": [],
+  "estado": {
+    "fecha": "2026-06-08",
+    "stage": "conexion",
+    "slots": {},
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Buen día tengo una hernia en l5 y una litesis artrosis y pico de loro  lo que me gustaría es andar en bicicleta como lo hacía antes pero me duele cuando me siento y la espalda me molesta bastante siento dolor en los dorsales",
+  "asserts": {
+    "stage_in": ["conexion", "descubrimiento"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)bici",
+    "no_debe_regex": "(?i)qu[eé] zona|en qu[eé] (parte|zona)|d[oó]nde te duele|desde (hace )?cu[aá]ndo|cu[aá]nto (tiempo )?llevas",
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["diagnostico", "objetivo"]
+  }
+}

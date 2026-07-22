@@ -1,0 +1,33 @@
+{
+  "id": "040-deja-de-escribirme",
+  "session_id_origen": "+528262615974",
+  "variante": "wa-outbound",
+  "descripcion": "Lead ya se despidió varias veces y pidió explícitamente que pare ('Dios mio ya deje de escribir'). v3 siguió contestando a cada 'bye' (6 respuestas). v4 debe devolver mensajes:[] (array vacío = no responder) y stage perdido.",
+  "historial": [
+    { "role": "user", "content": "Olvidelo, grac" },
+    { "role": "assistant", "content": "Lo entiendo, no te preocupes. Si en algún momento más adelante ves que la espalda te limita más o quieres valorar opciones, aquí me tienes." },
+    { "role": "user", "content": "Bye" },
+    { "role": "assistant", "content": "Perfecto, lo dejamos aquí. Si en algún momento cambias de idea o necesitas algo con tu espalda, puedes escribirme por aquí." },
+    { "role": "user", "content": "Yaaaaa bye" },
+    { "role": "assistant", "content": "Perfecto, lo dejamos aquí. Te deseo lo mejor con tu espalda." },
+    { "role": "user", "content": "Dios mio ya deje de escribir" },
+    { "role": "assistant", "content": "Te entiendo, no te escribo más. Te deseo lo mejor con tu espalda." }
+  ],
+  "estado": {
+    "fecha": "2026-06-20",
+    "stage": "perdido",
+    "slots": {
+      "zona": "cervical y zona lumbar",
+      "camino_recorrido": "masajes, fisioterapia, quiropráctico"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Que yaaaaaa",
+  "asserts": {
+    "stage_in": ["perdido"],
+    "handoff_in": ["none", "silencioso"],
+    "mensajes_min": 0,
+    "mensajes_max": 0
+  }
+}

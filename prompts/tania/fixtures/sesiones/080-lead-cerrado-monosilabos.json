@@ -1,0 +1,39 @@
+{
+  "id": "080-lead-cerrado-monosilabos",
+  "session_id_origen": "1562308382",
+  "variante": "ig-inbound",
+  "descripcion": "Lead cerrado: 4-5 monosílabos seguidos ('Siempre', 'Si', 'Y mucho'). v3 siguió con el guion de preguntas semi-cerradas encadenadas. v4 debe hacer UNA pregunta súper abierta (protocolo lead cerrado §24), sin opciones cerradas, sin videollamada y sin link. El silencio cualifica; no se fuerza.",
+  "historial": [
+    { "role": "user", "content": "Desde hace tiempo" },
+    { "role": "assistant", "content": "Para situarme un poco mejor en tu caso, ¿hay algo del día a día, como trabajo, tareas de casa o deporte, que se te haga especialmente difícil por ese dolor?" },
+    { "role": "user", "content": "Siempre" },
+    { "role": "assistant", "content": "Con lo que me cuentas, parece algo bastante constante en tu vida. Por saber un poco más, ¿qué es lo que más te limita o te cuesta hacer cuando aparece ese dolor?" },
+    { "role": "user", "content": "Y mucho" },
+    { "role": "assistant", "content": "Se nota que el dolor está muy presente en tu día a día. ¿Has hecho algo hasta ahora, como fisio, medicación o ejercicios, que te haya ayudado algo?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-09",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "espalda baja lado derecho",
+      "tiempo_evolucion": "desde hace tiempo"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Si",
+  "asserts": {
+    "stage_in": ["descubrimiento"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 2,
+    "max_chars_por_burbuja": 220,
+    "min_preguntas": 1,
+    "max_preguntas": 1,
+    "no_debe_regex": [
+      "https?:\\/\\/",
+      "(?i)videollamada|agendar|enlace|reservar"
+    ],
+    "no_preguntar_slots_confirmados": true
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "id": "030-redflag-cronico-fuerza",
+  "session_id_origen": "34609779930",
+  "variante": "wa-outbound",
+  "descripcion": "Red flag en CRÓNICO: pérdida de fuerza y masa muscular en la pierna desde hace 2 años. NO es una urgencia aguda: v4 debe derivar al médico con calma (stage derivado_medico), SIN frases alarmistas ('urgencias', 'no lo dejes', 'grave') y SIN cerrar la puerta (perdido prohibido). v3 mandó a urgencias con tono de alarma.",
+  "historial": [
+    { "role": "user", "content": "la espalda me duele poco es sobre todo la pierna" },
+    { "role": "assistant", "content": "Cuando dices que es sobre todo la pierna, ¿en qué zona notas más el dolor, más hacia el muslo o más hacia la parte baja cerca del glúteo?" },
+    { "role": "user", "content": "desde el muslo hasta casi el pie" },
+    { "role": "assistant", "content": "¿Te han hecho alguna prueba o te han dicho si ese dolor de la pierna viene de la espalda o de otra cosa?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-10",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "pierna, desde el muslo hasta casi el pie (la espalda le duele poco)"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "desde hace dos años tube una lumbalgia fuerte y he perdido fuerza en la pierna y masa muscular",
+  "asserts": {
+    "stage_in": ["derivado_medico"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)m[eé]dico|neur[oó]logo|traumat[oó]logo|profesional sanitario",
+    "no_debe_regex": "(?i)urgencias|urgente|de inmediato|cuanto antes|no lo dejes|grave|alarmante|peligro",
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["tiempo_evolucion"],
+    "no_preguntar_slots_confirmados": true
+  }
+}

@@ -1,0 +1,877 @@
+{
+  "name": "Tania v4 — seguimiento",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "7bb85bfc-b594-4538-830f-86b932bd3815",
+      "name": "Cada 15 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Gate horario: solo entre las 9:00 y las 21:00 Europe/Madrid (L-D).\nconst hora = Number(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid', hour: '2-digit', hour12: false }));\nreturn [{ json: { hora: hora, permitido: hora >= 9 && hora < 21 } }];"
+      },
+      "id": "e3e5226a-03d0-4dc9-9871-b8d76e0c5010",
+      "name": "¿hora Madrid?",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7453d10f-cc33-4593-95c5-cabf80cb9c24",
+              "leftValue": "={{ $json.permitido === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4a78e90c-2cf2-4147-a1dc-e9a7860b4392",
+      "name": "¿en horario?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "25513dd5-495a-40aa-bf27-86a50bcbf714",
+      "name": "fin: fuera de horario",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        660,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Leads con recontacto vencido y cupo de followups disponible.\n-- Caps por etapa: link_enviado 2; resto (post_conv / hito / derivado_medico) 1.\n-- booking_status: ademas de 'none', entran cancelled/no_show marcados 'reagenda'\n-- por el webhook de booking (si no, ese recontacto de +4h no se enviaria nunca).\nSELECT id, nombre, contact_id, slots, stage_v4, booking_status,\n       followups_enviados, recontacto_motivo,\n       (id LIKE '+%') AS es_whatsapp\nFROM public.clientes_crm_tania\nWHERE proximo_recontacto IS NOT NULL\n  AND proximo_recontacto <= now()\n  AND (\n    booking_status = 'none'\n    OR (booking_status IN ('cancelled', 'no_show') AND recontacto_motivo = 'reagenda')\n  )\n  AND stage_v4 IN ('conexion', 'descubrimiento', 'cualificacion', 'puente',\n                   'llamada_ofrecida', 'link_enviado', 'derivado_medico', 'en_espera_hito')\n  AND followups_enviados < (CASE WHEN stage_v4 = 'link_enviado' THEN 2 ELSE 1 END)\nORDER BY proximo_recontacto ASC\nLIMIT 20;",
+        "options": {}
+      },
+      "id": "d8d0546c-b059-4c3f-b278-0763e60da7ec",
+      "name": "candidatos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        660,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "31012ee4-2318-4851-81f6-89c1230f1d55",
+      "name": "leads (1 a 1)",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "2f1bfa0e-9739-4930-abac-3e1d9e96bc24",
+      "name": "fin: ciclo completado",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, message, fecha_mensaje\nFROM public.n8n_chat_histories_tania\nWHERE session_id = $1\nORDER BY id DESC\nLIMIT 12;",
+        "options": {
+          "queryReplacement": "={{ [ $json.id ] }}"
+        }
+      },
+      "id": "b810d32d-8d6b-4d8f-a92b-36fe902121ac",
+      "name": "últimos 12 turnos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1100,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================================\n// COMPOSE SEGUIMIENTO - historial corto limpio + contexto -> request Haiku.\n// DIST_SEGUIMIENTO: pegar el objeto completo de\n// prompts/tania/dist/tania-v4-seguimiento.system.json (lo genera el build de\n// prompts; mientras este a null, este nodo lanza error a proposito).\n// ============================================================================\nconst DIST_SEGUIMIENTO = null; // << PEGAR AQUI prompts/tania/dist/tania-v4-seguimiento.system.json\n\nconst ETAPAS_FOCO = {\n  \"conexion\": \"Conecta con calidez profesional y consigue que se abra: zona + tiempo llegarán solos. Nada de cualificar todavía.\",\n  \"descubrimiento\": \"Busca las 3 señales (problema + impacto + apertura emocional) anclando cada pregunta en lo último que dijo. Si ya las tienes, pasa al puente: NO sigas preguntando.\",\n  \"cualificacion\": \"UNA pregunta de disposición (satisfacción con su camino actual). Sin debate. Si ya mostró disposición, salta directamente al puente.\",\n  \"puente\": \"Recap-espejo en SUS palabras (situación + camino + impacto) cerrando con confirmación. Tras su sí, el siguiente mensaje es la propuesta.\",\n  \"llamada_ofrecida\": \"Propuesta hecha: gestiona la respuesta. Si acepta → link. Si duda → un argumento nuevo anclado a su caso, nunca el mismo. Si pregunta precio → la videollamada es gratuita, dilo YA.\",\n  \"link_enviado\": \"Ya tiene el link: consigue un micro-compromiso de CUÁNDO va a reservar. No re-pegues la URL si está en los últimos 3 mensajes. Nunca te despidas mientras no haya reserva o negativa explícita.\",\n  \"agendado\": \"Reserva confirmada: mensaje de cierre cálido y FIN. No sigas conversando salvo que pregunte algo.\",\n  \"realizada\": \"La videollamada ya ocurrió. Si escribe, calidez y aviso a Tania (handoff humano si pide algo concreto).\",\n  \"derivado_medico\": \"Derivado a su médico SIN cerrar la puerta: interés genuino por lo que le digan, retomamos cuando tenga respuestas.\",\n  \"en_espera_hito\": \"Hay un evento con fecha capturado. Si escribe antes, atiende con normalidad; el recontacto llegará solo.\",\n  \"dormido\": \"Lead inactivo que reengancha: retoma desde su último dato real, sin reproches ni '¿leíste mi mensaje?'.\",\n  \"perdido\": \"Cerró con negativa explícita. Si vuelve a escribir con contenido nuevo, reactiva con naturalidad desde donde lo dejó.\",\n  \"cliente_activo\": \"Es CLIENTA, no lead: soporte y logística en tono cálido. Cero preguntas de venta/urgencia. Ante dudas de programa → handoff humano.\",\n  \"handoff_humano\": \"Tania debe intervenir. Si el lead escribe mientras tanto: una línea de cortesía como máximo, sin prometer nada.\"\n};\n\n// ---- limpieza de turnos v3 (historial n8n_chat_histories_tania) ----\nfunction limpiarHuman(content) {\n  const s = String(content == null ? '' : content);\n  const idx = s.indexOf('MENSAJE_USUARIO:');\n  if (idx >= 0) return s.slice(idx + 'MENSAJE_USUARIO:'.length).trim();\n  return s.trim();\n}\nfunction limpiarAi(content) {\n  const s = String(content == null ? '' : content).trim();\n  if (s.startsWith('{')) {\n    try {\n      const j = JSON.parse(s);\n      const out = j.output || j;\n      if (typeof out.mensaje_whatsapp === 'string') return out.mensaje_whatsapp.trim();\n      if (out.response && typeof out.response === 'object') {\n        return Object.keys(out.response).sort()\n          .map(function (k) { return out.response[k]; })\n          .filter(function (v) { return typeof v === 'string' && v.trim(); })\n          .join('\\n\\n').trim();\n      }\n    } catch (e) { /* no era JSON v3: se usa tal cual */ }\n  }\n  return s;\n}\nfunction turnosDesdeHistorial(rows) {\n  const turnos = [];\n  let prevHuman = null;\n  for (const row of rows) {\n    let msg = row.message;\n    if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }\n    if (!msg || !msg.type) continue;\n    const bruto = msg.content == null ? '' : msg.content;\n    if (String(bruto).startsWith('Le hemos hecho al usuario')) continue; // nota interna v3: se salta\n    if (msg.type === 'human') {\n      const limpio = limpiarHuman(bruto);\n      if (!limpio) continue;\n      if (limpio === prevHuman) continue; // dedup de humans consecutivos identicos\n      prevHuman = limpio;\n      turnos.push({ role: 'user', text: limpio });\n    } else if (msg.type === 'ai') {\n      const limpio = limpiarAi(bruto);\n      if (!limpio) continue;\n      prevHuman = null;\n      turnos.push({ role: 'assistant', text: limpio });\n    }\n  }\n  // la API exige alternancia estricta user/assistant: se fusionan consecutivos del mismo rol\n  const merged = [];\n  for (const t of turnos) {\n    const last = merged[merged.length - 1];\n    if (last && last.role === t.role) last.text += '\\n\\n' + t.text;\n    else merged.push({ role: t.role, text: t.text });\n  }\n  // ... y que el primer mensaje sea user\n  if (merged.length && merged[0].role === 'assistant') {\n    merged.unshift({ role: 'user', text: '[Conversacion iniciada por Tania]' });\n  }\n  return merged;\n}\nfunction fechaMadrid() {\n  const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Madrid' }));\n  const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];\n  const iso = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');\n  return { iso: iso, dia: DIAS[d.getDay()] };\n}\n\nconst cand = $('leads (1 a 1)').first().json;\nif (!DIST_SEGUIMIENTO || !Array.isArray(DIST_SEGUIMIENTO.system)) {\n  throw new Error('DIST_SEGUIMIENTO no configurado. Pega prompts/tania/dist/tania-v4-seguimiento.system.json en el nodo compose seguimiento.');\n}\n\nconst rows = $input.all().map(function (i) { return i.json; }).filter(function (r) { return r && r.message; });\nrows.reverse(); // venian DESC -> cronologico\n\n// hora del ultimo mensaje del LEAD (para la ventana de 24h de WhatsApp)\nlet ultHumanTs = null;\nfor (const row of rows) {\n  let msg = row.message;\n  if (typeof msg === 'string') { try { msg = JSON.parse(msg); } catch (e) { continue; } }\n  if (msg && msg.type === 'human' && row.fecha_mensaje) ultHumanTs = row.fecha_mensaje;\n}\nconst horasDesdeLead = ultHumanTs ? (Date.now() - new Date(ultHumanTs).getTime()) / 3600000 : null;\nconst esWa = String(cand.id).startsWith(String.fromCharCode(43)); // \"+\"\nconst dentroVentana = esWa && horasDesdeLead !== null && horasDesdeLead < 24;\n\nconst merged = turnosDesdeHistorial(rows);\n\nconst stage = cand.stage_v4 || 'conexion';\nconst foco = ETAPAS_FOCO[stage] || ETAPAS_FOCO.conexion;\nconst slots = (cand.slots && typeof cand.slots === 'object') ? cand.slots : {};\nconst slotsLineas = Object.entries(slots)\n  .filter(function (e) { return e[1] !== null && e[1] !== undefined && String(e[1]).trim() !== ''; })\n  .map(function (e) { return '- ' + e[0] + ': ' + e[1]; });\nconst f = fechaMadrid();\nconst contexto = [\n  '<contexto_seguimiento>',\n  'FECHA: ' + f.iso + ' (' + f.dia + ')',\n  'ETAPA: ' + stage,\n  'FOCO: ' + foco,\n  'DATOS CONFIRMADOS:',\n].concat(slotsLineas.length ? slotsLineas : ['- (aún ninguno)']).concat([\n  'FOLLOWUPS YA ENVIADOS: ' + (cand.followups_enviados || 0),\n  'MOTIVO DEL RECONTACTO: ' + (cand.recontacto_motivo || 'post_conv'),\n  'HORAS DESDE EL ÚLTIMO MENSAJE DEL LEAD: ' + (horasDesdeLead === null ? 'desconocido' : Math.round(horasDesdeLead)),\n  '</contexto_seguimiento>',\n  '',\n  '[Genera el toque de seguimiento ahora, o mensaje=null si no procede.]',\n]).join('\\n');\n\n// el ultimo mensaje del request debe ser user: el contexto va como turno user final\nconst messages = merged.map(function (t) { return { role: t.role, content: t.text }; });\nif (messages.length && messages[messages.length - 1].role === 'user') {\n  messages[messages.length - 1].content += '\\n\\n' + contexto;\n} else {\n  messages.push({ role: 'user', content: contexto });\n}\n\nreturn [{ json: {\n  model: DIST_SEGUIMIENTO.model || 'claude-haiku-4-5',\n  max_tokens: DIST_SEGUIMIENTO.max_tokens || 512,\n  system_blocks: DIST_SEGUIMIENTO.system,\n  messages: messages,\n  session_id: cand.id,\n  nombre: cand.nombre || null,\n  stage_v4: stage,\n  es_whatsapp: esWa,\n  enviar_plantilla: esWa && !dentroVentana,\n  canal: esWa ? 'whatsapp' : 'instagram',\n} }];"
+      },
+      "id": "b28c0746-3273-4eb4-8db8-41144dcd6c8f",
+      "name": "compose seguimiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": {{ JSON.stringify($json.model) }},\n  \"max_tokens\": {{ $json.max_tokens }},\n  \"thinking\": { \"type\": \"disabled\" },\n  \"system\": {{ JSON.stringify($json.system_blocks) }},\n  \"tools\": [\n    {\n      \"name\": \"toque_seguimiento\",\n      \"description\": \"Devuelve el toque de seguimiento a enviar al lead, o mensaje=null si no procede enviar nada este ciclo.\",\n      \"strict\": true,\n      \"input_schema\": {\n        \"type\": \"object\",\n        \"additionalProperties\": false,\n        \"required\": [\"mensaje\"],\n        \"properties\": {\n          \"mensaje\": {\n            \"type\": [\"string\", \"null\"],\n            \"description\": \"Texto del toque (máx 300 caracteres), en la voz de Tania, anclado al último dato real del lead. Nunca reprochar ni preguntar si leyó el mensaje. null = no enviar nada.\"\n          }\n        }\n      }\n    }\n  ],\n  \"tool_choice\": { \"type\": \"tool\", \"name\": \"toque_seguimiento\", \"disable_parallel_tool_use\": true },\n  \"messages\": {{ JSON.stringify($json.messages) }}\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "fc138f71-99fe-4a1e-920a-0699505a9ced",
+      "name": "llamar Anthropic (Haiku)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1540,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREAR-EN-N8N-anthropic",
+          "name": "Anthropic Tania"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000
+    },
+    {
+      "parameters": {
+        "jsCode": "const res = $input.first().json;\nconst comp = $('compose seguimiento').first().json;\nfunction clamp300(m) {\n  m = String(m).trim();\n  if (m.length <= 300) return m;\n  const corte = m.lastIndexOf(' ', 297);\n  return m.slice(0, corte > 200 ? corte : 297) + '…';\n}\nconst block = (res.content || []).find(function (b) { return b.type === 'tool_use' && b.name === 'toque_seguimiento'; });\nlet mensaje = null;\nif (block && block.input && typeof block.input.mensaje === 'string' && block.input.mensaje.trim()) {\n  mensaje = clamp300(block.input.mensaje);\n}\nconst usage = res.usage || {};\nreturn [{ json: {\n  mensaje: mensaje,\n  hay_mensaje: !!mensaje,\n  session_id: comp.session_id,\n  canal: comp.canal,\n  model: comp.model,\n  stage_v4: comp.stage_v4,\n  input_tokens: usage.input_tokens != null ? usage.input_tokens : null,\n  output_tokens: usage.output_tokens != null ? usage.output_tokens : null,\n  cache_creation_input_tokens: usage.cache_creation_input_tokens != null ? usage.cache_creation_input_tokens : null,\n  cache_read_input_tokens: usage.cache_read_input_tokens != null ? usage.cache_read_input_tokens : null,\n  stop_reason: res.stop_reason || null,\n} }];"
+      },
+      "id": "209d0b9c-4896-4b47-bfc8-e9b4077ba056",
+      "name": "parse seguimiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.tania_llm_calls\n  (session_id, canal, workflow, model, input_tokens, output_tokens,\n   cache_creation_input_tokens, cache_read_input_tokens, stop_reason,\n   stage_v4, num_burbujas)\nVALUES ($1, $2, 'seguimiento', $3, $4, $5, $6, $7, $8, $9, $10)\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $json.session_id, $json.canal, $json.model, $json.input_tokens, $json.output_tokens, $json.cache_creation_input_tokens, $json.cache_read_input_tokens, $json.stop_reason, $json.stage_v4, $json.hay_mensaje ? 1 : 0 ] }}"
+        }
+      },
+      "id": "e36b7d87-b8be-476b-883c-318bebad98ef",
+      "name": "log LLM (seguimiento)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1980,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d206c097-82a7-46f9-9c56-1602bc33810c",
+              "leftValue": "={{ $('parse seguimiento').first().json.hay_mensaje === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "575c2250-a47c-44f6-8cdb-ac4f8506aa18",
+      "name": "¿hay mensaje?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- El modelo decidio no tocar al lead: se pospone 24h SIN gastar cupo de followups.\nUPDATE public.clientes_crm_tania\nSET proximo_recontacto = now() + interval '24 hours',\n    recontacto_motivo = 'skip_llm'\nWHERE id = $1\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('parse seguimiento').first().json.session_id ] }}"
+        }
+      },
+      "id": "1879bac7-fe1d-4b02-b569-8d0195dd65e1",
+      "name": "posponer sin enviar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2420,
+        560
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0eb50c7d-4a3e-47db-b083-838f618df3e0",
+              "leftValue": "={{ $('compose seguimiento').first().json.enviar_plantilla === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "041e0d20-6fda-46f5-9d41-f1d55529f817",
+      "name": "¿WA fuera de ventana 24h?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2420,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages/sendDirectly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"+34912649668\",\n  \"to\": \"{{ $('parse seguimiento').first().json.session_id }}\",\n  \"type\": \"template\",\n  \"template\": {\n    \"name\": \"PLANTILLA_SEGUIMIENTO_TANIA\",\n    \"language\": { \"code\": \"es\", \"policy\": \"deterministic\" },\n    \"components\": [\n      {\n        \"type\": \"body\",\n        \"parameters\": [\n          { \"type\": \"text\", \"text\": {{ JSON.stringify(($('compose seguimiento').first().json.nombre || 'hola').split(' ')[0]) }} }\n        ]\n      }\n    ]\n  }\n}",
+        "options": {}
+      },
+      "id": "1154ab50-7717-4dd7-81b1-8c89b395405d",
+      "name": "enviar plantilla (YCloud)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2640,
+        40
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREAR-EN-N8N-ycloud",
+          "name": "YCloud Tania"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {},
+      "id": "7d6e0a31-a942-4afd-9bf0-831c543a611f",
+      "name": "plantilla no configurada",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2860,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3d1c4c18-0318-4d77-bc18-e68ad9f081fc",
+                    "leftValue": "={{ $('compose seguimiento').first().json.canal }}",
+                    "rightValue": "whatsapp",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "WhatsApp"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "33bef80e-90db-4538-839d-fe26c8e00603",
+                    "leftValue": "={{ $('compose seguimiento').first().json.canal }}",
+                    "rightValue": "instagram",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Instagram"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0637309e-f71b-46c6-a2e2-270183a93c93",
+      "name": "¿canal? (seguimiento)",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages/sendDirectly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"+34912649668\",\n  \"to\": \"{{ $('parse seguimiento').first().json.session_id }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": {{ JSON.stringify($('parse seguimiento').first().json.mensaje) }}, \"preview_url\": true }\n}",
+        "options": {}
+      },
+      "id": "1256f17d-89c9-4bbf-9a1b-e42a72db45a0",
+      "name": "enviar_texto (YCloud) seg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2860,
+        160
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREAR-EN-N8N-ycloud",
+          "name": "YCloud Tania"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/sending/sendContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": \"{{ $('parse seguimiento').first().json.session_id }}\",\n  \"data\": {\n    \"version\": \"v2\",\n    \"content\": {\n      \"type\": \"instagram\",\n      \"messages\": [ { \"type\": \"text\", \"text\": {{ JSON.stringify($('parse seguimiento').first().json.mensaje) }} } ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "0a0130db-e8be-48c3-b745-2b58564a8014",
+      "name": "enviar_texto (ManyChat) seg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2860,
+        340
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y1rcZdTN5fcamURD",
+          "name": "Manychat Tania"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- El toque queda en el historial como turno ai con el texto LITERAL enviado.\nINSERT INTO public.n8n_chat_histories_tania (session_id, message, fecha_mensaje)\nVALUES ($1, jsonb_build_object('type', 'ai', 'content', $2::text), now())\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('parse seguimiento').first().json.session_id, $('parse seguimiento').first().json.mensaje ] }}"
+        }
+      },
+      "id": "d4331ba4-7a03-4b7c-bd26-7f791aaea3b0",
+      "name": "guardar historial (seg)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3080,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Incrementa followups; al agotar el cap (link_enviado: 2, resto: 1) el lead pasa a\n-- stage_v4 = 'dormido' y proximo_recontacto = NULL. NUNCA se borra nada.\nUPDATE public.clientes_crm_tania c SET\n  followups_enviados = c.followups_enviados + 1,\n  ultimo_followup_at = now(),\n  stage_v4 = CASE WHEN c.followups_enviados + 1 >= (CASE WHEN c.stage_v4 = 'link_enviado' THEN 2 ELSE 1 END)\n                  THEN 'dormido' ELSE c.stage_v4 END,\n  proximo_recontacto = CASE WHEN c.followups_enviados + 1 >= (CASE WHEN c.stage_v4 = 'link_enviado' THEN 2 ELSE 1 END)\n                            THEN NULL ELSE now() + interval '48 hours' END,\n  recontacto_motivo = CASE WHEN c.followups_enviados + 1 >= (CASE WHEN c.stage_v4 = 'link_enviado' THEN 2 ELSE 1 END)\n                           THEN NULL ELSE c.recontacto_motivo END\nWHERE c.id = $1\nRETURNING c.id, c.stage_v4, c.followups_enviados, c.proximo_recontacto;",
+        "options": {
+          "queryReplacement": "={{ [ $('parse seguimiento').first().json.session_id ] }}"
+        }
+      },
+      "id": "2666790f-1601-488f-b245-5074505de85e",
+      "name": "actualizar contador",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3300,
+        240
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "8a4007bb-1c56-4450-9096-bc8a8e98b467",
+      "name": "pausa entre leads (3s)",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3520,
+        300
+      ],
+      "webhookId": "38fe845a-f723-471a-ba65-1512b4559143"
+    },
+    {
+      "parameters": {
+        "content": "## Tania v4 — seguimiento\nSustituye a `seguimiento_tania` (que no usaba LLM y BORRABA leads a las 72h — aquí NUNCA se borra nada).\n\nCada 15 min (gate 9-21h Europe/Madrid): lee candidatos con `proximo_recontacto` vencido, y por cada uno Haiku decide el toque con el tool `toque_seguimiento` (mensaje o null).\n\n**Caps**: link_enviado 2 toques; conversación/hito/derivado_medico 1. Al agotar → `stage_v4=dormido`, `proximo_recontacto=NULL`.\n**null del modelo** → se pospone 24h sin gastar cupo.",
+        "width": 480,
+        "height": 300
+      },
+      "id": "1a662089-ce36-44c8-b53a-d00bbfe22caf",
+      "name": "Sticky — seguimiento v4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Qué pegar\n- Nodo `compose seguimiento` → `DIST_SEGUIMIENTO`: pegar `prompts/tania/dist/tania-v4-seguimiento.system.json` **(lo genera el build de prompts; si aún no existe, generar antes de activar este workflow)**.\n- `ETAPAS_FOCO` ya viene copiado de `prompts/tania/tools/etapas-foco.json` (re-pegar si cambia).\n- Modelo: lo trae el dist (`claude-haiku-4-5`).",
+        "width": 460,
+        "height": 240
+      },
+      "id": "b1cfc4d8-c635-4250-b103-8b5fed09feb7",
+      "name": "Sticky — pegar dist seguimiento",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        -220
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## WhatsApp fuera de ventana de 24h\nMeta solo permite texto libre dentro de las 24h siguientes al último mensaje del lead. Fuera de ventana ⇒ rama de PLANTILLA.\n\n⚠️ Requiere una plantilla aprobada en Meta (vía YCloud). Sustituir `PLANTILLA_SEGUIMIENTO_TANIA` por el nombre real y ajustar variables/idioma.\nMientras no exista, esa rama falla → sale por la salida de error → NO se marca followup (correcto: no se envió nada).",
+        "width": 460,
+        "height": 260
+      },
+      "id": "a85fdc67-8489-4ba1-b499-84c2cce56be0",
+      "name": "Sticky — ventana 24h WA",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2640,
+        -260
+      ]
+    }
+  ],
+  "connections": {
+    "Cada 15 min": {
+      "main": [
+        [
+          {
+            "node": "¿hora Madrid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿hora Madrid?": {
+      "main": [
+        [
+          {
+            "node": "¿en horario?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿en horario?": {
+      "main": [
+        [
+          {
+            "node": "candidatos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "fin: fuera de horario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "candidatos": {
+      "main": [
+        [
+          {
+            "node": "leads (1 a 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "leads (1 a 1)": {
+      "main": [
+        [
+          {
+            "node": "fin: ciclo completado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "últimos 12 turnos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "últimos 12 turnos": {
+      "main": [
+        [
+          {
+            "node": "compose seguimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "compose seguimiento": {
+      "main": [
+        [
+          {
+            "node": "llamar Anthropic (Haiku)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "llamar Anthropic (Haiku)": {
+      "main": [
+        [
+          {
+            "node": "parse seguimiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "parse seguimiento": {
+      "main": [
+        [
+          {
+            "node": "log LLM (seguimiento)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log LLM (seguimiento)": {
+      "main": [
+        [
+          {
+            "node": "¿hay mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿hay mensaje?": {
+      "main": [
+        [
+          {
+            "node": "¿WA fuera de ventana 24h?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "posponer sin enviar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "posponer sin enviar": {
+      "main": [
+        [
+          {
+            "node": "pausa entre leads (3s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿WA fuera de ventana 24h?": {
+      "main": [
+        [
+          {
+            "node": "enviar plantilla (YCloud)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿canal? (seguimiento)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar plantilla (YCloud)": {
+      "main": [
+        [
+          {
+            "node": "guardar historial (seg)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "plantilla no configurada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "plantilla no configurada": {
+      "main": [
+        [
+          {
+            "node": "pausa entre leads (3s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿canal? (seguimiento)": {
+      "main": [
+        [
+          {
+            "node": "enviar_texto (YCloud) seg",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "enviar_texto (ManyChat) seg",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_texto (YCloud) seg": {
+      "main": [
+        [
+          {
+            "node": "guardar historial (seg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enviar_texto (ManyChat) seg": {
+      "main": [
+        [
+          {
+            "node": "guardar historial (seg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "guardar historial (seg)": {
+      "main": [
+        [
+          {
+            "node": "actualizar contador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "actualizar contador": {
+      "main": [
+        [
+          {
+            "node": "pausa entre leads (3s)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "pausa entre leads (3s)": {
+      "main": [
+        [
+          {
+            "node": "leads (1 a 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,71 @@
+{
+  "name": "responder_lead",
+  "description": "Único canal de salida de Tania. Devuelve las burbujas a enviar al lead, la etapa del pipeline, el handoff y SOLO los datos nuevos confirmados por el lead en este turno. Array de mensajes vacío = no responder este turno.",
+  "strict": true,
+  "input_schema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["mensajes", "pipeline_stage", "handoff", "slots_nuevos"],
+    "properties": {
+      "mensajes": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "1 a 3 burbujas en la voz de Tania, cada una de máximo 200 caracteres. Array VACÍO = no responder este turno (conversación ya cerrada con despedida, lead pidió que pares, handoff silencioso)."
+      },
+      "pipeline_stage": {
+        "type": "string",
+        "description": "Etapa de la conversación DESPUÉS de este turno. 'perdido' solo con negativa explícita del lead; nunca por dudas o respuestas cortas.",
+        "enum": [
+          "conexion",
+          "descubrimiento",
+          "cualificacion",
+          "puente",
+          "llamada_ofrecida",
+          "link_enviado",
+          "agendado",
+          "realizada",
+          "derivado_medico",
+          "en_espera_hito",
+          "dormido",
+          "perdido",
+          "cliente_activo",
+          "handoff_humano"
+        ]
+      },
+      "handoff": {
+        "type": "string",
+        "description": "none = sigue la IA. agenda = lead confirmó reserva. descualificado = cierre cálido enviado. silencioso = SOLO emergencia real, ideación suicida, violencia o insinuación fuera de lugar: mensajes=[] y Tania revisa (las señales médicas del protocolo de derivación NO van aquí: llevan mensaje de derivación + pipeline_stage=derivado_medico + handoff=humano). humano = intención de compra/pago/soporte, derivación médica o lead pide humano: Tania debe verlo YA.",
+        "enum": ["none", "agenda", "descualificado", "silencioso", "humano"]
+      },
+      "slots_nuevos": {
+        "type": "object",
+        "description": "SOLO datos que el lead ha verbalizado EN ESTE TURNO y que aún no constaban en <estado_conversacion>. Excepción: si el lead CORRIGE o matiza un dato ya confirmado, repórtalo con el valor nuevo en sus palabras (la versión más reciente del lead siempre manda). Todo lo no confirmado este turno va a null. Nunca inferir: solo lo dicho explícitamente.",
+        "additionalProperties": false,
+        "required": [
+          "zona",
+          "tiempo_evolucion",
+          "diagnostico",
+          "impacto",
+          "camino_recorrido",
+          "miedo",
+          "objetivo",
+          "pais",
+          "fecha_hito",
+          "hito_descripcion"
+        ],
+        "properties": {
+          "zona": { "type": ["string", "null"], "description": "Zona del dolor (lumbar, cervical, L5-S1...)" },
+          "tiempo_evolucion": { "type": ["string", "null"], "description": "Cuánto lleva con el dolor, en sus palabras ('3 años', 'desde 2014')" },
+          "diagnostico": { "type": ["string", "null"], "description": "Diagnóstico/pruebas que menciona (hernia L4-L5, protrusión, estenosis...)" },
+          "impacto": { "type": ["string", "null"], "description": "Qué ha dejado de hacer o le limita (dormir, caminar, coger a su hijo...)" },
+          "camino_recorrido": { "type": ["string", "null"], "description": "Qué ha probado y cómo le fue (fisio, pilates, infiltraciones...)" },
+          "miedo": { "type": ["string", "null"], "description": "Miedo o preocupación verbalizada (operación, silla de ruedas, empeorar...)" },
+          "objetivo": { "type": ["string", "null"], "description": "Qué quiere recuperar/conseguir, en sus palabras ('volver a la bici')" },
+          "pais": { "type": ["string", "null"], "description": "País de RESIDENCIA solo si el lead lo verbaliza (nunca inferido)" },
+          "fecha_hito": { "type": ["string", "null"], "description": "YYYY-MM-DD si el lead da fecha de un evento (resonancia, cita médica, viaje) o si acordáis un recontacto con fecha ('te escribo el lunes')" },
+          "hito_descripcion": { "type": ["string", "null"], "description": "Qué pasa en esa fecha ('le dan los resultados de la resonancia', 'recontacto comprometido: mirar la agenda')" }
+        }
+      }
+    }
+  }
+}
