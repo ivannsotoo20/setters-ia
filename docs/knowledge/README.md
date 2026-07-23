@@ -79,6 +79,9 @@ valor, nunca el valor. Escanear antes de commitear.
   autorar/reconciliar la Fase 2 de cualquier coach.
 - [Export al Claude de la empresa](project_coach_authoring_export.md) — skill distribuible
   `coach-authoring`. Incluye la **regla dura de exclusión** en entregables al jefe.
+- [Bloques coach sin pendientes](feedback_coach_blocks_sin_pendientes.md) — los bloques coach son
+  producción que ven otros profesionales: quedan **limpios y terminados**, cero placeholders,
+  pendientes o notas de decisión dentro del `<coach_block>`. Van al conocimiento o al chat.
 
 ### Loops abiertos por coach
 
@@ -91,6 +94,10 @@ valor, nunca el valor. Escanear antes de commitear.
 - [Chema](project_chema_coach_feedback_loop.md) — Programa Fénix. Llega feedback en `.docx`.
 - [Luis Royán — menopausia](project_luis_royan_coach_menopausia.md) — avatar nuevo (el 4º).
   Diseño cerrado, **bloqueado esperando la voz de Luis**.
+- [Nani](project_nani_coach_feedback.md) — coach_v5 del **repo** (mujeres, hinchazón, "Confía en
+  Ti"). 4º REGISTRO del avatar mujeres: **hombre experto no-afectivo** (firma "señorita"). Ronda 1
+  de feedback aplicada (4 bloques) + validado en prueba real; garantía como último recurso en F5+.
+  Tenant `nani` sin alta.
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 
