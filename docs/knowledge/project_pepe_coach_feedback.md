@@ -79,6 +79,12 @@ Por eso el arreglo es una **escalera de reconducción** (banco ordenado de ángu
 
 **Sin verificar todavía:** el cierre del toque 3 cuando el lead responde "es curiosidad" (la conversación A se cortó justo ahí).
 
+## Ronda 1.3 — 2026-07-25, dos correcciones de voz de Iván
+
+1. **Las preguntas no empiezan por "Y".** Encadenar "Y en carrera…", "Y aparte de eso…", "Y cómo te está afectando…" turno tras turno convierte la conversación en un interrogatorio con conector delante. Excepción: el Puente de F4, donde "Y lo que quieres es…" encadena el resumen y no es una pregunta.
+   ⚠️ **El "Y" estaba SEMBRADO en 7 sitios del propio prompt**, cuatro de ellos escritos por mí en las rondas 1.1 y 1.2 (el exemplar del anclaje, el ejemplo del englobante, los peldaños 2 y 3 de la escalera). Es el caso Frodo del *"buen objetivo tío"* otra vez: **revisar siempre si el bloque siembra el patrón antes de escribir la regla**, porque la regla sola no gana contra la siembra. Limpiadas las 7.
+2. **Máximo 2 turnos seguidos cuya única sustancia sea una pregunta.** Al tercero el mensaje aporta algo antes de preguntar — reconocimiento, observación, complicidad — o no pregunta. Tres seguidas y el lead deja de contarte cosas para contestar por cumplir. Añadidos dos exemplars: el del tercer turno que aporta antes de preguntar, y *"Jajaj aceptable es que hay margen ahí 😅"* — que **generó el propio modelo** en el segundo smoke espejando la risa del lead, y que se siembra para consolidarlo.
+
 ## Dónde vive cada cambio dentro del bloque
 
 Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`. **Iván lo rechazó**: el feedback nuevo se traduce a la sección canónica que le toca, no se antepone como capa de conceptos — si no, se salta el protocolo del esquema y el prompt pierde la referencia de dónde vive cada cosa. Destilado a [`formato-saas-coach-v5.md`](../../prompts/coach-engineering/formato-saas-coach-v5.md) §2. Reparto final:
