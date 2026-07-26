@@ -91,6 +91,9 @@ valor, nunca el valor. Escanear antes de commitear.
 - [Chema](project_chema_coach_feedback_loop.md) — Programa Fénix. Llega feedback en `.docx`.
 - [Luis Royán — menopausia](project_luis_royan_coach_menopausia.md) — avatar nuevo (el 4º).
   Diseño cerrado, **bloqueado esperando la voz de Luis**.
+- [Pepe Jiménez — HYROX](project_pepe_coach_feedback.md) — primer avatar de **OBJETIVO** puro.
+  Ronda 1 aplicada 2026-07-25. La llamada la atiende su equipo de admisiones, no él. Trae el
+  hallazgo del canal de autoridad por **reconocimiento** (candidato a §30 de la doctrina).
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 

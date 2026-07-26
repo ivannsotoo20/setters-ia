@@ -47,6 +47,9 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |
 | [miguel-aguado.md](miguel-aguado.md) | — | `coach_block_miguel_aguado.md` | 2026-07-13 |
 | [andrea.md](andrea.md) | Mujeres | `coach_block_andrea.md` | 2026-07-06 |
+| [alex.md](alex.md) | — | — | 2026-07-24 |
+| [luis-royan.md](luis-royan.md) | Mujeres menopausia (4º avatar) | diseño desde cero | **[PENDIENTE VOZ]** — no desplegar |
+| [pepe.md](pepe.md) | HYROX / rendimiento híbrido (avatar de OBJETIVO) | bloque desplegado en Automatía | Ronda 1 aplicada 2026-07-25. **Duración del programa + corpus de voz pendientes** |
 | [DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md](DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md) | 7 nichos × DN-01..06 (doc de Rubén) | igual | Menopausia = §7, base de Luis Royán |
 
 Sin Frodo ni Chema ni Alfonso hay notas de estilo/voz que solo viven en sus loops: leer
@@ -59,7 +62,8 @@ Qué se cambió, por qué y qué quedó abierto está en `docs/knowledge/`, no a
 [Roberto](../../../docs/knowledge/project_roberto_coach_feedback.md) ·
 [Frodo](../../../docs/knowledge/project_frodo_coach_feedback.md) ·
 [Chema](../../../docs/knowledge/project_chema_coach_feedback_loop.md) ·
-[Luis Royán](../../../docs/knowledge/project_luis_royan_coach_menopausia.md)
+[Luis Royán](../../../docs/knowledge/project_luis_royan_coach_menopausia.md) ·
+[Pepe](../../../docs/knowledge/project_pepe_coach_feedback.md)
 
 Y la craft para tocarlos (doctrina §1–§29, avatares, checklist) en
 [`prompts/coach-engineering/`](../README.md). El

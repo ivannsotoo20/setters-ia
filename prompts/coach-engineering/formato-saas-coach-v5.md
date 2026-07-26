@@ -140,6 +140,22 @@ La UI `/admin/cerebro` navega por los headers `## coach_*`. Molde canónico:
 
 Reglas mecánicas:
 - **Solo `coach_tone`** usa sub-tags XML. Todo lo demás usa `##`/`###`.
+- **Lo que entra en una ronda de feedback se TRADUCE a la sección canónica que le corresponde
+  — no se antepone como capa de "reglas duras" al principio del bloque** (directiva de Iván,
+  2026-07-25, tras la ronda 1 de Pepe). Un preámbulo de conceptos sueltos se salta el esquema
+  y el modelo pierde la referencia de dónde vive cada cosa. Mapa de destinos habitual: quién
+  es y quién atiende la llamada → `coach_identity_role`; mecánica de voz y movimientos de tono
+  → `coach_tone_voiceprint`; no repetirse → `coach_tone_variety`; comportamiento transversal que
+  modifica el Core (memoria del hilo, prevalencias) → `coach_structural_modifications_core`;
+  condiciones de entrada a una fase y topes → `coach_structural_modifications_phases`; manejo de
+  una objeción concreta → su `## coach_objections_*`. Si de verdad hace falta señalar prevalencia,
+  se dice **dentro** de la sección ("esto prevalece sobre cualquier mensaje literal de fase") y se
+  deja un puntero cruzado desde `_core`.
+  ⚠️ Algunos coaches de la academia (Alfonso, Frodo, Luis Royán) arrastran marcos rectores antes
+  de `<coach_identity>`: son herencia, no el patrón a seguir para incorporar feedback nuevo.
+- Añadir una sub-sección extra dentro de un wrapper SÍ es válido cuando aporta y respeta la
+  convención (`## coach_objections_logistica`, `## coach_program_is/_isnt` de montefit). Lo que no
+  vale es inventar sub-tags XML fuera de `coach_tone`.
 - NUNCA escapar los `#` (`\#\#`). El canónico CloudChat de María viene con `\#\#` por
   pegado de Google Doc; hay que limpiarlo (el seed builder limpia parte, pero no lo
   des por hecho).
