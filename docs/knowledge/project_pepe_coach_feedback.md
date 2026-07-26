@@ -53,6 +53,32 @@ Conversación de prueba completa (12:38–12:50) cubriendo los tests T1-T9. **Lo
 7. **Leyó "no tengo mucho tiempo porque trabajo mucho" como objeción de agenda** y contestó hablando del calendario, en F2. Antes de F5 eso es un dato de su vida (y un perfil que cualifica), no logística.
 8. **Nombró la llamada en F2** — pero el lead la había nombrado primero. Caso nuevo: cuando la introduce el lead, se le sigue con naturalidad; §26 prohíbe que la introduzcas TÚ.
 
+## Ronda 1.2 — 2026-07-25, segundo smoke (4 conversaciones)
+
+Probadas 4 conversaciones (curioso del precio / el que sí quiere entrar / el "un poco de todo" / recorrido completo). **El toque 3 funciona clavado** — los tres literales salieron en orden y la pregunta de intención apareció donde tocaba. **El englobante ya no provoca re-pregunta.** Y la cuarta conversación es el nuevo estándar del coach: sin repeticiones, encadenada, tres reconocimientos distintos, un puente que integra nutrición + frustración + competiciones, y dos cosas generadas por el modelo que no están en el prompt (*"Jajaj aceptable es que hay margen ahí 😅"*, espejando la risa del lead).
+
+**El hallazgo de método de esta ronda.** La repetición de la pregunta no se arregló con la regla de la ronda 1.1, y el patrón lo explica todo:
+
+| Conversación | Objeciones de precio | Repeticiones de la pregunta |
+|---|---|---|
+| A | 3 | **3** |
+| B | 2 | **2** |
+| C | 0 | 0 |
+| D | 0 | 0 |
+
+La repetición **solo aparece cuando hay objeción**: el modelo responde con el literal, tiene que "reconducir al descubrimiento", la conversación no ha avanzado y la única pregunta pendiente es la misma. Mi instrucción decía reconducir con *"[pregunta anclada a su objetivo o a su bloqueo]"* — pero en un lead que solo ha preguntado el precio todavía no hay objetivo ni bloqueo.
+
+> **La lección: donde se da un movimiento POSITIVO con exemplars, el modelo generaliza; donde se da una PROHIBICIÓN, falla.** El reconocimiento (movimiento de 3 tiempos + exemplars) generalizó a marcas que no estaban en el prompt. La regla "no repitas la pregunta" perdió contra la instrucción operativa que le decía qué hacer. Prueba: en la conversación D usó literalmente el exemplar nuevo *"y en carrera, dónde notas que se te va más el tiempo?"* — se lo di como ejemplo, no como prohibición.
+
+Por eso el arreglo es una **escalera de reconducción** (banco ordenado de ángulos, un peldaño por objeción) en vez de otra prohibición. Cambios aplicados:
+
+1. **Escalera de reconducción** en el preámbulo de `<coach_objections>` (aplica a cualquier objeción, no solo precio), referenciada desde `_core` punto 2 y desde el toque 1 del precio.
+2. **"es un objetivo muy concreto" vetado en el lexicón.** Reapareció en la conversación B: es la frase exacta que Pepe marcó como robótica, y el contraste solo vetaba la versión larga. Eco disfrazado de halago.
+3. **Tope de opciones dentro de una pregunta: máximo 2, nunca 3**, y ninguna en la del bloqueo central. El menú de 3 se había desplazado a otras preguntas ("salís a correr, tienes alguna base o es algo que llevas poco tiempo?"). Las de 2 funcionan y se conservan.
+4. **Dos restos de educar** ("la carrera es lo que más echa para atrás…", "ahí puede estar una parte clave") como ❌ nuevos. La frontera de la 1.1 funcionó — ya no salen párrafos didácticos —, solo faltaba cubrir la versión corta.
+
+**Sin verificar todavía:** el cierre del toque 3 cuando el lead responde "es curiosidad" (la conversación A se cortó justo ahí).
+
 ## Dónde vive cada cambio dentro del bloque
 
 Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`. **Iván lo rechazó**: el feedback nuevo se traduce a la sección canónica que le toca, no se antepone como capa de conceptos — si no, se salta el protocolo del esquema y el prompt pierde la referencia de dónde vive cada cosa. Destilado a [`formato-saas-coach-v5.md`](../../prompts/coach-engineering/formato-saas-coach-v5.md) §2. Reparto final:
