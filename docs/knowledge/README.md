@@ -64,6 +64,13 @@ valor, nunca el valor. Escanear antes de commitear.
   *Residual*: pasar `GHL_WEBHOOK_VERIFY_MODE` de `warn` a `enforce` sí requiere pegar la PEM RSA
   en el `.env.local` del VPS, y **eso** sigue bloqueado por el acceso SSH.
 
+### Bugs abiertos
+
+- 🐛 [`captured_lead_name` captura nombres ajenos](project_motor_bug_captured_lead_name.md) —
+  **afecta a TODOS los tenants**. La IA agarra un nombre de una plantilla o de un tercero que
+  esté en el historial y lo persiste a `leads.first_name` sin guarda de procedencia. Verificado
+  abierto el 2026-07-30. El fix es de código + deploy del motor, no de `coach_block`.
+
 ### Autoría de coaches (coach-engineering)
 
 - [KB de autoría de coaches](project_coach_authoring_kb.md) — la base en
@@ -77,23 +84,41 @@ valor, nunca el valor. Escanear antes de commitear.
   reunión 2026-06-18: el tono ya está bien, lo que falla es la **dirección**. Doctrina §19–§25.
 - [Fase 2 — modo cómo-no-qué](feedback_coach_fase2_como_no_que.md) — directiva del 29-jun para
   autorar/reconciliar la Fase 2 de cualquier coach.
+- [El feedback va DENTRO del esquema](feedback_coach_reglas_dentro_del_esquema.md) — directiva del
+  25-jul: lo nuevo se traduce a su sección canónica, **nunca** como "reglas duras" antepuestas al
+  principio del bloque. Incluye el mapa de destinos.
 - [Export al Claude de la empresa](project_coach_authoring_export.md) — skill distribuible
   `coach-authoring`. Incluye la **regla dura de exclusión** en entregables al jefe.
 
 ### Loops abiertos por coach
 
-- [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Ronda 2026-07-13.
+> Todos son de **academia/Automatía** salvo Nani, que es un tenant del SaaS de este repo.
+
+- [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Última ronda
+  **2026-07-29** (deseo-antes-que-solución, test anti-invención causal, criterio de suficiencia
+  con techo de preguntas). **La copia del repo va por delante del `.rtf` de origen.**
 - [Roberto](project_roberto_coach_feedback.md) — hombres +100kg. Ronda 2026-07-13, número de
   Rober **pendiente**. Ojo: hay **dos ficheros del mismo Rober** (una persona, dos sistemas) —
   el vivo en `academia/roberto.md` y el draft del SaaS `source/coach-v5/roberto-cordobilla.md`,
   que va por detrás. Ver la tabla en el [README de academia](../../prompts/coach-engineering/academia/README.md).
 - [Frodo](project_frodo_coach_feedback.md) — hombres recomposición, sin emojis ni minúsculas.
+  Última ronda **2026-07-29**: regla dura de señal de compra, guerra a la "y" de pegamento y
+  banco de preguntas clave con tope de 2 en toda la conversación.
 - [Chema](project_chema_coach_feedback_loop.md) — Programa Fénix. Llega feedback en `.docx`.
 - [Luis Royán — menopausia](project_luis_royan_coach_menopausia.md) — avatar nuevo (el 4º).
-  Diseño cerrado, **bloqueado esperando la voz de Luis**.
+  **DESBLOQUEADO 2026-07-28**: llegó su voz y el bloque está escrito con 2 rondas aplicadas. La
+  ronda 2 **tumbó una decisión del diseño** (validar por "me lo cuentan a diario las mujeres con
+  las que trabajo" quedó PROHIBIDO — la protagonista es ella).
+- [Nani](project_nani_coach_feedback.md) — ⚠️ **tenant del SaaS, no academia**: es `coach_v5` de
+  verdad, en [`prompts/source/coach-v5/nani.md`](../../prompts/source/coach-v5/nani.md). Mujeres
+  hinchazón/ciclo. Rondas 1 y 2 el 2026-07-24, `status: draft` sin cargar.
 - [Pepe Jiménez — HYROX](project_pepe_coach_feedback.md) — primer avatar de **OBJETIVO** puro.
   Ronda 1 aplicada 2026-07-25. La llamada la atiende su equipo de admisiones, no él. Trae el
   hallazgo del canal de autoridad por **reconocimiento** (candidato a §30 de la doctrina).
+- [Beatriz Juan — madres postparto](project_beatriz_coach_feedback.md) — ronda 1 aplicada
+  2026-07-28. **Reclamó el bloque de método que la doctrina §19 le había quitado** y se le
+  devolvió con 5 blindajes: hay que enseñárselo a Rubén antes de desplegar, porque desde fuera
+  parece la regresión de lo que se corrigió en Frodo.
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 
