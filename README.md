@@ -98,7 +98,7 @@ docker compose up --build
 
 # 4. Smoke test motor
 curl http://localhost:3001/health
-# → { "status":"ok", "supabase_reachable":true, ... }
+# → { "ok":true, "service":"motor-agente", "supabase_reachable":true, "prompt_blocks_count": >0 }
 
 # 5. En otra terminal, panel Next.js
 pnpm --filter @fyzon/panel dev
