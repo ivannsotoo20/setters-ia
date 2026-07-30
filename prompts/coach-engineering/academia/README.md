@@ -41,14 +41,15 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 
 | Fichero | Avatar / perfil | Venía de | Estado |
 |---|---|---|---|
-| [alfonso.md](alfonso.md) | Hombres pérdida de peso | `coach_block_alfonso_2.0.md` | Ronda 2026-07-13 aplicada |
+| [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-29. ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
-| [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-07-15 (la última) |
+| [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-07-29 (señal de compra + banco de preguntas clave) |
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |
 | [miguel-aguado.md](miguel-aguado.md) | — | `coach_block_miguel_aguado.md` | 2026-07-13 |
 | [andrea.md](andrea.md) | Mujeres | `coach_block_andrea.md` | 2026-07-06 |
-| [alex.md](alex.md) | — | — | 2026-07-24 |
-| [luis-royan.md](luis-royan.md) | Mujeres menopausia (4º avatar) | diseño desde cero | **[PENDIENTE VOZ]** — no desplegar |
+| [alex.md](alex.md) | **Escaladores** estancados o lesionados (Escalada Inteligente) — nicho fuera del corpus fitness | — | 2026-07-24. ⚠️ **Formato antiguo** (`# BLOQUE 0…7`, no el esquema `<coach_block>`); sin loop documentado |
+| [beatriz-juan.md](beatriz-juan.md) | Madres postparto (mujeres, registro afectivo) | `victor_beatriz_coach.rtf` | Ronda 1 aplicada 2026-07-28. **Lleva un override de §19 que hay que enseñarle a Rubén antes de desplegar** |
+| [luis-royan.md](luis-royan.md) | Mujeres menopausia (4º avatar) | diseño desde cero + `luis_coach.rtf` | **Desbloqueado 2026-07-28** (llegó su voz). 2 rondas aplicadas. Pendiente: cadencia de emojis + smoke |
 | [pepe.md](pepe.md) | HYROX / rendimiento híbrido (avatar de OBJETIVO) | bloque desplegado en Automatía | Ronda 1 aplicada 2026-07-25. **Duración del programa + corpus de voz pendientes** |
 | [DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md](DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md) | 7 nichos × DN-01..06 (doc de Rubén) | igual | Menopausia = §7, base de Luis Royán |
 
@@ -63,7 +64,8 @@ Qué se cambió, por qué y qué quedó abierto está en `docs/knowledge/`, no a
 [Frodo](../../../docs/knowledge/project_frodo_coach_feedback.md) ·
 [Chema](../../../docs/knowledge/project_chema_coach_feedback_loop.md) ·
 [Luis Royán](../../../docs/knowledge/project_luis_royan_coach_menopausia.md) ·
-[Pepe](../../../docs/knowledge/project_pepe_coach_feedback.md)
+[Pepe](../../../docs/knowledge/project_pepe_coach_feedback.md) ·
+[Beatriz](../../../docs/knowledge/project_beatriz_coach_feedback.md)
 
 Y la craft para tocarlos (doctrina §1–§29, avatares, checklist) en
 [`prompts/coach-engineering/`](../README.md). El
