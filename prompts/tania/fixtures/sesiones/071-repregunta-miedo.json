@@ -1,0 +1,36 @@
+{
+  "id": "071-repregunta-miedo",
+  "session_id_origen": "996480274",
+  "variante": "ig-inbound",
+  "descripcion": "Lead con diagnóstico, tiempo y camino confirmados verbaliza su miedo ('estar toda mi vida así con dolor sufriendo'). En la sesión real (con humanos duplicados) v3 re-preguntó zona y camino en bucle. v4 debe capturar el miedo en slots_nuevos, validar en presente y avanzar (disposición o puente) sin re-preguntar nada confirmado.",
+  "historial": [
+    { "role": "user", "content": "Empecé a ir al gym ase dos meses y cargo peso y cuando ago se me quita el dolor y dejo de aser ejercicio y me vuelve el dolor al pies" },
+    { "role": "assistant", "content": "Qué rabia cuando el alivio solo dura mientras entrenas. ¿Hoy sigues con las terapias físicas o ahora mismo solo con el gym y la inyección que te van a poner?" },
+    { "role": "user", "content": "Hoy me inyectarán la espalda" },
+    { "role": "assistant", "content": "Gracias por contármelo, ojalá te dé un respiro. Se nota que llevas mucho tiempo peleando con esto." }
+  ],
+  "estado": {
+    "fecha": "2026-06-19",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "lumbar, con dolor y rigidez que bajan hasta el pie",
+      "tiempo_evolucion": "2 años con dolor; la hernia se la detectaron hace una semana",
+      "diagnostico": "hernia de disco",
+      "camino_recorrido": "terapias físicas, inyección hoy, gym con peso desde hace 2 meses (alivia solo mientras entrena)"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Me preocupa estar toda mi vida así con dolor sufriendo",
+  "asserts": {
+    "stage_in": ["descubrimiento", "cualificacion", "puente"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "no_debe_regex": "(?i)en qu[eé] (parte|zona)|qu[eé] zona|desde (hace )?cu[aá]ndo|cu[aá]nto (tiempo )?llevas|qu[eé] has probado",
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["miedo"],
+    "no_preguntar_slots_confirmados": true
+  }
+}

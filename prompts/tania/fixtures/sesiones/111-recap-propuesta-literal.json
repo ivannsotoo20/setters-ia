@@ -1,0 +1,39 @@
+{
+  "id": "111-recap-propuesta-literal",
+  "session_id_origen": "18197918074",
+  "variante": "whatsapp",
+  "descripcion": "Lead acaba de confirmar el recap-espejo ('Si, es eso'). El siguiente mensaje debe ser la propuesta de videollamada anclada con AL MENOS un elemento literal del caso del lead (pesas, abdominales, entrenar, correr, mareos), no una propuesta genérica de plantilla.",
+  "historial": [
+    { "role": "user", "content": "Necesito ejercicios que me reestablezcan para disminuir las hernias" },
+    { "role": "assistant", "content": "Por lo que cuentas, ahora mismo tienes dolor en la zona de la escápula y columna que aparece al correr y se mantiene incluso en reposo, y los mareos al hacer pesas y abdominales te han hecho dejar ese entreno. Solo con estiramientos no estás consiguiendo cambiarlo y lo que buscas es volver a entrenar fuerza y correr con menos dolor. ¿Lo resumo bien?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-11",
+    "stage": "puente",
+    "slots": {
+      "zona": "cerca de la escápula y en la columna",
+      "tiempo_evolucion": "dolor presente también en reposo",
+      "diagnostico": "hernia discal (no sabe en qué vértebras)",
+      "impacto": "dejó pesas y abdominales por mareos; corre 4 veces/semana con dolor después",
+      "camino_recorrido": "solo estiramientos",
+      "miedo": "no poder hacer pesas ni abdominales y seguir con dolor",
+      "objetivo": "volver a entrenar"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Si, es eso",
+  "asserts": {
+    "stage_in": ["llamada_ofrecida"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": [
+      "(?i)pesas|abdominales|entrenar|correr|mareo",
+      "(?i)videollamada|llamada"
+    ],
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

@@ -1,0 +1,141 @@
+<title>Embudo Tania — dónde se caen las conversaciones</title>
+<style>
+  :root {
+    --bg: #FAFAF8; --surface: #FFFFFF; --ink: #22272E; --muted: #66737A;
+    --line: #E3E6E2; --accent: #0E7C7B; --accent-soft: #0E7C7B22;
+    --warn: #B0762B; --crit: #A63D40; --crit-soft: #A63D4014;
+    --bar: #9FBFBE; --bar-strong: #0E7C7B;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg: #14171C; --surface: #1C2027; --ink: #E8EAEC; --muted: #97A3AA;
+    --line: #2C323B; --accent: #4FB3B0; --accent-soft: #4FB3B026;
+    --warn: #D3A15C; --crit: #D4767A; --crit-soft: #D4767A1F;
+    --bar: #3A5B5A; --bar-strong: #4FB3B0;
+  } }
+  :root[data-theme="dark"] {
+    --bg: #14171C; --surface: #1C2027; --ink: #E8EAEC; --muted: #97A3AA;
+    --line: #2C323B; --accent: #4FB3B0; --accent-soft: #4FB3B026;
+    --warn: #D3A15C; --crit: #D4767A; --crit-soft: #D4767A1F;
+    --bar: #3A5B5A; --bar-strong: #4FB3B0;
+  }
+  :root[data-theme="light"] {
+    --bg: #FAFAF8; --surface: #FFFFFF; --ink: #22272E; --muted: #66737A;
+    --line: #E3E6E2; --accent: #0E7C7B; --accent-soft: #0E7C7B22;
+    --warn: #B0762B; --crit: #A63D40; --crit-soft: #A63D4014;
+    --bar: #9FBFBE; --bar-strong: #0E7C7B;
+  }
+  body { background: var(--bg); color: var(--ink); font: 16px/1.55 ui-sans-serif, system-ui, "Segoe UI", sans-serif; margin: 0; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 40px 22px 64px; }
+  .eyebrow { text-transform: uppercase; letter-spacing: .09em; font-size: 12px; color: var(--accent); font-weight: 600; }
+  h1 { font-size: clamp(26px, 4vw, 34px); line-height: 1.15; margin: 6px 0 4px; text-wrap: balance; font-weight: 750; }
+  .sub { color: var(--muted); margin: 0 0 30px; max-width: 62ch; }
+  h2 { font-size: 19px; margin: 40px 0 14px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 22px 0 4px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .kpi b { display: block; font-size: 24px; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 13px; color: var(--muted); }
+  .kpi.crit b { color: var(--crit); }
+  .kpi.ok b { color: var(--accent); }
+
+  .funnel { display: flex; flex-direction: column; gap: 2px; margin-top: 14px; }
+  .stage { display: grid; grid-template-columns: 172px 1fr 118px; gap: 12px; align-items: center; padding: 7px 0; }
+  .stage .lbl { font-size: 14px; text-align: right; color: var(--ink); }
+  .stage .lbl small { display: block; color: var(--muted); font-size: 11.5px; }
+  .barwrap { background: transparent; }
+  .bar { height: 26px; border-radius: 3px; background: var(--bar); min-width: 3px; }
+  .bar.strong { background: var(--bar-strong); }
+  .bar.ghostbar { background: repeating-linear-gradient(45deg, var(--bar), var(--bar) 6px, transparent 6px, transparent 10px); }
+  .stage .val { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .stage .val small { color: var(--muted); }
+  .drop { display: grid; grid-template-columns: 172px 1fr; gap: 12px; padding: 1px 0 3px; }
+  .drop span { grid-column: 2; font-size: 12.5px; color: var(--crit); }
+
+  .leaks { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .leak { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--crit); border-radius: 8px; padding: 14px 16px; }
+  .leak h3 { margin: 0 0 6px; font-size: 15px; }
+  .leak p { margin: 0; font-size: 13.5px; color: var(--muted); }
+  .leak .fix { margin-top: 10px; font-size: 13px; color: var(--accent); }
+
+  .callout { background: var(--crit-soft); border: 1px solid var(--crit); border-radius: 8px; padding: 16px 18px; margin-top: 14px; }
+  .callout h3 { margin: 0 0 6px; font-size: 15.5px; color: var(--crit); }
+  .callout p { margin: 0; font-size: 14px; }
+
+  table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .tablewrap { overflow-x: auto; }
+  th, td { text-align: left; padding: 9px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+  thead th { border-top: none; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); background: var(--accent-soft); }
+  td:first-child { white-space: nowrap; }
+
+  .foot { color: var(--muted); font-size: 12.5px; margin-top: 36px; border-top: 1px solid var(--line); padding-top: 14px; }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">Setter IA · Tania — diagnóstico del embudo</div>
+  <h1>Dónde se están cayendo las conversaciones</h1>
+  <p class="sub">Análisis de las 1.747 conversaciones completas del sistema (28.174 mensajes, abril → 22 de julio de 2026), verificado mensaje a mensaje. Tres fugas concentran la pérdida, y la métrica de "agendadas" estaba inflada.</p>
+
+  <div class="kpis">
+    <div class="kpi"><b class="num">1.747</b><span>conversaciones (IG 751 · GHL 581 · WA 415)</span></div>
+    <div class="kpi"><b class="num">550</b><span>fantasma: el lead escribe ≤2 veces (31%)</span></div>
+    <div class="kpi crit"><b class="num">68</b><span>marcadas "agendado" por el sistema</span></div>
+    <div class="kpi ok"><b class="num">≈42</b><span>con confirmación real del lead en el chat</span></div>
+  </div>
+
+  <h2>El embudo (conversaciones que llegan a cada etapa)</h2>
+  <div class="funnel">
+    <div class="stage"><div class="lbl">Conversación iniciada</div><div class="barwrap"><div class="bar" style="width:100%"></div></div><div class="val num">1.747 <small>100%</small></div></div>
+    <div class="stage"><div class="lbl">Descubrimiento</div><div class="barwrap"><div class="bar" style="width:97.6%"></div></div><div class="val num">1.705 <small>98%</small></div></div>
+    <div class="drop"><span>▼ −730 conversaciones mueren aquí — la fuga nº 1 (42% del total)</span></div>
+    <div class="stage"><div class="lbl">Cualificación</div><div class="barwrap"><div class="bar" style="width:55.8%"></div></div><div class="val num">975 <small>56%</small></div></div>
+    <div class="drop"><span>▼ −378 entre cualificar y llegar a proponer</span></div>
+    <div class="stage"><div class="lbl">Llamada ofrecida</div><div class="barwrap"><div class="bar" style="width:34.2%"></div></div><div class="val num">597 <small>34%</small></div></div>
+    <div class="drop"><span>▼ −246 aceptan a medias o se enfrían antes de ver el enlace</span></div>
+    <div class="stage"><div class="lbl">Enlace de agenda enviado</div><div class="barwrap"><div class="bar" style="width:20.1%"></div></div><div class="val num">351 <small>20%</small></div></div>
+    <div class="drop"><span>▼ −283 reciben el enlace y NO reservan (81% de fuga post-enlace) — la fuga nº 2</span></div>
+    <div class="stage"><div class="lbl">"Agendado" según el bot</div><div class="barwrap"><div class="bar" style="width:3.9%"></div></div><div class="val num">68 <small>3,9%</small></div></div>
+    <div class="stage"><div class="lbl">Agendado confirmado <small>por el lead en el chat</small></div><div class="barwrap"><div class="bar strong" style="width:2.4%"></div></div><div class="val num">≈42 <small>2,4%</small></div></div>
+  </div>
+
+  <div class="callout">
+    <h3>Por qué las métricas no cuadraban</h3>
+    <p>De las 68 conversaciones marcadas "agendado", <b>26 (un 38%) no tienen ninguna confirmación del lead</b>: el bot marcaba la etapa al proponer la llamada o al enviar el enlace. A eso se suma que <b>el enlace de agenda de WhatsApp apuntó durante meses a una página en blanco</b> (233 envíos desde abril; verificado en navegador el 22-jul, corregido el 23-jul) y hubo un segundo enlace con errata que daba 404 (13 envíos en junio). En la nueva versión, "agendado" solo se marca con confirmación explícita del lead o con el aviso real del calendario (webhook de GHL): la cifra pasa a ser fiable.</p>
+  </div>
+
+  <h2>Las tres fugas y su causa (verificadas en las transcripciones)</h2>
+  <div class="leaks">
+    <div class="leak">
+      <h3>1 · Descubrimiento sin salida <span class="num">(−730)</span></h3>
+      <p>El bot hace 6-12 preguntas tipo formulario y nunca convierte lo obtenido en una propuesta: en las sesiones auditadas de esta etapa, ninguna llegó a ofrecer la llamada aunque el lead diera toda la información. Se suma la pregunta de país en frío y la doble ejecución que repetía preguntas.</p>
+      <div class="fix">Fix v4: salida obligatoria con 3 señales + tope de preguntas + país solo reactivo + dedup técnico.</div>
+    </div>
+    <div class="leak">
+      <h3>2 · Post-enlace abandonado <span class="num">(−283)</span></h3>
+      <p>Tras enviar el enlace el bot se despedía ("lo dejamos aquí"), esquivaba la pregunta de precio sin decir que la llamada es gratis, y el único seguimiento era un "¿pudiste leer mi mensaje?" genérico solo en Instagram, que además borraba al lead a las 72h.</p>
+      <div class="fix">Fix v4: micro-compromiso de cuándo reservar, "la llamada es gratuita" inmediato, seguimiento personalizado multi-toque también en WhatsApp.</div>
+    </div>
+    <div class="leak">
+      <h3>3 · Apertura fría <span class="num">(550 fantasma)</span></h3>
+      <p>El 31% de los leads escribe una o dos veces y desaparece: el segundo mensaje del bot era casi siempre una pregunta clínica de formulario (zona/tiempo) aunque el lead ya hubiera contado su caso, y el primer mensaje del bot ni siquiera se guardaba en memoria.</p>
+      <div class="fix">Fix v4: anclar siempre en lo que el lead trae, prohibido el interrogatorio temprano, opener guardado en el historial.</div>
+    </div>
+  </div>
+
+  <h2>Qué cambia con la v4 (resumen para decidir)</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th>Problema medido</th><th>Corrección aplicada</th></tr></thead>
+    <tbody>
+      <tr><td class="num">38% de "agendados" falsos</td><td>Definición dura de etapas en el prompt + webhook del calendario GHL como fuente de verdad de reservas</td></tr>
+      <tr><td class="num">233 enlaces a página en blanco</td><td>Un calendario verificado por flujo (IG outbound / IG inbound / WhatsApp) y URLs fuera del cuerpo del prompt</td></tr>
+      <tr><td>Preguntas repetidas</td><td>Deduplicación por mensaje + lock por conversación + historial completo real (antes el bot solo veía un resumen)</td></tr>
+      <tr><td>Descualificación mencionando países</td><td>Cierre cálido sin motivo: recurso + puerta abierta; la lista de países pasa a ser criterio interno</td></tr>
+      <tr><td>Leads borrados a las 72h</td><td>Nadie se borra: estado "dormido" recuperable + recontactos con fecha (resonancias, "te escribo el lunes")</td></tr>
+      <tr><td>Sin visibilidad del embudo</td><td>Etapas fiables por conversación en el CRM → este mismo informe se puede sacar cada semana con una consulta</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <p class="foot">Fuente: export completo de n8n_chat_histories (28.174 mensajes, 1.747 conversaciones, 14-abr → 22-jul-2026). "Agendado confirmado" = el lead verbaliza la reserva en el chat; la cifra exacta puede variar ±unos casos por confirmaciones fuera del chat. Enlaces de agenda verificados en navegador el 22 y 23 de julio de 2026. Análisis: auditoría multi-agente + verificación adversarial, 23-jul-2026.</p>
+</div>

@@ -89,6 +89,9 @@ valor, nunca el valor. Escanear antes de commitear.
   principio del bloque. Incluye el mapa de destinos.
 - [Export al Claude de la empresa](project_coach_authoring_export.md) — skill distribuible
   `coach-authoring`. Incluye la **regla dura de exclusión** en entregables al jefe.
+- [Bloques coach sin pendientes](feedback_coach_blocks_sin_pendientes.md) — los bloques coach son
+  producción que ven otros profesionales: quedan **limpios y terminados**, cero placeholders,
+  pendientes o notas de decisión dentro del `<coach_block>`. Van al conocimiento o al chat.
 
 ### Loops abiertos por coach
 
@@ -110,8 +113,10 @@ valor, nunca el valor. Escanear antes de commitear.
   ronda 2 **tumbó una decisión del diseño** (validar por "me lo cuentan a diario las mujeres con
   las que trabajo" quedó PROHIBIDO — la protagonista es ella).
 - [Nani](project_nani_coach_feedback.md) — ⚠️ **tenant del SaaS, no academia**: es `coach_v5` de
-  verdad, en [`prompts/source/coach-v5/nani.md`](../../prompts/source/coach-v5/nani.md). Mujeres
-  hinchazón/ciclo. Rondas 1 y 2 el 2026-07-24, `status: draft` sin cargar.
+  verdad, en [`prompts/source/coach-v5/nani.md`](../../prompts/source/coach-v5/nani.md). Mujeres,
+  hinchazón/ciclo, programa "Confía en Ti". **4º REGISTRO del avatar mujeres**: hombre experto
+  no-afectivo (firma "señorita"). 3 rondas (23 y 24-jul) + validado en prueba real; la garantía
+  solo como último recurso en F5+. `status: draft`, tenant `nani` sin alta.
 - [Pepe Jiménez — HYROX](project_pepe_coach_feedback.md) — primer avatar de **OBJETIVO** puro.
   Ronda 1 aplicada 2026-07-25. La llamada la atiende su equipo de admisiones, no él. Trae el
   hallazgo del canal de autoridad por **reconocimiento** (candidato a §30 de la doctrina).

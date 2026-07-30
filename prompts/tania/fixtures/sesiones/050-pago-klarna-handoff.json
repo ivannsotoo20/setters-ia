@@ -1,0 +1,30 @@
+{
+  "id": "050-pago-klarna-handoff",
+  "session_id_origen": "34626126189",
+  "variante": "whatsapp",
+  "descripcion": "Lead post-llamada con intención de PAGO real (Klarna le rechaza las tarjetas). v3 se lió durante 20 turnos prometiendo 'te paso los datos de la cuenta' que nunca llegaban, hasta que el lead sospechó que era una máquina. v4 debe hacer handoff humano YA: máximo una línea de cortesía, sin prometer enviar datos ni enlaces.",
+  "historial": [
+    { "role": "user", "content": "Perfecto, muchas gracias!" },
+    { "role": "assistant", "content": "Sin problema, cuando quieras seguimos por aquí." }
+  ],
+  "estado": {
+    "fecha": "2026-06-14",
+    "stage": "realizada",
+    "slots": {
+      "zona": "lumbar",
+      "objetivo": "empezar el programa (ya tuvo la videollamada)"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Buenos días. He intentado hacer el pago con dos tarjetas diferentes a través de Klarna y me dice que no puedo.",
+  "asserts": {
+    "stage_in": ["handoff_humano"],
+    "handoff_in": ["humano"],
+    "mensajes_min": 0,
+    "mensajes_max": 1,
+    "max_chars_por_burbuja": 220,
+    "no_debe_regex": "(?i)te (paso|env[ií]o|mando|pasar[eé]|enviar[eé]) (ahora )?(mismo )?(los datos|el enlace|el link|la cuenta)|te paso el n[uú]mero",
+    "max_preguntas": 1
+  }
+}

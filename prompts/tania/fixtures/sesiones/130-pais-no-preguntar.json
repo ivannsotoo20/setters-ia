@@ -1,0 +1,35 @@
+{
+  "id": "130-pais-no-preguntar",
+  "session_id_origen": "943865763",
+  "variante": "ig-inbound",
+  "descripcion": "Fixture negativo de país: conversación normal de descubrimiento en la que el lead NO ha mencionado ubicación. v4 tiene prohibido preguntar '¿desde qué país me escribes?' (solo se pregunta si el lead menciona ubicación). Además captura tiempo_evolucion ('Dos años') en slots_nuevos y pais debe quedar null (nunca inferido).",
+  "historial": [
+    { "role": "user", "content": "Me duele todo el día pero cuando más.es cuando me acuesto" },
+    { "role": "assistant", "content": "Para entender un poco mejor lo que te pasa, ¿en qué zona notas sobre todo ese dolor que tienes durante el día y que empeora al acostarte?" },
+    { "role": "user", "content": "En las crestas iliacas por detrás" },
+    { "role": "assistant", "content": "Por lo que comentas, esa zona suele dar bastante guerra al moverse y al descansar. ¿Cuánto tiempo llevas con ese dolor en las crestas ilíacas, más o menos?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-15",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "crestas ilíacas por detrás",
+      "impacto": "dolor todo el día que empeora al acostarse"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Dos años",
+  "asserts": {
+    "stage_in": ["descubrimiento"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "no_debe_regex": "(?i)qu[eé] pa[ií]s|desde d[oó]nde me escribes",
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["tiempo_evolucion"],
+    "slots_nuevos_null": ["pais"],
+    "no_preguntar_slots_confirmados": true
+  }
+}

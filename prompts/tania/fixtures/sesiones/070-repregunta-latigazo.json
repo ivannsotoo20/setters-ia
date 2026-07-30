@@ -1,0 +1,39 @@
+{
+  "id": "070-repregunta-latigazo",
+  "session_id_origen": "121570370",
+  "variante": "ig-inbound",
+  "descripcion": "Zona (lumbar) y tiempo (se resiente al dejar el gym unas semanas) YA confirmados en estado. v3 re-preguntó '¿desde cuándo te pasa esto?' dos veces seguidas después de tenerlo. v4: cero re-preguntas de slots confirmados; avanzar por impacto emocional o miedo.",
+  "historial": [
+    { "role": "user", "content": "Por las mañnas al levantarme y cuando me siento y me levanto" },
+    { "role": "assistant", "content": "Me sirve para ubicarlo. ¿En qué zona de la espalda notas esas molestias al levantarte y al ponerte de pie?" },
+    { "role": "user", "content": "Lumbares" },
+    { "role": "assistant", "content": "En la zona lumbar es muy típico lo que comentas. ¿Desde cuándo te notas esas molestias al levantarte y al ponerte de pie?" },
+    { "role": "user", "content": "Cuando dejó de ir al gym algunas semanas por necesidad me empiezo a resentir de la espalda" },
+    { "role": "assistant", "content": "Cuando dejas el gym y te resientes, ¿hay algo concreto que ya no puedas hacer igual en tu día a día por la lumbar?" },
+    { "role": "user", "content": "Que dan latigazos al levantarme de posición sentado" },
+    { "role": "assistant", "content": "Esos latigazos al levantarte de estar sentado tienen que ser muy molestos, y más si te pillan en cualquier sitio." }
+  ],
+  "estado": {
+    "fecha": "2026-06-10",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "lumbar",
+      "tiempo_evolucion": "se resiente cuando deja el gym algunas semanas",
+      "impacto": "latigazos al levantarse de estar sentado; molestias al levantarse por las mañanas",
+      "camino_recorrido": "gym (cuando lo deja, empeora)"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Si claro me quedo pillado",
+  "asserts": {
+    "stage_in": ["descubrimiento", "cualificacion", "puente"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "no_debe_regex": "(?i)desde (hace )?cu[aá]ndo|cu[aá]nto (tiempo )?llevas|qu[eé] zona|en qu[eé] (parte|zona)",
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

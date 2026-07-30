@@ -1,0 +1,593 @@
+{
+  "name": "Tania v4 — booking webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "tania-v4-booking",
+        "options": {}
+      },
+      "id": "9b6542f7-73e4-4271-abf4-ae1f1818554f",
+      "name": "Webhook booking",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "webhookId": "3b563125-9f7b-42e6-8532-57226de17350"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Payload esperado (workflow nativo de GHL -> Custom Webhook):\n//   { \"contact_id\": \"...\", \"start_time\": \"2026-08-01T17:00:00+02:00\", \"tipo\": \"booked|cancelled|no_show\" }\n// Se toleran variantes de nombre y los tipos nativos de GHL (AppointmentCreate...).\nconst body = $json.body || {};\nconst contactId = body.contact_id || body.contactId || (body.contact && body.contact.id) || null;\nconst startTime = body.start_time || body.startTime || (body.calendar && body.calendar.startTime) || null;\nlet tipo = String(body.tipo || body.type || body.event || body.status || '').toLowerCase();\nif (/(no.?show)/.test(tipo)) tipo = 'no_show';\nelse if (/(cancel)/.test(tipo)) tipo = 'cancelled';\nelse if (/(book|creat|confirm)/.test(tipo)) tipo = 'booked';\nelse tipo = 'desconocido';\nreturn [{ json: { contact_id: contactId, start_time: startTime, tipo: tipo } }];"
+      },
+      "id": "c49aa99e-8bf6-4983-a797-8601747339d3",
+      "name": "normalizar booking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "2bde8310-bba0-41ef-a73f-e7b4f29f8ff4",
+              "leftValue": "={{ !!$json.contact_id && $json.tipo !== 'desconocido' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "378c8deb-a96f-460a-b34c-312399282fb0",
+      "name": "¿datos válidos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "1ad4b6b6-e4ab-4f7d-9f4f-d8f3c276ff50",
+      "name": "fin: payload inválido",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        660,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "533bb65d-c174-48d9-8b32-47ab75df2b5f",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "booked",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Booked"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "48d0859d-8412-46d1-9906-249aef2a221f",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "cancelled",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cancelled"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "478ec5de-0d66-4755-af1b-ee615d9c9f10",
+                    "leftValue": "={{ $json.tipo }}",
+                    "rightValue": "no_show",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NoShow"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "12adc495-a2b7-4609-a761-1d8bcfd0a166",
+      "name": "¿tipo de evento?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Reserva creada: F(agendado) + booking_status=booked + se apaga el seguimiento.\n-- pipeline_stage tambien a agendado (espejo del custom field viejo de GHL).\nUPDATE public.clientes_crm_tania\nSET booking_status = 'booked',\n    stage_v4 = 'agendado',\n    pipeline_stage = 'agendado',\n    proximo_recontacto = NULL,\n    recontacto_motivo = NULL\nWHERE contact_id = $1\nRETURNING id, nombre;",
+        "options": {
+          "queryReplacement": "={{ [ $('normalizar booking').first().json.contact_id ] }}"
+        }
+      },
+      "id": "42091f04-6052-4737-be3e-c858f582a1a8",
+      "name": "crm: agendado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        140
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cd30a3b2-351e-4485-8cf7-60b53e70470b",
+              "leftValue": "={{ ($json.id || '') + '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a8d497e5-4e08-4b68-88f9-c0519f986088",
+      "name": "¿lead encontrado?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1100,
+        140
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "4e65f6b2-bcc8-462f-ac6a-174de746bcc0",
+      "name": "fin: contacto sin lead",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        -20
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Plantilla fija calida de confirmacion, con la fecha bonita en es-ES (hora Madrid).\nconst lead = $input.first().json;\nconst start = $('normalizar booking').first().json.start_time;\nlet fechaBonita = '';\nif (start) {\n  const d = new Date(start);\n  if (!isNaN(d.getTime())) fechaBonita = d.toLocaleString('es-ES', { timeZone: 'Europe/Madrid', weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });\n}\nconst nombre = String(lead.nombre || '').split(' ')[0];\nconst texto = (nombre ? nombre + ', ' : '') +\n  '¡reserva confirmada! 🎉 Tu videollamada con Tania queda agendada' +\n  (fechaBonita ? ' para el ' + fechaBonita + ' (hora España)' : '') +\n  '. Si te surge cualquier cosa antes, escríbeme por aquí. ¡Nos vemos muy pronto! 💛';\nreturn [{ json: {\n  id: lead.id,\n  texto: texto,\n  es_whatsapp: String(lead.id).startsWith(String.fromCharCode(43)),\n} }];"
+      },
+      "id": "9a129783-59ae-4c95-ada7-016f93440d18",
+      "name": "mensaje confirmación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7e015360-c58f-4a46-9cd0-159497581fc3",
+              "leftValue": "={{ $json.es_whatsapp === true }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1670e63a-2f21-4688-9488-83da7e8fee16",
+      "name": "¿es WhatsApp?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1540,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.ycloud.com/v2/whatsapp/messages/sendDirectly",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"from\": \"+34912649668\",\n  \"to\": \"{{ $('mensaje confirmación').first().json.id }}\",\n  \"type\": \"text\",\n  \"text\": { \"body\": {{ JSON.stringify($('mensaje confirmación').first().json.texto) }}, \"preview_url\": false }\n}",
+        "options": {}
+      },
+      "id": "e2d62c67-eb28-4c3d-8216-933180885597",
+      "name": "confirmación WA (YCloud)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1760,
+        40
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CREAR-EN-N8N-ycloud",
+          "name": "YCloud Tania"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.manychat.com/fb/sending/sendContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"subscriber_id\": \"{{ $('mensaje confirmación').first().json.id }}\",\n  \"data\": {\n    \"version\": \"v2\",\n    \"content\": {\n      \"type\": \"instagram\",\n      \"messages\": [ { \"type\": \"text\", \"text\": {{ JSON.stringify($('mensaje confirmación').first().json.texto) }} } ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "8df60c17-f7d0-435d-8191-83bc860a1381",
+      "name": "confirmación IG (ManyChat)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1760,
+        240
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "Y1rcZdTN5fcamURD",
+          "name": "Manychat Tania"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO public.n8n_chat_histories_tania (session_id, message, fecha_mensaje)\nVALUES ($1, jsonb_build_object('type', 'ai', 'content', $2::text), now())\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('mensaje confirmación').first().json.id, $('mensaje confirmación').first().json.texto ] }}"
+        }
+      },
+      "id": "7a356a49-4676-4342-9968-ae5de88bc1bc",
+      "name": "historial confirmación (ai)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1980,
+        140
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Cancelacion: se reactiva el seguimiento a +4h con motivo reagenda.\n-- (la query de candidatos del workflow de seguimiento admite cancelled/no_show + reagenda)\nUPDATE public.clientes_crm_tania\nSET booking_status = 'cancelled',\n    proximo_recontacto = now() + interval '4 hours',\n    recontacto_motivo = 'reagenda'\nWHERE contact_id = $1\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('normalizar booking').first().json.contact_id ] }}"
+        }
+      },
+      "id": "f8f613b6-a992-4ef6-9961-10544b0207c3",
+      "name": "crm: cancelada",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        440
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- No-show: igual que cancelacion, recontacto de reagenda a +4h.\nUPDATE public.clientes_crm_tania\nSET booking_status = 'no_show',\n    proximo_recontacto = now() + interval '4 hours',\n    recontacto_motivo = 'reagenda'\nWHERE contact_id = $1\nRETURNING id;",
+        "options": {
+          "queryReplacement": "={{ [ $('normalizar booking').first().json.contact_id ] }}"
+        }
+      },
+      "id": "165a97b8-c155-43f2-a2b3-a71112ef5fb4",
+      "name": "crm: no acudió",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        640
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "oTeFsf1IcnDUkDPV",
+          "name": "Postgres Supabase"
+        }
+      },
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "content": "## Tania v4 — booking webhook\nRecibe los eventos de cita desde un **workflow nativo de GHL** (trigger Appointment) que hace POST a `/webhook/tania-v4-booking` con Custom Webhook y este body:\n```json\n{ \"contact_id\": \"{{contact.id}}\", \"start_time\": \"{{appointment.start_time}}\", \"tipo\": \"booked\" }\n```\nCrear 3 workflows en GHL (o uno con ramas): Appointment Created → tipo `booked`; Cancelled → `cancelled`; No Show → `no_show`.\n\n- `booked` ⇒ `stage_v4=agendado`, seguimiento apagado, mensaje cálido de confirmación con fecha + turno ai en historial.\n- `cancelled` / `no_show` ⇒ `booking_status` correspondiente + recontacto de **reagenda a +4h** (lo envía el workflow de seguimiento).",
+        "width": 520,
+        "height": 330
+      },
+      "id": "f47765b5-2b96-415d-ac7c-1cf653607a82",
+      "name": "Sticky — booking webhook",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Número emisor WhatsApp\nLos envíos YCloud usan `from = +34912649668` (el número Business de Tania observado en los webhooks del workflow vivo). **Confirmar antes de activar.**\nEl matching del lead es por `contact_id` de GHL → columna `clientes_crm_tania.contact_id`. Canal: id que empieza por `+` = WhatsApp; si no, Instagram (subscriber de ManyChat).",
+        "width": 460,
+        "height": 220
+      },
+      "id": "426597bb-6781-4e21-a445-4e3fc4d0f2fd",
+      "name": "Sticky — número emisor WA",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        -240
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook booking": {
+      "main": [
+        [
+          {
+            "node": "normalizar booking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "normalizar booking": {
+      "main": [
+        [
+          {
+            "node": "¿datos válidos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿datos válidos?": {
+      "main": [
+        [
+          {
+            "node": "¿tipo de evento?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "fin: payload inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿tipo de evento?": {
+      "main": [
+        [
+          {
+            "node": "crm: agendado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "crm: cancelada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "crm: no acudió",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "crm: agendado": {
+      "main": [
+        [
+          {
+            "node": "¿lead encontrado?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿lead encontrado?": {
+      "main": [
+        [
+          {
+            "node": "mensaje confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "fin: contacto sin lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "mensaje confirmación": {
+      "main": [
+        [
+          {
+            "node": "¿es WhatsApp?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿es WhatsApp?": {
+      "main": [
+        [
+          {
+            "node": "confirmación WA (YCloud)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "confirmación IG (ManyChat)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirmación WA (YCloud)": {
+      "main": [
+        [
+          {
+            "node": "historial confirmación (ai)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "confirmación IG (ManyChat)": {
+      "main": [
+        [
+          {
+            "node": "historial confirmación (ai)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Madrid"
+  },
+  "pinData": {}
+}

@@ -1,0 +1,35 @@
+{
+  "id": "100-eres-fisio-responde",
+  "session_id_origen": "JbKbBv08BTwMYbc4nzJ0",
+  "variante": "ig-inbound",
+  "descripcion": "Lead pregunta directa: '¿eres fisioterapeuta? ¿traumatóloga?'. v3 la esquivó con '¿desde qué país me escribes?' y el lead tuvo que insistir dos veces más. v4 debe RESPONDER la pregunta (quién es / qué hace) antes de redirigir, sin cambiar de tema.",
+  "historial": [
+    { "role": "user", "content": "Hola! Sí, me ha interesado tu cuenta, ya que hablas de mi problema. Tengo hernia y protusión lumbares y he atravesado meses complicados por el dolor😕" },
+    { "role": "assistant", "content": "Me alegra que me lo cuentes, así puedo situarme mejor. Cuando dices que has tenido meses complicados por el dolor, ¿desde hace cuánto tiempo te está dando guerra la zona lumbar?" },
+    { "role": "user", "content": "Ya llevo años vos este problema, pero suele estar latente, con crisis esporádicas. Pero en febrero tuve la última crisis, que aunque está ya remitiendo, he estado cuatro meses con dolor agudo que se irradia en mi pierna" },
+    { "role": "assistant", "content": "Cuatro meses con dolor agudo que baja a la pierna se hacen largos. Para entender mejor tu situación, ¿qué es lo que más te está limitando ahora mismo en tu día a día con este dolor?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-24",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "lumbar, irradiado a la pierna",
+      "tiempo_evolucion": "años con crisis esporádicas; la última desde febrero, 4 meses de dolor agudo",
+      "diagnostico": "hernia y protrusión lumbares"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Perdona, eres fisioterapeuta?  Traumatóloga?",
+  "asserts": {
+    "stage_in": ["descubrimiento", "conexion"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)fisio|entrenador|formaci[oó]n|especializ|acompa[ñn]o",
+    "no_debe_regex": "(?i)desde qu[eé] pa[ií]s|qu[eé] pa[ií]s me escribes|prefiero centrarme en ti|antes de hablar de m[ií]",
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

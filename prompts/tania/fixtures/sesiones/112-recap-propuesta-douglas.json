@@ -1,0 +1,39 @@
+{
+  "id": "112-recap-propuesta-douglas",
+  "session_id_origen": "1243436946",
+  "variante": "ig-inbound",
+  "descripcion": "Lead (Douglas, hernia L5-S1 extruida, en cama por recaída, miedo a la operación) confirma el recap con 'correcto'. La propuesta siguiente debe llevar un elemento literal de SU caso (caminar, operación, columna, recaída, peso), no la plantilla genérica que usó v3 ('analizar tu caso en profundidad').",
+  "historial": [
+    { "role": "user", "content": "orientación  que debo hacer para sentirme seguro" },
+    { "role": "assistant", "content": "Por lo que cuentas, llevas unas semanas con una hernia L5-S1 que te da dolor en pierna izquierda y sacro al estar sentado o de pie, has tenido una recaída que ahora te tiene en cama, estás con medicación y reposo, has perdido 10 kilos y quieres evitar la operación aprendiendo a cuidar tu columna y volver a caminar y trabajar sin miedo. ¿Me dejo algo importante?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-13",
+    "stage": "puente",
+    "slots": {
+      "zona": "pierna izquierda y sacro",
+      "tiempo_evolucion": "22 días con este episodio; en cama por recaída",
+      "diagnostico": "hernia discal L5-S1 con extrusión y cambios degenerativos",
+      "impacto": "no puede estar sentado ni de pie sin dolor; en cama; parado de su trabajo",
+      "camino_recorrido": "reposo absoluto, gabapentina, antiinflamatorios; perdió 10 kg (123→113)",
+      "miedo": "que le digan que tienen que operarle; no poder caminar",
+      "objetivo": "cuidar su columna, bajar de peso, volver a caminar y trabajar"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "correcto es así",
+  "asserts": {
+    "stage_in": ["llamada_ofrecida"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": [
+      "(?i)caminar|operaci[oó]n|operar|columna|reca[ií]da|peso",
+      "(?i)videollamada|llamada"
+    ],
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

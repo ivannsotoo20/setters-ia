@@ -1,0 +1,37 @@
+{
+  "id": "101-donde-vives-responde",
+  "session_id_origen": "1562308382",
+  "variante": "ig-inbound",
+  "descripcion": "Lead pregunta directa '¿Dónde vives?' justo tras la propuesta de videollamada. v3 la esquivó ('antes de hablar de mí prefiero centrarme en ti'). v4 debe responder SIEMPRE la pregunta directa (trabaja online / desde dónde) antes de redirigir a la llamada.",
+  "historial": [
+    { "role": "user", "content": "Lo primero incorporación a mí trabajo" },
+    { "role": "assistant", "content": "Recuperar tu trabajo parece la prioridad para ti ahora mismo. ¿En qué consiste tu trabajo y qué parte se te hace ahora más difícil por el dolor?" },
+    { "role": "user", "content": "Claro" },
+    { "role": "assistant", "content": "Con todo lo que me has contado, tiene sentido que quieras recuperar tu trabajo y dejar de depender solo de medicación y calor. Si te parece, en una videollamada puedo valorar tu caso con más detalle y explicarte qué opciones tendrías para avanzar. ¿Te gustaría que lo veamos en una llamada tranquila conmigo?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-09",
+    "stage": "llamada_ofrecida",
+    "slots": {
+      "zona": "espalda baja lado derecho",
+      "tiempo_evolucion": "desde hace tiempo",
+      "impacto": "de baja laboral; su prioridad es reincorporarse al trabajo",
+      "camino_recorrido": "fomentos de agua caliente y medicinas",
+      "objetivo": "incorporarse a su trabajo"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Donde vives?",
+  "asserts": {
+    "stage_in": ["llamada_ofrecida", "link_enviado"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)online|espa[ñn]a|desde casa|a distancia|donde est[eé]s",
+    "no_debe_regex": "(?i)prefiero centrarme en ti|antes de hablar de m[ií]",
+    "max_preguntas": 1,
+    "no_preguntar_slots_confirmados": true
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "051-quiero-empezar-handoff",
+  "session_id_origen": "34659872399",
+  "variante": "whatsapp",
+  "descripcion": "Lead post-llamada vuelve semanas después decidida a comprar ('la mejor opción es empezar con el plan que me comentaste'). v3 prometió 'te envío el enlace con la información' en bucle sin poder hacerlo. v4 debe hacer handoff humano YA (intención de compra), con máximo una línea de cortesía cálida y sin prometer pasos, enlaces ni datos.",
+  "historial": [],
+  "estado": {
+    "fecha": "2026-06-22",
+    "stage": "realizada",
+    "slots": {
+      "zona": "lumbar con irradiación a glúteo y gemelo",
+      "tiempo_evolucion": "desde septiembre",
+      "diagnostico": "protrusiones (resonancia)",
+      "impacto": "de baja; limitada para caminar, trabajar, casa y viajar; afectación emocional fuerte",
+      "camino_recorrido": "medicación, fisio (lo dejó), acupuntura",
+      "miedo": "no volver a ser la persona que era; días sin parar de llorar",
+      "objetivo": "recuperar vida normal: trabajar, viajar, senderismo"
+    },
+    "link_enviado_fecha": "2026-05-28",
+    "booking_status": "reservada"
+  },
+  "mensaje_lead": "Buenas tardes Tania, lo primero de todo quiero pedirte disculpas por no haberte contestado. Salí súper contenta de la reunión que tuvimos y de hecho lo hablé con mis familiares pero comencé a dejarlo y postponerlo en el tiempo. La verdad es que llegados a este punto creo que la mejor opción si estás de acuerdo es empezar con el plan que me comentaste. Espero tu contestación y que podamos trabajar juntas. Gracias.",
+  "asserts": {
+    "stage_in": ["handoff_humano"],
+    "handoff_in": ["humano"],
+    "mensajes_min": 0,
+    "mensajes_max": 1,
+    "max_chars_por_burbuja": 220,
+    "no_debe_regex": "(?i)te (paso|env[ií]o|mando|pasar[eé]|enviar[eé]) (ahora )?(de nuevo )?(el enlace|el link|los datos|los pasos|la informaci[oó]n)|primer paso es que te env[ií]e",
+    "max_preguntas": 1
+  }
+}

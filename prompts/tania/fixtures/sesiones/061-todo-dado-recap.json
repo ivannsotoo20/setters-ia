@@ -1,0 +1,37 @@
+{
+  "id": "061-todo-dado-recap",
+  "session_id_origen": "2130593103",
+  "variante": "ig-inbound",
+  "descripcion": "Lead con diagnóstico definido (protrusiones L4-L5/L5-S1 + EMG) acaba de verbalizar el impacto completo (descansar horas al día, sin senderismo, no aguanta de pie). Problema+impacto ya están: v3 respondió con otra pregunta de dato. v4 debe ir al puente/recap anclando en SUS palabras (senderismo, de pie, descansar), sin pedir más datos.",
+  "historial": [
+    { "role": "user", "content": "Q solo hay dos profusiones discales l4l5 / l5 s1" },
+    { "role": "assistant", "content": "Esa zona de la columna suele dar síntomas como los que describes en piernas. ¿Qué cosas has ido probando en estos años para intentar mejorar, como fisio, medicación o ejercicios?" },
+    { "role": "user", "content": "De todo" },
+    { "role": "assistant", "content": "Con todo lo que has ido probando y ese diagnóstico ya bastante definido, me queda entender cómo te condiciona hoy: ¿hay algo que hayas tenido que dejar de hacer por el dolor?" }
+  ],
+  "estado": {
+    "fecha": "2026-06-09",
+    "stage": "descubrimiento",
+    "slots": {
+      "zona": "espalda baja con irradiación a piernas y cara interna de rodillas",
+      "tiempo_evolucion": "años; dolor constante que se agudiza de pie",
+      "diagnostico": "dos protrusiones discales L4-L5 / L5-S1; EMG con afectación leve-moderada de L2 a S1",
+      "camino_recorrido": "de todo (fisio, medicación, ejercicios)"
+    },
+    "link_enviado_fecha": null,
+    "booking_status": "none"
+  },
+  "mensaje_lead": "Holaaa claro q me afecta . Tengo q tener mis horas al día q tengo q descansar. Ya no puedo hacer senderismo de muchos km . No puedo estar de pie mucho rato …",
+  "asserts": {
+    "stage_in": ["puente", "cualificacion"],
+    "handoff_in": ["none"],
+    "mensajes_min": 1,
+    "mensajes_max": 3,
+    "max_chars_por_burbuja": 220,
+    "debe_regex": "(?i)senderismo",
+    "no_debe_regex": "(?i)qu[eé] has probado|has probado alg|alguna prueba|desde (hace )?cu[aá]ndo",
+    "max_preguntas": 1,
+    "slots_nuevos_no_null": ["impacto"],
+    "no_preguntar_slots_confirmados": true
+  }
+}
