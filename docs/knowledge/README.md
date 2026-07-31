@@ -107,9 +107,10 @@ valor, nunca el valor. Escanear antes de commitear.
 > [README de academia](../../prompts/coach-engineering/academia/README.md).
 
 - [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Última ronda
-  **2026-07-31** (mecanismo de parada → `manual_attention` + `skip_reply`; antes, el 29-jul:
-  deseo-antes-que-solución, test anti-invención causal, criterio de suficiencia con techo de
-  preguntas). **La copia del repo va por delante del `.rtf` de origen.**
+  **2026-07-31b** (feedback #64: `<coach_discovery_gate>` como suelo vinculante de 4 elementos antes
+  de proponer F5, cierre de las 4 puertas traseras, una pregunta por mensaje, y el preámbulo suelto
+  repartido dentro del esquema XML → doctrina §31). Antes ese mismo día: mecanismo de parada →
+  `manual_attention` + `skip_reply`. **La copia del repo va por delante del `.rtf` de origen.**
 - [Roberto](project_roberto_coach_feedback.md) — hombres +100kg. Ronda 2026-07-13, número de
   Rober **pendiente**. Ojo: hay **dos ficheros del mismo Rober** (una persona, dos sistemas) —
   el vivo en `academia/roberto.md` y el draft del SaaS `source/coach-v5/roberto-cordobilla.md`,

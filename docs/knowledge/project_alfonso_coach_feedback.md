@@ -59,6 +59,34 @@ Destilado a la KB: **doctrina §30** (parada de conversación + la frontera con 
 
 ⚠️ **Colateral detectado, NO tocado** (fuera de scope): `coach_qualification_special` deriva a `coach_wclose_mujer`, que **no existe** en el bloque (los wclose definidos son generic / not_now / wrong_expectation / linea_roja). Referencia colgante previa a esta ronda.
 
+**Ronda 2026-07-31b (feedback #64 "Inducción prematura a videollamada" + reubicación del preámbulo)**. Backup = `coach_block_alfonso_v1.pre-2026-07-31b.bak.md`. Bloque 609 → 636 líneas. 28 ediciones aplicadas con script + diff, tras un análisis de 5 agentes y 3 verificadores adversariales (que levantaron 3 bloqueantes, todos corregidos antes de aplicar).
+
+**Root-cause (no era falta de preguntas).** Los 4 elementos que pide el trainer ya existían en el CRITERIO DE SUFICIENCIA. Lo que fallaba era cómo estaban escritos:
+- **Techo sin suelo**: decía "si puedes responder los 4 → deja de profundizar" (freno al exceso) pero nunca "si te falta uno, PROHIBIDO proponer". El suelo existía en una línea (`Si te falta alguno → sigues`) pero sin fuerza vinculante.
+- **Nueve umbrales para una decisión**: "¿ya puedo proponer?" se contestaba en 9 sitios distintos y el modelo se agarraba al más laxo, que además estaba escrito con la mayor autoridad del fichero ("es el único dato cuya falta sí bloquea F5" + "el resto de criterios se valoran en la propia videollamada").
+- **Estándar de prueba por inferencia**: "si puedes responder MENTALMENTE los 4" autorizaba a rellenar casillas con lo deducido.
+- **Bucle auto-cumplido**: el bloque ordenaba al setter fabricar microcompromisos ("tiene sentido?") y a la vez catalogaba ese mismo "sí" como señal de compra que disparaba el atajo. El setter se auto-firmaba el permiso para saltarse el descubrimiento.
+- **El punto 2 empaquetaba 3 datos** (porqué + impacto hoy + duración) en una casilla: un "por salud" la marcaba por cumplida y el impacto no se preguntaba nunca.
+
+**Qué se hizo.** Nueva sección `<coach_discovery_gate priority="highest">` como FUENTE ÚNICA del suelo, con los 4 elementos desempaquetados (objetivo concreto / bloqueo en presente / impacto personal / motivo y disposición), estándar de prueba = palabra literal citable, PUERTA DE F5 binaria y comprobación mental antes de enviar la propuesta. Se cerraron las 4 puertas traseras: trigger de cierre temprano (ahora COMPRIME, no salta; "cualquiera basta" eliminado; aceptación/curiosidad degradadas a no-disparo), rama CALIENTE de temperatura, `coach_qualification_criteria` y la precedencia del commitment gate.
+
+**Contrapesos anti-interrogatorio** (el feedback contrario de la ronda 07-06d): TOPE GLOBAL de 8 preguntas de F2 a F5 que manda sobre todos los parciales, follow-up único (se quitó un "hasta que te diga" que era bucle abierto), ANTI-BUCLE y REGLA DE OÍDO intactas, y la salida por elemento ausente **no cierra al lead**: lo que descualifica es que no se abra tras la pregunta súper abierta, nunca que falte una casilla (si no, un problema de timing se convierte en pérdida de pipeline).
+
+**Una sola pregunta por mensaje** como regla binaria en el voiceprint, con dos excepciones declaradas: literales/exemplars de F1, y el mensaje de F5 que fusiona verificación + propuesta. Más el aviso de que una pregunta de DOS PUERTAS ("¿ves avances o notas que te has quedado ahí?") es UNA pregunta y sigue siendo molde aprobado.
+
+⚠️ **Tres de los seis puntos del trainer NO entran literales — hay que devolvérselo por escrito:**
+| Pide | Por qué no entra literal | Cómo se traduce |
+|---|---|---|
+| "qué ha probado anteriormente" | rompe el gate no-método (ronda 07-06e, feedback suyo) | recogida pasiva: si lo suelta se usa como material del impacto, nunca se pregunta. **No está entre sus 4 obligatorios** |
+| "qué cambiaría si consiguiera el resultado" | "qué cambiaría en tu día a día" es pregunta muerta (ronda 07-13) | moldes vivos "qué te aportaría a ti conseguirlo?" / "cómo te sentirías el día que lo hayas conseguido?" |
+| "motivo para cambiar ahora" | "por qué ahora" se eliminó en outbound (07-06e) | verbalización de disposición del `coach_commitment_gate` (elemento 4) |
+
+**Reubicación del preámbulo** (segundo encargo, directiva [[feedback_coach_reglas_dentro_del_esquema]] aplicada hacia atrás): las 17 líneas sueltas entre `<coach_block>` y `<coach_identity>` quedan en **cero**. 13 ideas únicas repartidas a su sección canónica (objetivo de la conversación y diferenciación → `coach_identity_role`; no nombrar la llamada antes de F5 → `coach_tone_lexicon`; inventar urgencia → parte **C** nueva del test anti-invención; deseo-antes-que-solución → `coach_commitment_gate`; las 4 palancas y la conciencia de fase → el gate nuevo; anclar el bloqueo → F2 punto 3; adaptar por temperatura → `coach_temperatura_lead`; objeción pre-F5 → cabecera de `coach_objections`). El resto era redundancia pura, verificada una a una contra su línea de destino. Se conservó y reforzó la orden de **releer el historial completo** (un verificador la pilló a punto de perderse: era la única línea que lo ordenaba, justo en la ronda que lo pide).
+
+**Aprendizaje destilado**: doctrina **§31** (suelo vinculante con fuente única, estándar de prueba, bucle auto-cumplido, los dos contrapesos) + bloque nuevo en el checklist sección 8.
+
+**Pendiente**: smoke en el simulador de Automatía mirando las DOS direcciones — que no proponga antes de los 4 elementos, y que no encadene preguntas ni alargue de más (el presupuesto sube de ~8 a 8 con tope duro, pero la conversación puede ir 1-2 mensajes más larga con lead caliente).
+
 **Aprendizaje de método**: cuando Iván señale una muletilla o pregunta que no quiere, revisar PRIMERO si el bloque la siembra (exemplars/literales/lexicon) — el modelo copia; una regla sin scrubear los seeds no basta. "Hacer ver el valor de la llamada" NO es vender más — es expectativa-vs-realidad + insight/reencuadre + conexión (doctrina Rubén), nunca pitch. En OUTBOUND (Alfonso escribe primero) no se pregunta "por qué ahora". Con hombres: dirigir, no pedir introspección/auto-diagnóstico.
 
 Cambios aplicados con script + diff revisado; backups `*.pre-2026-07-06.bak.md` (pre-9-puntos) y `*.pre-2026-07-06b.bak.md` (pre-voz). Recall si Alfonso vuelve con más feedback o si se toca su flujo de agenda.

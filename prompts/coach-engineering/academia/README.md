@@ -66,7 +66,7 @@ y si se anota, que quede en su loop de `docs/knowledge/`.
 
 | Fichero | Avatar / perfil | Venía de | Estado |
 |---|---|---|---|
-| [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-31 (parada = `manual_attention` + `skip_reply`). ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
+| [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-31b (`<coach_discovery_gate>` = suelo de 4 elementos antes de F5 + preámbulo repartido en el esquema + parada = `manual_attention` + `skip_reply`). ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
 | [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-07-29 (señal de compra + banco de preguntas clave) |
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |

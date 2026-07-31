@@ -555,6 +555,48 @@ del Core**. Referencia del patrón bien hecho: `avatares/mujeres-perdida-peso-nu
 
 ---
 
+## 31. El criterio de descubrimiento es un SUELO vinculante con fuente única, no un techo
+
+Cuando el trainer reporta *"propone la llamada demasiado pronto, sin haber profundizado"*, el reflejo es añadir
+preguntas a la lista. Casi siempre es el diagnóstico equivocado: **la lista ya está**. Lo que falla es cómo está
+escrita. Cuatro defectos que se repiten:
+
+**1. Techo sin suelo.** El criterio dice *"si puedes responder los 4 → deja de profundizar y cierra"* (freno al
+exceso) pero nunca *"si te falta uno, PROHIBIDO proponer"* (freno al defecto). Un sistema hecho solo de máximos
+solo puede fallar hacia abajo. El suelo tiene que estar escrito con la misma dureza binaria que los topes.
+
+**2. Nueve umbrales para una sola decisión.** "¿Ya puedo proponer?" contestada en el criterio de suficiencia, en
+la rama caliente de temperatura, en el trigger de cierre temprano, en el gate de compromiso, en los criterios de
+cualificación y en tres fases distintas. **El modelo siempre se agarra al más laxo**, y el más laxo suele estar
+escrito con la mayor autoridad léxica del bloque ("es el único dato cuya falta sí bloquea F5"). Regla: **una
+sección es la fuente única del suelo y todas las demás la referencian**; ninguna redefine su propio umbral.
+Matiz que hay que escribir explícitamente: fuente única del *suelo* no significa *única condición existente* —
+si otras secciones añaden requisitos POR ENCIMA (una micro-confirmación, una línea roja), decirlo, o el modelo
+las dará por derogadas. **Sumar sí, rebajar nunca.**
+
+**3. Estándar de prueba por inferencia.** *"Si puedes responder mentalmente los 4"* autoriza al modelo a
+rellenar casillas con lo que dedujo. El estándar correcto es el mismo del test anti-invención: **un elemento
+consta cuando lo dijo él con sus palabras y podrías citarlas.** Lo deducido no consta.
+
+**4. El bucle auto-cumplido.** Si el bloque ordena al setter buscar microcompromisos ("tiene sentido?",
+"te suena?") **y además** cataloga ese mismo "sí" como señal de compra que autoriza el atajo, el setter fabrica
+su propio permiso para saltarse el descubrimiento. Regla: **una señal que el setter provocó no es del lead**.
+Búscala en cualquier coach que tenga a la vez microcompromisos y trigger de cierre temprano.
+
+**Dos contrapesos obligatorios al subir el suelo** (sin ellos se arregla un agujero y se abren dos):
+- **Tope global de preguntas.** Más elementos exigidos + prohibido apilar preguntas + fases más largas empujan
+  todos hacia arriba a la vez. Sin un tope global que mande sobre los parciales, vuelve el interrogatorio —
+  que es el feedback contrario y suele ser el que ya costó una ronda arreglar. Haz la aritmética real de
+  preguntas antes de dar la ronda por buena.
+- **Falta de casilla ≠ descualificación.** El trainer pide proponer MÁS TARDE, no cerrar MÁS leads. Si la
+  salida por elemento ausente es un cierre cálido, un problema de *timing* se convierte en pérdida de pipeline,
+  y eso no se ve en un smoke happy-path. Lo que cierra es que el lead **no se abra**, nunca que te falte un dato.
+
+Cross-link [[§19]] (anclar el bloqueo), [[§22]] (los criterios son una pregunta, no un tema), [[§24]] (el
+silencio cualifica), [[§25]] (flujo encadenado).
+
+---
+
 ## Referencias
 - Postmortem hombres pérdida peso: [`postmortems/pablo-lopez-fraga.md`](postmortems/pablo-lopez-fraga.md).
 - Canónico hombres: [`avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md`](avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md).
@@ -564,4 +606,5 @@ del Core**. Referencia del patrón bien hecho: `avatares/mujeres-perdida-peso-nu
 - Fuente §19–§25: reunión Rubén 2026-06-18 (transcripción en `Downloads/Sala de reuniones personales de Aca.txt`); memoria del proyecto `feedback_coach_direccion_bloqueos.md`.
 - Postmortem objeción de precio nombra videollamada (§26/§27): [`postmortems/objecion-precio-nombra-videollamada.md`](postmortems/objecion-precio-nombra-videollamada.md).
 - Fuente §26–§29 + §11.15 + enmiendas §19/§20: ronda coaches academia 2026-07-13 (reunión Rubén 13-jul + feedback trainer Alfonso #64). Coaches tocados: Alfonso 2.0, Roberto 3.0.
+- Fuente §31: feedback #64 de Alfonso 2026-07-31 ("inducción prematura a videollamada"). Root-cause y reconciliación en [`academia/alfonso.md`](academia/alfonso.md) (`<coach_discovery_gate>`) y en [`docs/knowledge/project_alfonso_coach_feedback.md`](../../docs/knowledge/project_alfonso_coach_feedback.md).
 - Fuente §30: directiva de Iván 2026-07-31 a raíz del feedback de Alfonso ("la IA se debe pausar, REGLA OBLIGATORIA"). Patrón de referencia: [`avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md`](avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md) (Automatía Pro). Coach migrado: [`academia/alfonso.md`](academia/alfonso.md).

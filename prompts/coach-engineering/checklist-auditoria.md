@@ -159,6 +159,29 @@ y la dirección mal — esto audita la dirección.
 - [ ] "No es el momento" con un EVENTO concreto (oposición, cita médica) → ¿compromiso bidireccional anclado
   a la fecha, no cierre pasivo? (§29).
 
+### El suelo antes de proponer la llamada (§31)
+
+- [ ] ¿Existe un **SUELO** escrito en binario ("si te falta uno, PROHIBIDO proponer"), y no solo un techo
+  ("si ya los tienes, deja de preguntar")? Un criterio que solo frena el exceso no frena el defecto.
+- [ ] ¿La decisión "¿ya puedo proponer?" tiene **fuente única**? Busca todas las secciones que la contestan
+  (criterio de suficiencia, temperatura, trigger de cierre temprano, gate de compromiso, criterios de
+  cualificación, fases): si hay dos umbrales distintos, el modelo usará el más laxo.
+- [ ] ¿La cláusula de fuente única aclara que otras secciones pueden **sumar** requisitos por encima pero
+  nunca rebajar? (si no, el modelo da por derogadas la micro-confirmación y la línea roja).
+- [ ] ¿El **estándar de prueba** es la palabra literal del lead ("podrías citarla"), no la inferencia
+  ("si puedes responder mentalmente")?
+- [ ] **Bucle auto-cumplido**: ¿el bloque ordena buscar microcompromisos ("tiene sentido?") y a la vez
+  cataloga ese "sí" como señal de compra que dispara el atajo? Si sí, el setter fabrica su propio permiso.
+  Debe decir explícitamente que una señal provocada por el setter no cuenta.
+- [ ] ¿Hay **tope global de preguntas** que mande sobre los parciales? Haz la aritmética: elementos +
+  follow-ups + reacciones + disponibilidad + movimientos del gate. Si sube el suelo sin tope, vuelve el
+  interrogatorio.
+- [ ] ¿La salida cuando falta un elemento **NO es cerrar**? Falta de casilla ≠ descualificación: lo que
+  cierra es que el lead no se abra tras la pregunta súper abierta. Contrastar contra
+  `coach_qualification_doesnt` ("duda / respuestas cortas NO descualifican").
+- [ ] Si el coach fija "**una sola pregunta por mensaje**": ¿está declarada la excepción de los mensajes que
+  fusionan verificación + propuesta (F4/F5)? ¿Y aclarado que una pregunta de DOS PUERTAS no son dos preguntas?
+
 ---
 
 ## MODO DE USO
