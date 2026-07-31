@@ -1,6 +1,6 @@
 ---
 name: project_miguel_coach_feedback
-description: "Loop del bloque COACH Miguel Aguado (academia/Automatía, mujeres 35-70 pérdida de peso sin dietas, IG outbound). Ronda 1 (2026-07-31, feedback #42): las conversaciones morían en el tramo final porque el bloque tenía escrito el techo — tope de 2 preguntas de cambio, F3 y F4 compartiendo tope, y la pregunta de necesidad gastada dentro del literal de handoff. Se monta la ESCALERA DE CAMBIO de 4 escalones en F4. Recall si vuelve feedback de Miguel o si otro coach reporta conversaciones cortas al final."
+description: "Loop del bloque COACH Miguel Aguado (academia/Automatía, mujeres 35-70 pérdida de peso sin dietas, IG outbound). Ronda 1 (2026-07-31, feedback #42): las conversaciones morían en el tramo final porque el bloque tenía escrito el techo — tope de 2 preguntas de cambio, F3 y F4 compartiendo tope, y la pregunta de necesidad gastada dentro del literal de handoff. Se monta la ESCALERA DE CAMBIO de 4 escalones en F4. Ronda 2 (2026-07-31): se cierran los dos huecos de doctrina que quedaron fuera — §26 (dos objeciones nombraban la videollamada antes de F5, grave en Miguel porque su setter no la propone nunca) y §24 (lead cerrada dentro de CSM-02: una pregunta súper abierta y el silencio como filtro). Recall si vuelve feedback de Miguel o si otro coach reporta conversaciones cortas al final."
 metadata:
   node_type: memory
   type: project
@@ -118,13 +118,68 @@ si entra objeción a mitad, se retoma en el escalón donde se quedó (la deflexi
   sobrevive reducida al escalón 4.
 - **Desplegar en Automatía** (lo hace Iván a mano).
 
-## Gaps conocidos del bloque, NO tocados en esta ronda
+---
 
-- **§24 (leads cerrados)** — Miguel tiene CSM-02 modo ligero, pero le falta el movimiento de "pregunta
-  súper abierta que pide contexto" y la lectura de que **el silencio cualifica**.
-- **§26 (no nombrar la llamada antes de F5)** — `coach_objections_avatar` la nombra en dos respuestas
-  ("Prefiero información por aquí" y "No es el momento"). Violación pre-existente; no se tocó porque
-  reescribir su banco de objeciones excede el alcance autorizado y ese banco es referencia de §27.
+## Ronda 2 — 2026-07-31 (cierre de los dos huecos de doctrina)
+
+Ronda de doctrina, no de feedback del trainer: se cerraron los dos gaps que la Ronda 1 dejó fuera de
+alcance. **Miguel no ha visto estos cambios** — los tres literales nuevos son voz suya puesta por
+nosotros y entran en el mismo lote de validación que el literal de F5 de la Ronda 1.
+
+### §26 — las dos respuestas que nombraban la videollamada antes de F5
+
+En Miguel la infracción es **más grave que en el resto del corpus**: su setter no propone la llamada
+*nunca* (F5 es handoff invisible y Miguel la ofrece por audio). Nombrarla en una objeción de F2/F3 no
+es adelantarla, es inventar un paso que en su flujo el setter no tiene.
+
+- **"Prefiero información por aquí"** — antes justificaba con *"lo que solemos hacer aquí es una
+  videollamada…"*. Ahora abre por lo que SÍ puede dar (orientación general, enganchado a **CSP-02**,
+  que ya prohíbe las frases defensivas tipo "sin conocer tu caso no puedo") y reconduce al
+  descubrimiento con anclaje en su objetivo o su bloqueo.
+- **"No es el momento / más adelante"** — la rama de razón vaga remataba en *"¿Qué te parecería al
+  menos tener una videollamada y ya decides?"*. Ahora reencuadra el momento perfecto y reconduce al
+  presente; se añade que si se abre, **la escalera de cambio se retoma en el escalón que quedara
+  pendiente** (coherente con la regla 7 de `coach_cambio_discourse`).
+
+Las dos se reescribieron **hiladas** (§27): unidad cálida de lógica lineal con comas, terminada en
+reconducción. Es requisito, no estética: este banco es la referencia externa que cita la propia §27.
+La escalera de escalado de cada objeción se dejó intacta.
+
+### §24 — leads cerrados, dentro de CSM-02
+
+Se añadió el bloque **LEAD CERRADA** a CSM-02, distinguiéndolo explícitamente de la energía baja
+puntual que ya cubría (aquí sí responde, pero después de 4-5 preguntas sigue sin haber contexto).
+Movimiento: **una** pregunta súper abierta que pide contexto, una única vez en la conversación. Y la
+lectura, que es lo que de verdad faltaba: **si no se abre, eso ya cualifica** — es el filtro. No se
+repite la pregunta, no se sube la escalera, no hay handoff Tipo A y **no se cierra por
+descualificación** (no ha dicho que no): se deja abierta y la recoge el seguimiento de n8n.
+
+Traducido a las restricciones de Miguel: el "no se le tira el enlace" de la doctrina no aplica literal
+(su setter no manda enlaces nunca) → se convierte en "no se fuerza el handoff". Fila nueva en la tabla
+de activación rápida.
+
+### Gaps NUEVOS detectados al auditar, NO tocados (decisión de Iván)
+
+Un grep de `videollamada` sobre todo el bloque levantó **dos infracciones más de §26 que la Ronda 1 no
+había fichado**. No se tocaron por disciplina de alcance; las dos tienen propuesta lista:
+
+- **`coach_objections_avatar` → "Consultarlo con mi pareja/familia"** dice *"tu pareja también puede
+  estar en la videollamada por WhatsApp"*. Es la MISMA sub-sección de las dos ya corregidas. Además
+  está rota por partida doble: si la objeción llega pre-F5 viola §26, y si llega post-F5 el setter ya
+  está en `skip_reply = true` y no la responde nadie. **O se reescribe sin nombrar la llamada, o es
+  código muerto.**
+- **`coach_tone_exemplars` → `situacion="tranquilizar_duda_F5"`** (*"No te preocupes, la videollamada
+  es gratuita y sin compromiso…"*) enseña al setter un mensaje que en el modelo de Miguel **no debe
+  enviar jamás** — su F5 es handoff mudo. Por §8 (los exemplars enseñan el patrón), un exemplar malo
+  pesa más que una regla: es candidato a borrado, no a reescritura.
+
+### Gap adyacente, fuera de alcance de esta ronda
+
+- **§29 ("no es el momento" con evento concreto → compromiso bidireccional anclado a la fecha).** La
+  rama de razón concreta de esa misma objeción sigue en **cierre pasivo** ("cierre con dignidad +
+  puerta abierta"). §29 pide capturar la fecha y comprometerse a escribir después
+  (`handoff_cause = "recontacto_programado"`). Se vio al reescribir esa línea; no se aplicó porque el
+  encargo era §26. Alfonso y Roberto ya lo llevan.
 
 ## Candidato a doctrina (NO propagado, a decisión de Iván)
 
