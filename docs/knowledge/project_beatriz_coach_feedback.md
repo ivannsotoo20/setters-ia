@@ -1,6 +1,6 @@
 ---
 name: project_beatriz_coach_feedback
-description: "Loop del bloque COACH Beatriz Juan (academia/Automatía, madres postparto que han perdido la conexión con su cuerpo). Ronda 1 aplicada 2026-07-28: se le DEVUELVE su bloque de método (qué has probado / qué haces ahora / disponibilidad) que la doctrina §19 le había quitado, se eliminan los casos de éxito, compromiso 0-10 → importancia 0-10, y los apelativos afectivos pasan de prohibidos a permitidos. Recall si vuelve feedback de Beatriz o de cualquier coach de postparto/maternidad."
+description: "Loop del bloque COACH Beatriz Juan (academia/Automatía, madres postparto que han perdido la conexión con su cuerpo). Ronda 1 (2026-07-28): se le devuelve su bloque de método, fuera casos de éxito, compromiso → importancia, apelativos de prohibidos a permitidos. Ronda 2 (2026-07-31): fuera emojis y fuera el doble '??', repertorio de 11 preguntas emocionales en 7 familias con cazadoras de tema_central, disponibilidad como última pregunta del bloque de método, Puente de 2 líneas con 'cierto?', y migración del mecanismo de parada a manual_attention + skip_reply. Recall si vuelve feedback de Beatriz o de cualquier coach de postparto/maternidad."
 metadata:
   node_type: memory
   type: project
@@ -153,13 +153,118 @@ Aprendizaje de método transferible: **en un bloque con muchos literales, el ord
 escritos en el prompt se convierte en el orden en que salen.** Si un literal va antes que otro
 en la conversación, tiene que ir antes en el fichero — no basta con describirlo.
 
+## Ronda 2 — 2026-07-31 (feedback doc 29/07/26, páginas 14-20 del mismo PDF)
+
+⚠️ **El PDF tiene el mismo nombre que el de la ronda 1** (`Feedback Beatriz Juan Puñales.docx.pdf`)
+pero ya son 20 páginas: las 13 primeras son la ronda 1 y **las páginas 14-20 son la ronda 2**,
+fechadas 29/07/26. Beatriz sigue el protocolo de AutomatIA Pro (añadir feedback nuevo con fecha
+debajo del anterior), así que el fichero crece; hay que ir siempre al último bloque de fecha.
+
+Fuente: 7 capturas del smoke que hizo Iván tras desplegar la ronda 1, anotadas una a una.
+
+### Los 17 cambios aplicados
+
+| # | Qué pidió | Veredicto | Cómo quedó |
+|---|---|---|---|
+| 1 | Quitar la doble interrogación: *"quita las dos interrogaciones que solo salga una al final"* | Aplicar | Barrido de todo el bloque: `??` → `?`. Regla binaria en el voiceprint; el patrón "doble ??" que era su rasgo característico deja de serlo |
+| 2 | *"no pongas emojis"* | Aplicar | Banco de emojis VACÍO. Barridos 🤗❤️😊 de exemplars, wclose, objeciones y F1. La calidez pasa al apelativo |
+| 3 | Apelativo **al final** del mensaje, y *"corazón o bonita"* | Aplicar | Banco abierto a 4: corazón / cariño / guapa / **bonita**. "bonita" estaba VETADA por la ronda 1 (inferencia de Iván); su palabra manda |
+| 4 | Repite "qué bien y enhorabuena" dos veces | Aplicar | Regla 3 de `coach_tone_variety`: el reconocimiento de apertura se usa UNA vez en toda la conversación. Y "enhorabuena por escribirme" pasa a vetada |
+| 5 | Abrir validando: *"me parece estupendo que quieras hacer este cambio"* / *"te entiendo perfectamente, el tema del peso es un tema importante"* | Aplicar | Paso 1 de F1 reescrito con sus dos literales |
+| 6 | Más variantes de la pregunta de tiempo | Aplicar | Banco de 4 en F1 paso 2 |
+| 7 | Si dice que es madre → empatizar siempre | Aplicar | Paso 3 de F1 + validación Tipo 6 en el sistema de rotación |
+| 8 | Ya le había dicho cuánto llevaba siendo mamá y se lo vuelve a preguntar | Aplicar | Regla binaria nueva en el voiceprint: **no se pregunta lo que ya te han dicho**, aunque venga envuelto en otra frase |
+| 9 | Presupone que es madre | Aplicar | "NUNCA PRESUPONER QUE ES MADRE" + pregunta neutra por defecto |
+| 10 | Postparto: preguntar solo si es muy reciente (≈2 meses) o si no ha dicho que está recuperada | Aplicar **matizado** | La pregunta CONVERSACIONAL baja de <6 meses a ≈2 meses con doble gate. El chequeo de SEGURIDAD (alta médica) no se elimina: pasa a ser reactivo, solo si ella nombra señales médicas |
+| 11 | Eliminar *"el peso ha sido a raíz del embarazo o antes también"* | Aplicar | Fuera de F1, sin sustituto |
+| 12 | *"las dos últimas preguntas no las quiero, esas elimínalas"* (la de dos opciones cerradas + la de "cuál de las dos te pesa más") | Aplicar **protegiendo la función** | Eliminadas. Su función (destapar el `tema_central`) pasa a las **preguntas cazadoras** del repertorio |
+| 13 | Repertorio de 11 preguntas emocionales *"para que tenga repertorio y las utilice según fluya"* | Aplicar **sin levantar el tope** | Banco organizado en 7 familias (A-G), 4 marcadas 🎯 CAZADORA. El tope de 3 preguntas de sentir SIGUE — el repertorio es variedad, no volumen |
+| 14 | Falta contexto: da el feedback de alimentación y salta a la disponibilidad | Aplicar | **La disponibilidad es la ÚLTIMA pregunta del bloque**: prohibido lanzarla sin haber tocado alimentación Y ejercicio. Tope de 3-A sube de 4 a 5 preguntas |
+| 15 | Micro-autoridad de ejercicio anclada a lo que ella dijo | Aplicar | Literal suyo: *"me has dicho que has probado salir a caminar, no está mal, pero es importante trabajar la masa muscular…"* + variante de disponibilidad *"si empezamos desde casa con algo muy sencillo…"* |
+| 16 | Con "poca cosa" también salta sin sacar contexto | Aplicar | **Rama D reescrita** con su secuencia: *"vale, entiendo que siempre cuesta empezar corazón"* → relación con la comida → *"has intentado ir al gimnasio, alguna clase…?"* → disponibilidad |
+| 17 | Puente *"más corto, que dé menos feedback y todo junto"* | Aplicar | De 4 partes a 2: una frase de resumen + `cierto?`. Fuera "a ver si te he entendido bien". `me equivoco??` → `cierto?` |
+
+Extra: **el mensaje anti-IA deja de ser un borrador mío.** Beatriz dio su literal —
+*"entiendo que puedas llegar a pensarlo, pero tranquila que soy beatriz"*— y ya está en
+`coach_identity_notia`. Cierra el pendiente heredado del RTF original.
+
+### Lo que se aplicó con criterio propio, no como ella lo escribió
+
+Cinco puntos donde la petición literal habría empeorado la cualificación. Se aplican, pero
+acotados — y hay que poder defenderlos delante de ella:
+
+1. **El repertorio de 11 no levanta el tope de 3.** Ella misma escribió el 28/07 que 4 preguntas
+   de "cómo te sientes" eran demasiadas. Darle 11 preguntas sin tope es reintroducir el mismo
+   fallo con más ropa. El repertorio entra como banco de VARIEDAD y se le añade una regla que ella
+   no pidió: **nunca dos preguntas de la misma familia** (cuatro de sus once son literalmente la
+   misma pregunta reformulada — "cómo te sientes en este peso" / "con estos kilos" / "con todo
+   esto" / "contigo misma"; encadenar dos suena a disco rayado).
+2. **Eliminar la pregunta de dos opciones sin más habría roto el Puente.** Era la que destapaba el
+   `tema_central` (documentado en la ronda 1 como "la que funcionó"), y sin `tema_central` el
+   Puente de F4 se queda en resumen genérico. Por eso cuatro familias del repertorio se marcan 🎯
+   CAZADORA con una regla de suelo: si el `tema_central` no ha salido solo, una de las ≤3 preguntas
+   emocionales tiene que ser cazadora. **Efecto colateral bueno:** esto devuelve el bloque a §11.6
+   (opciones cerradas desaconsejadas), que la ronda 1 había tenido que saltarse.
+3. **"te entiendo perfectamente" sale de la lista de vetadas, pero con tope de 2.** Estaba vetada
+   por genérica y resulta que la usa dos veces en su propio feedback — **mismo error de raíz que
+   los apelativos en la ronda 1**: se infirió una prohibición que contradice su voz real. Ahora es
+   literal suyo, pero con tope y con la obligación de ir seguida de sustancia ("te entiendo
+   perfectamente, cuando somos madres todo cambia…"), porque a pelo y repetida es exactamente la
+   muletilla que delata al bot (§17).
+4. **La pregunta de postparto se acota; el gate médico no.** Ella pide no preguntarlo pasados los
+   2 meses. Correcto como conversación. Pero el <6 meses del bloque también hacía de chequeo de
+   seguridad (verificar alta si hay señales médicas). Se separan: pregunta conversacional acotada a
+   ≈2 meses, chequeo de alta reactivo y sin límite temporal.
+5. **`cierto?` sustituye a `me equivoco??`, pero se conserva la invitación a corregir.** "me
+   equivoco" pedía corrección; "cierto" pide confirmación. Es su literal y va tal cual, pero se
+   añade la regla de que si la lead matiza no se defiende el resumen: se integra y se reformula.
+
+### Lo que se arregló sin que ella lo pidiera: el mecanismo de parada
+
+El bloque estaba escrito con el vocabulario del **SaaS Fyzon** (`<protocolo_handoff>` Tipo
+A/B/C/D + `handoff_to_human` + `handoff_cause`) — 16 apariciones — y Beatriz corre en
+**Automatía**. Por doctrina §30 eso es un bloque que *describe* una pausa que el runtime nunca
+ejecuta. Migrado entero a `manual_attention` + `skip_reply` (motivo: `<causa_snake_case>`), con
+la tabla de las dos formas (apagado mudo vs apagado tras mensaje).
+
+**Y esto contesta su duda de la ronda 1** (*"la duda es cómo me avisa cuando llegue aquí para yo
+intervenir"*): el aviso ES `manual_attention`. No era una pregunta de infraestructura como se
+anotó entonces — era mitad infraestructura y mitad defecto del prompt.
+
+Causas emitidas: `acepta_videollamada` · `clienta_actual_o_pasada` · `oferta_comercial` ·
+`consulta_para_terceros` · `deteccion_ia` · `no_cualifica_generico` · `embarazo_activo` ·
+`lesion_sin_alta` · `minusvalia_severa` · `menor_edad` · `no_es_el_momento` ·
+`recontacto_programado` · `expectativa_no_encaja` · `objecion_repetida_sin_resolucion` ·
+`objecion_precio_repetida`.
+
+### Lo retirado del bloque en esta ronda (por si se recupera)
+
+- El literal *"claro, después de ser mamá lo primero que desaparece es el tiempo para ti"* sale de
+  la rama D (disparó mal dos veces: contra una lead que sí había probado cosas, y como atajo a la
+  disponibilidad). **No se tira**: se reubica en la objeción "no tengo tiempo", condicionado a que
+  sea ELLA quien nombre el tiempo como freno.
+
+### Aprendizaje de método de esta ronda
+
+**Un tope que obliga a saltarse el contexto es un tope mal puesto.** El bloque de método tenía
+tope de 4 preguntas, y de los dos fallos que Beatriz marcó el 29/07 (*"falta contexto"*,
+*"directamente pregunta sin sacar contexto"*) los dos son el modelo gastando su presupuesto de
+preguntas y yendo al atajo. Se subió a 5 y se convirtió la disponibilidad en **condición de
+salida ordenada** (última, y solo tras los dos territorios), no en simple obligación de presencia
+como en la ronda 1.1 — que es justo lo que el modelo interpretó como "pregúntala cuanto antes".
+
 ## La duda de Beatriz (no es prompt, es sistema)
 
 Literal suyo: *"Y AQUÍ YA SE PARA EL SETTER Y ENTRO YO PARA TERMINAR. **LA DUDA ES CÓMO ME
-AVISA CUANDO LLEGUE AQUÍ PARA YO INTERVENIR**"*. Es una pregunta de infraestructura de
-Automatía, no de prompt: la contesta Iván. Lo que sí se hizo en el bloque es dejar la causa
-identificable — `handoff_cause = "acepta_videollamada"` — para que su aviso pueda distinguir
-"ha aceptado la llamada" de un handoff por descualificación.
+AVISA CUANDO LLEGUE AQUÍ PARA YO INTERVENIR**"*.
+
+> **Corregido en la ronda 2 (2026-07-31):** aquí se anotó que era *solo* infraestructura. No lo
+> era. El aviso ES `manual_attention`, y el bloque no lo emitía porque estaba escrito con el
+> vocabulario del SaaS (Tipo A/B/C/D). Era mitad infraestructura y mitad defecto de prompt, y la
+> mitad de prompt ya está arreglada.
+
+La causa queda identificable — `motivo: acepta_videollamada` — para que su aviso pueda distinguir
+"ha aceptado la llamada" de una parada por descualificación.
 
 Decisión de diseño asociada: el handoff se dispara **al enviar** la pregunta de mañana/tarde,
 no al recibir la respuesta. Así la IA queda pausada y es Beatriz quien lee la contestación; si
@@ -185,17 +290,33 @@ reactivan sin que Beatriz lo pida**:
 ## Abierto
 
 - **Confirmar con Rubén** el override del bloque de método antes de desplegar (ver arriba).
-- **Mensaje anti-IA** (`coach_identity_notia`). Es lo que responde el setter cuando la lead
-  pregunta "¿eres un bot?". **Pendiente heredado, no de esta ronda**: ya venía así en el RTF.
-  El bloque lleva un borrador mío ("soy Beatriz de verdad, estoy leyendo tu caso con calma al
-  otro lado 🤗") esperando el literal real de Beatriz. Importa porque es el momento de máximo
-  riesgo de la conversación: si la frase no suena a ella, confirma la sospecha de la lead.
+- ~~Mensaje anti-IA~~ **CERRADO en la ronda 2**: Beatriz dio su literal
+  (*"entiendo que puedas llegar a pensarlo, pero tranquila que soy beatriz"*) y ya está en
+  `coach_identity_notia`.
+- **Audio en el mensaje anti-IA** (nuevo, ronda 2). Beatriz: *"quizá mandar un audio, ya me dices
+  cómo podemos poner audios"*. Es capacidad de Automatía, no del bloque. Lo contesta Iván. Si
+  llega, el audio sustituye o acompaña al literal de `coach_identity_notia`. **No se escribe en el
+  bloque** mientras no exista (directiva de bloques sin pendientes).
+- **Explicarle el tope de 3 preguntas emocionales.** Ella entregó 11 y puede esperar verlas todas.
+  El argumento para ella es el suyo propio del 28/07 ("4 preguntas de cómo se siente lo veo
+  demasiado"): las 11 son para no repetirse, no para preguntar más.
+- **La versión del SaaS va ahora DOS rondas por detrás.** `prompts/source/coach-v5/beatriz-juan.md`
+  sigue en el port del 2026-07-20: sin bloque de método (ronda 1) y sin nada de la ronda 2. Si se
+  seedea tal cual, se despliega una Beatriz con emojis, con doble "??" y con la escala de
+  compromiso ya eliminada.
 
 **Cerrado con Iván el 2026-07-28:** Víctor es la pareja (no un segundo coach) · el banco de
 apelativos son solo "corazón", "cariño" y "guapa", cerrado · las ramas 5-7 y 0-4 de la escala
 de importancia (Beatriz solo dio el literal del tramo alto; las otras dos se redactaron en esta
 ronda y las valida Iván) · el mensaje anti-IA se queda con el borrador provisional de momento,
 y se le pregunta a Beatriz por su literal real.
-- **Smoke** en Automatía tras desplegar, con foco en: que el bloque de método no se alargue por
-  encima de las 4 preguntas, que no se cuele ningún caso de éxito, y que los apelativos no
-  aparezcan pegados a preguntas de datos.
+- **Smoke** en Automatía tras desplegar la ronda 2, con foco en:
+  1. Cero emojis y cero `??` en toda la conversación.
+  2. Que no felicite dos veces ni pregunte un dato temporal que la lead ya dio.
+  3. Que no presuponga que es madre si ella no lo ha dicho.
+  4. Que la disponibilidad NO salga antes de haber tocado alimentación y ejercicio (el fallo
+     que Beatriz marcó dos veces).
+  5. Que las preguntas emocionales no pasen de 3 ni se repita familia.
+  6. Que el Puente salga en UNA burbuja, corto, y con el reconocimiento de la escala ANTES.
+  7. Que al enviar la pregunta de mañana/tarde se emitan `manual_attention` + `skip_reply`
+     (motivo: `acepta_videollamada`) y la IA se calle de verdad.
