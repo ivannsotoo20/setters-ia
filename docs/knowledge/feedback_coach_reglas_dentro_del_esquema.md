@@ -33,8 +33,20 @@ Si hace falta marcar prevalencia, se dice **dentro** de la sección y se deja un
 desde `_core`. Sub-secciones extra dentro de un wrapper sí valen
 (`## coach_objections_logistica`); sub-tags XML fuera de `coach_tone`, no.
 
-**Ojo:** Alfonso, Frodo y Luis Royán arrastran marcos rectores antes de `<coach_identity>` — eso
-es **herencia**, no el patrón a imitar.
+**Ojo:** Alfonso y Frodo arrastran marcos rectores antes de `<coach_identity>` — eso es **herencia**,
+no el patrón a imitar. **Luis Royán ya no**: en la ronda del 31-jul se disolvió su marco rector
+dentro del esquema (ver [[project_luis_royan_coach_menopausia]] §CORRECCIÓN DE IVÁN). Sirve de
+plantilla de cómo se hace: el "no repetirse" fue a `coach_tone_variety`, el "esto no es un
+interrogatorio" y las cuatro palancas a `coach_structural_modifications_core`, la frase rectora a
+`coach_tone_voiceprint` y las zonas a `coach_structural_modifications_phases`.
+
+⚠️ **La misma trampa vale para las capas nuevas que escribes TÚ.** En esa ronda se llegó a crear un
+bloque de reglas binarias numeradas al principio, con la excusa de deduplicar prohibiciones repartidas
+por siete sitios. El problema que resolvía era real, pero la solución correcta no es una capa nueva
+delante: es **enunciar cada regla UNA vez en su sección canónica** y referenciar la sección desde el
+resto. Directiva de Iván: *en vez de engordar el bloque con parches por errores que se han ido
+cometiendo, hay que saber explicarlo mejor con lo que el bloque ya tiene.* Añadir a veces hace falta;
+anteponer una capa de correcciones, casi nunca.
 
 Destilado también a
 [`prompts/coach-engineering/formato-saas-coach-v5.md`](../../prompts/coach-engineering/formato-saas-coach-v5.md)

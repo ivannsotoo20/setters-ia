@@ -169,22 +169,49 @@ jugada.** Cada prohibición retira un movimiento; si no lo sustituyes, la conver
 Rubén**, igual que el override de §19 de Beatriz: DN-01 prohíbe el binario y DN-02/DN-03 dan por
 supuesto el recorrido médico.
 
+## §CORRECCIÓN DE IVÁN — nada de capas nuevas al principio del bloque (2026-07-31)
+
+La primera versión de la Fase B metió **dos bloques nuevos al principio** (`<coach_marco_rector>` y
+`<coach_precheck>` con reglas R1-R8) más dos contenedores de primer nivel inventados
+(`<coach_movimientos>`, `<coach_conversacion_ejemplo>`). Iván lo tumbó, y con razón: viola
+[[feedback_coach_reglas_dentro_del_esquema]], que **nombra a Luis explícitamente** — *"Alfonso, Frodo y
+Luis Royán arrastran marcos rectores antes de `<coach_identity>`: eso es herencia, no el patrón a
+imitar"*. No solo mantuve la herencia: la formalicé en un tag y le puse otro al lado.
+
+**El marco mental correcto, en sus palabras:** en vez de ir engordando el bloque con parches por
+errores que se han ido cometiendo, hay que **saber explicarlo mejor dentro de lo que el bloque ya
+tiene**. Añadir a veces hace falta; anteponer una capa de correcciones, casi nunca.
+
+Aplicado: el bloque vuelve al **esquema canónico exacto** (identity · tone · structural ·
+phase_massage · links · qualification · program · wclose · objections · special_protocols), sin un solo
+contenedor inventado y sin nada delante de `<coach_identity>`. Cada regla vive en la sección que el
+mapa de destinos de la directiva le asigna: género → `identity_role` · colectivo y anti-invención →
+`tone_voiceprint` · no repetirse → `tone_variety` · cero opciones, ancla y beats → `tone_openers` ·
+gates y claridad → `structural_core` · zonas → `structural_phases` · movimientos → `phase_massage_fase2`
+· conversación de referencia → `tone_exemplars`. Fuera los códigos R1-R8: se referencia la sección, no
+un código.
+
+Efecto secundario bueno: al no existir ya un preámbulo separable, **la trampa del despliegue truncado
+deja de ser posible**.
+
 **Fase B (v3) aplicada 2026-07-31.** Reestructuración, cero reglas perdidas (auditadas una a una):
-- **`<coach_precheck priority="highest">` con R1-R8**, definidas UNA vez y referenciadas por ID en el
-  resto del bloque. Antes cada prohibición estaba re-enunciada 5-7 veces (el colectivo en 7 sitios, el
-  gate no-médico en 7 — y v2 dedicaba 38 líneas al médico, más que v1, con el médico ya prohibido).
-- **`<coach_conversacion_ejemplo>`: UNA conversación dorada** de 14 turnos con la etiqueta de movimiento
-  en cada uno. Sustituye a los exemplars sueltos como pieza principal de enseñanza, porque el fallo de
-  este coach ocurre ENTRE turnos y ningún ejemplo de una línea puede enseñar "no orbites la misma
-  palabra cinco veces". Cierra con las 5 cosas que demuestra, incluida la regla de output **ninguna
-  palabra suya en más de 2 preguntas**.
-- **`<coach_movimientos>` M1-M6** (profundizar · recorrido temporal · barrido lateral · claridad ·
-  impacto · atribución) + **regla binaria: el mismo TIPO de movimiento no se usa dos turnos seguidos**.
+- **Cada prohibición se enuncia UNA vez, en su sección canónica**, y en el resto se referencia la
+  sección. Antes estaban re-enunciadas 5-7 veces (el colectivo en 7 sitios, el gate no-médico en 7 — y
+  v2 dedicaba 38 líneas al médico, más que v1, con el médico ya prohibido).
+- **Una conversación completa de referencia** de 14 turnos con la etiqueta de movimiento en cada uno,
+  al principio de `coach_tone_exemplars`. Sustituye a los exemplars sueltos como pieza principal de
+  enseñanza, porque el fallo de este coach ocurre ENTRE turnos y ningún ejemplo de una línea puede
+  enseñar "no orbites la misma palabra cinco veces". Cierra con las 5 cosas que demuestra, incluida la
+  regla de output **ninguna palabra suya en más de 2 preguntas**.
+- **Los seis movimientos de F2** (profundizar · recorrido temporal · barrido lateral · claridad ·
+  impacto · atribución) dentro de `coach_phase_massage_fase2`, que es donde ya vivía la "estructura de
+  referencia" de v2, + **regla binaria: el mismo TIPO de movimiento no se usa dos turnos seguidos**.
   Es el antídoto directo del "muy pesado indagando": la cura no es prohibir repetir, es tener de dónde
   elegir.
-- **`<coach_tone_beats>`**: banco de 10 aperturas rotando. Luis abre casi todos sus mensajes con un beat
-  ("Te entiendo", "Perfecto", "Estupendo!") y el tope CR8 se lo estaba suprimiendo; permitirlo sin banco
-  produce la muletilla repetida, que es el tell nº1. Banco + no repetir en ventana de 3 resuelve las dos.
+- **Banco de 10 beats de apertura** dentro de `coach_tone_openers`. Luis abre casi todos sus mensajes
+  con un beat ("Te entiendo", "Perfecto", "Estupendo!") y el tope CR8 se lo estaba suprimiendo;
+  permitirlo sin banco produce la muletilla repetida, que es el tell nº1. Banco + no repetir en ventana
+  de 3 resuelve las dos.
 - **Longitud por FUNCIÓN** en vez del "1-3 líneas" global: preguntar/proponer 1-2 líneas; validar/explicar
   hasta ~100 palabras. Sale de sus propias reescrituras: llama "larga" a una explicación nuestra de 85
   palabras y la sustituye por una de 100, y "muy venta" a un mensaje de 110 que reemplaza por 245. Lo que
