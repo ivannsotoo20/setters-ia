@@ -49,7 +49,7 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 | [andrea.md](andrea.md) | Mujeres | `coach_block_andrea.md` | 2026-07-06 |
 | [alex.md](alex.md) | **Escaladores** estancados o lesionados (Escalada Inteligente) — nicho fuera del corpus fitness | — | 2026-07-24. ⚠️ **Formato antiguo** (`# BLOQUE 0…7`, no el esquema `<coach_block>`); sin loop documentado |
 | [beatriz-juan.md](beatriz-juan.md) | Madres postparto (mujeres, registro afectivo) | `victor_beatriz_coach.rtf` | Ronda 1 aplicada 2026-07-28. **Lleva un override de §19 que hay que enseñarle a Rubén antes de desplegar** |
-| [luis-royan.md](luis-royan.md) | Mujeres menopausia (4º avatar) | diseño desde cero + `luis_coach.rtf` | **Desbloqueado 2026-07-28** (llegó su voz). 2 rondas aplicadas. Pendiente: cadencia de emojis + smoke |
+| [luis-royan.md](luis-royan.md) | Mujeres menopausia (4º avatar) | diseño desde cero + `luis_coach.rtf` | **Ronda 2026-07-31**: 5 tandas de feedback, reescrito a v3 (precheck R1-R8 + conversación dorada + banco de movimientos). ⚠️ Lo desplegado era una **copia truncada** sin el preámbulo: pegar SIEMPRE desde aquí. Pendiente: smoke contra la conversación del 30-jul |
 | [pepe.md](pepe.md) | HYROX / rendimiento híbrido (avatar de OBJETIVO) | bloque desplegado en Automatía | Ronda 1 aplicada 2026-07-25. **Duración del programa + corpus de voz pendientes** |
 | [DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md](DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md) | 7 nichos × DN-01..06 (doc de Rubén) | igual | Menopausia = §7, base de Luis Royán |
 
@@ -82,8 +82,9 @@ No crear `alfonso_2.1.md` ni `frodoo.md`: se edita el fichero y se commitea.
 Nunca `handoff_to_human` ni etiquetas de tipo (Tipo A/B/C/D, "Causa F") — ese vocabulario es del SaaS Fyzon y
 Automatía no lo consume, así que el bloque describe una pausa que el runtime no ejecuta. Regla completa y la
 frontera con el SaaS en [doctrina §30](../doctrina-universal.md). Referencia bien hecha: `andrea.md`.
-Estado de la migración: ✅ `andrea.md`, ✅ `alfonso.md` · pendientes `alex.md`, `beatriz-juan.md`, `chema.md`,
-`frodo.md`, `luis-royan.md`, `miguel-aguado.md` (a medias), `pepe.md`, `roberto.md` — cada uno en su próxima ronda.
+Estado de la migración: ✅ `andrea.md`, ✅ `alfonso.md`, ✅ `luis-royan.md` · pendientes `alex.md`,
+`beatriz-juan.md`, `chema.md`, `frodo.md`, `miguel-aguado.md` (a medias), `pepe.md`, `roberto.md` — cada uno
+en su próxima ronda.
 
 **Nada de credenciales.** Estos bloques llevan enlaces públicos de negocio (Calendly, landings,
 posts de Instagram) y eso está bien. Teléfonos personales, tokens o API keys, no. Verificado

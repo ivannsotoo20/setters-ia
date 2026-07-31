@@ -114,9 +114,12 @@ valor, nunca el valor. Escanear antes de commitear.
   banco de preguntas clave con tope de 2 en toda la conversación.
 - [Chema](project_chema_coach_feedback_loop.md) — Programa Fénix. Llega feedback en `.docx`.
 - [Luis Royán — menopausia](project_luis_royan_coach_menopausia.md) — avatar nuevo (el 4º).
-  **DESBLOQUEADO 2026-07-28**: llegó su voz y el bloque está escrito con 2 rondas aplicadas. La
-  ronda 2 **tumbó una decisión del diseño** (validar por "me lo cuentan a diario las mujeres con
-  las que trabajo" quedó PROHIBIDO — la protagonista es ella).
+  **Ronda 2026-07-31**: son **5 tandas de feedback**, no 2, y las 4 primeras juzgan el mismo bloque.
+  Dice que va a PEOR y la causa nº1 está confirmada: **se desplegó una copia truncada** a la que le
+  faltaban las 589 palabras de apertura, justo la directiva anti-repetición de la que se queja.
+  Causa nº2: le quitamos cuatro movimientos y solo le añadimos prohibiciones. Bloque reescrito
+  (precheck R1-R8, conversación dorada, banco de movimientos). ⚠️ Y **el feedback nunca se le
+  devolvió marcado**, que es por qué re-pide cosas y concluye que empeora.
 - [Nani](project_nani_coach_feedback.md) — ⚠️ **tenant del SaaS, no academia**: es `coach_v5` de
   verdad, en [`prompts/source/coach-v5/nani.md`](../../prompts/source/coach-v5/nani.md). Mujeres,
   hinchazón/ciclo, programa "Confía en Ti". **4º REGISTRO del avatar mujeres**: hombre experto
