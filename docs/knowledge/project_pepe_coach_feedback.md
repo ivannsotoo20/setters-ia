@@ -8,6 +8,15 @@ metadata:
 
 Pepe Jiménez = coach de la academia (Automatía, no el SaaS Fyzon). Dietista + entrenador de **HYROX y rendimiento híbrido**; hombres y mujeres de 20-40 que quieren iniciarse o bajar tiempos. Bloque: [`prompts/coach-engineering/academia/pepe.md`](../../prompts/coach-engineering/academia/pepe.md), formato `<coach_block>` con headers `##` (mismo loop que [[project_alfonso_coach_feedback]] / [[project_roberto_coach_feedback]] / [[project_frodo_coach_feedback]]). Despliega Iván a mano en Automatía.
 
+🚨 **Pepe existe también en el SaaS, y esa versión arrastra los dos fallos P0 de abajo**
+(descubierto 2026-07-30). [`prompts/source/coach-v5/pepe-jimenez.md`](../../prompts/source/coach-v5/pepe-jimenez.md)
+es el port a `coach_v5` del **2026-07-20**, anterior a la ronda 1: dice *"una videollamada tú y
+yo"* en 4 sitios (cuando la llamada la atiende su equipo de admisiones) y no lleva la regla de
+precio. Y **`schema/v1/seeds/012-coach-v5-pepe-jimenez.sql` está compilado de esa versión** — le
+he puesto un aviso en cabecera, pero la deuda real es portar las rondas 1 y 2 al `.md` del SaaS y
+regenerar el seed antes de dar de alta el tenant `equipo-pj`. Verificado por grep. Mapa completo:
+[README de academia](../../prompts/coach-engineering/academia/README.md).
+
 **Es el primer avatar de OBJETIVO puro del corpus.** No es un avatar de dolor: el driver es el resultado (bajar de la hora, competir, físico híbrido) y el dolor (tibias, rodillas) es un obstáculo hacia la meta, no una herida. Eso cambia dónde está el canal de conexión — ver §RECONOCIMIENTO abajo.
 
 ## Ronda 1 — 2026-07-25 (feedback doc 24/07/26: Pepe + informe de su equipo)

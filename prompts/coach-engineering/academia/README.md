@@ -37,6 +37,31 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 > roberto-cordobilla.md" queriendo decir *otro fichero*, no *otra persona*. Verificado contra
 > ambos ficheros: los dos son Roberto Cordobilla.
 
+## El mismo coach en los dos sistemas — mapa (2026-07-30)
+
+Roberto no es un caso aislado: **tres entrenadores existen a la vez en academia y en el SaaS**.
+En los tres, la versión del SaaS va POR DETRÁS. La regla, hasta nuevo aviso:
+
+> **La versión viva y corregida de estos tres es la de `academia/`. La de `source/coach-v5/` es
+> un borrador anterior a las rondas de feedback. No seedear sin portar las rondas primero.**
+
+| Entrenador | `academia/` (Automatía, XML) | `source/coach-v5/` (SaaS) | Qué le falta al del SaaS |
+|---|---|---|---|
+| Roberto Cordobilla | `roberto.md` — ronda 2026-07-13 | `roberto-cordobilla.md` — 2026-06-18 | la ronda del método Andrea (pedir WhatsApp, sin Calendly) |
+| Beatriz Juan | `beatriz-juan.md` — ronda 1, 2026-07-28 | `beatriz-juan.md` — 2026-07-20 | **el bloque de método** que la ronda 1 le devolvió (0 apariciones vs 6) |
+| Pepe Jiménez | `pepe.md` — rondas 1 y 2, 25 y 27-jul | `pepe-jimenez.md` — 2026-07-20 | ⚠️ **los dos fallos P0**: dice "una videollamada tú y yo" (la atiende su equipo de admisiones) y no lleva la regla de precio |
+
+⚠️ **`schema/v1/seeds/012-coach-v5-pepe-jimenez.sql` está compilado de esa versión con los dos
+fallos P0.** Lleva un aviso en cabecera. Aplicarlo tal cual desplegaría a un cliente real el
+comportamiento que su propio equipo marcó como riesgo de marca. Verificado por grep el
+2026-07-30.
+
+Por qué pasa: son dos pipelines distintos con dos ritmos distintos. El feedback de los
+entrenadores entra por academia (que es donde están desplegados), y el port al `coach_v5` del
+SaaS se hizo una vez, el 20 de julio, y no se ha vuelto a sincronizar. **Al aplicar una ronda a
+un coach que existe en los dos sitios, decidir explícitamente si se porta o se anota la deuda** —
+y si se anota, que quede en su loop de `docs/knowledge/`.
+
 ## Qué hay
 
 | Fichero | Avatar / perfil | Venía de | Estado |

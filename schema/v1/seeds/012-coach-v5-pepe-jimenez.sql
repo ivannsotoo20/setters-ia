@@ -1,3 +1,20 @@
+-- ############################################################################
+-- ⚠️  NO APLICAR ESTE SEED TAL CUAL (aviso añadido 2026-07-30)
+--
+-- Se compilo de la version del 20-jul de pepe-jimenez.md, que es ANTERIOR a
+-- las rondas de feedback de Pepe (25 y 27-jul). Arrastra los dos fallos P0
+-- que su propio equipo marco como riesgo de marca:
+--   1. Dice "una videollamada tu y yo" (4 veces). FALSO: la llamada la
+--      atiende su equipo de admisiones, no el.
+--   2. No lleva la regla de precio (precios cerrados; lo unico que cambia es
+--      el metodo de pago).
+-- La version corregida vive en prompts/coach-engineering/academia/pepe.md.
+--
+-- Antes de aplicar: portar las rondas a prompts/source/coach-v5/pepe-jimenez.md
+-- y regenerar con build-coach-v5-seed.mjs (esto borrara este aviso, que es lo
+-- que se espera). Contexto: docs/knowledge/project_pepe_coach_feedback.md
+-- ############################################################################
+
 -- ============================================================================
 -- Seed 012: coach_v5 del trainer 'pepe-jimenez' para tenant slug 'equipo-pj'
 -- Fuente: prompts/source/coach-v5/pepe-jimenez.md

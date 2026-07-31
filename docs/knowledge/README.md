@@ -100,6 +100,11 @@ valor, nunca el valor. Escanear antes de commitear.
 ### Loops abiertos por coach
 
 > Todos son de **academia/Automatía** salvo Nani, que es un tenant del SaaS de este repo.
+>
+> ⚠️ **Roberto, Beatriz y Pepe existen en los DOS sistemas**, y la versión del SaaS
+> (`prompts/source/coach-v5/`) va por detrás de la de academia en los tres. La de Pepe arrastra
+> además sus dos fallos P0, y el seed `012` está compilado de ella. Mapa y regla en el
+> [README de academia](../../prompts/coach-engineering/academia/README.md).
 
 - [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Última ronda
   **2026-07-31** (mecanismo de parada → `manual_attention` + `skip_reply`; antes, el 29-jul:

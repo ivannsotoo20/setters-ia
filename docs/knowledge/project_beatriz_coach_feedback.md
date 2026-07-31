@@ -13,6 +13,14 @@ inbound. Bloque: [`prompts/coach-engineering/academia/beatriz-juan.md`](../../pr
 formato `<coach_block>` con headers `##` (mismo loop que [[project_alfonso_coach_feedback]] /
 [[project_pepe_coach_feedback]]). Despliega Iván a mano en Automatía.
 
+⚠️ **Beatriz existe también en el SaaS y esa versión va por detrás** (descubierto 2026-07-30).
+[`prompts/source/coach-v5/beatriz-juan.md`](../../prompts/source/coach-v5/beatriz-juan.md) es el
+port a formato `coach_v5` hecho el **2026-07-20** (`sprint: import-cloudchat-beatriz`,
+`status: draft`, `tenant_slug` sin asignar) — es decir, **anterior a la ronda 1**. No lleva el
+bloque de método que la ronda le devolvió (0 apariciones ahí, 6 en el de academia). Si se seedea
+tal cual, se despliega la Beatriz que Rubén ya había corregido. Mapa de los tres coaches que
+viven en los dos sistemas: [README de academia](../../prompts/coach-engineering/academia/README.md).
+
 **Ojo con el nombre del fichero de origen.** El bloque llegó como `Downloads/victor_beatriz_coach.rtf`
 y el documento de feedback como *"Feedback Beatriz Juan Puñales"*. **Víctor es la pareja de
 Beatriz** (confirmado por Iván 2026-07-28) — de ahí el nombre del fichero. La coach y la voz del
