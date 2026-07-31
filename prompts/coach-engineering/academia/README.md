@@ -7,9 +7,15 @@ versiones a mano.
 
 ## Ojo: esto NO es el SaaS Fyzon
 
-La academia corre sobre **Automatía (n8n + Anthropic)**, no sobre el motor de este repo.
+La academia corre sobre **Automatía**, no sobre el motor de este repo.
 Estos bloques **no** se cargan con `build-coach-v5-seed.mjs`, **no** van a `prompt_blocks`
 y **no** siguen la ley de formato `coach_v5` (frontmatter, sub-tags XML, `{{tracked_calendar_url}}`).
+
+> **Qué es Automatía (corregido por Iván, 2026-07-31).** Una herramienta propia **hecha con
+> código**, no n8n. Versiones anteriores de este README y de la memoria decían "Automatía (n8n +
+> Anthropic)" — **era falso**. Dos consecuencias prácticas: (1) **ya cachea el prompt**, así que
+> el bloque es prefijo estable y su tamaño no se paga entero en cada turno; (2) el vocabulario de
+> parada que consume es `manual_attention` + `skip_reply`, no el contrato del SaaS (doctrina §30).
 Despliega Iván, a mano, en Automatía.
 
 Están aquí por dos razones: son el corpus real donde se practica la craft de
@@ -22,7 +28,7 @@ y — lo que de verdad importa — **la fecha**:
 
 | | `academia/roberto.md` | `source/coach-v5/roberto-cordobilla.md` |
 |---|---|---|
-| Sistema | Automatía (n8n) — **vivo** | SaaS Fyzon — `status: draft`, nunca seedeado |
+| Sistema | Automatía — **vivo** | SaaS Fyzon — `status: draft`, nunca seedeado |
 | Formato | `<coach_block>` XML | `coach_v5` (frontmatter + sub-tags) |
 | Viene de | `coach_block_roberto_3.0.md` | `coach_block_roberto.txt` (junio) |
 | Última ronda | **2026-07-13** (agendamiento método Andrea) | 2026-06-18 (reunión Rubén) |

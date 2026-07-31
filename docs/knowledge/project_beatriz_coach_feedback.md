@@ -6,7 +6,7 @@ metadata:
   type: project
 ---
 
-Beatriz Juan = coach de la **academia** (Automatía + n8n, no el SaaS Fyzon). Avatar: madres
+Beatriz Juan = coach de la **academia** (Automatía, no el SaaS Fyzon). Avatar: madres
 de 30-45 que han perdido la conexión con su cuerpo tras la maternidad — culpa por dedicarse
 tiempo, agotamiento de postparto, no reconocerse en el espejo. Canal: Instagram, outbound +
 inbound. Bloque: [`prompts/coach-engineering/academia/beatriz-juan.md`](../../prompts/coach-engineering/academia/beatriz-juan.md),
@@ -252,6 +252,50 @@ tope de 4 preguntas, y de los dos fallos que Beatriz marcó el 29/07 (*"falta co
 preguntas y yendo al atajo. Se subió a 5 y se convirtió la disponibilidad en **condición de
 salida ordenada** (última, y solo tras los dos territorios), no en simple obligación de presencia
 como en la ronda 1.1 — que es justo lo que el modelo interpretó como "pregúntala cuanto antes".
+
+## Ronda 2.1 — 2026-07-31, recorte de consumo (y una corrección de sistema)
+
+Iván levantó que el bloque "excede las 1.100 líneas" cuando la media son 600-800. **La premisa
+era un espejismo de formato.** Medido en tokens, que es lo que se paga:
+
+| | líneas | chars | ~tokens | chars/línea |
+|---|---|---|---|---|
+| alex | 1.790 | 103.651 | 28.791 | 58 |
+| luis-royan | 719 | 99.388 | 27.607 | 138 |
+| alfonso | 637 | 91.724 | 25.478 | 144 |
+| **beatriz (antes)** | **1.171** | **64.479** | **17.910** | **55** |
+| beatriz (tras recorte) | 1.098 | 59.513 | 16.531 | 54 |
+
+Beatriz era el 7º de 10 en consumo real, **por debajo de la mediana**. Alfonso, con 637 líneas,
+cuesta un 42% más. La diferencia es el ancho de línea: los bloques de Beatriz y Alex van
+envueltos a ~55 chars/línea, los de Luis y Alfonso a 138-144. **Contar líneas entre bloques con
+distinto ancho de envoltura no mide nada.** Regla para el futuro: comparar por chars o tokens.
+
+Se simuló un reflow a 100 chars: ahorra **423 chars (0,7%)**, porque el bloque es casi todo
+listas, literales y ejemplos, no prosa corrida. Descartado.
+
+**Lo que sí se recortó (-4.966 chars, ~-1.379 tokens, -7,7%), sin tocar ninguna regla:**
+1. **Arqueología** — fechas, citas del feedback y narrativas de smokes ("Fallo real del smoke del
+   29/07", "(feedback 28/07/26)", "Subió de 4 a 5 porque Beatriz pidió…"). Es documentación para
+   nosotros, no instrucción para el modelo, y vive aquí. Se conservó la *razón conductual* de cada
+   regla y se quitó solo la procedencia.
+2. **Duplicación a 2 sitios.** Seis reglas se repetían en 3-5 sitios (emojis en 5, "??" en 4, no
+   repreguntar en 4, apelativos en 4, tope de 3 en 3, no felicitar dos veces en 3). Ahora cada una
+   está **donde se declara (voiceprint) y donde actúa (la fase)**, más algún puntero de una línea.
+   No se bajó a 1 sitio a propósito: el aprendizaje de la ronda 1.1 es que el modelo cumple las
+   reglas donde están escritas, y deduplicar de más reabre fallos ya cerrados.
+
+Verificado tras el recorte: **36/36 reglas presentes**, 0 emojis, 0 "PENDIENTE", los únicos "??"
+que quedan son los de la propia regla que los prohíbe.
+
+⚠️ **Corrección de sistema (Iván, 2026-07-31): Automatía NO es n8n.** Es una herramienta propia
+hecha con código, y **ya cachea el prompt**. Este documento, el
+[README de academia](../../prompts/coach-engineering/academia/README.md) y la memoria decían
+"Automatía (n8n + Anthropic)" — era falso, corregido en los tres sitios. **Consecuencia para
+optimizar:** el bloque es prefijo estable, no se paga entero en cada turno. Recortar tokens del
+bloque tiene mucho menos ROI del que parece — el coste real está en la primera llamada y en cada
+invalidación de caché, o sea **cada vez que se edita el bloque**. Corolario: agrupar cambios en
+rondas (como se hace) es más barato que ir tocando el bloque suelto.
 
 ## La duda de Beatriz (no es prompt, es sistema)
 
