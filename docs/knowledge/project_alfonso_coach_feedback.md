@@ -44,6 +44,21 @@ Todo esto se **destiló a la KB** ([[project_coach_authoring_kb]]): doctrina §2
 - **Nuevo tell prohibido: preguntar con MENÚ de alternativas** ("es X, Y o las dos?", "qué se va primero, X o Y?") — suena a triaje y encadena interrogatorio. Pregunta abierta, y que elija él las palabras.
 - **La duración se pregunta por el TIEMPO** ("cuánto llevas así"), nunca como puerta a los intentos ("qué probaste", "por qué lo dejaste") — refuerzo del gate no-método dentro del criterio de suficiencia.
 
+**Ronda 2026-07-31 (mecanismo de parada — el feedback "REGLA OBLIGATORIA")**. Archivo autoritativo: `C:\Users\sotob\Downloads\coach_block_alfonso_v1.md` (idéntico a `prompts/coach-engineering/academia/alfonso.md`, ambos actualizados). Backup = `coach_block_alfonso_v1.pre-2026-07-31.bak.md`.
+
+Feedback del trainer: *"Una vez el lead confirma que quiere hacer la videollamada, se envía audio para pedir whatsapp y después la IA se debe pausar, pasa a agente humano, REGLA OBLIGATORIA"*. **Ojo al diagnóstico**: el bloque YA decía exactamente eso desde junio (F6: "la IA NO escribe NADA más… queda PAUSADA"). No fallaba el texto de la regla, fallaba el **mecanismo**: emitía `<protocolo_handoff> Tipo A` + `handoff_cause`, vocabulario del SaaS Fyzon que **Automatía no consume**. Y `manual_attention` iba solo, sin `skip_reply`, así que nada apagaba la generación.
+
+Migración completa del bloque (19 reemplazos, script + diff revisado): `handoff_cause` 20→0, `protocolo_handoff` 1→0, `Tipo B/C` 7→0, `manual_attention` 5→**16** y `skip_reply` 0→**16** (pares cuadrados), 23 × `motivo:`. Decisiones no obvias:
+- **`motivo: <causa>` en vez de `handoff_cause`** (elección de Iván), siguiendo el patrón ya validado de Andrea. Los valores snake_case se conservan intactos porque `acepta_llamada_enviar_audio` es lo que dispara el audio en el flujo externo.
+- **Letras A–H conservadas como índice interno** de los triggers (el bloque las referencia cruzadamente), pero ya no se emiten como valor.
+- **Distinción explícita apagado MUDO vs apagado TRAS MENSAJE**: los 4 `coach_wclose` + malestar grave + mujer envían su mensaje y *después* apagan; aceptar la llamada, terceros, oferta comercial, cliente actual, fuga IA y pérdida de contexto apagan sin escribir. Sin esa distinción, un cierre cálido dejaría al lead con silencio.
+- **F6 reescrita como REGLA OBLIGATORIA DE ALFONSO** con cumplimiento binario: "emitir solo uno de los dos NO apaga la IA", lista explícita de lo que no hace (no pide número, no franja, no despedida, no "mensaje de cortesía") y el apagado se mantiene si el lead sigue escribiendo después.
+- **Notia intacto en el fondo**: Alfonso trabaja solo, así que ahí NO se apaga (solo se cambió el vocabulario).
+
+Destilado a la KB: **doctrina §30** (parada de conversación + la frontera con el SaaS) + 2 puntos en `checklist-auditoria.md` sección 2 (grep de control: los conteos de `manual_attention` y `skip_reply` deben coincidir) + regla en `academia/README.md` con el estado de migración de los 10 coaches. Directiva permanente en [[feedback_coach_parada_manual_attention]].
+
+⚠️ **Colateral detectado, NO tocado** (fuera de scope): `coach_qualification_special` deriva a `coach_wclose_mujer`, que **no existe** en el bloque (los wclose definidos son generic / not_now / wrong_expectation / linea_roja). Referencia colgante previa a esta ronda.
+
 **Aprendizaje de método**: cuando Iván señale una muletilla o pregunta que no quiere, revisar PRIMERO si el bloque la siembra (exemplars/literales/lexicon) — el modelo copia; una regla sin scrubear los seeds no basta. "Hacer ver el valor de la llamada" NO es vender más — es expectativa-vs-realidad + insight/reencuadre + conexión (doctrina Rubén), nunca pitch. En OUTBOUND (Alfonso escribe primero) no se pregunta "por qué ahora". Con hombres: dirigir, no pedir introspección/auto-diagnóstico.
 
 Cambios aplicados con script + diff revisado; backups `*.pre-2026-07-06.bak.md` (pre-9-puntos) y `*.pre-2026-07-06b.bak.md` (pre-voz). Recall si Alfonso vuelve con más feedback o si se toca su flujo de agenda.

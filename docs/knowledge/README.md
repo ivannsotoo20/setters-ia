@@ -92,14 +92,19 @@ valor, nunca el valor. Escanear antes de commitear.
 - [Bloques coach sin pendientes](feedback_coach_blocks_sin_pendientes.md) — los bloques coach son
   producción que ven otros profesionales: quedan **limpios y terminados**, cero placeholders,
   pendientes o notas de decisión dentro del `<coach_block>`. Van al conocimiento o al chat.
+- [Parar una conversación: `manual_attention` + `skip_reply`](feedback_coach_parada_manual_attention.md)
+  — directiva del 31-jul: en la academia toda parada emite **los dos criterios juntos** + `motivo:`,
+  nunca `handoff_to_human` ni Tipo A/B/C/D (Automatía no consume ese vocabulario). Incluye la
+  frontera con el SaaS, donde el contrato es justo el contrario. Doctrina §30.
 
 ### Loops abiertos por coach
 
 > Todos son de **academia/Automatía** salvo Nani, que es un tenant del SaaS de este repo.
 
 - [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Última ronda
-  **2026-07-29** (deseo-antes-que-solución, test anti-invención causal, criterio de suficiencia
-  con techo de preguntas). **La copia del repo va por delante del `.rtf` de origen.**
+  **2026-07-31** (mecanismo de parada → `manual_attention` + `skip_reply`; antes, el 29-jul:
+  deseo-antes-que-solución, test anti-invención causal, criterio de suficiencia con techo de
+  preguntas). **La copia del repo va por delante del `.rtf` de origen.**
 - [Roberto](project_roberto_coach_feedback.md) — hombres +100kg. Ronda 2026-07-13, número de
   Rober **pendiente**. Ojo: hay **dos ficheros del mismo Rober** (una persona, dos sistemas) —
   el vivo en `academia/roberto.md` y el draft del SaaS `source/coach-v5/roberto-cordobilla.md`,

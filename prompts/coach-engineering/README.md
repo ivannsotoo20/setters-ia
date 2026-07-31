@@ -14,7 +14,7 @@ para que el siguiente (mismo nicho o nuevo) salga mejor sin repetir explicacione
 ```
 prompts/coach-engineering/
   README.md                     ← este archivo (índice + método + protocolo de aprendizaje)
-  doctrina-universal.md         25 principios que aplican a CUALQUIER coach (validación, eco, muletilla, exemplars, DIRECCIÓN §19–§25…)
+  doctrina-universal.md         30 principios que aplican a CUALQUIER coach (validación, eco, muletilla, exemplars, DIRECCIÓN §19–§25, parada de conversación §30…)
   formato-saas-coach-v5.md      LA LEY DE FORMATO: cómo el coach cae directo en el SaaS sin romperse
   checklist-auditoria.md        checklist obligatorio antes de entregar (estructura + voz + formato SaaS)
   avatares/

@@ -41,7 +41,7 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 
 | Fichero | Avatar / perfil | Venía de | Estado |
 |---|---|---|---|
-| [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-29. ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
+| [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-31 (parada = `manual_attention` + `skip_reply`). ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
 | [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-07-29 (señal de compra + banco de preguntas clave) |
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |
@@ -68,7 +68,7 @@ Qué se cambió, por qué y qué quedó abierto está en `docs/knowledge/`, no a
 [Beatriz](../../../docs/knowledge/project_beatriz_coach_feedback.md) ·
 [Miguel Aguado](../../../docs/knowledge/project_miguel_coach_feedback.md)
 
-Y la craft para tocarlos (doctrina §1–§29, avatares, checklist) en
+Y la craft para tocarlos (doctrina §1–§30, avatares, checklist) en
 [`prompts/coach-engineering/`](../README.md). El
 [estándar mínimo](../../../docs/knowledge/feedback_coach_authoring_baseline.md) dice que se
 tiene presente TODO eso al abrir cualquier conversación de coach-authoring. No arrancar de cero.
@@ -77,6 +77,13 @@ tiene presente TODO eso al abrir cualquier conversación de coach-authoring. No 
 
 **Se acabaron los `.bak`.** Git es el backup. Un cambio = un commit con qué cambió y por qué.
 No crear `alfonso_2.1.md` ni `frodoo.md`: se edita el fichero y se commitea.
+
+**Para parar una conversación: `manual_attention` + `skip_reply` (motivo: `<causa>`), siempre los dos.**
+Nunca `handoff_to_human` ni etiquetas de tipo (Tipo A/B/C/D, "Causa F") — ese vocabulario es del SaaS Fyzon y
+Automatía no lo consume, así que el bloque describe una pausa que el runtime no ejecuta. Regla completa y la
+frontera con el SaaS en [doctrina §30](../doctrina-universal.md). Referencia bien hecha: `andrea.md`.
+Estado de la migración: ✅ `andrea.md`, ✅ `alfonso.md` · pendientes `alex.md`, `beatriz-juan.md`, `chema.md`,
+`frodo.md`, `luis-royan.md`, `miguel-aguado.md` (a medias), `pepe.md`, `roberto.md` — cada uno en su próxima ronda.
 
 **Nada de credenciales.** Estos bloques llevan enlaces públicos de negocio (Calendly, landings,
 posts de Instagram) y eso está bien. Teléfonos personales, tokens o API keys, no. Verificado

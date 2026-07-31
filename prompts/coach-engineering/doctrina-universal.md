@@ -510,6 +510,51 @@ la automatización del recordatorio la gestiona el sistema. Cross-link [[§24]].
 
 ---
 
+## 30. Parar una conversación se escribe con el mecanismo que el runtime lee: `manual_attention` + `skip_reply`
+
+En los coaches de la **academia (Automatía)** la única forma de parar una conversación es aplicar los **dos
+criterios juntos**, acompañados del motivo:
+
+```
+manual_attention + skip_reply   (motivo: <causa>)
+```
+
+- `manual_attention` → la conversación queda **marcada y notificada** para que el entrenador la retome.
+- `skip_reply` → la IA **deja de generar respuestas**.
+- **Uno solo no apaga nada.** `manual_attention` sin `skip_reply` marca la conversación pero el modelo sigue
+  escribiendo, que es justo el fallo que el trainer percibe como "no se está cumpliendo lo que pedí".
+
+PROHIBIDO `handoff_to_human` y prohibida cualquier etiqueta de tipo (Tipo A/B/C/D, "Causa F", "handoff Tipo C").
+Esa nomenclatura es del SaaS Fyzon, no de Automatía: escribirla en un coach de la academia produce un bloque que
+*describe* una pausa que el runtime nunca ejecuta.
+
+**Dos formas, según si el lead recibe mensaje o no:**
+
+| Forma | Cuándo | Cómo se escribe |
+|---|---|---|
+| **Apagado mudo** | handoff invisible: acepta la llamada, consulta para terceros, oferta comercial, cliente actual, fuga IA | aplicas los dos criterios y **no escribes nada** |
+| **Apagado tras mensaje** | cierres cálidos (`coach_wclose`), línea roja, malestar grave | envías el mensaje **y después** aplicas los dos criterios |
+
+Las letras A–H pueden seguir usándose como **índice interno** de triggers dentro del bloque; lo que no puede
+aparecer es la letra como *valor emitido*. El valor emitido es el `motivo: <causa>` en snake_case
+(`acepta_llamada_enviar_audio`, `no_es_el_momento`, `linea_roja_disponibilidad`…), que además suele ser el
+disparador de la automatización externa (p. ej. el audio de Alfonso).
+
+**El aprendizaje de método** (por qué esto es doctrina y no una nota de un coach): el bloque de Alfonso **ya
+decía** desde junio que en F6 la IA se pausa y no escribe. Y no se cumplía. No fallaba la redacción de la regla,
+fallaba que estaba escrita en un vocabulario que el runtime no consume. **Una instrucción que el runtime no lee
+es una instrucción que no existe** — antes de reescribir una regla que "no se cumple", comprobar si el problema
+es el mecanismo, no el texto. Mismo patrón que el aprendizaje de los seeds: si el bloque siembra lo que no
+quieres, la regla sola no basta.
+
+⚠️ **Frontera con el SaaS Fyzon (no migrar a ciegas).** Los coaches `coach_v5` del repo corren contra
+`output_contract_v5`, cuyo contrato JSON **sí** define `handoff_to_human` (boolean) + `handoff_cause`
+(enum `A|B|C|D`), validado por el motor. Ahí `manual_attention`/`skip_reply` **no existen** y meterlos rompe el
+pipeline. Regla práctica: **coach de `academia/` → los dos criterios; coach de `source/coach-v5/` → el contrato
+del Core**. Referencia del patrón bien hecho: `avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md`.
+
+---
+
 ## Referencias
 - Postmortem hombres pérdida peso: [`postmortems/pablo-lopez-fraga.md`](postmortems/pablo-lopez-fraga.md).
 - Canónico hombres: [`avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md`](avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md).
@@ -519,3 +564,4 @@ la automatización del recordatorio la gestiona el sistema. Cross-link [[§24]].
 - Fuente §19–§25: reunión Rubén 2026-06-18 (transcripción en `Downloads/Sala de reuniones personales de Aca.txt`); memoria del proyecto `feedback_coach_direccion_bloqueos.md`.
 - Postmortem objeción de precio nombra videollamada (§26/§27): [`postmortems/objecion-precio-nombra-videollamada.md`](postmortems/objecion-precio-nombra-videollamada.md).
 - Fuente §26–§29 + §11.15 + enmiendas §19/§20: ronda coaches academia 2026-07-13 (reunión Rubén 13-jul + feedback trainer Alfonso #64). Coaches tocados: Alfonso 2.0, Roberto 3.0.
+- Fuente §30: directiva de Iván 2026-07-31 a raíz del feedback de Alfonso ("la IA se debe pausar, REGLA OBLIGATORIA"). Patrón de referencia: [`avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md`](avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md) (Automatía Pro). Coach migrado: [`academia/alfonso.md`](academia/alfonso.md).

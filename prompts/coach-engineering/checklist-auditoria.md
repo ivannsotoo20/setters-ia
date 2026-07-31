@@ -35,6 +35,15 @@ esto audita el Coach.
   sobrescriben)?
 - [ ] ¿Los conteos internos cuadran? (si dice "los datos son 3", que liste 3).
 - [ ] ¿Los `handoff_cause` referenciados existen y son consistentes?
+- [ ] **Mecanismo de parada correcto para el sistema de destino** (§30). Coach de `academia/`
+  (Automatía): TODA parada va con `manual_attention` **+** `skip_reply` + `motivo: <causa>`;
+  **cero** `handoff_to_human` y cero etiquetas de tipo emitidas (Tipo A/B/C/D, "Causa F").
+  Coach de `source/coach-v5/` (SaaS): al revés, el contrato del Core (`handoff_to_human` +
+  `handoff_cause` enum). Grep de control: los conteos de `manual_attention` y `skip_reply`
+  deben **coincidir** — si no, hay una parada a medias que no apaga la IA.
+- [ ] ¿Cada parada dice si es **muda** (sin mensaje) o **tras mensaje** (se envía el
+  `coach_wclose` y después se apaga)? Un cierre cálido que apaga sin enviar deja al lead con
+  silencio; un handoff invisible que envía mensaje delata la derivación.
 - [ ] ¿Los links de `coach_links` coinciden con los citados en `coach_phase_massage`?
 
 ---
