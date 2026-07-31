@@ -45,7 +45,7 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
 | [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-07-29 (señal de compra + banco de preguntas clave) |
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |
-| [miguel-aguado.md](miguel-aguado.md) | — | `coach_block_miguel_aguado.md` | 2026-07-13 |
+| [miguel-aguado.md](miguel-aguado.md) | Mujeres 35-70 pérdida de peso sin dietas (IG outbound, handoff sin enlace) | `coach_block_miguel_aguado.md` | Ronda 1 aplicada 2026-07-31 (escalera de cambio en F4) |
 | [andrea.md](andrea.md) | Mujeres | `coach_block_andrea.md` | 2026-07-06 |
 | [alex.md](alex.md) | **Escaladores** estancados o lesionados (Escalada Inteligente) — nicho fuera del corpus fitness | — | 2026-07-24. ⚠️ **Formato antiguo** (`# BLOQUE 0…7`, no el esquema `<coach_block>`); sin loop documentado |
 | [beatriz-juan.md](beatriz-juan.md) | Madres postparto (mujeres, registro afectivo) | `victor_beatriz_coach.rtf` | Ronda 1 aplicada 2026-07-28. **Lleva un override de §19 que hay que enseñarle a Rubén antes de desplegar** |
@@ -65,7 +65,8 @@ Qué se cambió, por qué y qué quedó abierto está en `docs/knowledge/`, no a
 [Chema](../../../docs/knowledge/project_chema_coach_feedback_loop.md) ·
 [Luis Royán](../../../docs/knowledge/project_luis_royan_coach_menopausia.md) ·
 [Pepe](../../../docs/knowledge/project_pepe_coach_feedback.md) ·
-[Beatriz](../../../docs/knowledge/project_beatriz_coach_feedback.md)
+[Beatriz](../../../docs/knowledge/project_beatriz_coach_feedback.md) ·
+[Miguel Aguado](../../../docs/knowledge/project_miguel_coach_feedback.md)
 
 Y la craft para tocarlos (doctrina §1–§29, avatares, checklist) en
 [`prompts/coach-engineering/`](../README.md). El

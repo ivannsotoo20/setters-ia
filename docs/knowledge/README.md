@@ -124,6 +124,12 @@ valor, nunca el valor. Escanear antes de commitear.
   2026-07-28. **Reclamó el bloque de método que la doctrina §19 le había quitado** y se le
   devolvió con 5 blindajes: hay que enseñárselo a Rubén antes de desplegar, porque desde fuera
   parece la regresión de lo que se corrigió en Frodo.
+- [Miguel Aguado — mujeres 35-70 sin dietas](project_miguel_coach_feedback.md) — ronda 1 aplicada
+  **2026-07-31**. Las conversaciones morían en el tramo final porque **el bloque tenía escrito el
+  techo** (tope de 2 preguntas de cambio, F3 y F4 compartiéndolo, y la pregunta de necesidad gastada
+  dentro del literal de handoff). Trae la **ESCALERA DE CAMBIO** de 4 escalones en F4 (impacto →
+  importancia → urgencia → necesidad), candidata a doctrina si mide bien. Su banco de objeciones ya
+  es la referencia externa de §27.
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 
