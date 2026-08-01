@@ -1,6 +1,6 @@
 ---
 name: project_pepe_coach_feedback
-description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 1 (2026-07-25): la llamada la atiende su equipo de admisiones (no él), el precio no varía por persona, F5 con valor, anti-repetición literal y canal de autoridad por RECONOCIMIENTO en vez de eco. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
+description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 3 (2026-08-01): 2 recursos gratuitos reales (comunidad de WhatsApp como consuelo de todo cierre sin cita + rutina de movilidad), duración 6 meses, parada migrada a manual_attention + skip_reply. Bloqueado: la cifra del 'desde X' del precio y la decisión sobre 'Carlos'. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
 metadata:
   node_type: memory
   type: project
@@ -117,6 +117,32 @@ Resto de cambios: no preguntar la fecha de una competición oficial del circuito
 
 **Bloqueado esperando a Pepe:** los 4 links de la bóveda (comunidad, guía de nutrición, vídeo de ejercicios, rutina de movilidad); si existe o no comunidad gratuita (el setter dijo que no y Pepe apunta que sí, que falta el link); **la contradicción del precio** — el feedback 1 dice "2 precios, solo cambia el método de pago" y un comentario del equipo dice "según lo que se quiera tiene un precio y otro" (¿hay más de un producto?); si se admite pasar a WhatsApp cuando el lead no puede hacer llamadas; y la duración del programa, que sigue pendiente desde la ronda 1.
 
+## Ronda 3 — 2026-08-01 (Pepe responde a los 4 puntos abiertos + 2 capturas)
+
+Cierra casi todo lo que quedaba "bloqueado esperando a Pepe" desde la ronda 2.1. Lo que contestó, punto por punto:
+
+**1. Los enlaces. Solo existen DOS, no cuatro.**
+- Comunidad gratuita de HYROX (grupo de WhatsApp): `https://chat.whatsapp.com/E8x6IaCCBI93wgLiotuD11?mode=gi_t`. Su instrucción va más allá de "tener el link": *"sería top que se la mandara prácticamente a todos, en especial los que estén más fríos y que no se vayan a cerrar, como al menos ya que no agenda que se meta en el grupo"*. Así que la comunidad deja de ser un recurso de la bóveda y pasa a ser **el consuelo estructural de toda conversación que se cierra sin cita**: regla única en `coach_secondary_links` + puntero desde el preámbulo de `<coach_wclose>` + motivo por motivo. Excepción: menor de edad, que cierra sin enlace.
+- Rutina de movilidad: `https://youtu.be/seN76Fg721g`.
+- **La guía de nutrición y los vídeos de ejercicios NO EXISTEN** ("no tenemos LM activos con ello"). No basta con borrar las filas: el bloque de la ronda 2 obligaba a no dejar al lead sin nada, así que ahora hay prohibición explícita de nombrarlos o prometerlos, con la comunidad como salida.
+
+**2 y 3. Confirmados sin cambios.** El apagado silencioso ante "cuéntamelo por WhatsApp" ("Perfecto") y el formato del puente ("Está bien"). En el bloque desaparece la nota de decisión abierta del puente: ya no es "lo mantenemos aunque su equipo lo vea artificial", es un formato validado.
+
+**4a. Duración: 6 meses de asesoramiento, y SÍ se dice.** Revierte la decisión de Iván del 28/07 ("la duración no se dice por chat"), que se tomó justo porque Pepe no había contestado. Ya no orbita: es un dato genérico como los 2-3 días de la rutina, así que entra en `_core` punto 7 y sale de la excepción a §26 del precio (que ahora solo cubre PRECIO).
+
+**4b. El precio queda a medias — y es el único bloqueo vivo.** Confirma lo de la ronda 1 (2 precios, solo cambia el método de pago) pero abre algo nuevo: con la financiera de Hotmart podrán fraccionar **hasta en 12 cuotas**, y quiere que la IA dé un **"desde X"** para desactivar la pregunta del precio — *"Podrás acceder al EQUIPO PJ desde x"*. En la captura dice que **aún no tiene la cifra** ("hotmart se está actualizando… en cuanto lo tenga lo pongo"). Decisión: **no se toca el precio esta ronda**. La cifra no se inventa y un hueco marcado dentro del bloque va contra [[feedback_coach_blocks_sin_pendientes]]. Cuando llegue, el cambio es acotado y de una sola pieza: el toque 1 de `coach_objections_price` pasa de "no doy cifras" a dar el "desde X/mes" + el literal del método de pago. **Ojo doctrinal:** hoy el bloque prohíbe cifras por chat en binario; ese "desde" es una excepción de Pepe, no un permiso general, y la financiera no está viva todavía (nada de prometer 12 cuotas hasta que lo esté).
+
+**Lo que traen las capturas y no estaba en el texto.** Pepe propone una bienvenida nueva que **ofrece** la rutina en vez de adjuntarla (*"te gustaría que te la mandara??"*) y pregunta si la IA sabría mandar el enlace. Eso rompe el supuesto de F0, que daba por hecho que lo primero que recibe la IA es la respuesta a "qué te ha hecho seguirme": con la bienvenida nueva lo primero es un "sí" pelado. F0 pasa a describir **dos formas de bienvenida** (presentación / regalo) y F1 deja de asumir el motivo por el que le sigue. El "Y" del método: se sembró exemplar de entrega (enlace + pregunta ligera), no una prohibición.
+
+🚩 **Decisión pendiente de Iván — "Carlos".** Esa misma bienvenida dice *"Activo a Carlos que es mi asistente virtual para que te la mande si la quieres"*. Choca de frente con el diseño entero del coach: **el setter ES Pepe** (`coach_identity_role`), el anti-IA responde *"jajaj que va, soy Pepe"* y el apagado silencioso del WhatsApp se justifica en que "quien retoma ES Pepe, así que no hay nada que anunciar". Si entra Carlos, la autoridad del bloque (el menisco, los 1000 acompañados, el embajador) deja de ser de quien escribe. Recomendación dada a Iván: que Pepe quite esa línea de la bienvenida. No se ha tocado nada del bloque por esto.
+
+**Dos cosas más que entraron aprovechando la ronda:**
+
+1. **Migración a `manual_attention` + `skip_reply`** ([[feedback_coach_parada_manual_attention]]). Pepe estaba en la lista de pendientes y su punto 2 es justo un trigger de parada: aprobar el criterio no sirve de nada si el mecanismo escrito (`handoff_to_human`, Tipo A/B/C/D) no lo consume Automatía. Migrados los 17 puntos de parada del bloque, con el enunciado canónico único en `coach_structural_modifications_handoff` y motivos en snake_case (`prefiere_whatsapp`, `cita_agendada`, `deteccion_ia`, `fallback_calendar`, `atleta_elite_derivar_humano`, `lead_frio_seguimiento`, y los cinco de `coach_wclose`). Efecto colateral bueno: el cierre post-agenda ya no puede duplicarse (era el fallo que Pepe marcó en la ronda 1) porque la IA queda apagada; la regla de "micro-respuesta a los residuales" se sustituye por silencio.
+2. **Limpieza de pendientes y andamiaje SaaS** ([[feedback_coach_blocks_sin_pendientes]], que el bloque incumplía desde la ronda 2): fuera los 4 `[PENDIENTE — Pepe]`, el `[PENDIENTE — criterio de Pepe]` de las estaciones (reescrito como regla final de no improvisar criterio), el "Borradores. Modificables" de `coach_wclose`, las dos referencias a `trainer_preferences` y el `{{tracked_calendar_url}}` de F6 — que además **se contradecía con el literal**, donde el Calendly va hardcodeado. En Automatía ese placeholder no lo interpola nadie.
+
+**Bug arrastrado y corregido:** `coach_identity_role` y `coach_identity_notia` remitían al **trigger 4** para responder "la llamada es contigo?", cuando ese literal vive en el **trigger 5** (el 4 es el apagado por WhatsApp). Venía de la ronda 2, cuando se insertó el trigger nuevo sin renumerar los punteros. En el peor caso el setter leía la instrucción de apagarse mudo justo donde tenía que responder y seguir.
+
 ## Dónde vive cada cambio dentro del bloque
 
 Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`. **Iván lo rechazó**: el feedback nuevo se traduce a la sección canónica que le toca, no se antepone como capa de conceptos — si no, se salta el protocolo del esquema y el prompt pierde la referencia de dónde vive cada cosa. Destilado a [`formato-saas-coach-v5.md`](../../prompts/coach-engineering/formato-saas-coach-v5.md) §2. Reparto final:
@@ -138,7 +164,9 @@ El fichero empieza en `<coach_block>` y termina en `</coach_block>`, sin changel
 
 ## Abierto
 
-- **[PENDIENTE DATO DE PEPE]** rango de duración del acompañamiento y qué incluye el mínimo. Su equipo lo pidió expresamente ("dar al menos un rango orientativo para no dar sensación de evasiva total"). Mientras tanto, `coach_program_duration` tiene dos respuestas provisionales que no se repiten entre sí.
+- 🔴 **La cifra del "desde X" del precio** (ronda 3, punto 4b). Es lo único que bloquea cerrar la ronda. En cuanto Pepe la mande: toque 1 de `coach_objections_price` + comprobar que la financiera de Hotmart está viva antes de mencionar las 12 cuotas.
+- 🔴 **Decisión sobre "Carlos"** en la bienvenida nueva (ronda 3). Hasta que Iván conteste a Pepe, el bloque sigue asumiendo que el setter es Pepe.
 - **Corpus de voz real.** El voiceprint está construido sobre el formulario de alta, no sobre cómo escribe. El "no transmite la autoridad de Pepe" del informe no se cierra del todo sin 10-15 mensajes suyos de DM. De esta ronda salieron sus primeros tokens verificados: "Muy toop!!", "minutillos", "Échale un vistazo", el "!!" mucho más frecuente de lo que el bloque permitía y 😊 (que no estaba en su banco).
 - **Bug fuera del prompt:** la IA envió *"Sin respuesta."* cuando el lead sí había respondido, y siguió como si nada. Es del pipeline de Automatía (generator/splitter emitiendo un placeholder), no del coach. Sin diagnosticar.
-- Verificar en Automatía si `{{tracked_calendar_url}}` y las referencias a `trainer_preferences` que arrastra el bloque se interpolan de verdad — venían del formato SaaS y en Automatía puede que no signifiquen nada (el Calendly del EQUIPO PJ está hardcodeado en el literal de F6, así que funciona igual).
+- ~~`{{tracked_calendar_url}}` y `trainer_preferences` en un bloque de academia~~ → resueltos en la ronda 3: eliminados. El Calendly del EQUIPO PJ va literal.
+- **Smoke de la ronda 3 sin hacer.** Lo que hay que ver en Automatía: (a) que con la bienvenida del regalo la IA manda el YouTube en su primer turno y sigue conversando en vez de callarse; (b) que la comunidad sale en el último mensaje de un cierre sin cita y NO se repite si ya se mandó antes; (c) que responde "6 meses" sin mandarlo a la llamada; (d) que tras el cierre post-agenda no escribe ni una burbuja más.

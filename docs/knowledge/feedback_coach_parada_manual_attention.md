@@ -45,8 +45,10 @@ del Core.**
 
 Doctrina completa: `prompts/coach-engineering/doctrina-universal.md` §30. Patrón de referencia bien
 hecho desde el principio: `prompts/coach-engineering/academia/andrea.md` (Automatía Pro). Migrados a
-2026-07-31: Andrea y [[project_alfonso_coach_feedback]]. Pendientes (cada uno en su próxima ronda):
-alex, beatriz-juan, chema, frodo, luis-royan, miguel-aguado (a medias), pepe, roberto.
+2026-07-31: Andrea y [[project_alfonso_coach_feedback]]. Migrado a 2026-08-01:
+[[project_pepe_coach_feedback]] (17 puntos de parada, con el enunciado canónico único en
+`coach_structural_modifications_handoff` y los motivos en snake_case). Pendientes (cada uno en su
+próxima ronda): alex, beatriz-juan, chema, frodo, luis-royan, miguel-aguado (a medias), roberto.
 
 Relacionado: [[feedback_coach_reglas_dentro_del_esquema]] (lo nuevo va en su sección canónica),
 [[feedback_coach_authoring_baseline]].
