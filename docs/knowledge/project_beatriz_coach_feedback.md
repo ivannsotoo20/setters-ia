@@ -297,6 +297,55 @@ bloque tiene mucho menos ROI del que parece — el coste real está en la primer
 invalidación de caché, o sea **cada vez que se edita el bloque**. Corolario: agrupar cambios en
 rondas (como se hace) es más barato que ir tocando el bloque suelto.
 
+## Ronda 2.2 — 2026-08-01, primer smoke de la ronda 2 (Iván)
+
+Dos conversaciones completas en Automatía. **Lo que entró bien:** cero emojis, cero `??`, cero
+felicitaciones repetidas, no repreguntó el dato temporal ya dado ("llevo 8 meses desde que fui
+mama" → no volvió a preguntar), no presupuso maternidad en la lead sin hijos, no preguntó por el
+postparto a los 8 meses, la rama D salió con su secuencia completa (validación → comida →
+gimnasio → disponibilidad), la micro-autoridad salió anclada ("me has dicho que has probado salir
+a caminar, no está mal, pero…"), el Puente salió corto en una burbuja con `cierto?`, y el corte de
+F5 funcionó.
+
+**Cuatro correcciones de Iván + una que no vio y es la más grave:**
+
+| # | Qué falló | Cómo queda |
+|---|---|---|
+| 1 | Turno de **una sola pregunta pelada** ("ahora mismo cómo te sientes en este peso?" sola) | Regla binaria nueva: en F1/F2/F3-A toda pregunta va precedida, en el mismo turno, de una burbuja que **recoge o interpreta**. Con dos guardas: no es eco y no es muletilla vacía |
+| 2 | Burbujas de pregunta **empezando por "y"** | Regla binaria: **ninguna burbuja de pregunta empieza por "y"**. Barrido de ~14 literales. Para marcar cambio de tema se usa "por otro lado," o "en cuanto a…" |
+| 3 | **"entonces"** abriendo tres turnos seguidos (escala → Puente → F5) | Tope: máx 1 vez en toda la conversación, **reservado al Puente**. Reescritos los literales de 3-C y de F5 |
+| 4 | *"yo pasé por algo parecido"* disparado tras una respuesta POSITIVA a la visualización ("otra persona"), + *"qué quieres decir con eso?"* sobre algo obvio | **Gate en el Tipo 3**: la empatía experiencial solo tras dolor verbalizado en presente; prohibida tras respuesta positiva, dato de método o logística. Y en 3-B: respuesta corta positiva = completa → apoyo + autoridad directo, sin pedir aclaración |
+| 5 | **No lo vio: la fase emocional hizo 5 preguntas de sentir** (impacto + B + A + D + E) cuando el tope era 3 | Ver abajo |
+
+### El fallo 5 y por qué el mecanismo estaba mal, no el número
+
+Era el riesgo que se anotó al aplicar la ronda 2 (*"si el modelo lee el repertorio como lista a
+recorrer volvemos al interrogatorio"*) y se materializó a la primera. La causa no es que el
+modelo ignore la regla: es que **"máximo 3" es una instrucción de contar, y contar a lo largo de
+una conversación es justo lo que un LLM hace mal**. Además la lead contestaba seco ("mal", "de
+todo", "bastante"), que el modelo leyó como "no se abre, insisto" cuando significaba lo contrario.
+
+Sustituido por una regla que no depende de contar:
+- **Estructura fija**: pregunta de impacto + **como mucho dos más**, de familias distintas, y
+  cada una tiene que abrir territorio NUEVO.
+- **Cuatro frenos de salida por señal observable**, al primero que se cumpla se cierra la fase:
+  ya tienes el `tema_central` · ha verbalizado 2+ elementos de su estado · **te ha contestado con
+  1-3 palabras dos veces seguidas** · ella misma señala que se repite ("mal te he dicho" → parada
+  en seco).
+
+**Aprendizaje transferible a cualquier coach:** cuando un tope numérico no se cumple, no subas ni
+bajes el número — cámbialo por una condición que el modelo pueda *observar* en el último mensaje
+del lead. Mismo patrón que el aprendizaje de §30 (una instrucción que el runtime no lee es una
+instrucción que no existe): aquí, una instrucción que el modelo no puede evaluar es una
+instrucción que no se cumple.
+
+### Nota de tamaño
+
+Las reglas nuevas de esta ronda (~+1.230 tokens) se comieron el recorte de la 2.1 (−1.379). El
+bloque vuelve a ~17.800 tokens, prácticamente donde estaba antes del recorte — pero ahora sin
+arqueología y con seis reglas más. Sigue siendo el 8º de 10 de la flota y por debajo de la
+mediana. **La lectura: el recorte no fue en balde, compró el espacio que esta ronda necesitaba.**
+
 ## La duda de Beatriz (no es prompt, es sistema)
 
 Literal suyo: *"Y AQUÍ YA SE PARA EL SETTER Y ENTRO YO PARA TERMINAR. **LA DUDA ES CÓMO ME
