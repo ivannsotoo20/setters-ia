@@ -74,7 +74,7 @@ y si se anota, que quede en su loop de `docs/knowledge/`.
 |---|---|---|---|
 | [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-31b (`<coach_discovery_gate>` = suelo de 4 elementos antes de F5 + preámbulo repartido en el esquema + parada = `manual_attention` + `skip_reply`). ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
-| [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-07-29 (señal de compra + banco de preguntas clave) |
+| [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-08-03 (`<coach_discovery_gate>` = suelo de 5 elementos en lugar del tope de 2 preguntas + preámbulo repartido en el esquema + parada migrada a §30 + sub-tipo E de aporte). ⚠️ Los 3 ejemplos de aporte están **pendientes de validar con Frodo** |
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |
 | [miguel-aguado.md](miguel-aguado.md) | Mujeres 35-70 pérdida de peso sin dietas (IG outbound, handoff sin enlace) | `coach_block_miguel_aguado.md` | Ronda 1 aplicada 2026-07-31 (escalera de cambio en F4) |
 | [andrea.md](andrea.md) | Mujeres | `coach_block_andrea.md` | 2026-07-06 |
@@ -113,8 +113,8 @@ No crear `alfonso_2.1.md` ni `frodoo.md`: se edita el fichero y se commitea.
 Nunca `handoff_to_human` ni etiquetas de tipo (Tipo A/B/C/D, "Causa F") — ese vocabulario es del SaaS Fyzon y
 Automatía no lo consume, así que el bloque describe una pausa que el runtime no ejecuta. Regla completa y la
 frontera con el SaaS en [doctrina §30](../doctrina-universal.md). Referencia bien hecha: `andrea.md`.
-Estado de la migración: ✅ `andrea.md`, ✅ `alfonso.md`, ✅ `luis-royan.md` · pendientes `alex.md`,
-`beatriz-juan.md`, `chema.md`, `frodo.md`, `miguel-aguado.md` (a medias), `pepe.md`, `roberto.md` — cada uno
+Estado de la migración: ✅ `andrea.md`, ✅ `alfonso.md`, ✅ `luis-royan.md`, ✅ `frodo.md` · pendientes
+`alex.md`, `beatriz-juan.md`, `chema.md`, `miguel-aguado.md` (a medias), `pepe.md`, `roberto.md` — cada uno
 en su próxima ronda.
 
 **Nada de credenciales.** Estos bloques llevan enlaces públicos de negocio (Calendly, landings,
