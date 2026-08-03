@@ -1,6 +1,6 @@
 ---
 name: project_pepe_coach_feedback
-description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 3 (2026-08-01): 2 recursos gratuitos reales (comunidad de WhatsApp como consuelo de todo cierre sin cita + rutina de movilidad), duración 6 meses, parada migrada a manual_attention + skip_reply. Bloqueado: la cifra del 'desde X' del precio y la decisión sobre 'Carlos'. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
+description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 4.1 (2026-08-03): precio con 'desde 110€/mes' en el toque 2, bienvenida en 3 mensajes con su voz, banco rotativo de cierres de recap, guion largo (—) prohibido, 'el ancla' retirado y corregir-sin-anular. Hallazgo transferible: las reglas que viven solo en la doctrina universal NO llegan al prompt en producción. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
 metadata:
   node_type: memory
   type: project
@@ -134,7 +134,23 @@ Cierra casi todo lo que quedaba "bloqueado esperando a Pepe" desde la ronda 2.1.
 
 **Lo que traen las capturas y no estaba en el texto.** Pepe propone una bienvenida nueva que **ofrece** la rutina en vez de adjuntarla (*"te gustaría que te la mandara??"*) y pregunta si la IA sabría mandar el enlace. Eso rompe el supuesto de F0, que daba por hecho que lo primero que recibe la IA es la respuesta a "qué te ha hecho seguirme": con la bienvenida nueva lo primero es un "sí" pelado. F0 pasa a describir **dos formas de bienvenida** (presentación / regalo) y F1 deja de asumir el motivo por el que le sigue. El "Y" del método: se sembró exemplar de entrega (enlace + pregunta ligera), no una prohibición.
 
-🚩 **Decisión pendiente de Iván — "Carlos".** Esa misma bienvenida dice *"Activo a Carlos que es mi asistente virtual para que te la mande si la quieres"*. Choca de frente con el diseño entero del coach: **el setter ES Pepe** (`coach_identity_role`), el anti-IA responde *"jajaj que va, soy Pepe"* y el apagado silencioso del WhatsApp se justifica en que "quien retoma ES Pepe, así que no hay nada que anunciar". Si entra Carlos, la autoridad del bloque (el menisco, los 1000 acompañados, el embajador) deja de ser de quien escribe. Recomendación dada a Iván: que Pepe quite esa línea de la bienvenida. No se ha tocado nada del bloque por esto.
+🚩 **Decisión abierta — "Carlos" y el AVISO DE IA. No es un tema de Pepe: es de plataforma.**
+
+Esa misma bienvenida dice *"Activo a Carlos que es mi asistente virtual para que te la mande si la quieres"*, y choca de frente con el diseño del coach: **el setter ES Pepe** (`coach_identity_role`), el anti-IA responde *"jajaj que va, soy Pepe"* y el apagado mudo del WhatsApp se justifica en que "quien retoma ES Pepe, así que no hay nada que anunciar".
+
+Mi primera lectura fue que Pepe se salía del guion y había que pedirle que quitara la línea. **Era la lectura equivocada.** El 01-08, un smoke en el simulador devolvió *"Buenas! Soy el asistente virtual de Pepe Jiménez 🧡"* — frase que no está en el bloque (que la prohíbe en tres sitios) y con un corazón, que el banco de emojis veta. Iván localizó el origen: **un toggle de Automatía, "AVISO DE IA"**, que al activarse:
+
+1. hace que **el primer mensaje anuncie que es un asistente virtual**, con nombre propio (el preview de la plataforma es *"Hola! Soy Ana, la asistente virtual de Programa X"*), con el término configurable entre "asistente virtual" / "IA" / "setter virtual";
+2. y, si el lead pregunta si habla con una persona, **manda la conversación a atención manual sin que la IA conteste**.
+
+Consecuencias, y no son de Pepe sino de **los 10 bloques de academia**:
+
+- Con el toggle ON, **`coach_identity_notia` es código muerto en todos**: el toggle intercepta la pregunta antes de que el coach pueda responder su literal ("jajaj que va, soy Pepe", "soy Cristina", "Soy Miguel", y el "NO eres una asistente virtual ni una IA, eres 100% Alex" de Alex).
+- La autoridad en primera persona del bloque de Pepe (el menisco, "yo también me estanqué", los 1000 acompañados) queda montada encima de una presentación que dice que es un asistente. Es lo más caro de perder: costó dos rondas construirlo (§RECONOCIMIENTO).
+- El apagado mudo del WhatsApp deja de tener sentido: si el lead sabe que habla con un asistente, el traspaso hay que anunciarlo.
+- **El "Carlos" de Pepe encaja con el toggle**, no contra él: es el nombre propio que la opción pide.
+
+**Estado: congelado por Iván (01-08). Nada tocado — ni bloque, ni config, ni mensaje a Pepe.** Se decide en reunión el lunes 03-08. La decisión real es de plataforma (toggle ON u OFF, y para todos), no un parche en el bloque de Pepe. Para esa reunión conviene tener leído el aviso plegado *"Antes de desactivarlo, lee esto"*, que probablemente sea el motivo de cumplimiento por el que existe la opción.
 
 **Dos cosas más que entraron aprovechando la ronda:**
 
@@ -147,6 +163,79 @@ Cierra casi todo lo que quedaba "bloqueado esperando a Pepe" desde la ronda 2.1.
 2. **El precio se contradecía consigo mismo:** el encabezado decía *"protocolo de 2 toques — la segunda respuesta NUNCA repite la primera"* y tres líneas más abajo *"LITERAL ÚNICO… siempre esta explicación, sin versiones propias"*. El encabezado era resto de antes de tu corrección del 28/07 (un solo literal, el de Pepe). Resuelto a favor de tu decisión: **mismo literal en los dos toques, lo que cambia es el peldaño de la escalera** con el que reconduces, y la dimensión 6 de `coach_tone_variety` lleva ahora la excepción explícita. Sin esto, el modelo tenía licencia para reescribir el literal en el segundo toque — que es exactamente lo que Pepe prohibió.
 
 **A vigilar en el smoke** (no es un fallo, es un roce de diseño): el literal de precio acaba en "te parece?" y detrás va la reconducción, así que ese turno lleva dos interrogantes y roza el "una sola pregunta por turno". Si suena a formulario, lo que se toca es el literal — y eso es decisión de Pepe.
+
+## Ronda 4 — 2026-08-03 (Pepe: precio con cifra + la entrega del LM "no se parece a mí")
+
+Ronda corta y de alto valor: **desbloquea el 🔴 del precio** que llevaba abierto desde la ronda 3 y corrige el primer mensaje que ve el lead.
+
+**1. El precio ya tiene cifra: "desde 110€ al mes".** Su instrucción es de matiz, no de volantazo: *"quiero que siga igual, que trate de evitarlo, pero que si la persona insiste diga que puede unirse al EQUIPO PJ desde 110€ al mes"*. Y añade que el fraccionado a 12 meses *"no hace falta que lo diga"*.
+
+Dónde entra fue la única decisión fina. La ronda 3 había anticipado "toque 1", pero su frase separa los dos movimientos con claridad — *evitar* es el toque 1, *insistir* es el toque 2 — así que el protocolo pasa de **2 toques + cualificación** a **3 movimientos distintos**: evitar (literal 27/07) → dar el "desde" (literal nuevo) → cualificar la intención (sin cambios). Efecto colateral bueno: el toque 2 ya no repite al 1, así que **desaparece la excepción a la regla de no repetir fórmula** que tuvimos que escribir en la ronda 3, y con ella el roce de los dos interrogantes en el mismo turno (el literal nuevo cierra sin pregunta a propósito, y la pregunta del turno es el peldaño de la ESCALERA).
+
+> 🚩 **La cuenta no cuadra, y es un riesgo de marca del mismo tipo que el "tú y yo" de la ronda 1.** El bloque dice **6 meses** de acompañamiento y lo dice con generosidad. Un lead que oye *"desde 110€ al mes"* en esa conversación multiplica: 110 × 6 = **660€**. El real, fraccionado a 12, son **1320€**. Ese desfase estalla en la llamada.
+> Decisión de Iván: **no se ofrece, pero si pregunta no se miente.** Regla nueva en `coach_objections_price` para "y eso cuántos meses?" / "entonces son 660?": no se confirma la cuenta, no se da el total, y **tampoco se escurre** con un "eso lo vemos en la llamada" pelado — se dice lo que sí es verdad y se sabe (*"el fraccionado va por su lado, no va atado a los 6 meses"*). Pendiente de contrastar con Pepe qué quiere exactamente ahí.
+
+Y como se abre la puerta a UNA cifra, hay que cerrar el resto con llave: veto binario de totales, importes de pago único, número de cuotas, porcentajes y descuentos, más la regla de no estimar. Las cifras viejas (1197€, 1400€, 4×350€) nunca estuvieron escritas en el bloque, pero ahora que existe una cifra legítima el modelo tiene una excusa para inventar vecinas.
+
+**2. La entrega del lead magnet era seca — y el molde seco lo escribí yo.** Pepe: *"el mensaje es muy seco y no se parece a mí"*, y la captura confirma que salió exactamente el molde de la ronda 3 (*"Toma, aquí la tienes: [link] / Échale un vistazo…"*). Su versión: **"Grande!! Te dejo por aquí el link : [link] 😜😜"**.
+
+Lo que enseña, más allá del literal: **el lead acaba de decir que sí a un regalo, y lo que toca primero es alegrarse con él, no entregar un archivo.** El molde anterior era funcionalmente correcto y emocionalmente plano. Regla nueva: la celebración va SIEMPRE delante del enlace, nunca el link a pelo. La segunda burbuja (pregunta de F1) se mantiene obligatoria — Pepe critica el tono, no la pregunta, y sin ella el lead contesta "gracias" y la conversación muere.
+
+Tres tokens de voz verificados nuevos, y **dos rompían reglas duras del bloque**:
+
+| Token | Choque | Resolución |
+|---|---|---|
+| "Grande!!" | ninguno | al lexicón y al Modo C de openers, acotado a *cuando hay algo que celebrar* (de arranque neutro sería piloto automático) |
+| "Te dejo por aquí el link" | ninguno | al lexicón; sustituye a "Toma, aquí la tienes" |
+| **"😜😜"** | 😜 no estaba en el banco **y** son DOS emojis contra el *"máximo 1 por mensaje"* | 😜 entra en humor; el **doblado** se instala como recurso propio |
+
+El doblado se resolvió por el precedente exacto del `!!`, que también era suyo y también rompía la norma: **recurso propio acotado por frecuencia**, no excepción de un literal. Reglas calcadas — solo en celebración/energía, máx 1 de cada 3 mensajes, nunca dos seguidos, nunca triple, y prohibido en Puente, propuesta, cierres, correcciones y la negativa de suplementación. El riesgo que se está gestionando es el caso Frodo ([[feedback_coach_tic_repeticion_metodo]]): dejar `😜😜` suelto en el corpus sin acotar es sembrar el tic.
+
+**3. El anti-IA cambia de doctrina — y esto NO es de Pepe, es de plataforma.** Cierra el segundo 🔴 de la ronda 3. Acuerdo de la reunión del 03-08: **ya no se puede responder que quien escribe es el profesional.** Si el lead pregunta si habla con una IA, la respuesta honesta es que habla con un asistente virtual — y como esa respuesta la da el toggle de Automatía, el bloque hace lo único que le queda: **callar y derivar**.
+
+`coach_identity_notia` pasa de literal de desmentido (*"jajaj que va, soy Pepe 😁"*) a **apagado mudo** + `manual_attention` + `skip_reply` (motivo: `deteccion_ia`), con prohibición binaria de negar la IA en cualquier variante. Es el mismo mecanismo que el trigger 4 (WhatsApp), y por la misma razón: lo que se prohíbe es mentir, no la voz.
+
+Dos ajustes de coherencia que arrastraba: `coach_identity_role` decía *"El setter ES Pepe: el lead cree que habla contigo, **y así es**"* — esa cola es la semilla del desmentido, así que se reescribe separando **voz** (que no se toca: sigue siendo Pepe en primera persona, el menisco, los 1000 acompañados) de **identidad afirmada** (que desaparece). Y el trigger 4 justificaba el apagado mudo en *"el lead cree que habla con Pepe"*; ahora se justifica en lo que es verdad de por sí: quien retoma es Pepe, así que no hay traspaso que anunciar.
+
+⚠️ **Esto afecta a los 10 bloques de academia, no solo a Pepe.** El `coach_identity_notia` de Alfonso, Roberto, Frodo, Chema, Beatriz, Miguel, Alex, Andrea y Luis Royán sigue diciendo alguna variante de "que va, soy X" — y el de Alex es literalmente *"NO eres una asistente virtual ni una IA, eres 100% Alex"*. Con el acuerdo del 03-08 todos son instrucciones de mentir. **Pepe es el primero migrado; los otros 9 están pendientes** y no se han tocado en esta ronda.
+
+### Ronda 4.1 — mismo día, segunda tanda de Pepe (3 feedbacks + la bienvenida definitiva)
+
+**0. La bienvenida se cierra en TRES mensajes, no dos.** Pepe manda la estructura final y hay que respetarla al pie:
+
+> 1) "Grande!! Te dejo por aquí el link 😜😜"
+> 2) "https://youtu.be/seN76Fg721g"
+> 3) "Échale un ojo porque seguro que te viene muy bien!! 😬 Y ya por curiosidad, has competido alguna vez en HYROX o estás metiéndote en el mundillo ahora??"
+
+El cambio de fondo respecto a lo aplicado horas antes: **el enlace va SOLO en su burbuja**, no pegado al "Grande!!". Y el mensaje 3 rompe dos normas del bloque a la vez — lleva el emoji **en medio** (no al final) y cierra con **doble interrogación**. Ninguna de las dos se corrige: quedó anotado en el bloque como excepción de formato explícita, porque si no el modelo las "arregla" hacia la norma.
+
+**Los signos dobles suben de excepción a norma** (Iván, 03/08: *"no es nada malo, es lo que más suelo utilizar"*). La regla vieja del "!!" era un techo (*"hasta 1 de cada 2 mensajes"*); la nueva es un default en dos tiempos: **si el mensaje cierra con signo, va doble** ("!!" o "??") y eso es la gran mayoría, con algún simple suelto para que no suene mecánico — **pero no todos los mensajes llevan signo**. Correcciones, observaciones, el Puente y los mensajes serios cierran sin nada. Sin esa segunda mitad el recurso se satura y deja de significar energía.
+
+**1. El cierre del recap salía SIEMPRE idéntico.** La captura lo enseña crudo: *"Voy bien o me dejo algo?"* dos veces en la misma conversación (18:16 y 18:24). Pepe: *"se nota mucho que es IA"*. El literal estaba escrito como único en tres sitios del bloque, así que el modelo hacía lo correcto según el prompt.
+
+Mi primer arreglo fue un banco rotativo de cierres aplicable a cualquier recap. **Iván lo corrigió, y el suyo es mejor:** el problema no era el cierre repetido, era que **hubiera dos resúmenes**. Regla final: **UN SOLO RESUMEN en toda la conversación, el Puente de F4**, prohibido recapitular o pedir confirmación antes. El banco de 4 cierres se queda, pero para variar **entre** conversaciones, no dentro de una — el cierre se usa una vez porque el resumen es uno.
+
+Lección de método: cuando un literal se repite, mirar si el problema es el literal o **la estructura que lo invoca dos veces**. Rotar el literal habría escondido el mini-recap en vez de quitarlo.
+
+**2. El guion largo (—) en mitad de mensaje: PROHIBIDO BINARIO.** Su frase, en mayúsculas: *"ESTO ES UN RASGO DE QUE ES IA, DEBE ESTAR COMPLETAMENTE ELIMINADO DE CUALQUIER MENSAJE"*. Caso real: *"Oye, que hoy no hayas ido no lo cambia todo — lo que me acabas de decir sí lo cambia"*.
+
+Verificado antes de escribir la regla, por el precedente del "Y" (que estaba sembrado en 7 sitios del propio prompt): **el corpus de voz está limpio** — 0 guiones en exemplars, literales citados y moldes de fase, y no solo en Pepe: **en los 10 coaches de academia**. Los **91 guiones del fichero viven todos en prosa instruccional mía**, que el modelo lee como instrucción y no como muestra de voz. Se deja así de momento; si el guion reaparece en el smoke, la siguiente pasada es limpiar la prosa.
+
+> 🔑 **La causa real es de arquitectura, y es el hallazgo transferible de esta ronda.** La [doctrina universal](../../prompts/coach-engineering/doctrina-universal.md) **ya prohibía el guion largo** (*"PROHIBIDO el guion largo '—' y el guion como inciso → usar paréntesis o comas"*). Pero la doctrina es **KB de autoría**: vive en el repo para que yo escriba bien los bloques, y **no se despliega a Automatía** — allí solo va el `<coach_block>`. La regla estaba escrita donde el modelo nunca la lee.
+>
+> Consecuencia: **cualquier regla de voz que viva SOLO en la doctrina universal es inejecutable en producción.** Si tiene que gobernar lo que el setter escribe, tiene que estar dentro del bloque de cada coach. Pepe es el primero que la lleva; los otros 9 van a seguir produciendo guiones hasta que se propague. Conviene auditar qué más de la doctrina está en esa situación.
+
+Y con el guion se va **la estructura que lo sostenía**: "no X, Y sí" / "eso no lo cambia todo, esto sí". Es la hermana con guion del "no se trata de X sino de Y" que ya estaba vetado en el lexicón — quitar el guion sin quitar la construcción no habría arreglado nada. Su versión natural, sembrada como ✅: *"Bueno pienso que al final hay días y días, con que vayas uno de estos y empieces ya vas por buen camino"* — no contrapone nada, quita hierro y empuja hacia delante.
+
+**3. Dos cosas en un solo mensaje: anular al lead y el tic del "ancla".** Caso real: *"Ahí está el ancla. En HYROX la carrera es la mitad del crono y si no la trabajas de forma estructurada el tiempo no baja, **da igual la fuerza que tengas**"* — dicho a un lead que acababa de contar que en fuerza va bien.
+
+> **Doctrina nueva de este avatar: corregir no es anular.** Pepe: *"no puede decirle eso porque no es verdad y porque queda muy cortante"*. La corrección con criterio de la ronda 2 dice qué FALTA; lo que no puede hacer es tachar lo que el lead ya tiene. Su versión: *"Ahí está la clave!! Piensa que en HYROX el 50% de la carrera es correr, si no la llevas bien al final la fuerza no va a permitirte recortar mucho tiempo"* — la fuerza sigue en pie, solo deja de ser suficiente. Vetadas en el lexicón las fórmulas de anulación ("da igual X", "eso no te sirve de nada").
+
+Y **"el ancla" se retira** (*"lo pone en varios mensajes, no es muy yo"*). Sustitutos suyos: **"Ahí está la clave!!"** y **"Ahí está el punto!!"**. Aplicado [[feedback_coach_tic_repeticion_metodo]] — se reescribieron los 5 literales que lo contenían (voiceprint, exemplar, contraste y dos del banco de correcciones) en vez de añadir un cupo, y las instrucciones que decían "se le nombra el ancla" pasan a "se le señala el punto que le frena". Ojo al matiz: **"anclar" como técnica interna se queda** (anclar la pregunta en algo que dijo el lead, §19) — esa palabra nunca sale por chat, el tic era el sustantivo "el ancla" dentro del mensaje.
+
+⚠️ Riesgo asumido y anotado en el bloque: sustituir un tic por dos fórmulas fijas puede generar el tic siguiente. Regla explícita de alternarlas y de que hay correcciones que entran sin fórmula ninguna.
+
+**Aviso de higiene:** el fichero que Iván trajo a esta sesión (`Downloads/coach_block_pepe_jimenez.md`) estaba **desincronizado del repo**: le faltaba el fix del precio del commit `220aed9` y tenía el `coach_identity_notia` borrado a mano. Se aplicó sobre el repo (canónico) y se sincronizaron las dos copias de `Downloads/` a la misma versión, con backup `.pre-2026-08-03.bak.md`. Regla que confirma: **el bloque canónico es el del repo**; las copias de Downloads son artefactos de despliegue y se regeneran, nunca se editan a mano.
 
 ## Dónde vive cada cambio dentro del bloque
 
@@ -169,9 +258,14 @@ El fichero empieza en `<coach_block>` y termina en `</coach_block>`, sin changel
 
 ## Abierto
 
-- 🔴 **La cifra del "desde X" del precio** (ronda 3, punto 4b). Es lo único que bloquea cerrar la ronda. En cuanto Pepe la mande: toque 1 de `coach_objections_price` + comprobar que la financiera de Hotmart está viva antes de mencionar las 12 cuotas.
-- 🔴 **Decisión sobre "Carlos"** en la bienvenida nueva (ronda 3). Hasta que Iván conteste a Pepe, el bloque sigue asumiendo que el setter es Pepe.
-- **Corpus de voz real.** El voiceprint está construido sobre el formulario de alta, no sobre cómo escribe. El "no transmite la autoridad de Pepe" del informe no se cierra del todo sin 10-15 mensajes suyos de DM. De esta ronda salieron sus primeros tokens verificados: "Muy toop!!", "minutillos", "Échale un vistazo", el "!!" mucho más frecuente de lo que el bloque permitía y 😊 (que no estaba en su banco).
+- 🔴 **Migrar el anti-IA a los otros 9 coaches de academia** (ronda 4). Pepe ya está; Alfonso, Roberto, Frodo, Chema, Beatriz, Miguel, Alex, Andrea y Luis Royán siguen con un literal que niega ser una IA, contra el acuerdo del 03-08. El de Alex (*"NO eres una asistente virtual ni una IA, eres 100% Alex"*) es el más explícito. Patrón a replicar: apagado mudo + `manual_attention` + `skip_reply` (motivo: `deteccion_ia`) + separar voz de identidad afirmada.
+- 🔴 **Propagar la prohibición del guion largo a los otros 9 coaches** (ronda 4.1). La doctrina universal ya lo prohíbe, pero la doctrina no se despliega: hoy los 9 bloques restantes no llevan la regla y van a seguir escribiendo "—" en producción. Va en la misma pasada que el anti-IA.
+- 🟠 **Auditar qué más de la doctrina universal es inejecutable** (ronda 4.1). El guion salió porque la regla estaba solo en la KB de autoría. Merece un barrido de la doctrina buscando otras reglas de VOZ (no de método) que ningún bloque haya interiorizado.
+- 🟠 **Vigilar que "Ahí está la clave!!" no se convierta en el tic siguiente** (ronda 4.1). Sustituye a "el ancla", que cayó justo por repetitivo. Hay regla de alternancia escrita, pero es exactamente el patrón que [[feedback_coach_tic_repeticion_metodo]] avisa que reaparece.
+- 🟠 **Contrastar con Pepe la cuenta del "desde 110€"** (ronda 4). El lead que oiga "110€/mes" y "6 meses" calcula 660€ cuando el fraccionado a 12 son 1320€. Hoy el bloque no confirma la cuenta ni da el total, pero conviene que Pepe diga con qué palabras quiere que se responda — o si prefiere que se deje de decir la duración cuando ha salido el precio.
+- ~~🔴 La cifra del "desde X" del precio~~ → **resuelto en la ronda 4**: 110€/mes, en el toque 2. La financiera de Hotmart no se menciona (ni las 12 cuotas), así que ya no hace falta verificar que esté viva.
+- ~~🔴 El toggle AVISO DE IA~~ → **decidido el 03-08** y aplicado a Pepe en la ronda 4: no se puede negar ser una IA. Pendiente propagarlo (arriba).
+- **Corpus de voz real.** El voiceprint está construido sobre el formulario de alta, no sobre cómo escribe. El "no transmite la autoridad de Pepe" del informe no se cierra del todo sin 10-15 mensajes suyos de DM. Tokens verificados hasta ahora: "Muy toop!!", **"Grande!!"**, "minutillos", "Échale un vistazo", **"Te dejo por aquí el link"**, el "!!" mucho más frecuente de lo que el bloque permitía, 😊 (que no estaba en su banco) y el **emoji doblado 😜😜** (ronda 4).
 - **Bug fuera del prompt:** la IA envió *"Sin respuesta."* cuando el lead sí había respondido, y siguió como si nada. Es del pipeline de Automatía (generator/splitter emitiendo un placeholder), no del coach. Sin diagnosticar.
 - ~~`{{tracked_calendar_url}}` y `trainer_preferences` en un bloque de academia~~ → resueltos en la ronda 3: eliminados. El Calendly del EQUIPO PJ va literal.
 - **Smoke de la ronda 3 sin hacer.** Lo que hay que ver en Automatía: (a) que con la bienvenida del regalo la IA manda el YouTube en su primer turno y sigue conversando en vez de callarse; (b) que la comunidad sale en el último mensaje de un cierre sin cita y NO se repite si ya se mandó antes; (c) que responde "6 meses" sin mandarlo a la llamada; (d) que tras el cierre post-agenda no escribe ni una burbuja más.
