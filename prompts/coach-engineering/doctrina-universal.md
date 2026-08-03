@@ -592,6 +592,29 @@ Búscala en cualquier coach que tenga a la vez microcompromisos y trigger de cie
   salida por elemento ausente es un cierre cálido, un problema de *timing* se convierte en pérdida de pipeline,
   y eso no se ve en un smoke happy-path. Lo que cierra es que el lead **no se abra**, nunca que te falte un dato.
 
+**Antes de recortar preguntas por §19, comprobar si lo que sobra es el CUÁNTO o el CÓMO.** Cuando un
+trainer dice que la conversación suena a interrogatorio, el reflejo es quitar preguntas. Tres casos
+seguidos en una semana demuestran que casi siempre el problema es la FORMA del turno, no el número:
+
+- **Beatriz** (28-jul): reclamó el bloque de método que §19 le había borrado del prompt.
+- **Miguel** (31-jul): *"se queda corto al final"* — el tope estaba escrito en su propio bloque (máximo 2
+  preguntas de cambio), y una pregunta de cualificación vivía plegada dentro de un literal de handoff.
+- **Frodo** (03-ago): sus 6 preguntas seguían en el prompt, bajo un *"máximo 2 de este banco en TODA la
+  conversación"*. Se quejó a la vez de que la IA no hacía sus preguntas y de que los leads no llegaban
+  cualificados: **era la misma queja**.
+
+Los coaches que sí cualifican no bajan los elementos exigidos para dejar de sonar a formulario: relajan el
+CÓMO (recoger antes de preguntar, una sola pregunta por mensaje, aporte del entrenador intercalado,
+encadenado semántico), nunca el CUÁNTO. Y **ninguno pone su cuota global sobre las preguntas del
+entrenador**: las cuotas inejecutables viven sobre tics de estilo (emojis, apelativos, muletillas), donde
+fallar cuesta un emoji de más y no un embudo vacío.
+
+**Corolario operativo:** un tope global sobre unidades que el propio bloque manda parafrasear ("adáptala
+siempre a sus palabras") es incontable — el modelo tendría que clasificar si su propia pregunta reescrita
+cuenta, y después contar esas clasificaciones a lo largo de N turnos sin llevar estado. Y se autocumple
+**hacia abajo**: pasarse de un tope es una infracción visible, quedarse corto no lo es. Un suelo, en
+cambio, se resuelve releyendo — la evidencia la escribió el lead y el lead está entero en el contexto.
+
 Cross-link [[§19]] (anclar el bloqueo), [[§22]] (los criterios son una pregunta, no un tema), [[§24]] (el
 silencio cualifica), [[§25]] (flujo encadenado).
 
@@ -607,4 +630,5 @@ silencio cualifica), [[§25]] (flujo encadenado).
 - Postmortem objeción de precio nombra videollamada (§26/§27): [`postmortems/objecion-precio-nombra-videollamada.md`](postmortems/objecion-precio-nombra-videollamada.md).
 - Fuente §26–§29 + §11.15 + enmiendas §19/§20: ronda coaches academia 2026-07-13 (reunión Rubén 13-jul + feedback trainer Alfonso #64). Coaches tocados: Alfonso 2.0, Roberto 3.0.
 - Fuente §31: feedback #64 de Alfonso 2026-07-31 ("inducción prematura a videollamada"). Root-cause y reconciliación en [`academia/alfonso.md`](academia/alfonso.md) (`<coach_discovery_gate>`) y en [`docs/knowledge/project_alfonso_coach_feedback.md`](../../docs/knowledge/project_alfonso_coach_feedback.md).
+- Fuente del corolario CUÁNTO-vs-CÓMO de §31: tercera ocurrencia del mismo patrón (Beatriz 28-jul, Miguel 31-jul, Frodo 03-ago). Caso completo y comparativa de los 6 coaches que sí cualifican en [`docs/knowledge/project_frodo_coach_feedback.md`](../../docs/knowledge/project_frodo_coach_feedback.md).
 - Fuente §30: directiva de Iván 2026-07-31 a raíz del feedback de Alfonso ("la IA se debe pausar, REGLA OBLIGATORIA"). Patrón de referencia: [`avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md`](avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md) (Automatía Pro). Coach migrado: [`academia/alfonso.md`](academia/alfonso.md).
