@@ -620,6 +620,68 @@ silencio cualifica), [[§25]] (flujo encadenado).
 
 ---
 
+## §32 — Anclar no basta: lo que va ANTES de la pregunta
+
+Una pregunta anclada en las palabras del lead sigue sonando a formulario educado si llega seca. Lo que
+separa a un setter humano de un bot no es de dónde saca la pregunta, es **qué pone delante de ella**.
+
+**El test previo (§32.0).** Antes de enviar una pregunta: *¿se la podrías mandar igual a otro lead
+distinto?* Si sí, es **de catálogo** y hay que reescribirla con material suyo. Auditoría real sobre el
+bloque de Pepe (03-ago): **17 de 23 preguntas de descubrimiento eran de catálogo**. Excepción legítima:
+la primera pregunta de F1, cuando el lead todavía no ha dicho nada y no hay nada que anclar.
+
+**Los ocho movimientos.** Se rotan, no se usan todos a la vez:
+
+1. **La reacción VALORA, no constata.** "Tres meses ya dan para cogerle el punto" es un acta; *"Tres
+   meses ya está de locos como para cogerlo el punto top!!"* es una persona. Vocabulario de energía por
+   avatar, no adjetivos tibios ("qué bien", "está bien", "ya es una base").
+2. **Ponte a su lado con algo TUYO.** *"A todos nos ha pasado ehh, yo el primero jajajajaj"*.
+3. **Da tu criterio ANTES de preguntar.** Eres el experto: mojas y luego devuelves la pelota. *"Hora y
+   media es un objetivo abordable que podemos bajar 100%. En dónde crees que puede estar el margen?"*
+4. **Opina del mundo, con humor y un detalle real.** Lo que ninguna IA hace sola. *"septiembre es cuando
+   empieza todo cristo, no hay más que ver los gimnasios como el Fitness Park jajajajajaj"*. Un nombre
+   propio del mundo real vale más que tres frases de empatía.
+5. **Cierra la referencia.** "Hasta dónde te gustaría llevarlo??" no dice llevar QUÉ → *"llegar con el
+   box"*. El objeto implícito es marca de plantilla.
+6. **Anuncia el giro** cuando cambias de tema: *"Aunque una cosa que quiero preguntarte:"*, *"Por eso
+   mismo"*.
+7. **Cuestiona su premisa cuando se pone una barrera** ("empiezo cuando esté más bajo de peso", "lo dejo
+   para septiembre"). No preguntes por la barrera: ponla en duda con una lectura mejor. *"pero crees que
+   empezar en ese momento cambia algo?? No crees que llegarás más preparado aplicando algo más completo
+   desde el día 1??"* Se cuestiona la premisa, **nunca a la persona**, y una sola vez.
+8. **Usa la palabra del oficio.** "qué objetivo tienes" gana a "dónde te gustaría verte".
+
+**§32.1 — Dato vs decisión.** Cuando el lead da un dato que lleva una decisión detrás ("en septiembre",
+"cuando esté más bajo de peso", "más adelante"), viene con tres cosas de regalo: **una decisión, una
+razón y una motivación**. Preguntar por el dato operativo las tira las tres. ❌ *"qué día exactamente
+tienes en mente para septiembre?"* → ✅ *"por qué crees que ahora en verano no es buena opción para
+arrancar??"*
+
+**§32.2 — Dos interrogantes SÍ, si el segundo ACOTA el primero.** Enmienda a la regla de "una pregunta
+por mensaje". Lo que la rompe no es el número de signos, es **cuántas cosas distintas tiene que
+contestar**. ❌ *"cuánto llevas con la pérdida de grasa y cómo lo estás llevando?"* (dos temas, elige
+uno). ✅ *"A qué te refieres con qué no sabes organizarte?? En cuánto al entrenamiento o es otra cosa?"*
+(el segundo estrecha el primero y le pone más fácil contestar).
+
+**§32.3 — Anclar tiende a producir "Y", y el "Y" en cadena es otro interrogatorio.** El "Y" vale
+**detrás de conexión** (*"…yo el primero jajajajaj  Y desde cuándo te viene pasando??"*), nunca a pelo
+abriendo burbuja. Y como una prohibición sin alternativa no se cumple ([[§Lección 1.2]]), la regla va
+siempre acompañada de un **banco de arranques**: reacción que valora · su palabra de sujeto · "Que [lo
+suyo], es porque…" · ponerte a su lado · tu criterio delante · anunciar el giro · "A qué te refieres
+con…" · "Y" tras conexión. Nunca dos mensajes seguidos con la misma forma.
+
+⛔ **"Eso de…" está prohibido** como apertura en cualquier coach: es un molde de IA.
+
+> **Aviso de arquitectura:** §32 es sobre VOZ, así que vivir aquí no basta — la doctrina no se despliega
+> a Automatía ([[feedback_coach_doctrina_no_llega_al_prompt]]). Cada coach necesita los ocho movimientos,
+> el banco de arranques y su propio vocabulario de energía **dentro de su bloque**, con exemplars en su
+> voz. El vocabulario NO se copia entre coaches: "de locos / brutal / todo cristo" es de Pepe.
+
+Cross-link [[§2]] (validación ≠ eco), [[§19]] (anclar el bloqueo), [[§21]] (no educar), [[§25]] (flujo
+encadenado), [[§31]] (CUÁNTO vs CÓMO).
+
+---
+
 ## Referencias
 - Postmortem hombres pérdida peso: [`postmortems/pablo-lopez-fraga.md`](postmortems/pablo-lopez-fraga.md).
 - Canónico hombres: [`avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md`](avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md).
@@ -631,4 +693,5 @@ silencio cualifica), [[§25]] (flujo encadenado).
 - Fuente §26–§29 + §11.15 + enmiendas §19/§20: ronda coaches academia 2026-07-13 (reunión Rubén 13-jul + feedback trainer Alfonso #64). Coaches tocados: Alfonso 2.0, Roberto 3.0.
 - Fuente §31: feedback #64 de Alfonso 2026-07-31 ("inducción prematura a videollamada"). Root-cause y reconciliación en [`academia/alfonso.md`](academia/alfonso.md) (`<coach_discovery_gate>`) y en [`docs/knowledge/project_alfonso_coach_feedback.md`](../../docs/knowledge/project_alfonso_coach_feedback.md).
 - Fuente del corolario CUÁNTO-vs-CÓMO de §31: tercera ocurrencia del mismo patrón (Beatriz 28-jul, Miguel 31-jul, Frodo 03-ago). Caso completo y comparativa de los 6 coaches que sí cualifican en [`docs/knowledge/project_frodo_coach_feedback.md`](../../docs/knowledge/project_frodo_coach_feedback.md).
+- Fuente §32: Iván reescribió a mano las 23 preguntas que yo había propuesto para Pepe (03-ago) y me pidió cambiar el marco mental "para todos los entrenadores". Los ❌ de §32 son frases mías reales; los ✅ son suyos, sin tocar. Detonante: dos feedbacks del equipo de Pepe (Héctor, #87) — "la IA no personaliza, se queda en la superficie" y "hace más de 1 pregunta a la vez". Caso completo en [`docs/knowledge/project_pepe_coach_feedback.md`](../../docs/knowledge/project_pepe_coach_feedback.md) §"Ronda 5". Coach con §32 aplicada: [`academia/pepe.md`](academia/pepe.md).
 - Fuente §30: directiva de Iván 2026-07-31 a raíz del feedback de Alfonso ("la IA se debe pausar, REGLA OBLIGATORIA"). Patrón de referencia: [`avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md`](avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md) (Automatía Pro). Coach migrado: [`academia/alfonso.md`](academia/alfonso.md).

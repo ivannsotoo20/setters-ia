@@ -237,6 +237,43 @@ Y **"el ancla" se retira** (*"lo pone en varios mensajes, no es muy yo"*). Susti
 
 **Aviso de higiene:** el fichero que Iván trajo a esta sesión (`Downloads/coach_block_pepe_jimenez.md`) estaba **desincronizado del repo**: le faltaba el fix del precio del commit `220aed9` y tenía el `coach_identity_notia` borrado a mano. Se aplicó sobre el repo (canónico) y se sincronizaron las dos copias de `Downloads/` a la misma versión, con backup `.pre-2026-08-03.bak.md`. Regla que confirma: **el bloque canónico es el del repo**; las copias de Downloads son artefactos de despliegue y se regeneran, nunca se editan a mano.
 
+## Ronda 5 — 2026-08-03 (la humanización de las preguntas: el cuello de botella era yo)
+
+Dos feedbacks del equipo de Pepe (Héctor, #87, 21h) que apuntan al mismo sitio: **"la IA no personaliza ni se centra en el dolor real, se queda en la superficie"** y **"hace más de 1 pregunta a la vez"**. El caso que lo retrata: lead dice *"me encantaría competir más en serio, pero lo dejamos para septiembre, empezar ya con el verano se complica"* → la IA contesta *"Genial! Y qué día exactamente tienes en mente para septiembre?"*. Tres cosas servidas en bandeja (una decisión, una razón, una motivación nueva) y va a por el dato de calendario.
+
+**La auditoría, y es incómoda: 17 de las 23 preguntas de descubrimiento del bloque eran DE CATÁLOGO.** El test que las descubre es de una línea: *¿se la podrías mandar igual a otro lead distinto?* "A qué tiempo te gustaría llegar?", "qué es lo que más se te está atascando?", "cuántos días puedes sacar a la semana?" — todas existen antes de la conversación. No era una regla que faltaba: **eran mis ejemplos**, y el modelo los copiaba porque están escritos como frases cerradas y autosuficientes. (Se salvan las tres de F1: ahí el lead aún no ha dicho nada y no hay material que anclar.)
+
+**Iván reescribió las 23 a mano** y me pidió cambiar el marco mental *"a partir de ahora para todos los entrenadores"*. El hallazgo al comparar las suyas con las mías: **el salto no está en el anclaje — eso ya lo tenía — está en lo que va DELANTE de la pregunta.**
+
+Los ocho movimientos, destilados a [`doctrina-universal.md`](../../prompts/coach-engineering/doctrina-universal.md) §32 y aplicados dentro del bloque:
+
+| # | Movimiento | Mío (❌) | Suyo (✅) |
+|---|---|---|---|
+| 1 | La reacción **valora**, no constata | "Tres meses ya dan para cogerle el punto" | *"Tres meses ya está de locos como para cogerlo el punto top!!"* |
+| 2 | Ponerte a su lado con algo tuyo | (nada) | *"A todos nos ha pasado ehh, yo el primero jajajajaj"* |
+| 3 | Tu criterio ANTES de preguntar | "1h30 lleva ahí un tiempo" | *"Hora y media es un objetivo abordable que podemos bajar 100%"* |
+| 4 | Opinar del mundo, con humor y detalle real | (nada) | *"septiembre es cuando empieza todo cristo, no hay más que ver los gimnasios como el Fitness Park jajajajajaj"* |
+| 5 | Cerrar la referencia | "Hasta dónde te gustaría llevarlo??" | *"…llegar con el box??"* |
+| 6 | Anunciar el giro | (cambio seco) | *"Aunque una cosa que quiero preguntarte:"* |
+| 7 | Cuestionar su premisa | preguntaba por la barrera | *"crees que empezar en ese momento cambia algo?? No crees que llegarás más preparado desde el día 1??"* |
+| 8 | La palabra del oficio | "dónde te gustaría verte" | *"qué objetivo tienes para la próxima??"* |
+
+El **movimiento 4 es el que más me faltaba**: una observación real del mundo con nombre propio (el Fitness Park en septiembre) hace más por humanizar que tres frases de empatía, y es justo lo que un modelo no produce solo.
+
+**Tres reglas mías que sus ejemplos corrigen:**
+
+1. **"Eso de…" prohibido.** Era un tic mío: lo usaba en 4 de mis 23 propuestas. Alternativa suya: *"Que [lo suyo], es porque…"*.
+2. **Dos interrogantes SÍ valen — si el segundo ACOTA el primero.** Esto resuelve la contradicción aparente con el feedback 2 de Héctor: lo que él marcó eran dos preguntas sobre **temas distintos** (*"cuánto llevas y cómo lo llevas"*), que obligan a elegir. Las de Iván son la misma cosa con ayuda para contestar (*"A qué te refieres con qué no sabes organizarte?? En cuánto al entrenamiento o es otra cosa?"*). La regla deja de contar signos y pasa a contar **cuántas cosas distintas tiene que responder el lead**.
+3. **El "Y" vale detrás de conexión.** *"…yo el primero jajajajaj  Y desde cuándo te viene pasando??"*. Lo que mata es el "Y" a pelo abriendo burbuja.
+
+> ⚠️ **Y el aviso que se me adelantó Iván antes de que metiera la pata:** anclar tiende a producir "Y", y sus tres ejemplos de referencia empiezan por "Y". Si copiaba el molde sin más, cambiaba un interrogatorio por otro. De ahí el **banco de 8 formas de arranque** en `coach_tone_openers`, con la regla de no repetir forma en mensajes seguidos. Es la lección de la ronda 1.2 otra vez: **una prohibición sin alternativa no se cumple.**
+
+**Vocabulario nuevo verificado:** *de locos, brutal, a tope, top!!, pff, ahí pica, todo cristo, abordable, margen de mejora, 100%, objetivo/objetivos*, la risa larga (`jajajajaj`), los puntos suspensivos de empatía, y 😉 al banco de emojis (con la regla de que el emoji cae mejor en el momento de broma o cercanía que de relleno).
+
+**Reparto en el bloque:** los 8 movimientos + la prohibición de "Eso de" en `coach_tone_voiceprint`; el banco de arranques en `coach_tone_openers`; el vocabulario en `coach_tone_lexicon`; **19 exemplars suyos tal cual** agrupados por momento en `coach_tone_exemplars`, más un antipatrón explícito del caso de septiembre; seis pares ❌/✅ nuevos en `coach_tone_contrast` (los ❌ son frases mías reales); dato-vs-decisión en F2 punto 3; y el cuestionamiento de premisa en `coach_objections_avatar`.
+
+⚠️ **El vocabulario de energía NO es propagable.** "De locos / brutal / todo cristo" es de Pepe. Al llevar §32 a los otros nueve coaches hay que sacarle a cada entrenador el suyo, de cómo escribe él. Lo que se propaga son los ocho movimientos, el test de catálogo y el banco de arranques.
+
 ## Dónde vive cada cambio dentro del bloque
 
 Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`. **Iván lo rechazó**: el feedback nuevo se traduce a la sección canónica que le toca, no se antepone como capa de conceptos — si no, se salta el protocolo del esquema y el prompt pierde la referencia de dónde vive cada cosa. Destilado a [`formato-saas-coach-v5.md`](../../prompts/coach-engineering/formato-saas-coach-v5.md) §2. Reparto final:
