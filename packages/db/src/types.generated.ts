@@ -2560,11 +2560,11 @@ export type Database = {
         Row: {
           active_members: number | null
           approved_wa_templates: number | null
-          coach_v3_is_placeholder: boolean | null
+          coach_is_placeholder: boolean | null
           created_at: string | null
           created_by: string | null
           ghl_connected: boolean | null
-          has_coach_v3: boolean | null
+          has_coach: boolean | null
           has_config: boolean | null
           has_keywords_bienvenida: boolean | null
           has_keywords_leadmagnet: boolean | null

@@ -8,7 +8,7 @@ import { getServiceRoleClient } from '@/lib/supabase/service-role';
  * onboarding está completo en su conjunto.
  *
  * Lo consumen:
- *   - `/admin/tenants/[id]` (banner warning si `coach_v3_is_placeholder=true`).
+ *   - `/admin/tenants/[id]` (banner warning si `coach_is_placeholder=true`).
  *   - `ActivationChecklist` del dashboard del trainer.
  *   - Posible script CLI futuro `scripts/check-tenant-health.mjs`.
  */
@@ -24,8 +24,8 @@ export interface TenantHealth {
 
   hasConfig: boolean;
   hasTrainerPrefs: boolean;
-  hasCoachV3: boolean;
-  coachV3IsPlaceholder: boolean;
+  hasCoach: boolean;
+  coachIsPlaceholder: boolean;
 
   tokenYcloud: string | null;
   tokenGhl: string | null;
@@ -54,8 +54,8 @@ type ViewRow = {
   created_by: string | null;
   has_config: boolean;
   has_trainer_prefs: boolean;
-  has_coach_v3: boolean;
-  coach_v3_is_placeholder: boolean;
+  has_coach: boolean;
+  coach_is_placeholder: boolean;
   token_ycloud: string | null;
   token_ghl: string | null;
   token_lead_form: string | null;
@@ -81,8 +81,8 @@ function mapRow(row: ViewRow): TenantHealth {
     createdBy: row.created_by,
     hasConfig: row.has_config,
     hasTrainerPrefs: row.has_trainer_prefs,
-    hasCoachV3: row.has_coach_v3,
-    coachV3IsPlaceholder: row.coach_v3_is_placeholder,
+    hasCoach: row.has_coach,
+    coachIsPlaceholder: row.coach_is_placeholder,
     tokenYcloud: row.token_ycloud,
     tokenGhl: row.token_ghl,
     tokenLeadForm: row.token_lead_form,
