@@ -24,6 +24,12 @@ import { timezoneToLabel } from '../lib/timezone-label.js';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
 import { detectAddressing, buildMirrorLeadDirective } from '../lib/detect-addressing.js';
+import {
+  buildLeadOriginDirective,
+  combineSystemDirectives,
+  extractFormAnswers,
+  mapConversationSourceToOrigin,
+} from '../lib/lead-origin.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -69,7 +75,7 @@ export async function processDebounced(
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
     .select(
-      'id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until, conversation_source',
+      'id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until, conversation_source, custom_fields',
     )
     .eq('id', conversationId)
     .maybeSingle();
@@ -359,6 +365,28 @@ export async function processDebounced(
     addressingDirective = buildMirrorLeadDirective(detected);
   }
 
+  // Procedencia de la lead → directiva runtime (origen + canal + respuestas del
+  // formulario). Nada de esto llegaba antes al prompt: `conversation_source`
+  // solo alimentaba `computeAutoPromotedPhase` (más abajo), el composer no tenía
+  // noción de canal, y las respuestas del formulario se descartaban en el
+  // endpoint. Resultado: el setter abría igual en un DM de Instagram que en
+  // WhatsApp, y repreguntaba lo que la persona acababa de escribir en el Tally.
+  //
+  // Va junto a la directiva de tratamiento en el MISMO `extraSystemSuffix`
+  // (el composer solo acepta un string) — de ahí `combineSystemDirectives`.
+  const leadOrigin = mapConversationSourceToOrigin(
+    conv.conversation_source as string | null | undefined,
+  );
+  const leadOriginDirective = buildLeadOriginDirective({
+    origin: leadOrigin,
+    channel: channelTypeDb,
+    formAnswers: extractFormAnswers(conv.custom_fields),
+  });
+  const systemDirectives = combineSystemDirectives(
+    leadOriginDirective,
+    addressingDirective,
+  );
+
   let pipelineOut;
   try {
     pipelineOut = await runPipeline(
@@ -392,9 +420,12 @@ export async function processDebounced(
           leadContact,
           leadTimezoneLabel,
           trainerTimezoneLabel,
-          // Hito 12.1 — Directiva mirror_lead (markdown) si aplica. null si
-          // addressing es 'tu'/'usted' o si detectAddressing devolvió 'ambiguous'.
-          extraSystemSuffix: addressingDirective,
+          // Directivas runtime concatenadas (OUT of cache):
+          //   - origen de la lead (formulario / lead magnet / escribió ella).
+          //   - mirror_lead (Hito 12.1), si addressingMode lo pide y la
+          //     detección no fue 'ambiguous'.
+          // null si ninguna aplica → el builder omite el bloque sintético.
+          extraSystemSuffix: systemDirectives,
         },
       },
     );

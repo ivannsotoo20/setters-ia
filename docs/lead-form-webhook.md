@@ -48,7 +48,12 @@ El `<tenant_token>` lo encuentra el trainer en `/onboarding/integrations` step 4
   "last_name": "García",
   "email": "juan@example.com",
   "source": "vsl_octubre_pablo",
-  "external_id": "form_submission_xyz123"
+  "external_id": "form_submission_xyz123",
+  "answers": {
+    "¿Qué te duele exactamente?": "Zona lumbar",
+    "¿Desde cuándo?": "Más de 2 años",
+    "¿Has probado fisioterapia?": ["Sí", "También osteopatía"]
+  }
 }
 ```
 
@@ -60,6 +65,18 @@ El `<tenant_token>` lo encuentra el trainer en `/onboarding/integrations` step 4
 | `email` | Opcional | Email del lead. |
 | `source` | Opcional | Origen para tracking (ej. `vsl_pablo_octubre`, `tally_form_x`). Se devuelve en la response y se loggea. |
 | `external_id` | Opcional | ID externo del formulario (para dedup futuro). Hoy NO se usa para dedup — el motor dedupea por phone+tenant durante 60s. |
+| `answers` | **Muy recomendado** | Respuestas del formulario como pares `etiqueta → valor`. Ver abajo. |
+
+### `answers` — el contexto de lo que la persona rellenó
+
+Sin esto, **el setter repregunta lo que la lead acaba de escribir en el formulario**, que es el fallo más caro de este flujo: la persona contesta 6 campos en Tally y el primer mensaje le pregunta lo mismo otra vez.
+
+- **Quién lo aplana**: la automation externa (n8n / GHL Workflow). El motor **no conoce el esquema de Tally** y no lo adivina: espera un objeto plano de `etiqueta → valor`. Usa la etiqueta que le quieras enseñar al setter, no el `field_id` del proveedor.
+- **Valores admitidos**: texto, número, booleano (se renderiza `sí`/`no`) y array (se une con comas). Objetos anidados se descartan.
+- **Dónde acaba**: `conversations.custom_fields.form_answers`, y de ahí al system prompt por turno.
+- **Topes** (`apps/motor-agente/src/lib/lead-origin.ts`): 12 campos, 240 chars por valor, 60 por etiqueta. Lo que sobra se corta.
+- **Seguridad**: el contenido lo escribe la lead, así que entra al prompt dentro de un bloque rotulado explícitamente como datos y no como instrucciones. Aun así, **no metas aquí nada que venga de una fuente que no controles**.
+- Solo se inyectan cuando el origen de la conversación es de formulario. En una conversación entrante normal no existen y el setter no las inventa.
 
 ---
 

@@ -54,6 +54,17 @@ const payloadSchema = z.object({
   email: z.string().email().optional().nullable(),
   source: z.string().optional().nullable(),
   external_id: z.string().optional().nullable(),
+  /**
+   * Respuestas del formulario (Tally, Meta Lead Ads, Typeform…), como pares
+   * etiqueta → valor. La automation externa (n8n / GHL Workflow) es la que
+   * aplana los campos del proveedor a este objeto; el motor NO conoce el
+   * esquema de Tally y no debe adivinarlo.
+   *
+   * Se persisten en `conversations.custom_fields.form_answers` y el pipeline
+   * las inyecta al system prompt para que el setter NO repregunte lo que la
+   * persona acaba de escribir.
+   */
+  answers: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 type Payload = z.infer<typeof payloadSchema>;
@@ -211,6 +222,27 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
         channelId,
       });
 
+      // 8b) Persistir las respuestas del formulario en `conversations.custom_fields`.
+      //     El setter las lee por `extraSystemSuffix` (ver lib/lead-origin.ts) para
+      //     no repreguntar lo que la persona acaba de escribir.
+      //     Best-effort: si falla, la bienvenida sale igual — perder el contexto
+      //     degrada la conversación, pero no responder la rompe del todo.
+      if (payload.answers && Object.keys(payload.answers).length > 0) {
+        try {
+          await persistFormAnswers(supabase, conversationId, payload.answers);
+        } catch (err) {
+          request.log.warn(
+            {
+              tenantId,
+              conversationId,
+              answerCount: Object.keys(payload.answers).length,
+              err: err instanceof Error ? err.message : String(err),
+            },
+            'lead-form: persist form answers failed (no fatal)',
+          );
+        }
+      }
+
       // 9) Send welcome
       try {
         const result = await sendWelcomeTemplate({
@@ -281,6 +313,42 @@ async function loadLeadFormSecret(
   return typeof data?.webhook_secret === 'string' && data.webhook_secret.length > 0
     ? data.webhook_secret
     : null;
+}
+
+/**
+ * Merge de las respuestas del formulario en `conversations.custom_fields`.
+ *
+ * `custom_fields` es JSONB NOT NULL (default '{}'). Se hace read-modify-write
+ * conservando el resto de claves: la columna es de uso general y este endpoint
+ * NO es su único escritor potencial.
+ *
+ * NUNCA se loguea el contenido: son respuestas de la lead (PII).
+ */
+async function persistFormAnswers(
+  supabase: ReturnType<typeof getSupabase>,
+  conversationId: number,
+  answers: Record<string, unknown>,
+): Promise<void> {
+  const { data, error: readErr } = await supabase
+    .from('conversations')
+    .select('custom_fields')
+    .eq('id', conversationId)
+    .maybeSingle();
+  if (readErr) throw new Error(`read custom_fields: ${readErr.message}`);
+
+  const current =
+    data?.custom_fields && typeof data.custom_fields === 'object'
+      ? (data.custom_fields as Record<string, unknown>)
+      : {};
+
+  const { error: updErr } = await supabase
+    .from('conversations')
+    .update({
+      custom_fields: { ...current, form_answers: answers },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId);
+  if (updErr) throw new Error(`update custom_fields: ${updErr.message}`);
 }
 
 async function touchLastWebhookAt(
