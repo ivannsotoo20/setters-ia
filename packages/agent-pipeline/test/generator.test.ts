@@ -116,9 +116,14 @@ describe('runGenerator', () => {
     // Anthropic fue llamado con tool_choice forzado y system con cache
     expect(create).toHaveBeenCalledTimes(1);
     const callArg = create.mock.calls[0]![0];
-    // Default cambió a Haiku 4.5 el 2026-05-07 (ver plan playful-petting-pine.md §3.5).
-    expect(callArg.model).toBe('claude-haiku-4-5');
+    // Haiku 4.5 (2026-05-07) → Sonnet 5 (2026-08-09), por calidad de conversación.
+    expect(callArg.model).toBe('claude-sonnet-5');
     expect(callArg.tool_choice).toEqual({ type: 'tool', name: 'respond_as_setter' });
+    // Explícito, no por omisión: en Sonnet 5 omitir `thinking` activa el
+    // pensamiento adaptativo, que comparte techo con la respuesta y podría
+    // cortar la llamada a la herramienta a medias.
+    expect(callArg.thinking).toEqual({ type: 'disabled' });
+    expect(callArg.max_tokens).toBeGreaterThanOrEqual(4096);
     expect(Array.isArray(callArg.system)).toBe(true);
     expect(callArg.system.length).toBeGreaterThan(0);
     expect(callArg.messages).toEqual([
@@ -134,8 +139,11 @@ describe('runGenerator', () => {
     expect(out.usage.tokensInUncached).toBe(50);
     expect(out.usage.tokensInCacheRead).toBe(14_000);
     expect(out.usage.tokensOut).toBe(80);
-    // Haiku 4.5: 50*1 + 14000*0.1 + 80*5 = 50 + 1400 + 400 = 1850 micro-USD = 0.00185
-    expect(out.usage.costUsd).toBeCloseTo(0.00185, 5);
+    // Sonnet 5: 50*3 + 14000*0.3 + 80*15 = 150 + 4200 + 1200 = 5550 micro-USD.
+    // El mismo turno costaba 0.00185 con Haiku 4.5: exactamente 3× más caro, y
+    // eso ANTES de contar que el tokenizador de Sonnet 5 mide ~35% más tokens
+    // para el mismo prompt. El coste real por turno ronda 5×.
+    expect(out.usage.costUsd).toBeCloseTo(0.00555, 5);
     expect(out.llmCallId).toBe(42);
   });
 

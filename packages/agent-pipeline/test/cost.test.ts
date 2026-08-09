@@ -4,6 +4,7 @@ import {
   resolvePriceForModel,
   DEFAULT_PRICE_TABLE,
 } from '../src/cost.js';
+import { DEFAULT_GENERATOR_MODEL } from '../src/generator.js';
 
 describe('resolvePriceForModel', () => {
   it('matches direct keys from default table', () => {
@@ -19,6 +20,21 @@ describe('resolvePriceForModel', () => {
   it('returns null for unknown models', () => {
     expect(resolvePriceForModel('claude-3-opus-20240229')).toBeNull();
     expect(resolvePriceForModel('gpt-4o')).toBeNull();
+  });
+
+  // El modelo del Generator SIEMPRE tiene que resolver precio. Si no, el coste
+  // se registra como 0 en `llm_calls` sin error ni aviso, y las métricas mienten.
+  it('prices the current Generator model', () => {
+    expect(resolvePriceForModel(DEFAULT_GENERATOR_MODEL)).toBeTruthy();
+  });
+
+  it('does not confuse sonnet-5 with sonnet-4-5', () => {
+    expect(resolvePriceForModel('claude-sonnet-5')?.output).toBe(15);
+    expect(resolvePriceForModel('claude-sonnet-5-20260101')?.inputUncached).toBe(3);
+    // La heurística de sonnet-5 no debe tragarse los ids de sonnet-4-5.
+    expect(resolvePriceForModel('claude-sonnet-4-5')).toBe(
+      DEFAULT_PRICE_TABLE['claude-sonnet-4-5'],
+    );
   });
 });
 

@@ -7,20 +7,44 @@ import { buildRespondAsSetterTool, RESPOND_AS_SETTER_TOOL_NAME } from './tool-de
 import type { GeneratorInput, GeneratorOutput, SetterToolOutput } from './types.js';
 
 /**
- * Modelo default del Generator. Cambió de Sonnet 4.5 → Haiku 4.5 el 2026-05-07
- * tras smoke real en tenant_id=3 (ver plan playful-petting-pine.md sección 3.5):
+ * Modelo default del Generator.
  *
- * - Coste medio observado con Sonnet + cache 5min en conversación con leads
- *   humanos: ~4.5 céntimos / mensaje. Inviable para SaaS.
- * - Cambio a Haiku 4.5 + cache TTL 1h: ~0.43 céntimos / mensaje promedio.
- * - Benchmark BenchLM/Galaxy.ai 2026: Haiku 4.5 lidera instruction-following
- *   en system prompts complejos (Cerebro v4 + Coach = 11k tokens), métrica
- *   crítica para el setter Fyzon.
+ * Historia:
+ * - Sonnet 4.5 + cache 5min (hasta 2026-05-07): ~4.5 céntimos / mensaje. Inviable.
+ * - Haiku 4.5 + cache TTL 1h (2026-05-07 → 2026-08-09): ~0.43 céntimos / mensaje.
+ * - Sonnet 5 + cache TTL 1h (desde 2026-08-09).
+ *
+ * Por qué se vuelve a Sonnet: el cuello de botella dejó de ser el coste y pasó a
+ * ser la calidad de la conversación. Los bloques coach actuales (el de Tania son
+ * 33k chars) llevan voz, criterios de cualificación y manejo de objeciones con
+ * mucho matiz, y ahí la diferencia entre Haiku y Sonnet se nota en cada turno.
+ *
+ * Lo que cuesta: Sonnet 5 son $3/$15 por millón de tokens frente a $1/$5 de
+ * Haiku, y además su tokenizador cuenta ~35% más para el mismo prompt (medido:
+ * 38.467 vs 28.470 tokens sobre el mismo prefijo). En conjunto, del orden de 5×
+ * por turno. Con el cache de 1h sigue siendo un coste asumible por conversación,
+ * pero conviene mirarlo en `llm_calls` en cuanto haya volumen real.
+ *
+ * ⚠️ Esta constante es GLOBAL, no por tenant: cambiarla mueve a todos los
+ * tenants a la vez.
  *
  * Override por env (`GENERATOR_MODEL`) para A/B y tests.
  */
-export const DEFAULT_GENERATOR_MODEL = 'claude-haiku-4-5';
-const DEFAULT_MAX_TOKENS = 1024;
+export const DEFAULT_GENERATOR_MODEL = 'claude-sonnet-5';
+/**
+ * Techo de salida. La respuesta real más larga observada en producción son 579
+ * tokens (media 347, p95 491), así que 1024 sobraba con Haiku.
+ *
+ * Con Sonnet 5 hay que dar más margen: `max_tokens` acota el pensamiento y la
+ * respuesta JUNTOS. Si el modelo razonara más de lo que sobra, la llamada a la
+ * herramienta se cortaría a medias y el Generator lanzaría un error, en vez de
+ * dar una respuesta peor. Aquí abajo se desactiva el pensamiento (ver la llamada
+ * a `messages.create`), pero el margen se deja de todas formas para que activarlo
+ * más adelante no reviente nada.
+ *
+ * No es un coste: solo se paga lo que se genera.
+ */
+const DEFAULT_MAX_TOKENS = 4096;
 /** TTL del cache_control que el composer emite. Sincronizado con `cacheTtl` default del builder. */
 const CACHE_TTL: '1h' = '1h';
 
@@ -30,9 +54,9 @@ interface RunGeneratorDeps {
 }
 
 /**
- * Ejecuta el Generator: compone el system prompt, llama a Anthropic Sonnet 4.5
- * con `tool_choice` forzado a `respond_as_setter`, parsea la respuesta y
- * registra la llamada en `llm_calls`.
+ * Ejecuta el Generator: compone el system prompt, llama al modelo con
+ * `tool_choice` forzado a `respond_as_setter`, parsea la respuesta y registra la
+ * llamada en `llm_calls`.
  *
  * Errores que propaga:
  *  - Anthropic API error (network, rate limit, 5xx).
@@ -92,6 +116,16 @@ export async function runGenerator(
       messages,
       tools: [respondTool] as unknown as Anthropic.Messages.Tool[],
       tool_choice: { type: 'tool', name: RESPOND_AS_SETTER_TOOL_NAME },
+      // Pensamiento DESACTIVADO a propósito, y hay que ponerlo explícito: en
+      // Sonnet 5 omitir este campo NO significa "sin pensamiento", significa
+      // pensamiento adaptativo activado. Sin esta línea el cambio de modelo
+      // traería dos cambios de comportamiento a la vez y sería imposible saber
+      // a cuál atribuir lo que se observe.
+      //
+      // Se mantiene desactivado porque el setter es una conversación de ida y
+      // vuelta donde la latencia se nota, y porque la salida va forzada a una
+      // sola herramienta. Activarlo es una segunda prueba, con su propia medida.
+      thinking: { type: 'disabled' },
     });
   } catch (err) {
     const latencyMs = Date.now() - startedAt;

@@ -54,7 +54,12 @@ export interface PipelineOutput {
 
 /**
  * Orquesta el pipeline completo:
- *   Generator (Sonnet 4.5) → Judge (Haiku 4.5) → Validator (det) → Splitter (Haiku 4.5)
+ *   Generator (Sonnet 5) → Judge (Haiku 4.5) → Validator (det) → Splitter (Haiku 4.5)
+ *
+ * El Generator es el único que se subió a Sonnet: es el que escribe. El Judge y
+ * el Splitter siguen en Haiku a propósito, porque hacen trabajo mecánico
+ * (aprobar/rechazar, trocear) donde el modelo grande no aporta y sí multiplica
+ * el coste de cada turno por tres.
  *
  * Si Judge devuelve `reject`, la función lanza Error — el caller decide si reintenta
  * con otro Generator o hace handoff a humano.

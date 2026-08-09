@@ -22,6 +22,20 @@ export interface ModelPriceUsdPerMTokens {
 }
 
 export const DEFAULT_PRICE_TABLE: Record<string, ModelPriceUsdPerMTokens> = {
+  // Sonnet 5 — modelo del Generator desde 2026-08-09.
+  //
+  // Tarifa ESTÁNDAR ($3/$15). Anthropic aplica una tarifa de lanzamiento más
+  // barata ($2/$10) hasta el 2026-08-31; se usa la estándar a propósito para
+  // no subestimar el coste a partir de septiembre. Mientras dure el descuento
+  // el registro va ligeramente por encima del cargo real, que es el lado
+  // correcto por el que equivocarse.
+  'claude-sonnet-5': {
+    inputUncached: 3.0,
+    cacheRead: 0.3,
+    cacheWrite: 3.75,
+    cacheWrite1h: 6.0,
+    output: 15.0,
+  },
   // Sonnet 4.5 (claude-sonnet-4-5-20250929 / claude-sonnet-4-5-latest)
   'claude-sonnet-4-5': {
     inputUncached: 3.0,
@@ -59,8 +73,17 @@ export function resolvePriceForModel(
   const direct = table[model];
   if (direct) return direct;
 
-  // Heurística por prefix
+  // Heurística por prefix.
+  //
+  // ⚠️ Si un modelo no casa aquí, `calculateCostUsd` devuelve 0 y el coste se
+  // registra como CERO en `llm_calls` — sin error y sin aviso. Al añadir un
+  // modelo nuevo al pipeline, añadirlo también a esta tabla.
   const lower = model.toLowerCase();
+  // 'sonnet-5' va antes que 'sonnet-4-5' por legibilidad; no colisionan porque
+  // la cadena 'claude-sonnet-4-5' no contiene 'sonnet-5'.
+  if (lower.includes('sonnet-5')) {
+    return table['claude-sonnet-5'] ?? null;
+  }
   if (lower.includes('sonnet-4-5') || lower.includes('sonnet-4.5')) {
     return table['claude-sonnet-4-5'] ?? null;
   }
