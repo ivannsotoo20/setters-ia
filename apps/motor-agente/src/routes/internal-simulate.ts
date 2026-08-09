@@ -18,6 +18,12 @@
  * del entrenador, misma directiva de procedencia) y corre las tres etapas reales
  * contra Anthropic.
  *
+ * También el ENLACE de agenda: se resuelve el mismo calendario que resolvería
+ * producción para ese canal y se construye con el mismo builder. Lo único que
+ * cambia es el slug de tracking, que no puede existir porque no hay lead. Ojo:
+ * el enlace es REAL y reservar desde él crea una cita de verdad en el
+ * calendario, que entrará como `unmatched` por ese slug.
+ *
  * NO valida la fontanería: webhooks, GHL, el debounce que agrupa mensajes
  * seguidos, los tiempos de envío, el troceado real en burbujas separadas ni el
  * etiquetado. Nada de eso se ejecuta aquí.
@@ -53,6 +59,11 @@ import {
   type LeadChannel,
 } from '../lib/lead-origin.js';
 import { loadSchedulingConfig } from '../services/process-debounced.js';
+import {
+  getSimulatedCalendarUrl,
+  SIMULATION_TRACKING_SLUG,
+  type SimulatedCalendarUrlResult,
+} from '../services/tracked-calendar-url.js';
 
 const bodySchema = z.object({
   tenant_id: z.number().int().positive(),
@@ -124,6 +135,27 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         addressingDirective = buildMirrorLeadDirective(detectAddressing(body.message));
       }
 
+      // El enlace de agenda: mismo calendario y mismo builder que produccion,
+      // con un slug de tracking de simulacion porque aqui no hay lead. Sin esto
+      // el entrenador validaba la fase 6 viendo el respaldo del placeholder, que
+      // no es lo que reciben sus leads.
+      //
+      // No fatal, igual que en produccion: si esto falla, el turno sigue y el
+      // setter cae al respaldo de su bloque.
+      let calendar: SimulatedCalendarUrlResult = { url: null, reason: 'no_calendar' };
+      try {
+        calendar = await getSimulatedCalendarUrl({
+          supabase,
+          tenantId: body.tenant_id,
+          channelKind: body.channel,
+        });
+      } catch (err) {
+        request.log.warn(
+          { tenantId: body.tenant_id, err: err instanceof Error ? err.message : String(err) },
+          'internal/simulate: getSimulatedCalendarUrl fallo (no fatal)',
+        );
+      }
+
       const leadOriginDirective = buildLeadOriginDirective({
         origin: mapConversationSourceToOrigin(body.origin ?? null),
         channel: body.channel as LeadChannel,
@@ -162,6 +194,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             composeOverrides: {
               currentPhaseFocus,
               extraSystemSuffix: systemDirectives,
+              trackedCalendarUrl: calendar.url,
             },
           },
         );
@@ -189,6 +222,16 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
           // Transparencia: qué se le inyectó por venir de donde viene. Es lo que
           // explica que el mismo mensaje se responda distinto según el origen.
           injected_directive: systemDirectives,
+          // Qué enlace de agenda se le dio al setter en este turno, y si no se
+          // le dio ninguno, por qué. Sin esto, un entrenador sin calendario
+          // vinculado ve al setter derivar y no sabe si es un fallo o su
+          // configuración.
+          calendar: {
+            url: calendar.url,
+            reason: calendar.reason,
+            name: calendar.calendarName ?? null,
+            simulated_slug: SIMULATION_TRACKING_SLUG,
+          },
           cost_usd: out.totals?.costUsd ?? null,
           latency_ms: Date.now() - startedAt,
           simulated: true,

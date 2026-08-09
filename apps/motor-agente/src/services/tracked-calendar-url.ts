@@ -93,3 +93,70 @@ export async function getTrackedCalendarUrl(
     trackingUuid,
   });
 }
+
+/**
+ * Slug que ocupa el sitio del `tracking_uuid` en el enlace del simulador.
+ *
+ * No casa con ningún `leads.tracking_uuid` (los reales son 16 chars b64url del
+ * HMAC), así que si alguien reserva desde el simulador la cita entra como
+ * `match_method='unmatched'` y se distingue a simple vista de una reserva real.
+ */
+export const SIMULATION_TRACKING_SLUG = 'simulacion';
+
+export interface SimulatedCalendarUrlResult {
+  /** La URL tal y como la recibiría una lead, o null si no hay calendario. */
+  url: string | null;
+  /** Por qué no hay URL, para poder explicárselo al entrenador en el panel. */
+  reason: 'ok' | 'no_calendar' | 'calendar_sin_widget_url' | 'widget_url_invalida';
+  /** Nombre del calendario resuelto, para que sepa cuál está mirando. */
+  calendarName?: string | null;
+}
+
+/**
+ * Igual que `getTrackedCalendarUrl` pero SIN lead: para el simulador.
+ *
+ * Resuelve el MISMO calendario que resolvería producción para ese canal (misma
+ * función `resolveDefaultCalendar`, misma jerarquía canal→any) y construye la
+ * URL con el mismo builder. Lo único que cambia es el slug de tracking, que no
+ * puede existir porque no hay lead.
+ *
+ * Sin esto el simulador enseñaba siempre el respaldo del placeholder, así que un
+ * entrenador validando la fase 6 veía un comportamiento que no es el suyo — que
+ * es exactamente lo que el simulador existe para evitar.
+ *
+ * Devuelve el motivo cuando no hay URL en vez de un null mudo: "no tienes
+ * calendario vinculado" es accionable, un mensaje raro del setter no lo es.
+ */
+export async function getSimulatedCalendarUrl(input: {
+  supabase: SupabaseClient;
+  tenantId: number;
+  channelKind?: ChannelKind | null;
+}): Promise<SimulatedCalendarUrlResult> {
+  const { supabase, tenantId, channelKind = null } = input;
+
+  const cal = await resolveDefaultCalendar(supabase, tenantId, channelKind);
+  if (!cal) return { url: null, reason: 'no_calendar' };
+  if (!cal.widget_base_url) {
+    return { url: null, reason: 'calendar_sin_widget_url', calendarName: cal.name };
+  }
+
+  try {
+    return {
+      url: buildTrackedBookingUrl({
+        calendar: { widget_base_url: cal.widget_base_url },
+        lead: { id: SIMULATION_TRACKING_SLUG },
+        trackingUuid: SIMULATION_TRACKING_SLUG,
+      }),
+      reason: 'ok',
+      calendarName: cal.name,
+    };
+  } catch (err) {
+    // El builder rechaza URLs no https. Que reviente aquí es preferible a que el
+    // entrenador valide un enlace que en producción lanzaría.
+    logger.warn(
+      { err: err instanceof Error ? err.message : String(err), tenantId, calendarAccountId: cal.id },
+      'getSimulatedCalendarUrl: widget_base_url invalida',
+    );
+    return { url: null, reason: 'widget_url_invalida', calendarName: cal.name };
+  }
+}

@@ -19,12 +19,20 @@ export interface SimulateTurnInput {
   formAnswers?: Record<string, string> | null;
 }
 
+/** Estado del enlace de agenda que se le dio al setter en el turno. */
+export interface SimulateCalendar {
+  url: string | null;
+  reason: 'ok' | 'no_calendar' | 'calendar_sin_widget_url' | 'widget_url_invalida';
+  name: string | null;
+}
+
 export interface SimulateOk {
   ok: true;
   parts: string[];
   decision: { phase: number; status: string; handoff_cause: string | null };
   reasoning: Record<string, string | null>;
   injectedDirective: string | null;
+  calendar: SimulateCalendar | null;
   costUsd: number | null;
   latencyMs: number;
 }
@@ -108,6 +116,7 @@ export async function simulateTurn(input: SimulateTurnInput): Promise<SimulateRe
     reasoning: (json?.reasoning ?? {}) as Record<string, string | null>,
     injectedDirective:
       typeof json?.injected_directive === 'string' ? json.injected_directive : null,
+    calendar: (json?.calendar as SimulateCalendar | undefined) ?? null,
     costUsd: typeof json?.cost_usd === 'number' ? json.cost_usd : null,
     latencyMs: typeof json?.latency_ms === 'number' ? json.latency_ms : 0,
   };

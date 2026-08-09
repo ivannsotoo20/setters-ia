@@ -13,7 +13,11 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { simulateTurn, type SimulateTurnInput } from '@/lib/actions/simulate';
+import {
+  simulateTurn,
+  type SimulateCalendar,
+  type SimulateTurnInput,
+} from '@/lib/actions/simulate';
 
 type Origin = 'bienvenida' | 'lm' | 'inbound';
 type Channel = 'instagram_dm' | 'whatsapp';
@@ -54,6 +58,7 @@ export function Simulator() {
     costUsd: number | null;
     latencyMs: number;
     directive: string | null;
+    calendar: SimulateCalendar | null;
   } | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -99,6 +104,7 @@ export function Simulator() {
         costUsd: result.costUsd,
         latencyMs: result.latencyMs,
         directive: result.injectedDirective,
+        calendar: result.calendar,
       });
     });
   };
@@ -249,6 +255,44 @@ export function Simulator() {
                 <span className="tabular-nums">${lastMeta.costUsd.toFixed(4)}</span>
               ) : null}
             </div>
+
+            {/*
+              El enlace de agenda es la causa de fallo más habitual y la más
+              confusa: sin calendario vinculado el asistente deriva en vez de
+              enviar nada, y sin esta nota el entrenador cree que se ha roto.
+            */}
+            {lastMeta.calendar ? (
+              lastMeta.calendar.reason === 'ok' ? (
+                <div className="rounded-md border border-border p-3 text-xs">
+                  <p className="font-medium">
+                    Enlace de agenda
+                    {lastMeta.calendar.name ? ` · ${lastMeta.calendar.name}` : null}
+                  </p>
+                  <p className="text-muted-foreground mt-1">
+                    Es tu enlace real, el mismo que recibiría la persona. Si lo abres y
+                    reservas, la cita se crea de verdad en tu calendario y aparecerá sin
+                    asociar a nadie, porque aquí no hay una persona detrás.
+                  </p>
+                  <p className="mt-2 break-all font-mono text-[11px] text-muted-foreground">
+                    {lastMeta.calendar.url}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                  <p className="font-medium">Todavía no puede enviar tu agenda</p>
+                  <p className="text-muted-foreground mt-1">
+                    {lastMeta.calendar.reason === 'no_calendar'
+                      ? 'No tienes ningún calendario vinculado, así que cuando alguien quiera reservar el asistente te lo pasará a ti en vez de enviar un enlace.'
+                      : 'Tu calendario está vinculado pero le falta la dirección del widget, así que el asistente no puede enviar el enlace.'}{' '}
+                    Se arregla en{' '}
+                    <a className="underline" href="/settings/calendars">
+                      Configuración › Calendarios
+                    </a>
+                    .
+                  </p>
+                </div>
+              )
+            ) : null}
 
             {lastMeta.directive ? (
               <details className="rounded-md border border-border p-3">
