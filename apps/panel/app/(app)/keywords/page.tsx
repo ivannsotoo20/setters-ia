@@ -28,37 +28,67 @@ export default async function KeywordsPage() {
           <p className="text-xs uppercase tracking-wider text-muted-foreground">
             Configuración
           </p>
-          <h1 className="text-2xl font-semibold tracking-tight">Keywords</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Cuándo entra tu asistente
+          </h1>
         </div>
         <AddKeywordDialog />
       </div>
 
+      <p className="text-sm text-muted-foreground max-w-2xl">
+        Tu asistente no responde a todo el mundo por defecto: primero comprueba que la
+        conversación es de las que le tocan. Lo hace mirando si el mensaje contiene alguna de
+        las palabras que guardes aquí. Puedes añadirlas, quitarlas o desactivarlas cuando
+        quieras, sin avisar a nadie.
+      </p>
+
+      {counts.bienvenida === 0 ? (
+        <Card className="border-warning/40 bg-warning/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">
+              Falta tu mensaje de bienvenida
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            Cuando eres tú quien escribe primero a alguien, el asistente necesita reconocer ese
+            saludo tuyo para saber que puede seguir la conversación. Como todavía no has
+            guardado ninguna palabra de bienvenida,{' '}
+            <strong className="text-foreground">
+              ahora mismo no continuará ninguna conversación que empieces tú
+            </strong>
+            . Añade abajo un trozo característico de tu saludo habitual.
+          </CardContent>
+        </Card>
+      ) : null}
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Bienvenidas</CardDescription>
+            <CardDescription>Cuando escribes tú primero</CardDescription>
             <CardTitle className="text-2xl tabular-nums">{counts.bienvenida}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-xs text-muted-foreground">
-            Saludos manuales que el trainer envía al primer contacto del lead.
+            Tu saludo de bienvenida. Al reconocerlo, el asistente sigue la conversación desde ahí.
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Lead Magnets</CardDescription>
+            <CardDescription>Cuando entregas un recurso</CardDescription>
             <CardTitle className="text-2xl tabular-nums">{counts.lm}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-xs text-muted-foreground">
-            Recursos / lead magnets entregados automáticamente.
+            Guías, clases o vídeos gratuitos. El asistente sabe que esa persona pidió el recurso,
+            no el programa.
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Inbound auto</CardDescription>
+            <CardDescription>Cuando te escriben a ti</CardDescription>
             <CardTitle className="text-2xl tabular-nums">{counts.inbound}</CardTitle>
           </CardHeader>
           <CardContent className="pt-0 text-xs text-muted-foreground">
-            Auto-respuestas tipo &quot;gracias por escribir&quot;.
+            Palabras que suelen usar quienes te escriben con interés real: «info», «precio», o
+            las de tu especialidad.
           </CardContent>
         </Card>
       </div>
@@ -66,27 +96,22 @@ export default async function KeywordsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Patrones cargados ({keywords.length})
+            Tus palabras guardadas ({keywords.length})
           </CardTitle>
           <CardDescription>
-            El motor normaliza el texto (lowercase + sin espacios) y comprueba si
-            alguno de estos patrones aparece como substring. <strong>Bienvenida</strong>{' '}
-            y <strong>lm</strong> se aplican a mensajes OUTBOUND (cuando tú o un
-            automation escribís a un lead). <strong>Inbound</strong> también se
-            aplica a mensajes INBOUND del lead (ej. lead orgánico que escribe
-            &quot;info&quot;, &quot;programa&quot;, &quot;precio&quot;) → IA entra
-            automáticamente. Si nada matchea en un inbound bajo modo classified_only
-            → asume intervención humana y pausa la IA.
+            No hace falta escribir la frase entera ni cuidar mayúsculas o acentos de más: basta
+            con un trozo característico. Si guardas «gracias por escribir», también reconocerá
+            «¡Hola! Gracias por escribirme».
           </CardDescription>
         </CardHeader>
         <CardContent>
           {!result.ok ? (
-            <p className="text-sm text-destructive">Error: {result.error}</p>
+            <p className="text-sm text-destructive">
+              No se han podido cargar tus palabras: {result.error}
+            </p>
           ) : keywords.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Sin patrones todavía. Click en &quot;Añadir keyword&quot; para
-              empezar. Como mínimo añade tu mensaje de bienvenida típico para que
-              el motor reconozca cuando le das un saludo manual a un lead nuevo.
+              Todavía no has guardado ninguna. Empieza por tu saludo de bienvenida.
             </p>
           ) : (
             <KeywordsList keywords={keywords} />
@@ -94,44 +119,27 @@ export default async function KeywordsPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-warning/30 bg-warning/5">
+      <Card>
         <CardHeader>
           <CardTitle className="text-base">
-            Keywords vs Etiquetas — ¿en qué se diferencian?
+            ¿En qué se diferencian de las etiquetas?
           </CardTitle>
-          <CardDescription>Son dos sistemas independientes con propósitos distintos.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-3">
-          <div>
-            <p className="font-medium text-foreground mb-1">
-              📌 Keywords (esta página): clasifican el ORIGEN de un mensaje del trainer o del lead
-            </p>
-            <p className="leading-relaxed">
-              Cuando GHL/ManyChat te avisa de un mensaje, el motor revisa el texto y lo
-              clasifica. <strong>Bienvenida</strong> aplica solo a OUTBOUND (tú escribís a un lead) → activa IA en F1.{' '}
-              <strong>Lm</strong> aplica solo a OUTBOUND → registra como entrega de lead magnet.{' '}
-              <strong>Inbound</strong> aplica tanto a OUTBOUND como a INBOUND del lead — útil para
-              que leads orgánicos que escriben &quot;info&quot;, &quot;programa&quot;,
-              &quot;precio&quot; activen la IA sin que el trainer tenga que intervenir manualmente.
-              Si nada matchea en un inbound bajo modo classified_only → IA pausada hasta que el
-              trainer decida.
-            </p>
-          </div>
-          <div>
-            <p className="font-medium text-foreground mb-1">
-              🏷️ Etiquetas (Configuración → Etiquetas): clasifican el ESTADO de una conversación
-            </p>
-            <p className="leading-relaxed">
-              Las etiquetas son chips de colores que se aplican a las conversaciones del kanban
-              (&quot;Hot Lead&quot;, &quot;Comprado&quot;, &quot;Perdido&quot;, &quot;No
-              responde&quot;). Pueden aplicarse a mano o vía reglas (cuando el lead dice X, o
-              llega a la fase Y). Sirven para organización visual y workflow del trainer en el
-              SaaS — no afectan al routing del motor.
-            </p>
-          </div>
-          <p className="text-xs italic pt-2 border-t border-warning/20">
-            En resumen: keywords = quién es el lead que entra (origen). Etiquetas = qué pasa
-            con el lead que ya tienes (estado). Configurar bien las dos cosas es independiente.
+          <p className="leading-relaxed">
+            <strong className="text-foreground">Esta página decide cuándo entra tu asistente.</strong>{' '}
+            Mira el texto del mensaje en el momento en que llega y, según lo que encuentre,
+            arranca la conversación o la deja para ti.
+          </p>
+          <p className="leading-relaxed">
+            <strong className="text-foreground">Las etiquetas</strong> (en Configuración →
+            Etiquetas) son los colores que ves sobre las conversaciones que ya tienes abiertas:
+            «Hot Lead», «Comprado», «Perdido». Sirven para organizarte, y no cambian el
+            comportamiento del asistente.
+          </p>
+          <p className="text-xs italic pt-2 border-t border-border">
+            En corto: aquí decides <strong>quién entra</strong>. En etiquetas organizas{' '}
+            <strong>lo que ya tienes dentro</strong>. Se configuran por separado.
           </p>
         </CardContent>
       </Card>
