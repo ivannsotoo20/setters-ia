@@ -42,7 +42,21 @@ async function main(): Promise<void> {
     console.log(`Debounces vencidos: ${targets.length}`);
   }
 
+  const forced = args.conversation !== null;
+
   for (const conversationId of targets) {
+    // En modo escaneo, reclamamos la entrada ANTES de procesarla, igual que el
+    // cron: si el motor esta corriendo a la vez, el ZREM atomico decide quien se
+    // la queda y evita que la persona reciba la respuesta dos veces. En modo
+    // --conversation no aplica: se fuerza a proposito, y la conversacion puede
+    // ni siquiera estar en el set de debounce.
+    if (!forced) {
+      const claimed = await dropDebounce(redis, conversationId);
+      if (!claimed) {
+        console.log(`- conversation=${conversationId} ya reclamada por el motor; se omite`);
+        continue;
+      }
+    }
     try {
       const out = await processDebounced({ supabase, anthropic }, conversationId);
       console.log(`✓ conversation=${conversationId} parts=${out.parts.length} schedules=${out.scheduleIds.length} cost=$${out.totalCostUsd.toFixed(6)} status=${out.pipelineStatus} phase=${out.phase}${out.skipped ? ` SKIPPED: ${out.reason}` : ''}`);
@@ -52,7 +66,9 @@ async function main(): Promise<void> {
     } catch (err) {
       console.error(`✗ conversation=${conversationId}:`, (err as Error).message);
     } finally {
-      await dropDebounce(redis, conversationId);
+      // En modo escaneo ya se reclamo (y por tanto se elimino) arriba; esto solo
+      // limpia el caso forzado.
+      if (forced) await dropDebounce(redis, conversationId);
     }
   }
 

@@ -42,11 +42,25 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
       const supabase = getSupabase();
       const anthropic = getAnthropic();
       for (const entry of expired) {
-        // Drop ANTES de procesar para que el proximo tick no recoja la misma
-        // conversacion mientras esta corriendo el pipeline (race condition que
-        // duplicaba la respuesta del setter). Si processDebounced falla,
-        // re-encolamos con un delay corto para reintentar.
-        await dropDebounce(redis, entry.conversationId);
+        // `dropDebounce` es el CLAIM, no una limpieza: `ZREM` es atomico, asi
+        // que solo el tick que se queda con la conversacion recibe true.
+        //
+        // Hace falta porque `expired` es un SNAPSHOT: las conversaciones que van
+        // detras en la lista siguen vivas en Redis mientras el pipeline procesa
+        // las de delante, y con el pipeline por encima de 5s el tick siguiente
+        // llega a verlas y se las lleva. Sin este claim, ambos ticks corren el
+        // pipeline de la misma conversacion y la persona recibe dos respuestas
+        // distintas al mismo mensaje.
+        //
+        // Si processDebounced falla, re-encolamos con un delay corto.
+        const claimed = await dropDebounce(redis, entry.conversationId);
+        if (!claimed) {
+          app.log.debug(
+            { conversationId: entry.conversationId },
+            'debounce entry ya reclamada por otro tick; se omite',
+          );
+          continue;
+        }
         try {
           const out = await processDebounced(
             { supabase, anthropic: anthropic as unknown as import('@anthropic-ai/sdk').default },

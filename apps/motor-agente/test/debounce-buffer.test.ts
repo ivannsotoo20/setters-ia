@@ -66,6 +66,28 @@ describe('debounce-buffer', () => {
     expect(await pendingDebouncesCount(redis)).toBe(0);
   });
 
+  // El retorno de dropDebounce es el CLAIM que impide que dos ticks solapados
+  // procesen la misma conversacion. Si alguien vuelve a tiparlo como void, estos
+  // dos tests caen y la persona deja de recibir dos respuestas al mismo mensaje.
+  it('dropDebounce devuelve true solo para quien se queda la entrada', async () => {
+    await enqueueDebounce(redis, 7, 0);
+    expect(await dropDebounce(redis, 7)).toBe(true);
+    expect(await dropDebounce(redis, 7)).toBe(false);
+  });
+
+  it('dropDebounce devuelve false si la entrada nunca existio', async () => {
+    expect(await dropDebounce(redis, 999)).toBe(false);
+  });
+
+  it('entre dos ticks concurrentes sobre la misma entrada, solo uno gana', async () => {
+    await enqueueDebounce(redis, 42, 0);
+    // Lo que pasa de verdad: el tick A tiene [42] en su snapshot y aun no ha
+    // llegado a ella; el tick B, 5s despues, ve 42 todavia viva y la reclama.
+    const [a, b] = await Promise.all([dropDebounce(redis, 42), dropDebounce(redis, 42)]);
+    expect([a, b].filter(Boolean)).toHaveLength(1);
+    expect(await pendingDebouncesCount(redis)).toBe(0);
+  });
+
   it('clearAllDebounces empties the set', async () => {
     await enqueueDebounce(redis, 1, 0);
     await enqueueDebounce(redis, 2, 0);

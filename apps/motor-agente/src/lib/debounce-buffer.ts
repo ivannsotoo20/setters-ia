@@ -66,11 +66,21 @@ export async function getExpiredDebounces(
 }
 
 /**
- * Elimina la entrada de debounce de una conversación tras procesarla.
+ * Elimina la entrada de debounce de una conversación e informa de si la había.
  * Idempotente.
+ *
+ * El booleano NO es informativo: es un CLAIM. `ZREM` es atómico en Redis, así
+ * que entre varios ticks concurrentes que intenten quedarse con la misma
+ * conversación, exactamente uno recibe `true`. El que recibe `false` llega
+ * tarde: otro ya la tiene y debe dejarla en paz.
+ *
+ * Antes esta función devolvía `void` y tiraba el retorno de `zrem`. Eso permitía
+ * que dos ticks solapados procesaran la misma conversación y que la persona
+ * recibiera dos respuestas distintas al mismo mensaje.
  */
-export async function dropDebounce(redis: Redis, conversationId: number): Promise<void> {
-  await redis.zrem(DEBOUNCE_KEY, String(conversationId));
+export async function dropDebounce(redis: Redis, conversationId: number): Promise<boolean> {
+  const removed = await redis.zrem(DEBOUNCE_KEY, String(conversationId));
+  return Number(removed) > 0;
 }
 
 /**
