@@ -50,13 +50,29 @@ export async function resolveTenantByToken(
  * Filtra por:
  *  - provider = 'ghl'
  *  - is_active = true
- *  - connection_config.auth_type = 'oauth' (excluye configs manuales/legacy
- *    para evitar colisión con paths Workflow custom de Hito 9).
+ *  - connection_config.auth_type ∈ {'oauth', 'pit'}
  *  - connection_config.locationId = <input>
+ *
+ * 2026-08-09 — Antes exigía `auth_type === 'oauth'` a secas, y eso dejaba fuera
+ * a los tenants conectados con un **PIT** (`auth_type='pit'`), que es lo que crea
+ * el formulario BYOK del panel. Síntoma: la app del Marketplace les mandaba los
+ * webhooks, no casaban con ningún tenant y se descartaban. Instagram entraba
+ * mudo, sin un solo error en los logs.
+ *
+ * NO se arregla poniéndole `auth_type='oauth'` a una cuenta con PIT: `outbound-sender`
+ * interpreta 'oauth' como "refresca el token" e intentaría refrescar unos tokens
+ * que no existen en cada envío.
+ *
+ * Tampoco vale ignorar el `auth_type` por completo. Las filas SIN `auth_type` son
+ * las del path legacy de Workflow custom (Hito 9), que reciben sus webhooks por
+ * `/integrations/webhook/:tenant_token`. Como cada ruta deduplica con su propio
+ * prefijo en Redis, capturarlas aquí además haría que el mismo mensaje se
+ * procesara dos veces. Por eso el filtro es una lista blanca explícita.
  *
  * Devuelve `null` si no hay match (caller debería ack 200 ignored para no
  * romper retries del provider ni revelar info de tenants).
  */
+const MARKETPLACE_AUTH_TYPES = new Set(['oauth', 'pit']);
 export async function resolveTenantByOauthLocation(
   supabase: SupabaseClient,
   locationId: string,
@@ -73,7 +89,11 @@ export async function resolveTenantByOauthLocation(
       auth_type?: string;
       locationId?: string;
     };
-    if (cc.auth_type === 'oauth' && cc.locationId === locationId) {
+    if (
+      cc.auth_type &&
+      MARKETPLACE_AUTH_TYPES.has(cc.auth_type) &&
+      cc.locationId === locationId
+    ) {
       return Number(row.tenant_id);
     }
   }
