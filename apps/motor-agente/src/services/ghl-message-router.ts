@@ -31,6 +31,44 @@ import {
   getOrCreateConversation,
   upsertLead,
 } from './lead-ingest.js';
+import { buildSourceTags, type TagChannel } from '../lib/source-tags.js';
+
+/**
+ * Escribe la procedencia como etiquetas en el contacto de GHL.
+ *
+ * Best-effort a propósito: si GHL falla o el token no tiene permiso de escritura,
+ * se loguea y se sigue. Etiquetar es una comodidad para el CRM del trainer, y no
+ * puede tumbar la conversación con el lead.
+ */
+async function tagGhlContact(args: {
+  ghlClient: GhlClient | null;
+  ghlContactId: string;
+  source: string | null | undefined;
+  matchedKeyword?: string | null;
+  channel?: TagChannel | null;
+  tenantId: number;
+}): Promise<void> {
+  const { ghlClient, ghlContactId, source, matchedKeyword, channel, tenantId } = args;
+  if (!ghlClient || !ghlContactId) return;
+
+  const tags = buildSourceTags({ source, matchedKeyword, channel });
+  if (tags.length === 0) return;
+
+  try {
+    await ghlClient.addContactTags(ghlContactId, tags);
+    logger.info({ tenantId, ghlContactId, tags }, 'tagGhlContact: etiquetas aplicadas');
+  } catch (err) {
+    logger.warn(
+      {
+        tenantId,
+        ghlContactId,
+        tags,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      'tagGhlContact: fallo al etiquetar (no fatal)',
+    );
+  }
+}
 
 // ============================================================================
 // loadAutomationKeywords
@@ -82,6 +120,19 @@ export function classifyByKeywords(
   body: string,
   keywords: AutomationKeywordRow[],
 ): 'bienvenida' | 'lm' | 'inbound' | null {
+  return matchKeyword(body, keywords)?.type ?? null;
+}
+
+/**
+ * Igual que `classifyByKeywords` pero devuelve TAMBIÉN el patrón que casó.
+ *
+ * Hace falta para el etiquetado en GHL: con un lead magnet no basta saber que
+ * vino de un recurso, interesa de CUÁL, y eso solo lo sabe la keyword concreta.
+ */
+export function matchKeyword(
+  body: string,
+  keywords: AutomationKeywordRow[],
+): { type: 'bienvenida' | 'lm' | 'inbound'; pattern: string } | null {
   if (!body || typeof body !== 'string') return null;
   const normalizedBody = normalizeForMatch(body);
   // Ordering: bienvenida > lm > inbound (mismo orden que el switch legacy).
@@ -91,7 +142,7 @@ export function classifyByKeywords(
     for (const k of matches) {
       const normalizedPattern = normalizeForMatch(k.pattern);
       if (normalizedPattern.length > 0 && normalizedBody.includes(normalizedPattern)) {
-        return type;
+        return { type, pattern: k.pattern };
       }
     }
   }
@@ -295,6 +346,13 @@ export async function routeGhlInbound(
           { tenantId: inbound.tenantId, conversationId, mode: 'classified_only' },
           'routeGhlInbound: inbound matched keyword type=inbound — conv clasificada inbound, IA activa',
         );
+        await tagGhlContact({
+          ghlClient,
+          ghlContactId: inbound.ghlContactId,
+          source: 'inbound',
+          channel: channelType as TagChannel,
+          tenantId: inbound.tenantId,
+        });
       } else {
         await supabase
           .from('conversations')
@@ -464,7 +522,8 @@ export async function routeGhlOutbound(
 
   // 2) Cargar keywords del tenant + clasificar
   const keywords = await loadAutomationKeywords(supabase, outbound.tenantId);
-  const matchedType = classifyByKeywords(outbound.message, keywords);
+  const matched = matchKeyword(outbound.message, keywords);
+  const matchedType = matched?.type ?? null;
 
   // 3) Resolver conversación local
   const existing = await findExistingConversationByContact(
@@ -477,12 +536,21 @@ export async function routeGhlOutbound(
   // (replica el comportamiento del flow legacy que arranca conversaciones a partir
   // de la bienvenida outbound del entrenador).
   if (matchedType && !existing) {
-    return await createConversationFromOutbound({
+    const created = await createConversationFromOutbound({
       supabase,
       ghlClient,
       outbound,
       conversationSource: matchedType,
     });
+    await tagGhlContact({
+      ghlClient,
+      ghlContactId: outbound.ghlContactId,
+      source: matchedType,
+      matchedKeyword: matched?.pattern ?? null,
+      channel: outbound.channel as TagChannel,
+      tenantId: outbound.tenantId,
+    });
+    return created;
   }
 
   // Caso B: matched keyword y sí hay conversación → setear conversation_source +
@@ -500,6 +568,15 @@ export async function routeGhlOutbound(
       content_type: 'text',
       content: outbound.message,
       sent_at: outbound.timestamp ?? new Date().toISOString(),
+    });
+
+    await tagGhlContact({
+      ghlClient,
+      ghlContactId: outbound.ghlContactId,
+      source: matchedType,
+      matchedKeyword: matched?.pattern ?? null,
+      channel: outbound.channel as TagChannel,
+      tenantId: outbound.tenantId,
     });
 
     return {

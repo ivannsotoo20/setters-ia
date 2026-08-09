@@ -17,26 +17,30 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { createKeyword, type KeywordType } from '@/lib/actions/keywords';
 
-const TYPES: { value: KeywordType; label: string; hint: string }[] = [
+const TYPES: { value: KeywordType; label: string; hint: string; placeholder: string }[] = [
   {
     value: 'bienvenida',
-    label: 'Bienvenida (IG/FB)',
-    hint: 'Saludo manual al primer contacto en chat IG/FB. Ej: "Hola! Gracias por escribir, soy Iván".',
+    label: 'Cuando escribes tú primero',
+    hint: 'Un trozo del saludo que envías al contactar con alguien por primera vez. Al reconocerlo, tu asistente sigue la conversación desde ahí.',
+    placeholder: 'gracias por escribir',
   },
   {
     value: 'lm',
-    label: 'Lead Magnet (IG/FB)',
-    hint: 'Recurso enviado automáticamente vía GHL Workflow. Ej: "Aquí tienes la guía gratis".',
+    label: 'Cuando entregas un recurso gratuito',
+    hint: 'Un trozo del mensaje con el que envías una guía, clase o vídeo. Tu asistente sabrá que esa persona pidió el recurso, no el programa.',
+    placeholder: 'aquí tienes la guía',
   },
   {
     value: 'inbound',
-    label: 'Inbound auto (IG/FB)',
-    hint: 'Auto-respuesta del trainer al primer DM. Ej: "Gracias por escribir, en breve te contestamos".',
+    label: 'Cuando te escriben a ti',
+    hint: 'Palabras que usa quien te escribe con interés real. Si su primer mensaje contiene alguna, tu asistente entra sin que tengas que hacer nada.',
+    placeholder: 'info',
   },
   {
     value: 'wa_open',
-    label: 'WhatsApp open (gate inbound)',
-    hint: 'Gate de WhatsApp inbound cuando /settings/whatsapp está en modo "keyword". Ej: "hola", "INFO", "me interesa".',
+    label: 'Solo WhatsApp: filtrar quién entra',
+    hint: 'Se usa únicamente si has elegido filtrar los WhatsApp por palabra en Configuración → WhatsApp. Si no, no hace falta.',
+    placeholder: 'me interesa',
   },
 ];
 
@@ -57,7 +61,7 @@ export function AddKeywordDialog() {
         toast.error(result.error);
         return;
       }
-      toast.success(`Keyword #${result.data?.id} creada`);
+      toast.success('Palabra guardada');
       setOpen(false);
       setType('bienvenida');
     });
@@ -68,23 +72,22 @@ export function AddKeywordDialog() {
       <DialogTrigger asChild>
         <Button>
           <Plus className="size-4" />
-          Añadir keyword
+          Añadir palabra
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Nuevo patrón</DialogTitle>
+          <DialogTitle>Nueva palabra</DialogTitle>
           <DialogDescription>
-            Cuando llegue un mensaje OUTBOUND desde tu chat, el motor lo
-            normaliza (lowercase + sin espacios) y comprueba si este patrón
-            aparece como substring. Pon un trozo característico (no toda la
-            frase) para que matche aunque el texto exacto varíe.
+            Escribe un trozo característico, no la frase entera. Cuanto más corto y
+            distintivo, mejor: así funciona aunque cambies la redacción de un día para
+            otro. No hace falta cuidar mayúsculas ni espacios.
           </DialogDescription>
         </DialogHeader>
 
         <form action={onSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="type">Tipo</Label>
+            <Label htmlFor="type">¿En qué situación?</Label>
             <select
               id="type"
               value={type}
@@ -103,16 +106,17 @@ export function AddKeywordDialog() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <Label htmlFor="pattern">Patrón (substring)</Label>
+            <Label htmlFor="pattern">Palabra o trozo de frase</Label>
             <Input
               id="pattern"
               name="pattern"
-              placeholder="Hola! Gracias por escribir"
+              placeholder={TYPES.find((t) => t.value === type)?.placeholder}
               required
               autoFocus
             />
             <p className="text-xs text-muted-foreground">
-              No tiene que ser exacto. Match case-insensitive, ignora espacios.
+              Ojo con los acentos: «informacion» y «información» se guardan como palabras
+              distintas. Si dudas, usa la raíz sin tilde («informaci»).
             </p>
           </div>
 

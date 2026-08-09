@@ -9,7 +9,7 @@ import type Anthropic from '@anthropic-ai/sdk';
  * El motor solo entra aquí si message es null (fallback).
  *
  * Cambios Iota.2:
- *  - Carga coach_v3 del tenant + ejemplos del trainer (followup_voice_examples)
+ *  - Carga coach_v5 del tenant + ejemplos del trainer (followup_voice_examples)
  *    e inyecta en el system prompt para mantener consistencia de voz con
  *    el setter en tiempo real.
  *
@@ -161,7 +161,12 @@ async function loadVoiceContext(
     supabase
       .from('prompt_blocks')
       .select('content')
-      .eq('block_key', 'coach_v3')
+      // Sprint Iota (2026-05-18) migró los coach a `coach_v5` y desactivó los
+      // `coach_v3` (migration 059). Esta query se quedó en v3: desde entonces
+      // devolvía siempre null y el followup del fallback salía SIN la voz del
+      // trainer. El gemelo del panel (apps/panel/lib/personalize-followup.ts)
+      // sí se migró, por eso solo se notaba en el camino de fallback.
+      .eq('block_key', 'coach_v5')
       .eq('tenant_id', tenantId)
       .eq('is_active', true)
       .maybeSingle(),

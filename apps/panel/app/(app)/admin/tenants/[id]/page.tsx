@@ -155,13 +155,13 @@ export default async function TenantDetailPage({ params, searchParams }: Props) 
         </Card>
       ) : null}
 
-      {health?.coachV3IsPlaceholder ? (
+      {health?.coachIsPlaceholder ? (
         <Card className="border-warning/40 bg-warning/5">
           <CardContent className="p-4 flex gap-3 items-start">
             <AlertTriangle className="size-5 text-warning shrink-0 mt-0.5" />
             <div className="flex-1 text-sm">
               <p className="font-medium text-foreground">
-                Coach v3 todavía es el placeholder vacío.
+                El coach todavía es el placeholder vacío.
               </p>
               <p className="text-muted-foreground mt-1">
                 Edita el bloque Coach abajo con el prompt personalizado del

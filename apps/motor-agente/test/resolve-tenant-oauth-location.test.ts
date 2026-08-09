@@ -146,4 +146,31 @@ describe('resolveTenantByOauthLocation', () => {
       await resolveTenantByOauthLocation(supabase, 'loc_pablo_oauth'),
     ).toBe(2);
   });
+  it('resuelve tenants conectados con PIT (BYOK del panel), no solo OAuth', async () => {
+    // Regresion 2026-08-09: el formulario de integraciones del panel guarda
+    // auth_type='pit'. El filtro exigia 'oauth', asi que los webhooks de la app
+    // del Marketplace no casaban con ese tenant y se descartaban en silencio:
+    // Instagram entraba mudo sin ningun error visible.
+    const supabase = buildSupabaseMock({
+      rows: [
+        {
+          tenant_id: 7,
+          connection_config: { auth_type: 'pit', locationId: 'CjbWMHQEMKIAqt86ZAPt' },
+        },
+      ],
+    });
+    expect(await resolveTenantByOauthLocation(supabase, 'CjbWMHQEMKIAqt86ZAPt')).toBe(7);
+  });
+
+  it('PIT y OAuth conviven sin pisarse', async () => {
+    const supabase = buildSupabaseMock({
+      rows: [
+        { tenant_id: 2, connection_config: { auth_type: 'oauth', locationId: 'loc_oauth' } },
+        { tenant_id: 7, connection_config: { auth_type: 'pit', locationId: 'loc_pit' } },
+      ],
+    });
+    expect(await resolveTenantByOauthLocation(supabase, 'loc_oauth')).toBe(2);
+    expect(await resolveTenantByOauthLocation(supabase, 'loc_pit')).toBe(7);
+    expect(await resolveTenantByOauthLocation(supabase, 'loc_inexistente')).toBeNull();
+  });
 });

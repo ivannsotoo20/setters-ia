@@ -158,3 +158,37 @@ export async function updateContact(
 
   return response.contact;
 }
+
+/**
+ * Añade etiquetas a un contacto YA existente, sin tocar las que ya tenga.
+ *
+ * Endpoint: POST /contacts/{id}/tags (GHL API v2).
+ *
+ * ⚠️ NO usar `updateContact` para esto. Ese endpoint es `PUT /contacts/{id}` y
+ * GHL trata `tags` como REEMPLAZO del array completo: mandar ["inbound"] borraría
+ * cualquier etiqueta que el trainer hubiese puesto a mano en ese contacto. Este
+ * endpoint es aditivo y es el único seguro para automatizar etiquetado.
+ *
+ * Devuelve las etiquetas que GHL confirma tras la operación (puede incluir las
+ * que ya tenía). Si `tags` viene vacío, no llama a la API.
+ */
+export async function addContactTags(
+  apiToken: string,
+  contactId: string,
+  tags: string[],
+  fetchImpl?: typeof fetch,
+): Promise<{ tags: string[] }> {
+  if (!contactId) throw new Error('addContactTags: contactId requerido');
+  const clean = tags.map((t) => t.trim()).filter((t) => t.length > 0);
+  if (clean.length === 0) return { tags: [] };
+
+  const response = await ghlRequest<{ tags?: string[] }>({
+    apiToken,
+    method: 'POST',
+    path: `/contacts/${encodeURIComponent(contactId)}/tags`,
+    body: { tags: clean },
+    fetchImpl,
+  });
+
+  return { tags: Array.isArray(response.tags) ? response.tags : clean };
+}

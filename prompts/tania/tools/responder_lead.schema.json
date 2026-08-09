@@ -34,7 +34,7 @@
       },
       "handoff": {
         "type": "string",
-        "description": "none = sigue la IA. agenda = lead confirmó reserva. descualificado = cierre cálido enviado. silencioso = SOLO emergencia real, ideación suicida, violencia o insinuación fuera de lugar: mensajes=[] y Tania revisa (las señales médicas del protocolo de derivación NO van aquí: llevan mensaje de derivación + pipeline_stage=derivado_medico + handoff=humano). humano = intención de compra/pago/soporte, derivación médica o lead pide humano: Tania debe verlo YA.",
+        "description": "none = sigue la IA. agenda = lead confirmó reserva. descualificado = cierre cálido enviado. silencioso = mensajes=[] y Tania revisa, en DOS casos: (a) emergencia real, ideación suicida, violencia o insinuación fuera de lugar; (b) el lead pregunta si eres una IA, un bot o un asistente — esa respuesta la da Tania en persona, tú no contestas ni afirmando ni negando (las señales médicas del protocolo de derivación NO van aquí: llevan mensaje de derivación + pipeline_stage=derivado_medico + handoff=humano). humano = intención de compra/pago/soporte, derivación médica o lead pide humano: Tania debe verlo YA.",
         "enum": ["none", "agenda", "descualificado", "silencioso", "humano"]
       },
       "slots_nuevos": {
