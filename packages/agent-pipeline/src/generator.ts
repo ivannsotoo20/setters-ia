@@ -28,7 +28,14 @@ import type { GeneratorInput, GeneratorOutput, SetterToolOutput } from './types.
  * ⚠️ Esta constante es GLOBAL, no por tenant: cambiarla mueve a todos los
  * tenants a la vez.
  *
- * Override por env (`GENERATOR_MODEL`) para A/B y tests.
+ * Para cambiar de modelo hay que tocar esta constante y desplegar. NO existe
+ * override por variable de entorno, aunque este comentario lo prometiera desde
+ * 2026-05: nadie lee `process.env.GENERATOR_MODEL`, y el motor tampoco pasa
+ * `models.generator` al pipeline. Poner esa variable en el VPS no haría nada, y
+ * un A/B montado sobre ella daría un resultado falso sin avisar.
+ *
+ * Sí se puede sobreescribir desde código con `input.model` (lo usan los scripts
+ * de `apps/motor-agente/scripts/` y los tests).
  */
 export const DEFAULT_GENERATOR_MODEL = 'claude-sonnet-5';
 /**

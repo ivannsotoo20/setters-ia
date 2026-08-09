@@ -96,8 +96,9 @@ export interface GeneratorInput {
   /** Historial previo (sin incluir userMessage). */
   history: ConversationMessage[];
   /**
-   * Modelo Anthropic. Default `env.GENERATOR_MODEL` o `DEFAULT_GENERATOR_MODEL`
-   * (ver `generator.ts`). Útil sobreescribir en tests / dev.
+   * Modelo Anthropic. Si no se pasa, `DEFAULT_GENERATOR_MODEL` (ver
+   * `generator.ts`). No hay override por variable de entorno. Útil
+   * sobreescribir en tests / dev.
    */
   model?: string;
   /** Max tokens del response. Default 1024. */
