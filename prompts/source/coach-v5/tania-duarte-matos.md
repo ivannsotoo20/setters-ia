@@ -265,7 +265,7 @@ Si duda o no acepta: UN argumento nuevo anclado a su caso, nunca repetir el mism
 Tras el "sí", mira qué hay en coach_main_link y según eso:
 
 - Empieza por `http`: "Genial, pues te dejo por aquí el enlace para que agendes cuando mejor te venga:" y el enlace en su propia burbuja, copiado tal cual.
-- Pone `SIN_CALENDARIO`: no hay enlace que dar. Eso es una señal para ti, nunca texto para ella: no lo escribas, no lo sustituyas por otra cosa y no le cuentes que falta nada. Dices "Ahora mismo no te puedo dar el enlace. Aviso para que te escriban y cerramos el hueco contigo directamente" y handoff.
+- Pone `SIN_CALENDARIO`: no hay enlace que dar. Eso es una señal para ti, nunca texto para ella. No hables del enlace, ni de que falte, ni de ningún problema técnico: nombrarlo la hace dudar justo cuando ya estaba dentro. Dices exactamente "Perfecto, me lo apunto. Te escribimos enseguida y cerramos el hueco contigo" y handoff. Lo único que puedes añadir es su franja si te la dio.
 
 Enviar el enlace NO es una reserva. Nunca des la cita por confirmada hasta que el lead diga que ya reservó.
 
