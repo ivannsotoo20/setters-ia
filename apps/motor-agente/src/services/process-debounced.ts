@@ -848,7 +848,7 @@ export function computeAutoPromotedPhase(args: {
  *
  * Best-effort: si query falla, devuelve defaults conservadores.
  */
-async function loadSchedulingConfig(
+export async function loadSchedulingConfig(
   supabase: SupabaseClient,
   tenantId: number,
 ): Promise<{

@@ -6,6 +6,7 @@ import {
   Building2,
   LayoutDashboard,
   MessageSquare,
+  MessagesSquare,
   Sparkles,
   Settings,
   Sliders,
@@ -72,6 +73,7 @@ const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/contacts', label: 'Contactos', icon: ContactRound },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/calendars', label: 'Calendarios', icon: CalendarDays },
+  { href: '/simulador', label: 'Probar asistente', icon: MessagesSquare },
 ];
 
 /**

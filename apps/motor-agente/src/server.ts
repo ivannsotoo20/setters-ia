@@ -9,6 +9,7 @@ import { webhookGhlRoutes } from './routes/webhook-ghl.js';
 import { oauthGhlRoutes } from './routes/oauth-ghl.js';
 import { automationLeadFormRoutes } from './routes/automation-lead-form.js';
 import { internalCalendarsRoutes } from './routes/internal-calendars.js';
+import { internalSimulateRoutes } from './routes/internal-simulate.js';
 import { internalStatsRoutes } from './routes/internal-stats.js';
 import { internalWelcomeRoutes } from './routes/internal-welcome.js';
 import { cronSchedulerPlugin } from './plugins/cron-scheduler.js';
@@ -68,6 +69,7 @@ export async function buildServer(): Promise<FastifyInstance> {
   await app.register(internalStatsRoutes);
   await app.register(internalWelcomeRoutes);
   await app.register(internalCalendarsRoutes);
+  await app.register(internalSimulateRoutes);
   await app.register(cronSchedulerPlugin);
 
   return app;
