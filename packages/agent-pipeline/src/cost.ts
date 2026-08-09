@@ -14,8 +14,14 @@ export interface ModelPriceUsdPerMTokens {
   /** Cache write con TTL 5min (default histórico). */
   cacheWrite: number;
   /**
-   * Cache write con TTL 1h. Anthropic cobra ~2× el rate de 5min. Si se omite,
-   * `calculateCostUsd` lo deriva como `2 × cacheWrite`.
+   * Cache write con TTL 1h = 2× `inputUncached`.
+   *
+   * OJO con la referencia: las dos tarifas de escritura se definen sobre el
+   * input base (5min = 1,25×, 1h = 2×), NO una sobre la otra. Tomar el 1h como
+   * `2 × cacheWrite` da 2,5× base e infla el coste un 25%. Ese era el error de
+   * las filas de Haiku 4.5, Sonnet 4.5 y Opus 4.5 hasta 2026-08-09, y como el
+   * motor escribe siempre con TTL 1h, el historico de `llm_calls` anterior a esa
+   * fecha lleva las escrituras de cache infladas ese 25%.
    */
   cacheWrite1h?: number;
   output: number;
@@ -41,7 +47,7 @@ export const DEFAULT_PRICE_TABLE: Record<string, ModelPriceUsdPerMTokens> = {
     inputUncached: 3.0,
     cacheRead: 0.3,
     cacheWrite: 3.75,
-    cacheWrite1h: 7.5,
+    cacheWrite1h: 6.0,
     output: 15.0,
   },
   // Haiku 4.5
@@ -49,7 +55,7 @@ export const DEFAULT_PRICE_TABLE: Record<string, ModelPriceUsdPerMTokens> = {
     inputUncached: 1.0,
     cacheRead: 0.1,
     cacheWrite: 1.25,
-    cacheWrite1h: 2.5,
+    cacheWrite1h: 2.0,
     output: 5.0,
   },
   // Opus 4.5 (referencia, no se usa en pipeline actual)
@@ -57,7 +63,7 @@ export const DEFAULT_PRICE_TABLE: Record<string, ModelPriceUsdPerMTokens> = {
     inputUncached: 15.0,
     cacheRead: 1.5,
     cacheWrite: 18.75,
-    cacheWrite1h: 37.5,
+    cacheWrite1h: 30.0,
     output: 75.0,
   },
 };
@@ -105,8 +111,8 @@ export interface CostInput {
   /**
    * TTL del cache_control que se usó al ESCRIBIR el cache en esta llamada.
    * - `'5m'` (default): tarifa cacheWrite estándar.
-   * - `'1h'`: tarifa cacheWrite1h (~2× la de 5min). Si el modelo no define
-   *   `cacheWrite1h`, se deriva como `2 × cacheWrite`.
+   * - `'1h'`: tarifa cacheWrite1h (2× el input base, es decir 1,6× la de 5min).
+   *   Si el modelo no define `cacheWrite1h`, se deriva como `2 × inputUncached`.
    *
    * Anthropic NO devuelve el TTL en el response.usage, así que el caller debe
    * pasarlo de acuerdo a lo que configuró en `cache_control.ttl` de la request.
@@ -124,8 +130,11 @@ export function calculateCostUsd(input: CostInput): number {
   if (!price) return 0;
 
   const ttl = input.cacheTtl ?? '5m';
+  // La tarifa de escritura se define sobre el INPUT BASE, no sobre la de 5min:
+  // 5min = 1,25× base, 1h = 2× base. Derivar el 1h como `cacheWrite × 2` da
+  // 2,5× base e infla el coste un 25%.
   const cacheWriteRate =
-    ttl === '1h' ? (price.cacheWrite1h ?? price.cacheWrite * 2) : price.cacheWrite;
+    ttl === '1h' ? (price.cacheWrite1h ?? price.inputUncached * 2) : price.cacheWrite;
 
   const cost =
     (input.tokensInUncached * price.inputUncached +

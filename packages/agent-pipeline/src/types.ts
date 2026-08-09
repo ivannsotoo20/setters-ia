@@ -101,7 +101,7 @@ export interface GeneratorInput {
    * sobreescribir en tests / dev.
    */
   model?: string;
-  /** Max tokens del response. Default 1024. */
+  /** Max tokens del response. Default `DEFAULT_MAX_TOKENS` (4096). */
   maxTokens?: number;
   /**
    * Hito 12.1 — Cap dinámico de mensajes por turno (1-4). El motor lo lee de

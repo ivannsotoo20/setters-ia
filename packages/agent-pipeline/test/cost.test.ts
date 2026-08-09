@@ -104,8 +104,11 @@ describe('calculateCostUsd', () => {
     expect(DEFAULT_PRICE_TABLE['claude-sonnet-4-5']?.output).toBe(15);
   });
 
+  // Las dos tarifas de escritura se definen sobre el INPUT BASE, no una sobre
+  // la otra: 5min = 1,25× base, 1h = 2× base. Estos tests afirmaban 2× la de
+  // 5min (= 2,5× base) e inflaban el 1h un 25%. Corregido 2026-08-09.
   it('uses cacheWrite1h tariff when cacheTtl="1h" (Sonnet)', () => {
-    // Sonnet 4.5: cacheWrite 5m = 3.75, cacheWrite 1h = 7.50 (~2x)
+    // Sonnet 4.5: base 3.00 -> 5m = 3.75 (1,25×), 1h = 6.00 (2×)
     const cost = calculateCostUsd({
       model: 'claude-sonnet-4-5',
       tokensInUncached: 0,
@@ -114,12 +117,12 @@ describe('calculateCostUsd', () => {
       tokensOut: 0,
       cacheTtl: '1h',
     });
-    // 10k * 7.50 / 1M = 0.075
-    expect(cost).toBeCloseTo(0.075, 5);
+    // 10k * 6.00 / 1M = 0.06
+    expect(cost).toBeCloseTo(0.06, 5);
   });
 
   it('uses cacheWrite1h tariff when cacheTtl="1h" (Haiku)', () => {
-    // Haiku 4.5: cacheWrite 5m = 1.25, cacheWrite 1h = 2.50 (~2x)
+    // Haiku 4.5: base 1.00 -> 5m = 1.25 (1,25×), 1h = 2.00 (2×)
     const cost = calculateCostUsd({
       model: 'claude-haiku-4-5',
       tokensInUncached: 0,
@@ -128,16 +131,30 @@ describe('calculateCostUsd', () => {
       tokensOut: 0,
       cacheTtl: '1h',
     });
-    // 10k * 2.50 / 1M = 0.025
-    expect(cost).toBeCloseTo(0.025, 5);
+    // 10k * 2.00 / 1M = 0.02
+    expect(cost).toBeCloseTo(0.02, 5);
   });
 
-  it('falls back to 2× cacheWrite when cacheWrite1h is missing in custom table', () => {
+  it('cada tarifa 1h de la tabla es exactamente 2× su input base', () => {
+    for (const [model, price] of Object.entries(DEFAULT_PRICE_TABLE)) {
+      expect(price.cacheWrite1h, `${model}: cacheWrite1h`).toBeCloseTo(
+        price.inputUncached * 2,
+        5,
+      );
+      expect(price.cacheWrite, `${model}: cacheWrite 5m`).toBeCloseTo(
+        price.inputUncached * 1.25,
+        5,
+      );
+      expect(price.cacheRead, `${model}: cacheRead`).toBeCloseTo(price.inputUncached * 0.1, 5);
+    }
+  });
+
+  it('falls back to 2× inputUncached when cacheWrite1h is missing in custom table', () => {
     const customTable = {
       'claude-sonnet-4-5': {
         inputUncached: 1,
         cacheRead: 0.1,
-        cacheWrite: 1, // sin cacheWrite1h explicit
+        cacheWrite: 1.25, // sin cacheWrite1h explicit
         output: 1,
       },
     };
@@ -150,7 +167,7 @@ describe('calculateCostUsd', () => {
       cacheTtl: '1h',
       priceTable: customTable,
     });
-    // 1M * (2 * 1) / 1M = 2
+    // 1M * (2 * inputUncached=1) / 1M = 2
     expect(cost).toBe(2);
   });
 
