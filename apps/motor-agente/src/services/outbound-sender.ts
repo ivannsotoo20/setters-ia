@@ -20,6 +20,7 @@ import { getAnthropic } from '../lib/anthropic.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
+import { logger } from '../lib/logger.js';
 import { getValidAccessToken, GhlOauthError } from '../lib/ghl-oauth.js';
 
 type SupportedProvider = 'manychat' | 'ycloud' | 'ghl';
@@ -114,8 +115,40 @@ export async function sendNextBatch(
 
   if (!candidates || candidates.length === 0) return result;
 
+  // 1.5 Interruptor global por entrenador (migration 074).
+  //
+  // Este tick pesca pendientes de TODOS los tenants, así que hay que descartar
+  // los de quien tenga el setter apagado. Sin esto, apagar el interruptor
+  // seguiría soltando durante los segundos siguientes las partes ya programadas
+  // del último turno: el entrenador ve que "sigue escribiendo" después de
+  // haberlo parado, y deja de fiarse del botón.
+  //
+  // Los schedules NO se cancelan, se dejan en `pending`: si vuelve a encender en
+  // un rato, la conversación continúa donde estaba en vez de quedarse coja.
+  let pending = candidates;
+  const tenantIdsInBatch = [...new Set(pending.map((c) => Number(c.tenant_id)))];
+  const { data: disabledRows } = await supabase
+    .from('tenant_configs')
+    .select('tenant_id')
+    .in('tenant_id', tenantIdsInBatch)
+    .eq('ai_enabled', false);
+  const disabledTenants = new Set((disabledRows ?? []).map((r) => Number(r.tenant_id)));
+
+  if (disabledTenants.size > 0) {
+    const before = pending.length;
+    pending = pending.filter((c) => !disabledTenants.has(Number(c.tenant_id)));
+    const dropped = before - pending.length;
+    result.skipped += dropped;
+    result.picked = pending.length;
+    logger.info(
+      { tenants: [...disabledTenants], dropped },
+      'sendNextBatch: partes omitidas por interruptor global apagado (siguen pending)',
+    );
+    if (pending.length === 0) return result;
+  }
+
   // 2. Marcar como processing
-  const ids = candidates.map((c) => Number(c.id));
+  const ids = pending.map((c) => Number(c.id));
   await supabase.from('message_schedules').update({ status: 'processing' }).in('id', ids);
 
   // 2.5 Sprint Iota.3 hotfix CRÍTICO (2026-05-12) — gate IA pausada en outbound.
@@ -131,7 +164,7 @@ export async function sendNextBatch(
   // Fix: cargar estado de cada conv del batch en una sola query, y para los
   // schedules cuyas convs estén pausadas/bloqueadas/cerradas, marcarlos
   // 'cancelled' con last_error y saltarlos del envío.
-  const convIds = Array.from(new Set(candidates.map((c) => Number(c.conversation_id))));
+  const convIds = Array.from(new Set(pending.map((c) => Number(c.conversation_id))));
   const { data: convStatesRaw } = await supabase
     .from('conversations')
     .select('id, state, is_blocked, ai_paused_until')
@@ -142,8 +175,8 @@ export async function sendNextBatch(
   }
 
   const cancelledIds: number[] = [];
-  const sendableCandidates: typeof candidates = [];
-  for (const row of candidates) {
+  const sendableCandidates: typeof pending = [];
+  for (const row of pending) {
     const cv = convMap.get(Number(row.conversation_id));
     const triggeredBy = (row.triggered_by as string | null | undefined) ?? null;
     // Hito 10.6.1 fix — partes del turno del bot (triggered_by='ai_turn') NO

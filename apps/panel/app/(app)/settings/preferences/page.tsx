@@ -7,6 +7,8 @@ import { listCustomInstructions } from '@/lib/actions/custom-instructions';
 import { DEFAULT_TRAINER_PREFERENCES } from '@/lib/trainer-prefs-serializer';
 import { PreferencesForm } from './preferences-form';
 import { CustomInstructionsList } from './custom-instructions-list';
+import { AiSwitchCard } from './ai-switch-card';
+import { getAiEnabled } from '@/lib/actions/ai-switch';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,9 +24,10 @@ export default async function PreferencesPage() {
   const effective = await getEffectiveTenant();
   if (!effective) redirect('/dashboard');
 
-  const [prefsResult, instructionsResult] = await Promise.all([
+  const [prefsResult, instructionsResult, aiEnabled] = await Promise.all([
     loadTrainerPreferences({ tenantId: effective.tenantId }),
     listCustomInstructions({ tenantId: effective.tenantId }),
+    getAiEnabled(),
   ]);
 
   const initial = prefsResult.ok ? prefsResult.preferences : DEFAULT_TRAINER_PREFERENCES;
@@ -45,6 +48,8 @@ export default async function PreferencesPage() {
           libres. Aplican inmediatamente al siguiente turno del motor.
         </p>
       </div>
+
+      <AiSwitchCard initialEnabled={aiEnabled} />
 
       <PreferencesForm tenantId={effective.tenantId} initial={initial} />
 

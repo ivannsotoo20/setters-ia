@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
+import { isTenantAiEnabled } from '../lib/ai-enabled.js';
 import { enrichMediaMessages, type EnrichMediaResult } from './enrich-media-messages.js';
 import {
   computeScheduledTimes,
@@ -105,6 +106,28 @@ export async function processDebounced(
       phase: currentPhase,
       skipped: true,
       reason: `IA pausada (ai_paused_until=${rawPausedUntil}) — humano se hizo cargo o conv sin source clasificada`,
+    };
+  }
+
+  // 1.6. Interruptor global del entrenador (migration 074). Se comprueba DESPUÉS
+  // de la pausa por conversación porque es más barato salir por ahí, y ANTES de
+  // cargar nada más porque apagar significa apagar.
+  //
+  // Ojo con la semántica: apagado NO es desconectado. El mensaje del lead ya se
+  // guardó al entrar por el webhook, así que la conversación aparece completa en
+  // el panel. Lo único que no pasa es que el setter conteste. Al reencender no se
+  // ha perdido ningún lead.
+  if (!(await isTenantAiEnabled(supabase, tenantId))) {
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: 0,
+      totalLatencyMs: 0,
+      pipelineStatus: 'skipped',
+      phase: currentPhase,
+      skipped: true,
+      reason: 'interruptor global apagado (tenant_configs.ai_enabled=false)',
     };
   }
 
