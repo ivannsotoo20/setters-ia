@@ -1,6 +1,6 @@
 ---
 name: project_miguel_coach_feedback
-description: "Loop del bloque COACH Miguel Aguado (academia/Automatía, mujeres 35-70 pérdida de peso sin dietas, IG outbound). Ronda 1 (2026-07-31, feedback #42): las conversaciones morían en el tramo final porque el bloque tenía escrito el techo — tope de 2 preguntas de cambio, F3 y F4 compartiendo tope, y la pregunta de necesidad gastada dentro del literal de handoff. Se monta la ESCALERA DE CAMBIO de 4 escalones en F4. Ronda 2 (2026-07-31): se cierran los dos huecos de doctrina que quedaron fuera — §26 (dos objeciones nombraban la videollamada antes de F5, grave en Miguel porque su setter no la propone nunca) y §24 (lead cerrada dentro de CSM-02: una pregunta súper abierta y el silencio como filtro). Recall si vuelve feedback de Miguel o si otro coach reporta conversaciones cortas al final."
+description: "Loop del bloque COACH Miguel Aguado (academia/Automatía, mujeres 35-70 pérdida de peso sin dietas, IG outbound). Ronda 1 (2026-07-31, feedback #42): las conversaciones morían en el tramo final porque el bloque tenía escrito el techo — tope de 2 preguntas de cambio, F3 y F4 compartiendo tope, y la pregunta de necesidad gastada dentro del literal de handoff. Se monta la ESCALERA DE CAMBIO de 4 escalones en F4. Ronda 2 (2026-07-31): se cierran los dos huecos de doctrina que quedaron fuera — §26 (dos objeciones nombraban la videollamada antes de F5, grave en Miguel porque su setter no la propone nunca) y §24 (lead cerrada dentro de CSM-02: una pregunta súper abierta y el silencio como filtro). Ronda 3 (2026-08-11): el listado de la compra salía a todo el mundo — la F1 lo entregaba incondicionalmente porque el bloque daba el origen por hecho; ahora el carril lo elige su primer mensaje (LISTADO vs CONVERSACIÓN). Recall si vuelve feedback de Miguel, si otro coach reporta conversaciones cortas al final, o si otro coach entrega un lead magnet en F1."
 metadata:
   node_type: memory
   type: project
@@ -180,6 +180,86 @@ había fichado**. No se tocaron por disciplina de alcance; las dos tienen propue
   puerta abierta"). §29 pide capturar la fecha y comprometerse a escribir después
   (`handoff_cause = "recontacto_programado"`). Se vio al reescribir esa línea; no se aplicó porque el
   encargo era §26. Alfonso y Roberto ya lo llevan.
+
+---
+
+## Ronda 3 — 2026-08-11 (el listado salía para todo el mundo)
+
+**Lo que dijo Iván:** el recurso del arranque se entrega igual a quien viene de la bienvenida que a
+quien escribe por su cuenta. Hay que decidirlo por el **primer mensaje de ella**: si contesta al
+ofrecimiento ("venga", "pásamelo", "perfecto", "vamos a ello") se le pasa; si trae su problema o
+pregunta otra cosa, empieza una cualificación distinta, más inbound, sin recurso.
+
+### El diagnóstico: otra vez el fallo estaba escrito en el bloque
+
+Mismo patrón que la Ronda 1. La F1 no se equivocaba — **ejecutaba al pie de la letra tres órdenes que
+decían exactamente lo que él ve**:
+
+1. **La Fase 0 daba el origen por hecho:** *"a la lead se le ha preguntado si desea recibir un listado…
+   La RESPUESTA del lead a esa pregunta es el PRIMER mensaje que recibo"*. Premisa falsa para todo lead
+   que escribe primero, y todo lo de abajo la heredaba.
+2. **La rama A de F1 era el bug, literal:** *"Da igual cómo lo formule: 'sí', 'vale', 'me interesa',
+   'envíamelo', **un simple saludo**, o incluso si de paso suelta **un objetivo, una duda o un comentario
+   sobre mi contenido**. Entregar el recurso es SIEMPRE mi primer movimiento."*
+3. **La MECÁNICA DE DISPARO remataba:** *"Está PROHIBIDO omitir el recurso… si no te consta que lo
+   compartiste, lo compartes"*. El martillo que quitaba todo criterio — y estaba escrito para arreglar
+   **el fallo contrario** (que a veces no lo enviaba). Cada ronda deja su martillo; este se comió al
+   siguiente feedback.
+4. `coach_secondary_links` cerraba el círculo: *"OBLIGATORIO entregar en el primer mensaje de F1"*.
+
+La ironía: **los dos carriles ya existían** (CSM-07 outbound/inbound + `FAST-TRACK (inbound=TRUE)`).
+Existían para decidir **cómo hablar**, nunca para decidir **qué disparar**, y un incondicional en F1 los
+pisaba. Es el defecto 2 de §31 en versión invertida: varias secciones definiendo la misma decisión, y el
+modelo agarrándose a la que está escrita con más autoridad léxica ("SIEMPRE", "PROHIBIDO omitir").
+
+### La solución: el carril lo elige su primer mensaje
+
+Marco nuevo, una línea: **el listado no lo dispara el turno, lo dispara ELLA.** Un solo test —
+*¿contesta a un ofrecimiento, o trae tema propio?* — y dos carriles con ejemplos en `>`:
+
+- **CARRIL LISTADO** (viene de la bienvenida): acepta o lo pide → MENSAJE 1, sin excepción, una sola vez.
+  Se queda aquí lo que era CSM-07 outbound (no asumir intención + lista negra de preguntas) y el caso
+  combinado con energía baja.
+- **CARRIL CONVERSACIÓN** (escribe ella con su tema): **no va el listado ni ningún literal de apertura**.
+  Recoge lo que trae y abre por ahí. Se queda aquí lo que era CSM-07 inbound + el FAST-TRACK (mínimo 2
+  intercambios, y la escalera de F4 se sube igual de entera).
+
+Tres desempates, que es donde estaba el riesgo real de romper el flujo bueno:
+- **Saludo a secas** ("hola") no dice de dónde viene → lo decide el hilo: si consta el ofrecimiento, es
+  LISTADO; si no consta, saludo + pregunta abierta.
+- **Duda real** → CONVERSACIÓN. El sesgo se invierte a propósito respecto a la ronda anterior: enviar un
+  enlace a quien preguntó otra cosa rompe la conversación; no enviarlo se arregla solo en el turno siguiente.
+- **El listado no caduca:** en cuanto lo acepte o lo pida, se lo pasa. Si llega tarde va solo el enlace
+  (la pregunta de España es del arranque). Esto es lo que permite retirar el martillo sin reabrir el
+  fallo de omisión.
+
+### Lo que se borró (la F1 pasa a ser la fuente única del disparo)
+
+CSM-07 entero · la MECÁNICA DE DISPARO · el `FAST-TRACK (inbound=TRUE)` (con su literal de `??` que
+violaba su propio voiceprint y una variable que nadie sabe si existe) · las etiquetas "Perfil A/B" · la
+tabla RESUMEN OPERATIVO (Iván ya la había quitado en su copia desplegada; se adopta en el repo). El
+"carril de lead CALIENTE" pierde la palabra *carril* para no chocar con los dos nuevos. **Queda un hueco
+en la numeración CSM (06 → 08): es deliberado**, renumerar solo habría añadido ruido al diff.
+
+### Bugs colaterales arreglados de paso
+
+- **`coach_wclose_generic` mentía en el carril nuevo:** *"quédate con el listado que te pasé"* a una lead
+  que nunca lo recibió. La frase pasa a condicional en la línea de cabecera, sin tocar el literal.
+- **El carril CALIENTE ordenaba entregar el recurso igual** — y una lead que llega pidiendo empezar es
+  justo la que NO viene de la bienvenida.
+- **MENSAJE 2 podía dispararse suelto** si en el carril CONVERSACIÓN mencionaba una ciudad. Ahora su
+  condición dice que solo existe si yo mandé el MENSAJE 1.
+- **Preflight CHECK 1** gana la compuerta del enlace ("¿voy a mandar el listado? → solo si lo aceptó o lo pidió").
+
+### Lo que queda abierto
+
+- **¿Automatía puede pasar el origen como variable?** Si el runtime marcara bienvenida/inbound, el carril
+  sería determinista y el test por contenido pasaría a red de seguridad. Hoy se decide por contenido
+  porque es lo único que consta.
+- **Smoke de los dos carriles**, sobre todo el saludo a secas y el mixto ("sí pásamelo, es que llevo años
+  a dieta").
+- El bloque queda en **528 líneas / 81,8 KB**: −1,6 KB frente al repo, +0,7 KB frente a lo desplegado
+  (los 13 ejemplos en `>` de los carriles cuestan más de lo que ahorró borrar CSM-07 y el martillo).
 
 ## Candidato a doctrina (NO propagado, a decisión de Iván)
 
