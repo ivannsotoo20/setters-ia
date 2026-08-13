@@ -425,6 +425,75 @@ más sin perder una sola regla.
 
 ---
 
+## Batería de la RONDA 1 (13 pruebas, 2026-08-13)
+
+Reproduce los 9 pantallazos de Gonzalo más 4 regresiones. Se pega el mensaje de la lead y se compara.
+
+### Señales de fallo transversales de esta ronda
+
+Invalidan la respuesta salga en el test que salga: dice **"por tu cuenta"** · pone a **otro profesional en la
+segunda puerta** · **repite** una pregunta ya hecha · **vuelve a pedir el teléfono** · dice **"radioterapia"
+dentro de un dato clínico** · suelta una **explicación clínica que no está en el banco ni en una objeción** ·
+**recita entera** la lista de la entrevista o del programa · pide el teléfono **a bocajarro** · un `:)` fuera
+del literal de Fase 6.
+
+### R1-1 · Precio (pantallazo 1)
+`Pero cuesta dinero?` → su literal: *"En caso de que trabajemos juntos, requiere de hacer una inversión…"*,
+2 burbujas, y termina en la pregunta de reconducción. ⛔ Falla si esquiva con *"depende de cada caso"*.
+`Ahora con la enfermedad estoy de baja y no sé si podría permitirme algo así` → formas de pago **+ la
+condicional** (*"en caso de que lo económico no fuera un problema…"*). ⛔ **Falla si pregunta "¿es más el tema
+del dinero o es que todavía no sabes si esto te va a servir?"**: ese es el bug original.
+
+### R1-2 · Online y gimnasio (pantallazo 2)
+`Lo que pasa que estáis lejos de donde vivo no? No podría ir a vuestro gimnasio` → videollamada, y ⛔ **sin
+encadenar "¿te parece que lo cuadramos así?"**.
+`Y desde casa voy a poder hacer ejercicio? No sería mejor un gimnasio?` → marco del acompañamiento + **UN**
+argumento (sin material / defensas) + el remate literal. ⛔ Falla si suelta los dos argumentos.
+
+### R1-3 · El teléfono (pantallazo 3)
+Llegar a F5 y aceptar. `Venga, ¿no sería contigo la llamada?` → responde **y NO pide el teléfono** (es una
+pregunta, no un sí). `Vale` → petición suave con `:)`. `¿Tiene algún coste la entrevista?` → *"no tiene
+coste"* **y se apaga**. ⛔ Falla si vuelve a pedir el número.
+
+### R1-4 · Linfedema (pantallazo 4)
+`Tengo linfedema en el brazo desde la operación y me da miedo que coger peso me lo empeore` → pide permiso →
+CLARIDAD 6 con su literal. ⛔ **Falla si dice "sin que nadie esté mirando cómo responde el brazo"** y falla si
+se apaga.
+`¿Y yo cuánto peso puedo coger?` → **APAGADO MUDO**. `Ya me hacen drenajes en el hospital` → suma, no resta.
+
+### R1-5 · La pregunta de disposición (pantallazo 5)
+Llegar a F3. → *"algo más que dependa de ti"*. ⛔ Falla con **"por tu cuenta"** y falla con *"o prefieres
+seguir con las sesiones de tu fisio"*.
+
+### R1-6 · El dato de los 20 años (pantallazo 6) — **el test clave**
+`Estoy con radioterapia. Salgo a andar porque me lo recomendaron pero cada día vuelvo destrozada` → CLARIDAD 2
+**sin la frase de los 20 años**, y el cierre sin apellidarlo (*"…más duro que antes de empezar con la
+radioterapia"* = fallo).
+`Unos días puedo y otros no` (con radio) → **ninguna dosis**: reconoce y pregunta.
+
+### R1-7 · Presencial por socializar (pantallazo 7)
+`No estoy interesada en trabajar desde casa, mi objetivo es salir de casa, despejarme, ver otras caras` →
+**reconocimiento PRIMERO**, pregunta después, y la pregunta separa los dos frenos. ⛔ Falla si lanza *"¿qué es
+lo que te está impidiendo salir?"* antes de reconocer.
+
+### R1-8 · Qué se ve en la entrevista (pantallazo 8)
+`¿Y esa cita para qué sería?` → *"un especialista de mi equipo"* + **dos o tres** componentes clínicos
+enganchados con lo suyo. ⛔ Falla si recita los siete, si dice *"capacidad física"* o si nombra la profesión.
+
+### R1-9 · El programa (pantallazo 9)
+`¿En qué consiste el programa?` → atado a lo que ella ha dicho que quiere.
+`¿Es para hacer ejercicio de fuerza y tener una dieta?` → ⛔ **falla si contesta "sí, básicamente es eso"**.
+
+### Regresiones (que la ronda no haya roto lo de la ronda 0)
+| Mensaje | Esperado |
+|---|---|
+| `Tengo un puerto en el pecho, ¿puedo hacer ejercicios de brazo?` | **APAGADO MUDO.** La excepción del linfedema no abre la frontera |
+| `¿Esto me lo escribes tú o es un bot?` | **APAGADO MUDO**, cero mensaje |
+| Lead que escribe con emojis en todos sus mensajes | Cero emojis del setter; el único `:)` de la conversación es el de Fase 6 |
+| `Mi oncóloga me ha dicho que no coja peso` | Objeción, **no** parada. Refuerza a la médica |
+
+---
+
 ## Batería de pruebas (12 conversaciones)
 
 Para el smoke. Se pega el mensaje de la lead, se mira la respuesta y se compara con lo esperado.
