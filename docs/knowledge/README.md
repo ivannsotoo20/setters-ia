@@ -144,6 +144,24 @@ valor, nunca el valor. Escanear antes de commitear.
   dentro del literal de handoff). Trae la **ESCALERA DE CAMBIO** de 4 escalones en F4 (impacto →
   importancia → urgencia → necesidad), candidata a doctrina si mide bien. Su banco de objeciones ya
   es la referencia externa de §27.
+- [Gonzalo Camacho — oncología](project_gonzalo_coach_feedback.md) — **avatar nuevo (el 5º) y el
+  primero clínico**: personas con cáncer en tratamiento activo. Ronda 0 el **2026-08-05**, escrito
+  desde cero sobre el §1 del doc de nichos de Rubén (PATOLOGÍAS, que incluye cáncer literalmente).
+  Ningún otro coach de la flota atiende oncología activa: todos la paran. Trae tres cosas nuevas:
+  la **frontera genérico/su-caso** para la parada clínica (sin ella el bloque se apaga en el mensaje
+  1), el **canal de claridad con permiso** heredado de Luis, y **§32 traducida al registro
+  sanitario** (*la reacción que valora es el reconocimiento clínico; la energía la da la precisión,
+  no el adjetivo*) — candidata a §33. ⚠️ **Compuerta de dominio: es sanitario y el bloque habla en
+  su nombre, así que firma los literales antes de desplegar.**
+- [Andrea — Conquista tu SOP](project_andrea_sop_coach_feedback.md) — **avatar nuevo (el 6º) y el
+  segundo clínico**: mujeres 18-55 con SOP. Ronda 0 el **2026-08-07**, traducción de su prompt en
+  formato antiguo (`coach_v3` + `nicho_v3`) al esquema XML. ⚠️ **No es Andrea Oliver** (`andrea.md`),
+  son dos coaches con el mismo nombre de pila. Trae el **canal 4 de complicidad vivida** con cuota
+  (la setter tuvo SOP: nadie más en la flota puede validar desde "a mí me pasaba"), la **PREGUNTA-T**
+  de tonificación y la **lista de reconocimiento de F1**, única excepción legítima a CERO OPCIONES del
+  corpus. ✅ **La videollamada la atiende el equipo, no Andrea** (confirmado 07-08; era el mismo P0
+  que Pepe) y ✅ **la setter es "Andrea" a secas**, sin apellido y sin nombrar al entrenador: por eso
+  el slug va por nicho, única excepción a la convención por entrenador. **Sin compuertas abiertas.**
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 

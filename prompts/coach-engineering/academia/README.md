@@ -43,6 +43,17 @@ frontmatter avisa: *"TESTEAR antes de seedear (plan: Roberto primero → si mejo
 > roberto-cordobilla.md" queriendo decir *otro fichero*, no *otra persona*. Verificado contra
 > ambos ficheros: los dos son Roberto Cordobilla.
 
+**Trampa conocida — las dos Andrea.** `andrea.md` y `andrea-sop.md` son **dos coaches distintas** que
+comparten nombre de pila, igual que las dos Beatriz. No se mezclan ni se copian literales entre ellas:
+
+| | `andrea.md` | `andrea-sop.md` |
+|---|---|---|
+| Quién | **Andrea Oliver**, la entrenadora (habla de sí misma) | **Andrea**, la setter de *Conquista tu SOP* (la llamada la atiende el equipo) |
+| Avatar | Mujeres 35-45 **sanas**, fuerza + comer sin restricción, hyrox/deka | Mujeres 18-55 con **SOP** diagnosticado o sospechado |
+| Eje | Objetivos y recomposición | Síntomas, confusión hormonal y quitar culpa |
+| Autoridad | Ciencias del deporte + evidencia | **Haber vivido SOP en primera persona** |
+| notia | ⚠️ formato **antiguo** (lo niega) — pendiente de migrar | apagado mudo, no lo niega |
+
 ## El mismo coach en los dos sistemas — mapa (2026-07-30)
 
 Roberto no es un caso aislado: **tres entrenadores existen a la vez en academia y en el SaaS**.
@@ -76,13 +87,15 @@ y si se anota, que quede en su loop de `docs/knowledge/`.
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
 | [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-08-03 (`<coach_discovery_gate>` = suelo de 5 elementos en lugar del tope de 2 preguntas + preámbulo repartido en el esquema + parada migrada a §30 + sub-tipo E de aporte). ⚠️ Los 3 ejemplos de aporte están **pendientes de validar con Frodo** |
 | [chema.md](chema.md) | Programa Fénix | `coach_block_chema.txt` | Ronda 2026-06-20 |
-| [miguel-aguado.md](miguel-aguado.md) | Mujeres 35-70 pérdida de peso sin dietas (IG outbound, handoff sin enlace) | `coach_block_miguel_aguado.md` | Ronda 1 aplicada 2026-07-31 (escalera de cambio en F4) |
-| [andrea.md](andrea.md) | Mujeres | `coach_block_andrea.md` | 2026-07-06 |
+| [miguel-aguado.md](miguel-aguado.md) | Mujeres 35-70 pérdida de peso sin dietas (IG, handoff sin enlace) | `coach_block_miguel_aguado.md` | Ronda 3 aplicada 2026-08-11: **el primer mensaje de la lead elige el carril** (LISTADO si contesta al ofrecimiento del lead magnet · CONVERSACIÓN si trae tema propio → sin recurso). Fuente única del disparo en la F1: se retiran CSM-07, la MECÁNICA DE DISPARO y el FAST-TRACK. Antes: ronda 1 (escalera de cambio en F4) y ronda 2 (§26 + §24) |
+| [andrea.md](andrea.md) | Mujeres (fuerza + nutrición sin restricción, 35-45, sanas) — **Andrea Oliver** | `coach_block_andrea_oliver.md` | Ronda 2026-08-13: **el primer mensaje elige el carril** (GUÍA vs CONVERSACIÓN), fuente única en `coach_phase_massage_fase1`. ⚠️ En esa misma ronda el repo se puso al día con **8 KB de trabajo que solo vivía en `Downloads/`** (el fichero llevaba parado desde el 15-jul). Pendiente: su `notia` sigue negando ser IA |
+| [andrea-sop.md](andrea-sop.md) | **SOP (Síndrome de Ovario Poliquístico), mujeres 18-55** (6º avatar, el 2º clínico) — setter **Andrea** de *Conquista tu SOP* | `andrea_jose.md` (formato antiguo `coach_v3` + `nicho_v3`) | **Ronda 0, 2026-08-07.** Traducción del formato antiguo al esquema `<coach_block>`. Trae el **canal 4 (complicidad vivida)** con cuota, la **PREGUNTA-T** de tonificación, la **frontera clínica** genérico/su-caso y la **lista de reconocimiento** de F1 como única excepción a CERO OPCIONES. ✅ **La videollamada la atiende el EQUIPO, no Andrea** (Iván 07-08: plural obligatorio en F4 y F5, mismo P0 que Pepe). ✅ La setter es **"Andrea" a secas, sin apellido**, y el entrenador no se nombra; el slug va **por nicho** (única excepción a la convención por entrenador) para no colisionar con `andrea.md`. **Sin compuertas abiertas** |
 | [alex.md](alex.md) | **Escaladores** estancados o lesionados (Escalada Inteligente) — nicho fuera del corpus fitness | — | 2026-07-24. ⚠️ **Formato antiguo** (`# BLOQUE 0…7`, no el esquema `<coach_block>`); sin loop documentado |
 | [beatriz-juan.md](beatriz-juan.md) | Madres postparto (mujeres, registro afectivo) | `victor_beatriz_coach.rtf` | Ronda 1 aplicada 2026-07-28. **Lleva un override de §19 que hay que enseñarle a Rubén antes de desplegar** |
 | [luis-royan.md](luis-royan.md) | Mujeres menopausia (4º avatar) | diseño desde cero + `luis_coach.rtf` | **Ronda 2026-07-31**: 5 tandas de feedback, reescrito a v3 (precheck R1-R8 + conversación dorada + banco de movimientos). ⚠️ Lo desplegado era una **copia truncada** sin el preámbulo: pegar SIEMPRE desde aquí. Pendiente: smoke contra la conversación del 30-jul |
 | [pepe.md](pepe.md) | HYROX / rendimiento híbrido (avatar de OBJETIVO) | bloque desplegado en Automatía | Ronda 1 aplicada 2026-07-25. **Duración del programa + corpus de voz pendientes** |
-| [DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md](DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md) | 7 nichos × DN-01..06 (doc de Rubén) | igual | Menopausia = §7, base de Luis Royán |
+| [gonzalo-camacho.md](gonzalo-camacho.md) | **Oncología: personas con cáncer en tratamiento activo** (5º avatar, el primero clínico) | diseño desde cero + su formulario "Documentación Avatar" | **Ronda 0, 2026-08-05.** Escrito de cero. Trae la **frontera genérico/su-caso** para la parada clínica, el canal de claridad con permiso y **§32 traducida al registro sanitario** (registro de centro sanitario + cero emojis, combinación que no existía en el corpus). ⚠️ **Compuerta de dominio: Gonzalo tiene que firmar los literales antes de desplegar** (es sanitario y el bloque habla en su nombre) |
+| [DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md](DIRECTIVAS_OPERATIVAS_POR_NICHO_v1.md) | 7 nichos × DN-01..06 (doc de Rubén) | igual | Menopausia = §7, base de Luis Royán. **Patologías (incluye cáncer) = §1, base de Gonzalo**; §2 Lesiones aporta el ángulo del fisio |
 
 Sin Frodo ni Chema ni Alfonso hay notas de estilo/voz que solo viven en sus loops: leer
 siempre el loop del coach antes de tocar su bloque.
@@ -97,7 +110,9 @@ Qué se cambió, por qué y qué quedó abierto está en `docs/knowledge/`, no a
 [Luis Royán](../../../docs/knowledge/project_luis_royan_coach_menopausia.md) ·
 [Pepe](../../../docs/knowledge/project_pepe_coach_feedback.md) ·
 [Beatriz](../../../docs/knowledge/project_beatriz_coach_feedback.md) ·
-[Miguel Aguado](../../../docs/knowledge/project_miguel_coach_feedback.md)
+[Miguel Aguado](../../../docs/knowledge/project_miguel_coach_feedback.md) ·
+[Gonzalo Camacho](../../../docs/knowledge/project_gonzalo_coach_feedback.md) ·
+[Andrea SOP](../../../docs/knowledge/project_andrea_sop_coach_feedback.md)
 
 Y la craft para tocarlos (doctrina §1–§30, avatares, checklist) en
 [`prompts/coach-engineering/`](../README.md). El
@@ -113,9 +128,15 @@ No crear `alfonso_2.1.md` ni `frodoo.md`: se edita el fichero y se commitea.
 Nunca `handoff_to_human` ni etiquetas de tipo (Tipo A/B/C/D, "Causa F") — ese vocabulario es del SaaS Fyzon y
 Automatía no lo consume, así que el bloque describe una pausa que el runtime no ejecuta. Regla completa y la
 frontera con el SaaS en [doctrina §30](../doctrina-universal.md). Referencia bien hecha: `andrea.md`.
-Estado de la migración: ✅ `andrea.md`, ✅ `alfonso.md`, ✅ `luis-royan.md`, ✅ `frodo.md` · pendientes
-`alex.md`, `beatriz-juan.md`, `chema.md`, `miguel-aguado.md` (a medias), `pepe.md`, `roberto.md` — cada uno
-en su próxima ronda.
+Estado de la migración: ✅ `andrea.md`, ✅ `andrea-sop.md`, ✅ `alfonso.md`, ✅ `luis-royan.md`,
+✅ `frodo.md` · pendientes `alex.md`, `beatriz-juan.md`, `chema.md`, `miguel-aguado.md` (a medias),
+`pepe.md`, `roberto.md` — cada uno en su próxima ronda.
+
+**Y no se niega ser una IA** (acuerdo 03-08). Dos configuraciones válidas: **apagado mudo**
+(`manual_attention` + `skip_reply`, motivo `deteccion_ia` — Efra, Pepe, Gonzalo, Andrea SOP) o **decir la
+verdad y seguir** (el asistente virtual se presenta y la conversación continúa — Chema/Cristina, Alex/Lara).
+Nunca "qué va, soy X". Pendientes de migrar: `andrea.md`, `luis-royan.md`, `alfonso.md`, `roberto.md`,
+`frodo.md`, `beatriz-juan.md`, `miguel-aguado.md`.
 
 **Nada de credenciales.** Estos bloques llevan enlaces públicos de negocio (Calendly, landings,
 posts de Instagram) y eso está bien. Teléfonos personales, tokens o API keys, no. Verificado

@@ -1,6 +1,6 @@
 ---
 name: project_pepe_coach_feedback
-description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 4.1 (2026-08-03): precio con 'desde 110€/mes' en el toque 2, bienvenida en 3 mensajes con su voz, banco rotativo de cierres de recap, guion largo (—) prohibido, 'el ancla' retirado y corregir-sin-anular. Hallazgo transferible: las reglas que viven solo en la doctrina universal NO llegan al prompt en producción. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
+description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 6 (2026-08-13): la ESCALERA DEL 'VOY SOLO' (el 'lo intento por mi cuenta' deja de cerrar la conversación y pasa a trabajarse subiendo el nivel de consciencia) + cierre post-agenda literal único donde el que gestiona con el equipo es la IA, no el lead. Antes, ronda 4.1: precio 'desde 110€/mes', bienvenida en 3 mensajes, guion largo prohibido, 'el ancla' retirado. Hallazgos transferibles: las reglas que viven solo en la doctrina universal NO llegan al prompt, y las copias de Downloads se regeneran, nunca se editan a mano. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
 metadata:
   node_type: memory
   type: project
@@ -274,6 +274,47 @@ El **movimiento 4 es el que más me faltaba**: una observación real del mundo c
 
 ⚠️ **El vocabulario de energía NO es propagable.** "De locos / brutal / todo cristo" es de Pepe. Al llevar §32 a los otros nueve coaches hay que sacarle a cada entrenador el suyo, de cómo escribe él. Lo que se propaga son los ocho movimientos, el test de catálogo y el banco de arranques.
 
+## Ronda 6 — 2026-08-13 (Héctor #87, feedback del 12/08: no soltar al lead + cierre post-agenda)
+
+Dos peticiones del equipo de Pepe, las dos sobre **el final de la conversación**: una sobre cómo se despide de quien agenda, y otra sobre a quién se está dejando marchar sin pelear.
+
+**1. El cierre post-agenda: el sujeto de la acción pasa a ser la IA.** El molde anterior tenía tres variantes y las tres le pedían al lead que repitiera su historia al equipo (*"cuéntales todo lo que me has contado a mí"*, *"prepárate para contarles bien tu situación"*). Héctor lo lee como el momento en que se rompe la continuidad: el lead siente que pasa de un sistema a otro en vez de seguir una sola conversación. Literal nuevo, **único** (mueren las tres variantes):
+
+> 1) "Perfecto mil gracias!! Voy a gestionarlo ya con el equipo para que tengas la mejor valoración y experiencia posible en la videollamada"
+> 2) "Un placer haber hablado contigo ;)"
+
+Dos ajustes que van pegados al literal y no son cosméticos: **decir el día YA es confirmar** (antes el disparador era solo una confirmación explícita de reserva, así que ante un "lo he cogido para el martes" la IA volvía a pedir confirmación), y **el ";)" es suyo y no se "corrige"** a 😉 ni a ningún emoji del banco — misma excepción de formato que la entrega de la rutina en F0, y por la misma razón: sin marcarla, el modelo normaliza hacia su propia norma. Tras las dos burbujas → `manual_attention` + `skip_reply` (motivo: `cita_agendada`).
+
+**2. "Voy a intentarlo por mi cuenta" deja de ser un cierre y pasa a ser una objeción.** Es el cambio de fondo de la ronda. La captura lo enseña entero: el lead dice *"de momento voy a intentarlo yo solo, pero si no me veo capaz no dudaré en contactarte"* y la IA contesta *"Genial, pues así me gusta!! Sigue dándole caña"* + el grupo gratuito. Adiós lead. El bloque hacía lo correcto según §22 del Core (la señal "yo puedo solo" no cualifica y se respeta), y **§22 es justo lo que había que sobrescribir aquí**.
+
+> **El marco que pidió Iván: no convencer, SUBIR EL NIVEL DE CONSCIENCIA.** No se rebate y no se presiona. Se le pregunta qué entiende ÉL por ir por su cuenta, se le pone delante su propio historial, y cuando es él quien verbaliza que lleva tiempo sin apenas resultados, ahí se le devuelve la lectura y **una pregunta de reflexión**: *"si ya me has dicho que llevas tanto tiempo así y apenas has visto cambios, crees que seguir igual te va a acercar a tu objetivo en estos meses??"*. La conclusión la saca él.
+
+`coach_objections_solo`, escalera de tres peldaños y **un peldaño por turno** (la regla de una-cosa-por-mensaje del voiceprint obliga a repartirlo):
+
+| Peldaño | Qué se pregunta | Por qué |
+|---|---|---|
+| 1 | Cómo lo está planteando por su cuenta | "por mi cuenta" puede ser cualquier cosa y no se da por hecho |
+| 2 | Su objetivo (solo si no lo dio) → cuánto lleva así → qué ha cambiado en ese tiempo | son los tres datos que hacen falta para que el peldaño 3 sea un espejo y no una opinión |
+| 3 | La lectura ("lo que solemos ver en gente que va por su cuenta…" + qué haríais vosotros) y la pregunta de reflexión | es donde sube el nivel de consciencia, con SU tiempo y SU objetivo |
+
+Las dos piezas que Iván añadió sobre mi primera versión y que son las que le dan el punto:
+
+1. **El peldaño 2 pregunta también por el OBJETIVO**, no solo por el tiempo y los cambios. Sin objetivo verbalizado, la pregunta de reflexión no tiene a qué apuntar ("acercar a **qué**").
+2. **La lectura del peldaño 3 tiene dos mitades, no una.** La mía se quedaba en el diagnóstico (*"se entrena mucho pero sin progresión detrás el crono no baja"*); falta la segunda, que es la que posiciona: *"y lo que hacemos nosotros al final es enseñarte cómo llegar a tu objetivo de una forma mucho más eficiente"*. Diagnosticar sin decir qué haces tú deja al lead con el problema y sin puerta.
+
+Guardarraíles que se escribieron con ella, porque el movimiento es de los que se pasan de frenada:
+- **Condición dura del peldaño 3:** solo con sus DOS datos delante (tiempo + falta de cambios). Sin ellos no es un espejo, es un reproche inventado. Misma familia que "validar solo con el dato delante" de la ronda 2.
+- **Si dice que va bien y está contento, no se le discute su realidad** → eso es el caso de F3 y se cierra cálido.
+- **"Aun así prefiero seguir solo" se respeta A LA PRIMERA.** La escalera se recorre UNA vez y no se reabre. Lo que se corrigió es soltarlo **antes** de preguntar, no la libertad del lead de decir que no.
+- **La llamada no se nombra dentro de la escalera** (sigue siendo F5), y nada de resultados ni plazos como argumento.
+- **Frontera nueva con el LEAD FRÍO**, que tenía riesgo real de colisión: el frío llega sin nada y se le nutre y punto; el del "voy solo" YA te ha contado algo suyo y por eso se trabaja. **La frontera es si te ha dado material propio, no si suena a "no".**
+
+Reparto: `_core` punto 9 (override de §22), F3 compromiso, la ⚠️ del lead frío en `_phases`, la compuerta en `coach_wclose_not_now`, la línea de "no descualifica" en `coach_qualification_doesnt`, y la sección `coach_objections_solo` completa.
+
+🩹 **Y un fallo de higiene encontrado de paso, este sí P0.** La copia de `Downloads/coach_block_pepe.md` que se estaba pegando en Automatía tenía una línea corrompida en `coach_structural_modifications_handoff`: decía **"⛔ PROHIBIDO `manual_attention`"** donde el repo dice `handoff_to_human`. Es decir, el bloque prohibía el criterio que sus ~17 triggers de parada mandan emitir. Contradicción directa contra sí mismo en el mecanismo de apagado: en el peor caso ninguna conversación se aparca (ni la detección de IA, ni el "cuéntamelo por WhatsApp", ni el cierre post-agenda). El repo estaba sano; la corrupción vivía solo en esa copia y entró editando el fichero de `Downloads` a mano en algún momento entre el 05 y el 13 de agosto. Arreglado regenerando las dos copias de `Downloads` desde el repo.
+
+> **Confirma la regla de higiene de la ronda 4.1, y ahora con daño medible: el canónico es el del repo y las copias de `Downloads` se REGENERAN, nunca se editan a mano.** Un typo en una copia de despliegue no se ve al leerla por encima y no lo detecta nadie hasta que falla en producción.
+
 ## Dónde vive cada cambio dentro del bloque
 
 Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`. **Iván lo rechazó**: el feedback nuevo se traduce a la sección canónica que le toca, no se antepone como capa de conceptos — si no, se salta el protocolo del esquema y el prompt pierde la referencia de dónde vive cada cosa. Destilado a [`formato-saas-coach-v5.md`](../../prompts/coach-engineering/formato-saas-coach-v5.md) §2. Reparto final:
@@ -281,6 +322,8 @@ Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`
 | Cambio | Sección |
 |---|---|
 | La llamada la atiende el equipo de admisiones (+ prohibiciones binarias) | `coach_identity_role`, con puntero desde `_core` |
+| Escalera del "voy solo" (+ override de §22) | `coach_objections_solo`, con punteros desde `_core` punto 9, F3, `_phases` (lead frío), `coach_qualification_doesnt` y `coach_wclose_not_now` |
+| Cierre post-agenda literal único | `coach_phase_massage_fase6`, con puntero desde F6 en `_phases` |
 | Respuesta a "la llamada es contigo?" | `coach_structural_modifications_handoff` trigger 4 |
 | Movimiento de reconocimiento (3 tiempos, anti-eco) | `coach_tone_voiceprint` |
 | Reconocimiento como obligación de flujo | `coach_structural_modifications_phases` F2 + casilla 5 de F5 |
@@ -295,6 +338,9 @@ El fichero empieza en `<coach_block>` y termina en `</coach_block>`, sin changel
 
 ## Abierto
 
+- 🔴 **Smoke de la escalera del "voy solo"** (ronda 6). Es un movimiento nuevo y de los que se pasan de frenada. Qué mirar en Automatía: (a) que reparte los peldaños en turnos y no comprime la escalera en un mensaje; (b) que **no lanza el peldaño 3 sin sus dos datos** (tiempo + falta de cambios) — es el fallo caro, porque sin ellos suena a reproche; (c) que ante "aun así prefiero seguir solo" cierra a la primera y no insiste; (d) que no nombra la llamada dentro de la escalera; (e) que un lead frío recién llegado NO entra en la escalera.
+- 🟠 **Vigilar que la lectura del peldaño 3 no se convierta en pitch** (ronda 6). La segunda mitad ("lo que hacemos nosotros al final es enseñarte…") es la primera línea del bloque que posiciona el servicio fuera de F5. Está acotada a una línea y sin detallar el programa (CR3), pero es exactamente el sitio donde el modelo tiende a ampliar.
+- 🟠 **Auditar la línea `handoff_to_human` en los otros 9 coaches** (ronda 6). En Pepe la copia de despliegue tenía "PROHIBIDO `manual_attention`" en vez de "PROHIBIDO `handoff_to_human`", contradiciendo sus propios triggers de parada. Merece un grep por los 9 bloques restantes y por sus copias de `Downloads`, por si el mismo dedazo viajó con el copy-paste de la migración.
 - 🔴 **Migrar el anti-IA a los otros 9 coaches de academia** (ronda 4). Pepe ya está; Alfonso, Roberto, Frodo, Chema, Beatriz, Miguel, Alex, Andrea y Luis Royán siguen con un literal que niega ser una IA, contra el acuerdo del 03-08. El de Alex (*"NO eres una asistente virtual ni una IA, eres 100% Alex"*) es el más explícito. Patrón a replicar: apagado mudo + `manual_attention` + `skip_reply` (motivo: `deteccion_ia`) + separar voz de identidad afirmada.
 - 🔴 **Propagar la prohibición del guion largo a los otros 9 coaches** (ronda 4.1). La doctrina universal ya lo prohíbe, pero la doctrina no se despliega: hoy los 9 bloques restantes no llevan la regla y van a seguir escribiendo "—" en producción. Va en la misma pasada que el anti-IA.
 - 🟠 **Auditar qué más de la doctrina universal es inejecutable** (ronda 4.1). El guion salió porque la regla estaba solo en la KB de autoría. Merece un barrido de la doctrina buscando otras reglas de VOZ (no de método) que ningún bloque haya interiorizado.
