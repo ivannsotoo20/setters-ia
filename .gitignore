@@ -62,3 +62,4 @@ _pkg-coach-authoring/
 !prompts/tania/dist/**
 !prompts/tania/build/
 !prompts/tania/build/**
+.tmp-efra/
