@@ -1,0 +1,400 @@
+<title>Alfonso — el ritmo</title>
+<style>
+:root{--navy:#0F1B2D;--navy2:#1B2C46;--azul:#2563EB;--azul-soft:#EFF4FF;--naranja:#F97316;
+--verde:#0F9D58;--verde-soft:#EAF7EF;--rojo:#D93025;--rojo-soft:#FDEDEC;
+--bg:#F7F9FC;--card:#FFF;--line:#E3E9F2;--txt:#16233A;--mut:#63718A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 110px}
+header{background:var(--navy);color:#fff;padding:42px 0 34px;margin-bottom:26px}
+header .wrap{padding-bottom:0}
+h1{margin:0 0 10px;font-size:29px;letter-spacing:-.4px;line-height:1.2}
+h1 b{color:#7FB0FF}
+.sub{color:#A9BAD4;font-size:15px;max-width:70ch;margin:0}
+.kpis{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.kpi{background:var(--navy2);border:1px solid #2C4166;border-radius:9px;padding:9px 14px;font-size:13px;color:#C9D8EE}
+.kpi b{color:#fff;font-size:17px;display:block;line-height:1.3}
+.lead{color:var(--mut);font-size:15px;max-width:82ch;margin:0 0 22px}
+.lead b{color:var(--txt)}
+.sec{margin:34px 0 4px;padding:0 0 9px;border-bottom:2px solid var(--navy)}
+.sec h2{margin:0 0 4px;font-size:19px;letter-spacing:-.2px}
+.sec p{margin:0;font-size:14px;color:var(--mut);max-width:80ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:17px 19px;margin:13px 0}
+.card.ok{border-color:var(--verde);background:var(--verde-soft)}
+.card.no{border-color:var(--azul);background:var(--azul-soft)}
+.chead{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.tagname{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--navy)}
+.ln{font-size:12px;color:var(--mut);font-weight:700}
+.chip{font-size:10.5px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:5px;
+background:#FFF3E9;color:#B4530A}
+.chip.muere{background:var(--rojo-soft);color:var(--rojo)}
+.chip.nueva{background:var(--verde-soft);color:var(--verde)}
+.chip.plural{background:#F1EEFB;color:#5B3FBF}
+.when{font-size:13px;color:var(--mut);margin:-4px 0 12px;padding-left:11px;border-left:2px solid var(--line)}
+.when b{color:var(--txt)}
+.before{background:#FBFCFE;border:1px dashed #D6DEEA;border-radius:8px;padding:10px 12px;
+color:#7A879C;font-size:14.5px;margin-bottom:13px}
+.before em,.alt em{display:block;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;
+font-style:normal;font-weight:800;margin-bottom:5px}
+.before em{color:#A6B1C4}
+.alt{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:9px;cursor:pointer;
+background:var(--card);transition:border-color .12s,background .12s}
+.alt:hover{border-color:#B9CDE9}
+.alt em{color:var(--mut)}
+.alt.on{border-color:var(--azul);background:var(--azul-soft);box-shadow:inset 0 0 0 1px var(--azul)}
+.alt.on em{color:var(--azul)}
+.bub{background:#EDF2FA;border-radius:12px 12px 12px 3px;padding:8px 13px;margin:5px 0;
+display:table;max-width:94%;font-size:14.5px;color:#14203A}
+.alt.on .bub{background:#fff}
+.note{font-size:13.5px;color:var(--mut);margin-top:11px;padding-left:11px;border-left:2px solid var(--line)}
+.note b{color:var(--txt)}
+.acts{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;align-items:center}
+.b{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:6px 13px;
+font-size:13px;font-weight:600;cursor:pointer;color:var(--mut)}
+.b.mine.on{background:var(--naranja);border-color:var(--naranja);color:#fff}
+.hint{font-size:12.5px;color:#93A0B5;margin-left:auto}
+textarea{width:100%;margin-top:9px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+font:inherit;font-size:14px;resize:vertical;min-height:64px;background:var(--card);color:var(--txt)}
+textarea:focus{outline:2px solid var(--azul);outline-offset:-1px;border-color:var(--azul)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--navy);color:#fff;padding:12px 0;z-index:20}
+.bar .wrap{padding-bottom:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar .st{font-size:14px;color:#B9C9E2}.bar .st b{color:#fff}
+.bar .go{margin-left:auto;background:var(--naranja);color:#fff;border:none;border-radius:8px;
+padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer}
+.bar .go.alt2{background:transparent;border:1px solid #3D5A85;color:#C9D8EE;margin-left:0}
+#out{white-space:pre-wrap;background:var(--navy);color:#D7E4F6;border-radius:10px;padding:16px;
+font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:14px;display:none;
+max-height:50vh;overflow:auto}
+@media(max-width:640px){h1{font-size:24px}.hint{display:none}}
+</style>
+
+<header><div class="wrap">
+<h1>Alfonso — el <b>ritmo</b> que pide Rubén</h1>
+<p class="sub">Ronda 24-ago. El tono no se toca (Sergio: «esa parte no la tocaríamos»). Lo que cambia es la <b>cadena</b> —dónde va cada pregunta— y la <b>forma</b> —que dejen de salir todas con dos opciones—. Cada tarjeta trae la de hoy, dos o tres alternativas, y hueco para que escribas la tuya.</p>
+<div class="kpis">
+<div class="kpi"><b>23</b>decisiones</div>
+<div class="kpi"><b>21</b>dos-puertas censadas</div>
+<div class="kpi"><b id="k">0</b>vistas</div>
+</div>
+</div></header>
+
+<div class="wrap">
+<p class="lead">Elige una alternativa tocándola, o dale a <b>«Lo escribo yo»</b> y déjame tu versión en el hueco. Una línea por burbuja. Al final, <b>«Copiar decisiones»</b> te lo saca todo junto para pegármelo. Se guarda solo en tu navegador, así que puedes cerrarlo y volver.</p>
+<div id="cards"></div>
+</div>
+
+<div class="bar"><div class="wrap">
+<span class="st"><b id="s1">0</b> con alternativa · <b id="s2">0</b> reescritas por ti · <b id="s3">23</b> sin ver</span>
+<button class="go alt2" onclick="if(confirm('Borra todas tus decisiones. Seguro?')){try{localStorage.removeItem('rev-alfonso-ritmo')}catch(e){};ST={};render();}">Empezar de cero</button>
+<button class="go" onclick="salida()">Copiar decisiones</button>
+</div></div>
+<div class="wrap"><pre id="out"></pre></div>
+
+<script>
+const D=[
+
+/* ============ 1. LAS DOS PUERTAS ============ */
+{sec:"Las dos puertas",
+ secNote:"21 demostraciones en 14 familias, y una en CADA paso del descubrimiento. Por eso salen todas seguidas: el modelo coge el literal canónico de cada paso y todos son de dos puertas. No es un tic suyo, es lo que el bloque enseña. Antes de esto hay que quitar la línea del voiceprint que las llama «molde aprobado», o los sustitutos se deshacen en la siguiente ronda.",
+ id:"dp-objetivo", tag:"PASO 1 · objetivo", l:"484", chip:"reescribir",
+ when:"Aterrizar el objetivo cuando lo ha soltado genérico. Lead: «quiero ponerme en forma otra vez».",
+ b:"Cuando me dices lo de ponerte en forma, tienes algo en mente, una cifra o cómo te gustaría verte?",
+ alts:[
+  {k:"A",m:["Cuando me dices ponerte en forma, cómo te gustaría verte tú?"]},
+  {k:"B",m:["Hasta dónde te gustaría bajar esa barriga??"]},
+  {k:"C",m:["Y ponerte en forma para ti qué sería exactamente??"]}],
+ n:"La cifra, si la tiene, la suelta él. Y si contesta que no lo sabe, ahí SÍ entra el rescate con dos puertas: «una cifra aproximada aunque sea, cuánto crees que te sobra?». Como rescate, no como pregunta de entrada."},
+
+{id:"dp-recorrido", tag:"PASO 2 · recorrido", l:"225 · 312 · 453 · 486", chip:"reescribir",
+ when:"Justo después de que aterrice el objetivo. Lead: «unos 20 kilos, sé que es mucho pero tengo bastante sobrepeso».",
+ b:"Así que el tema de quitarte la barriga te lo has marcado ahora o llevas ya tiempo con ello en la cabeza?",
+ alts:[
+  {k:"A",m:["20 kilos es un objetivo abordable, no te vayas a pensar que es imposible","Pero cuánto tiempo llevas dándole vueltas a esto?"]},
+  {k:"B",m:["Buen objetivo eh, y de lo más abordable","Pero hace cuánto que te lo pusiste?"]},
+  {k:"C",m:["20 kilos con tu edad y tu ritmo es de lo más abordable, te lo digo de verdad","Aunque cuéntame una cosa, desde cuándo llevas con esto en la cabeza?"]}],
+ n:"Es la más sembrada del bloque: 4 demostraciones. Y la abierta no es solo más limpia, es que PRODUCE un dato — «dos años» — que es la bisagra al bloqueo. La cerrada te devuelve «llevo tiempo» y ahí se acaba. Ojo: esto sustituye al «por qué ahora», que Rubén pide y el bloque tiene prohibido. Sigue prohibido «qué te ha hecho decidirte ahora»; si es él quien dice que es nuevo, entonces sí cabe «ha pasado algo en concreto para ponerte ahora con ello?»."},
+
+{id:"dp-salud", tag:"PASO 2 · el porqué (salud)", l:"89 · 488", chip:"reescribir",
+ when:"El porqué le sale de una palabra y hay que tirar de ella. Lead: «quiero reducir grasa para mejorar mi salud».",
+ b:"Pero el tema de la salud es más por recomendación médica o es por iniciativa tuya?",
+ alts:[
+  {k:"A",m:["Pero cuando dices salud, a qué te refieres exactamente?"]},
+  {k:"B",m:["Pero eso de la salud de dónde te viene?"]},
+  {k:"C",m:["Gracias por decírmelo tío!","Pero cuéntame más de eso de la salud, que me interesa"]}],
+ n:"La A ya existe en el bloque como exemplar y es mejor que la de hoy: abre en vez de cerrar, y si resulta que se lo ha dicho el médico te lo cuenta igual."},
+
+{id:"dp-energia", tag:"PASO 2 · el porqué (energía)", l:"490", chip:"reescribir",
+ when:"Lead: «llego reventado del curro y sin energía».",
+ b:"Pero esa falta de energía, dirías que es solo del curro o que va con cómo estás ahora físicamente?",
+ alts:[
+  {k:"A",m:["Pero esa falta de energía a qué la achacas tú?"]},
+  {k:"B",m:["Uf, y eso de llegar reventado desde cuándo te viene pasando?"]},
+  {k:"C",m:["Pero llegar así reventado cómo lo llevas tú?"]}],
+ n:""},
+
+{id:"dp-personal", tag:"Conexión personal", l:"838", chip:"reescribir",
+ when:"Suelta algo suyo con carga y reaccionas. Lead: «con dos críos y viajando toda la semana por trabajo no me da la vida».",
+ b:"Joder, con dos peques y viviendo en la carretera no queda casi nada para ti / Pero ese cambio lo buscas más por ti o por seguirles el ritmo a ellos?",
+ alts:[
+  {k:"A",m:["Joder, con dos peques y viviendo en la carretera no queda casi nada para ti","Pero ese cambio por quién lo buscas más??"]},
+  {k:"B",m:["Menudo ritmo llevas eh, con dos peques y toda la semana fuera","Pero cuéntame, qué te gustaría que fuera distinto??"]}],
+ n:"La reacción de delante está bien y se queda tal cual. Lo único que cambia es que la pregunta deje de darle las dos respuestas hechas."},
+
+{id:"dp-caida", tag:"Retomar sus palabras", l:"193", chip:"muere",
+ when:"Está en los openers como el ✅ de cómo retomar lo que dijo el lead. Lead: «empiezo y a las tres semanas lo dejo».",
+ b:"Que se te caiga a las tres semanas, es porque te aburres o porque no ves resultados?",
+ alts:[
+  {k:"A",m:["Que se te caiga a las tres semanas, cómo lo llevas tú?"]},
+  {k:"B",m:["Es que a todos nos ha pasado eh, yo el primero jajaja","Pero desde cuándo te viene pasando??"]}],
+ n:"Doble problema: dos puertas Y autopsia del método. Y como está puesta de ejemplo bueno, enseña las dos cosas mal a la vez. El arranque «Que + lo suyo» es lo valioso de ese ejemplo y se conserva; lo que cambia es que reacciona a lo que le supone en vez de investigar por qué se cayó."},
+
+{id:"dp-mueves", tag:"Contexto presente", l:"297", chip:"muere",
+ when:"Es la pregunta que hoy tiene el bloque para recoger contexto cuando no ha llegado solo.",
+ b:"A qué te dedicas tú? / y ahora mismo te mueves algo o nada de nada?",
+ alts:[
+  {k:"A",m:["A qué te dedicas tú por cierto?"]},
+  {k:"B",m:["Para que te entienda bien, cómo es un día normal tuyo?"]}],
+ n:"El «te mueves algo y cuántos días» desaparece entero: es el inventario del método disfrazado de contexto, y es literalmente lo que Rubén nombró («no decirle ¿cuántos días entrenas?»). Se queda solo la primera mitad, que sí es su vida. El hueco lo cubre la fase de contexto de abajo."},
+
+{id:"dp-solitario", tag:"Ángulo (d) · intento en solitario", l:"217 · 309", chip:"muere",
+ when:"Hoy es uno de los cinco ángulos aprobados para cubrir el impacto.",
+ b:"Pero esa grasa has intentado bajarla por tu cuenta o sería la primera vez que buscas acompañamiento?",
+ alts:[
+  {k:"A",m:["(no se sustituye: el hueco ya lo cubre el paso 2, el recorrido)"]},
+  {k:"B",m:["Pero llevas ya tiempo intentándolo tú por tu cuenta entiendo?"]}],
+ n:"Rubén, literal: «esto me lleva a fracasos anteriores. Si yo ya te he preguntado previamente si este objetivo lleva mucho tiempo, con esa información ya es suficiente como para no volver a hacer una pregunta sobre fracasos anteriores». Mi recomendación es la A: quitarla del todo. La B la dejo por si prefieres conservar la información sin abrir la puerta a que te cuente qué probó."},
+
+/* ============ 2. LA FASE DE CONTEXTO ============ */
+{sec:"La fase de contexto",
+ secNote:"La pieza nueva, entre el objetivo y el freno. Contexto es lo que hay ALREDEDOR de su objetivo — a qué se dedica, qué horarios lleva, si tiene críos, si viaja — nunca lo que HACE CON su objetivo — qué rutina, cuántos días, qué come —. Dos preguntas como mucho, y la mayoría de las veces cero, porque llega solo mientras cuenta.",
+ id:"ctx-quien", tag:"PASO 3 · quién es", l:"nueva", chip:"nueva",
+ when:"Solo si no ha llegado solo. Lead: «dos años ya, y ahí sigo».",
+ b:"(hoy no existe esta pregunta: el bloque salta del objetivo al freno)",
+ alts:[
+  {k:"A",m:["Joder, dos años ya es bastante tiempo eh","A qué te dedicas tú por cierto?"]},
+  {k:"B",m:["Dos años dan para mucho eh","Para que te entienda bien, cómo es un día normal tuyo?"]},
+  {k:"C",m:["Joder, dos años","Cuéntame cómo es tu semana ahora mismo"]}],
+ n:"La reacción al dato de los dos años no es adorno: es lo que hace que la pregunta de contexto no llegue en seco. Rubén lo hizo exactamente así en la conversación que alabó."},
+
+{id:"ctx-limita", tag:"PASO 3 · qué le limita", l:"nueva", chip:"nueva",
+ when:"La segunda de contexto, ya con su retrato a medias.",
+ b:"(hoy no existe)",
+ alts:[
+  {k:"A",m:["Pero de ese día a día tuyo, hay algo que te esté limitando ahora mismo para ponerte con esto?"]},
+  {k:"B",m:["Pero de todo eso que me cuentas, qué es lo que más te complica poder ponerte?"]},
+  {k:"C",m:["Con ese ritmo, qué dirías que se te pone más en contra?"]}],
+ n:"Rubén la dictó con un menú dentro («como tu horario de trabajo, si llevas una vida sedentaria, si tienes cargas familiares»). Mi lectura es que te estaba enumerando QUÉ hay que averiguar, no la frase — el menú está prohibido en el bloque y él mismo lo ataca en el mismo audio. Por eso va abierta y que el horario o los críos los nombre él. <b>Si tu lectura es otra, dímelo y la meto con los ejemplos dentro.</b>"},
+
+{id:"ctx-pasiva", tag:"PASO 3 · recogida pasiva", l:"nueva", chip:"nueva",
+ when:"Lo más frecuente con diferencia: ya te lo ha contado mientras hablaba. Entonces NO se pregunta.",
+ b:"(hoy el bloque no distingue: puede preguntar algo que ya le han contado)",
+ alts:[
+  {k:"A",m:["Con dos peques y a turnos no queda casi nada para ti eh"]},
+  {k:"B",m:["Menudo ritmo llevas tío, entre los turnos y las peques"]}],
+ n:"Esto es lo que hace que la fase de contexto no alargue la conversación: la mayoría de las veces no gasta pregunta, solo reacciona y sigue."},
+
+/* ============ 3. EL BLOQUEO ============ */
+{sec:"El bloqueo",
+ secNote:"Rubén: «es ahora, tío, ¿cuáles son los problemas que tienes? No es qué plan o rutina tienes montada, es: a la hora de conseguir perder esos 20 kilos, ¿qué es lo que más te cuesta?». Tres cosas que hoy no están escritas así: la pregunta lleva SU OBJETIVO dentro, la abierta es la de por defecto (hoy el bloque manda apuntar), y la profundización va al PORQUÉ, nunca al QUÉ.",
+ id:"blq-freno", tag:"PASO 4 · el freno", l:"493 · 497", chip:"reescribir",
+ when:"Con su contexto ya recogido. Lead: «trabajo a turnos, algunas semanas de noche, y con la peque en casa».",
+ b:"Qué dirías que te está rompiendo el ritmo ahora para quitarte esa barriga? / Dónde dirías que está tu mayor obstáculo ahora mismo?",
+ alts:[
+  {k:"A",m:["Pues con esos turnos que llevas, qué dirías que es lo que más te cuesta para quitarte esos 20 kilos?"]},
+  {k:"B",m:["Con ese panorama, qué es lo que más difícil se te está haciendo para bajar esos kilos?"]},
+  {k:"C",m:["Entonces a la hora de quitarte esa barriga, dónde está el problema ahora mismo?"]}],
+ n:"Rubén nunca dice «qué te frena» a secas: siempre con el objetivo DENTRO de la pregunta, y ahora también con su contexto delante. Eso es lo que la separa de una de catálogo. Y una categoría amplia ya cierra el paso: si dice «la alimentación» o «no soy constante», ya tienes el bloqueo. Afinar más es donde se va a la autopsia."},
+
+{id:"blq-apuntar", tag:"PASO 4 · variante apuntando", l:"nueva", chip:"reescribir",
+ when:"Solo cuando el contexto te ha dado algo concreto a lo que apuntar.",
+ b:"(hoy el bloque manda esta variante SIEMPRE y desaconseja la abierta: «el freno se cobra apuntando, no preguntando abierto»)",
+ alts:[
+  {k:"A",m:["Entonces entre los turnos y la peque no es poca cosa eh","Pero si me dices que la barriga sigue estando, esto va más por el lado de la alimentación entiendo no??"]},
+  {k:"B",m:["Con esos turnos el descanso tiene que estar por los suelos eh","Pero entiendo que lo que más se resiente ahí es la comida, me equivoco??"]}],
+ n:"Lo que cambia es el ORDEN de preferencia: la abierta pasa a ser la de por defecto (es la que Rubén alabó) y ésta la variante. Sin el «entiendo no??» pegado sería un diagnóstico y estaría prohibido."},
+
+{id:"blq-porque", tag:"PASO 4b · la curiosidad", l:"nueva", chip:"nueva",
+ when:"Rubén la pide expresamente: «una vez que verbaliza los bloqueos, puedo hacer alguna pregunta más con curiosidad». Lead: «que no me organizo, empiezo bien y a las dos semanas lo suelto».",
+ b:"(hoy no existe este paso, y el bloque tiende a llenarlo con autopsia: «qué se te cae, el entreno o la comida?»)",
+ alts:[
+  {k:"A",m:["Joder, y a qué crees que se debe que justo eso se te haga tan cuesta arriba?"]},
+  {k:"B",m:["A qué te refieres con que no te organizas?? Lo dices por el entreno o es otra cosa?"]},
+  {k:"C",m:["Pero por qué crees que se te tuerce justo ahí??"]}],
+ n:"<b>La línea fina de todo el paso: al PORQUÉ sí, al QUÉ no.</b> «Por qué se te hace cuesta arriba» es curiosidad; «qué comes / qué haces cuando pasa / qué se te cae primero» es autopsia. La B lleva dos interrogantes pero el segundo ACOTA al primero sobre lo mismo, así que no cuenta como dos puertas ni como dos preguntas. Una sola, y a cualificar."},
+
+/* ============ 4. LA CUALIFICACIÓN ============ */
+{sec:"La cualificación",
+ secNote:"Sergio pide una sola pregunta. Rubén pide que nombre las dos palancas: entrenar y cuidar la alimentación. Y Rubén aprobó el resumen de Sergio.",
+ id:"cual-unica", tag:"PASO 5 · disposición", l:"373 · 505", chip:"reescribir",
+ when:"Cuando no ha verbalizado él que quiere ayuda. Es la única puerta del bloque que puede acabar en un no.",
+ b:"Vale tío, ahora te entiendo mucho mejor / Y si para llegar a ese objetivo hubiera que cambiar algunos puntos de la rutina que llevas ahora, sin que te suponga un cambio drástico, estarías dispuesto a verlo y saber sobre cómo sería??",
+ alts:[
+  {k:"A",m:["Vale tío, ahora te entiendo mucho mejor","Y si para quitarte esa barriga hubiera que ajustar algunos puntos del entreno y de la alimentación, sin que te suponga un cambio drástico, estarías dispuesto a verlo y saber cómo sería??"]},
+  {k:"B",m:["Vale tío, ahora te entiendo mucho mejor","Es algo que quieras resolver ya de verdad?","(y con su sí) Pues si para conseguirlo hubiera que ajustar algunos puntos del entreno y la alimentación, sin cambios drásticos, estarías dispuesto a verlo??"]}],
+ n:"La A es una sola pregunta con las dos palancas dentro (versión Sergio + palancas de Rubén). La B las separa en dos, que es lo que Rubén dice de viva voz («dos, tres preguntas para cualificar»). Tus tres piezas de julio se conservan en las dos: «algunos puntos de», «sin que te suponga un cambio drástico» y «a verlo y saber cómo sería»."},
+
+/* ============ 5. EL "VOY SOLO" ============ */
+{sec:"El «voy solo», sin ser tan directo",
+ secNote:"Rubén disparó a 4 de los 5 movimientos. Por qué suena a machete: el mov. 1 audita su método, los movs. 1-2-3 son tres preguntas seguidas que solo reúnen pruebas (el lead nota el expediente montándose, eso es lo «muy de venta»), y el mov. 4 entrega el veredicto como pregunta con una sola respuesta aceptable. El principio del arreglo: la objeción se trabaja mirando hacia DONDE ÉL QUIERE IR, nunca hacia lo que no ha conseguido.",
+ id:"solo-1", tag:"Movimiento 1 · darle la razón", l:"706-714", chip:"reescribir",
+ when:"Lead: «de momento prefiero intentarlo por mi cuenta».",
+ b:"Totalmente comprensible! / Pero por preguntarte por curiosidad mía simplemente, cómo lo estás trabajando ahora mismo por tu cuenta? / Es decir qué plan o rutina tienes montada actualmente",
+ alts:[
+  {k:"A",m:["Me parece perfecto eh, además es lo que hace casi todo el mundo al principio","Y llevas dos años dándole vueltas, así que ganas desde luego no te faltan"]},
+  {k:"B",m:["Lo respeto totalmente tío","Además con dos años detrás está claro que ganas no te faltan"]}],
+ n:"<b>Este movimiento no lleva pregunta, a propósito.</b> Responder una objeción con una pregunta se lee como que no le has escuchado, y encima la de hoy le audita el método. El dato de los dos años es SUYO, del paso 2: no se repregunta, se le devuelve."},
+
+{id:"solo-2", tag:"Movimiento 2 · mirar adelante", l:"716-722", chip:"reescribir",
+ when:"Sustituye a los movimientos 2 y 3 de hoy (cuánto tiempo llevas + qué cambios has notado).",
+ b:"Y ahora mismo cuánto tiempo llevas trabajando así?? / Vale genial tío, y honestamente en todo este tiempo cuáles son los cambios más considerables que has notado en tu cuerpo?",
+ alts:[
+  {k:"A",m:["Pero por curiosidad simplemente, de aquí a unos meses cómo te gustaría verte tú?"]},
+  {k:"B",m:["Pero para llegar ahí, qué crees que te falta según tú?"]},
+  {k:"C",m:["Pero cómo te sentirías el día que te mires y te veas como querías?"]}],
+ n:"Rubén sobre la de hoy: «esta pregunta dirige a la persona a pensar en lo positivo, en los logros. No le invita a cambiar nada… esto es lo peor que podemos hacer». Mirar adelante no le cuesta nada contestarlo y no le obliga a defender nada, y la respuesta suele traer la brecha dentro dicha por él, que es la diferencia entre que la vea y que se la enseñes."},
+
+{id:"solo-3", tag:"Movimiento 3 · la puerta sin coste", l:"724-726", chip:"reescribir",
+ when:"El remate. Encadena con el molde 2 de la propuesta de F5.",
+ b:"Entonces con todo lo que me has dicho tío, sientes que siguiendo por tu cuenta durante los próximos 6 meses por ejemplo / Vas a notar algún cambio real y diferencial respecto a lo que has ido consiguiendo hasta ahora?",
+ alts:[
+  {k:"A",m:["Pues justo por eso te lo comento","Sentarnos un rato no te compromete a nada, y te llevas la hoja de ruta de tu caso igual, decidas lo que decidas después","Qué te parece si la organizamos??"]},
+  {k:"B",m:["Pues mira, te propongo una cosa y decides tú","Nos sentamos en una videollamada, te digo qué haría yo con tu caso, y luego tú haces lo que quieras con ello","Te parece??"]}],
+ n:"Es la frase que Rubén llamó agresiva: le pide que admita que va a fracasar. El cierre pasa a ser <b>sin coste</b>, no <b>sin salida</b>. Y con esto la escalera baja de 5 movimientos a 3. <b>El tope:</b> si tras el 3 sigue diciendo que va por su cuenta, cierre cálido a la primera, sin cuarta vuelta. Sé que eso roza tu regla de que «voy solo» no se respeta a la primera — la secuencia sigue existiendo, pero se para aquí. Si prefieres mantener la cuarta vuelta, dímelo en el hueco."},
+
+{id:"solo-obj", tag:"Objeción «yo puedo solo»", l:"761", chip:"reescribir",
+ when:"En coach_objections_avatar. Es la versión corta de lo mismo, y arrastra tres problemas de golpe.",
+ b:"Claro puede ser / Pero siendo sincero, ves que puedes alcanzar perfectamente tus objetivos por tu cuenta? O eres de los que cree que con el acompañamiento de un equipo profesional que ha ayudado a decenas de hombre que estaban en tu mismo punto, va a hacer que los alcances con un mejor resultado y en menos tiempo?",
+ alts:[
+  {k:"A",m:["Claro que puedes, no te digo yo que no","Pero por curiosidad, dónde te gustaría estar de aquí a unos meses?"]},
+  {k:"B",m:["Puede ser eh, y ojalá","Pero qué te costaría más de hacerlo tú solo, según tú?"]}],
+ n:"Tres problemas en una frase: dos puertas, comparación frontal «tú solo contra un profesional», y dice «equipo profesional» cuando la identidad de Alfonso dice que trabaja SOLO y sin equipo. La reescritura los quita los tres."},
+
+/* ============ 6. EL PLURAL ============ */
+{sec:"Alfonso hablando en plural",
+ secNote:"No lo pidió Rubén, lo encontré mirando el bloque. coach_identity_role dice «hablas SIEMPRE en primera persona del singular, Alfonso trabaja SOLO, no tiene equipo», y el léxico prohíbe «nosotros», «mi equipo» y «el equipo». Pero hay seis sitios en plural, y son los mensajes de más peso de la conversación.",
+ id:"plu-f5", tag:"Propuesta F5 · moldes 1 y 2", l:"534 · 539", chip:"plural",
+ when:"El mensaje más importante de toda la conversación.",
+ b:"…porque cada semana trabajamos con decenas de hombres que estaban en el mismo punto que tú… / …cuando veían la explicación que les dábamos en base a su contexto…",
+ alts:[
+  {k:"A",m:["…porque cada semana me siento con hombres que estaban en el mismo punto que tú…","…cuando veían la explicación que les daba en base a su contexto…"]},
+  {k:"B",m:["…porque llevo años sentándome con hombres que estaban en el mismo punto que tú…","…cuando veían la explicación que les daba en base a su contexto…"]}],
+ n:"Cambio mecánico, todo a singular. Lo señalo aparte por si prefieres que Alfonso hable de un equipo — pero entonces habría que cambiar la identidad, porque hoy dice lo contrario."},
+
+{id:"plu-resto", tag:"Los otros tres sitios", l:"180 · 671 · 762", chip:"plural",
+ when:"Openers (mov. 4), objeción «más adelante» (mov. 2) y objeción «ya probé otras cosas».",
+ b:"«Para los hombres con quienes trabajamos es una prioridad disfrutar» / «tanto los hombres con los que trabajamos como yo mismo» / «Es de lo más común que veo cada día con todos los hombres con los que trabajamos»",
+ alts:[
+  {k:"A",m:["Para los hombres con los que trabajo es una prioridad disfrutar","tanto los hombres con los que trabajo como yo mismo","Es de lo más común que veo cada día con los hombres con los que trabajo"]}],
+ n:"Mismo cambio mecánico. Van juntos para que los apruebes de una."},
+
+/* ============ 7. LO QUE DEJO SIN TOCAR ============ */
+{sec:"Lo que dejo sin tocar (dime si me equivoco)",
+ secNote:"",
+ id:"pend-cierre", tag:"El cierre de la propuesta", l:"537", chip:"reescribir",
+ when:"Rubén: «¿te parece que lo organicemos? Esta pregunta me parece agresiva. No lo veo, eh».",
+ b:"Por lo que te parece que la organicemos para el mejor día y hora que puedas regalarme??",
+ alts:[
+  {k:"A",m:["(se queda como está)"]},
+  {k:"B",m:["Así que si te parece la organizamos y lo vemos con calma, te va bien??"]},
+  {k:"C",m:["Te encajaría que nos sentáramos un rato a verlo??"]}],
+ n:"Mi lectura es que venía leyendo del tirón toda la ristra de preguntas y la agresividad era ACUMULADA, no de esa frase: el cierre en cuatro movimientos lo diseñamos hace nada y es la pieza que mejor está. Si quitamos la rampa — la autopsia, la confrontación, las seis dos-puertas — ese cierre aterriza suave solo. Por eso mi voto es la A y volver a mirarlo con conversaciones nuevas delante. Pero si tú lo lees como una petición directa de Rubén, ahí tienes dos versiones más suaves."},
+
+{id:"pend-propagar", tag:"Los otros 7 coaches", l:"§33", chip:"reescribir",
+ when:"La definición vieja de contexto — la que incluye «si se mueve algo y cuántos días» — bajó el 22-ago a doctrina-universal.md §33 y desde ahí a Frodo, Roberto, Andrea, Andrea SOP, Luis Royán, Miguel y Beatriz Juan.",
+ b:"«a qué se dedica, cómo es su semana, si se mueve algo y cuántos días»",
+ alts:[
+  {k:"A",m:["Corregir §33 y propagar a los 7 coaches en una ronda aparte, después de validar Alfonso"]},
+  {k:"B",m:["Corregirlo todo ahora, en esta misma ronda"]}],
+ n:"Si solo tocamos Alfonso, el resto se queda con la versión que Rubén acaba de descartar. Mi voto es la A: validamos primero que la cadena funciona en Alfonso — que es lo que Rubén ha pedido expresamente («hasta que no lleguemos ni siquiera a esto, es dar palos de ciego») — y luego propagamos con algo ya probado."}
+];
+
+let ST={};
+try{ ST=JSON.parse(localStorage.getItem("rev-alfonso-ritmo")||"{}"); }catch(e){ ST={}; }
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function save(){ try{ localStorage.setItem("rev-alfonso-ritmo",JSON.stringify(ST)); }catch(e){} }
+
+function render(){
+  const h=document.getElementById("cards"); h.innerHTML="";
+  D.forEach(d=>{
+    if(d.sec){
+      const s=document.createElement("div");
+      s.className="sec";
+      s.innerHTML="<h2>"+esc(d.sec)+"</h2>"+(d.secNote?"<p>"+esc(d.secNote)+"</p>":"");
+      h.appendChild(s);
+    }
+    const st=ST[d.id]||{};
+    const decided = st.pick || st.mine;
+    const c=document.createElement("div");
+    c.className="card"+(st.pick?" ok":st.mine?" no":"");
+    let html='<div class="chead"><span class="tagname">'+esc(d.tag)+'</span>'+
+      '<span class="ln">'+esc(d.l)+'</span>'+
+      '<span class="chip '+(d.chip==="muere"?"muere":d.chip==="nueva"?"nueva":d.chip==="plural"?"plural":"")+'">'+
+      esc(d.chip)+'</span></div>'+
+      '<div class="when">'+d.when+'</div>'+
+      '<div class="before"><em>hoy</em>'+esc(d.b)+'</div>';
+    d.alts.forEach(a=>{
+      html+='<div class="alt'+(st.pick===a.k?" on":"")+'" data-k="'+d.id+'" data-a="'+a.k+'">'+
+        '<em>opción '+a.k+'</em>'+
+        a.m.map(x=>'<div class="bub">'+esc(x)+'</div>').join("")+'</div>';
+    });
+    if(d.n) html+='<div class="note">'+d.n+'</div>';
+    html+='<div class="acts">'+
+      '<button class="b mine'+(st.mine?" on":"")+'" data-mine="'+d.id+'">Lo escribo yo</button>'+
+      '<span class="hint">toca una opción para elegirla</span></div>'+
+      '<textarea data-t="'+d.id+'" placeholder="Cómo lo escribirías tú (una línea por burbuja). También vale para matizar la opción que hayas elegido."></textarea>';
+    c.innerHTML=html;
+    c.querySelector("textarea").value=st.c||"";
+    h.appendChild(c);
+  });
+  let p=0,m=0;
+  D.forEach(d=>{const s=ST[d.id]||{}; if(s.pick)p++; else if(s.mine)m++;});
+  document.getElementById("s1").textContent=p;
+  document.getElementById("s2").textContent=m;
+  document.getElementById("s3").textContent=D.length-p-m;
+  document.getElementById("k").textContent=p+m;
+}
+
+document.addEventListener("click",e=>{
+  const a=e.target.closest(".alt[data-k]");
+  if(a){const k=a.dataset.k;ST[k]=ST[k]||{};
+    ST[k].pick = ST[k].pick===a.dataset.a ? null : a.dataset.a;
+    if(ST[k].pick) ST[k].mine=false;
+    save(); render(); return;}
+  const b=e.target.closest(".b[data-mine]");
+  if(b){const k=b.dataset.mine;ST[k]=ST[k]||{};
+    ST[k].mine=!ST[k].mine;
+    if(ST[k].mine) ST[k].pick=null;
+    save(); render();
+    const t=document.querySelector('textarea[data-t="'+k+'"]');
+    if(ST[k].mine&&t) t.focus();}
+});
+document.addEventListener("input",e=>{
+  const t=e.target.closest("textarea[data-t]");
+  if(t){const k=t.dataset.t;ST[k]=ST[k]||{};ST[k].c=t.value;save();}
+});
+
+function salida(){
+  let t="ALFONSO - RONDA DEL RITMO (feedback Ruben 24-ago)\n"+
+        "==================================================\n\n";
+  let sec="";
+  D.forEach(d=>{
+    if(d.sec){ sec=d.sec; t+="\n### "+sec.toUpperCase()+"\n"; }
+    const s=ST[d.id]||{};
+    t+="\n"+d.tag+"  ["+d.l+"]\n";
+    if(s.pick){
+      const a=d.alts.find(x=>x.k===s.pick);
+      t+="  -> OPCION "+s.pick+"\n"+a.m.map(x=>"     "+x).join("\n")+"\n";
+    } else if(s.mine){
+      t+="  -> LO REESCRIBE IVAN\n";
+    } else {
+      t+="  -> sin decidir\n";
+    }
+    if(s.c && s.c.trim()) t+="  NOTA DE IVAN:\n"+s.c.trim().split("\n").map(x=>"     "+x).join("\n")+"\n";
+  });
+  const o=document.getElementById("out");o.style.display="block";o.textContent=t;
+  if(navigator.clipboard) navigator.clipboard.writeText(t).catch(()=>{});
+  o.scrollIntoView({behavior:"smooth",block:"start"});
+}
+render();
+</script>

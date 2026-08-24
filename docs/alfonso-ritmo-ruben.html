@@ -1,0 +1,815 @@
+<title>El ritmo que pide Rubén</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+
+<style>
+:root{
+  --paper:#FAF9F7; --raise:#FFFFFF; --sink:#F2F0EC;
+  --ink:#1A1D24; --muted:#6B6E78; --faint:#93969E;
+  --rule:#E4E1DC; --rule-soft:#EDEAE5;
+  --accent:#2D4A63; --accent-soft:#E7EDF2;
+  --rust:#A03B28; --rust-soft:#F7EAE6;
+  --teal:#1B6B58; --teal-soft:#E6F1ED;
+  --shadow:0 1px 2px rgba(26,29,36,.05),0 8px 24px -16px rgba(26,29,36,.18);
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#131519; --raise:#1A1D22; --sink:#1E2127;
+    --ink:#E9E7E2; --muted:#9C9FA7; --faint:#787B83;
+    --rule:#2A2D34; --rule-soft:#22252B;
+    --accent:#8CB2CE; --accent-soft:#1C2732;
+    --rust:#DE8A72; --rust-soft:#2A1F1C;
+    --teal:#57BFA1; --teal-soft:#152621;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#131519; --raise:#1A1D22; --sink:#1E2127;
+  --ink:#E9E7E2; --muted:#9C9FA7; --faint:#787B83;
+  --rule:#2A2D34; --rule-soft:#22252B;
+  --accent:#8CB2CE; --accent-soft:#1C2732;
+  --rust:#DE8A72; --rust-soft:#2A1F1C;
+  --teal:#57BFA1; --teal-soft:#152621;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 24px -16px rgba(0,0,0,.6);
+}
+
+*{box-sizing:border-box}
+body{
+  background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  font-size:16.5px; line-height:1.62; margin:0;
+  -webkit-font-smoothing:antialiased;
+}
+.shell{max-width:1180px;margin:0 auto;padding:0 24px 120px}
+
+.mast{padding:64px 0 40px;border-bottom:1px solid var(--rule)}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);margin:0 0 22px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;
+}
+.eyebrow span{color:var(--faint)}
+h1{
+  font-family:Fraunces,Georgia,"Times New Roman",serif;
+  font-optical-sizing:auto; font-weight:600;
+  font-size:clamp(2.5rem,6.2vw,4rem); line-height:1.02; letter-spacing:-.022em;
+  margin:0 0 26px; text-wrap:balance; max-width:16ch;
+}
+.stand{font-size:1.18rem;line-height:1.55;color:var(--muted);max-width:60ch;margin:0}
+.stand strong{color:var(--ink);font-weight:600}
+
+section{padding:56px 0;border-bottom:1px solid var(--rule-soft)}
+section:last-of-type{border-bottom:0}
+.skey{
+  font-family:"IBM Plex Mono",ui-monospace,monospace;
+  font-size:11px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--faint);margin:0 0 14px;
+}
+h2{
+  font-family:Fraunces,Georgia,serif;font-weight:600;
+  font-size:clamp(1.6rem,3.2vw,2.1rem);line-height:1.14;letter-spacing:-.015em;
+  margin:0 0 20px;text-wrap:balance;max-width:22ch;
+}
+h3{
+  font-family:"IBM Plex Sans",sans-serif;font-weight:600;
+  font-size:1.06rem;line-height:1.35;margin:34px 0 12px;letter-spacing:-.005em;
+}
+h4{
+  font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:11px;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--accent);
+  margin:26px 0 10px;
+}
+p{margin:0 0 16px;max-width:66ch}
+p:last-child{margin-bottom:0}
+strong{font-weight:600}
+a{color:var(--accent)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+code{background:var(--sink);padding:.12em .38em;border-radius:3px;color:var(--ink)}
+
+.toc{
+  margin:40px 0 0;padding:22px 24px;background:var(--sink);
+  border-radius:4px;border-left:2px solid var(--accent);max-width:580px;
+}
+.toc ol{margin:0;padding:0;list-style:none;counter-reset:t;
+  display:flex;flex-direction:column;gap:8px}
+.toc li{counter-increment:t;font-size:.94rem;display:flex;gap:12px}
+.toc li::before{
+  content:counter(t,decimal-leading-zero);
+  font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);
+  padding-top:.32em;flex:none;
+}
+.toc a{text-decoration:none;color:var(--ink);border-bottom:1px solid var(--rule)}
+.toc a:hover{border-bottom-color:var(--accent);color:var(--accent)}
+
+blockquote{
+  margin:24px 0;padding:2px 0 2px 20px;border-left:2px solid var(--accent);
+  max-width:62ch;
+}
+blockquote p{font-size:1.03rem;color:var(--ink);margin-bottom:10px}
+blockquote p:last-child{margin-bottom:0}
+blockquote cite{
+  display:block;margin-top:10px;font-style:normal;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--faint);
+}
+
+.note{
+  margin:26px 0;padding:18px 22px;border-radius:4px;
+  background:var(--accent-soft);border-left:2px solid var(--accent);max-width:66ch;
+}
+.note--flag{background:var(--rust-soft);border-left-color:var(--rust)}
+.note--ok{background:var(--teal-soft);border-left-color:var(--teal)}
+.note p{margin-bottom:10px;font-size:.97rem}
+.note p:last-child{margin-bottom:0}
+.note .lbl{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--accent);display:block;margin-bottom:8px;font-weight:600;
+}
+.note--flag .lbl{color:var(--rust)}
+.note--ok .lbl{color:var(--teal)}
+
+.tw{overflow-x:auto;margin:26px 0;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.92rem}
+th{
+  text-align:left;font-family:"IBM Plex Mono",monospace;font-weight:600;
+  font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);
+  padding:0 16px 10px 0;border-bottom:1px solid var(--rule);vertical-align:bottom;
+}
+td{padding:13px 16px 13px 0;border-bottom:1px solid var(--rule-soft);vertical-align:top;line-height:1.5}
+tr:last-child td{border-bottom:0}
+td:last-child,th:last-child{padding-right:0}
+.n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.loc{font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--faint);white-space:nowrap}
+
+.chip{
+  display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;font-weight:600;
+  padding:3px 8px;border-radius:3px;white-space:nowrap;
+}
+.chip--out{background:var(--rust-soft);color:var(--rust);box-shadow:inset 0 0 0 1px var(--rust)}
+.chip--in{background:var(--teal-soft);color:var(--teal);box-shadow:inset 0 0 0 1px var(--teal)}
+.chip--hold{background:var(--sink);color:var(--muted);box-shadow:inset 0 0 0 1px var(--rule)}
+
+.beats{display:flex;flex-direction:column;gap:0;margin:30px 0 0;max-width:760px}
+.beat{
+  display:grid;grid-template-columns:52px 1fr;gap:20px;
+  padding:20px 0;border-top:1px solid var(--rule-soft);
+}
+.beat:first-child{border-top:1px solid var(--rule)}
+.beat__n{
+  font-family:Fraunces,Georgia,serif;font-size:1.5rem;font-weight:600;
+  color:var(--accent);line-height:1;padding-top:2px;font-variant-numeric:tabular-nums;
+}
+.beat__t{font-weight:600;margin:0 0 5px;font-size:1.02rem}
+.beat__d{margin:0;color:var(--muted);font-size:.95rem;max-width:56ch}
+.beat__q{
+  margin:9px 0 0;font-family:"IBM Plex Mono",monospace;font-size:11px;
+  letter-spacing:.06em;color:var(--faint);text-transform:uppercase;
+}
+
+.turn{margin:20px 0 28px;max-width:640px}
+.turn__lead{
+  font-size:.93rem;color:var(--muted);font-style:italic;
+  margin:0 0 12px;padding-left:14px;border-left:2px solid var(--rule);
+}
+.turn__lead b{font-style:normal;font-family:"IBM Plex Mono",monospace;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--faint);display:block;margin-bottom:3px;font-weight:600}
+.bank{display:flex;flex-direction:column;gap:14px}
+.say{
+  position:relative;padding:13px 17px 13px 19px;border-radius:4px;
+  background:var(--raise);box-shadow:var(--shadow);font-size:.97rem;line-height:1.5;
+}
+.say::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:4px 0 0 4px}
+.say--out::before{background:var(--rust)}
+.say--in::before{background:var(--teal)}
+.say--out{color:var(--muted)}
+.say__tag{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;font-weight:600;display:block;margin-bottom:7px;
+}
+.say--out .say__tag{color:var(--rust)}
+.say--in .say__tag{color:var(--teal)}
+.bub{display:block}
+.bub + .bub{margin-top:7px}
+.say__why{
+  display:block;margin-top:9px;padding-top:9px;border-top:1px solid var(--rule-soft);
+  font-size:.87rem;color:var(--muted);
+}
+
+.dec{margin:30px 0;border:1px solid var(--rule);border-radius:4px;overflow:hidden;max-width:720px}
+.dec__h{
+  padding:14px 22px;background:var(--sink);border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--muted);font-weight:600;
+}
+.dec__b{padding:22px}
+.opt{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--rule-soft)}
+.opt:first-of-type{border-top:0;padding-top:4px}
+.opt__k{
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:var(--accent);
+  flex:none;width:22px;padding-top:2px;
+}
+.opt__t{margin:0;font-size:.96rem;max-width:none}
+
+ul.tick{list-style:none;padding:0;margin:18px 0;display:flex;flex-direction:column;gap:11px;max-width:64ch}
+ul.tick li{padding-left:22px;position:relative;font-size:.97rem}
+ul.tick li::before{
+  content:"";position:absolute;left:2px;top:.62em;width:7px;height:7px;
+  border-radius:50%;background:var(--accent);
+}
+ol.steps{padding-left:0;margin:18px 0;list-style:none;counter-reset:s;
+  display:flex;flex-direction:column;gap:14px;max-width:64ch}
+ol.steps li{counter-increment:s;padding-left:34px;position:relative;font-size:.97rem}
+ol.steps li::before{
+  content:counter(s);position:absolute;left:0;top:0;
+  font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;
+  color:var(--teal);background:var(--teal-soft);width:22px;height:22px;
+  display:grid;place-items:center;border-radius:50%;
+}
+
+/* ---------- banco de sustitutos ---------- */
+.swap{
+  margin:0 0 40px;border:1px solid var(--rule);border-radius:5px;
+  overflow:hidden;max-width:700px;background:var(--raise);
+}
+.swap__h{
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  padding:15px 22px;background:var(--sink);border-bottom:1px solid var(--rule);
+}
+.swap__n{
+  font-family:Fraunces,Georgia,serif;font-size:1.35rem;font-weight:600;
+  color:var(--accent);line-height:1;font-variant-numeric:tabular-nums;
+}
+.swap__t{font-weight:600;font-size:1rem;margin:0;flex:1;min-width:180px}
+.swap__loc{font-family:"IBM Plex Mono",monospace;font-size:10.5px;
+  color:var(--faint);letter-spacing:.06em;white-space:nowrap}
+.swap__b{padding:20px 22px 22px}
+
+.dead{
+  position:relative;padding:11px 15px 11px 16px;border-radius:4px;
+  background:var(--rust-soft);font-size:.95rem;line-height:1.5;color:var(--muted);
+  margin:0 0 18px;
+}
+.dead::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--rust);border-radius:4px 0 0 4px}
+.dead__tag{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;font-weight:600;color:var(--rust);
+  display:block;margin-bottom:6px;
+}
+
+.alts{display:flex;flex-direction:column;gap:12px;margin:0 0 20px}
+.alt{display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start}
+.alt__k{
+  font-family:"IBM Plex Mono",monospace;font-size:10.5px;font-weight:600;
+  color:var(--teal);background:var(--teal-soft);border-radius:3px;
+  padding:3px 0;text-align:center;line-height:1.4;margin-top:2px;
+}
+.alt__b{
+  position:relative;padding:11px 15px 11px 16px;border-radius:4px;
+  background:var(--paper);box-shadow:inset 0 0 0 1px var(--rule);
+  font-size:.95rem;line-height:1.5;
+}
+.alt__b::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:var(--teal);border-radius:4px 0 0 4px}
+.alt__b .bub + .bub{margin-top:6px}
+.alt__b em{display:block;margin-top:7px;font-style:normal;
+  font-size:.85rem;color:var(--muted)}
+.alt--note .alt__k{color:var(--accent);background:var(--accent-soft)}
+.alt--note .alt__b::before{background:var(--accent)}
+
+.slot{
+  border:1px dashed var(--rule);border-radius:4px;padding:13px 16px;
+  min-height:74px;background:transparent;
+}
+.slot span{
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--faint);font-weight:600;display:block;
+}
+
+.keep{
+  display:grid;grid-template-columns:1fr;gap:10px;margin:20px 0;max-width:660px;
+}
+.keep__row{
+  display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;
+  padding:12px 16px;border-radius:4px;background:var(--sink);font-size:.94rem;
+}
+.keep__why{font-family:"IBM Plex Mono",monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--teal);white-space:nowrap}
+
+.foot{padding:44px 0 0;color:var(--faint);font-size:.88rem;
+  font-family:"IBM Plex Mono",monospace;letter-spacing:.03em;line-height:1.7;max-width:none}
+
+@media (max-width:640px){
+  body{font-size:16px}
+  .shell{padding:0 18px 80px}
+  .mast{padding:44px 0 32px}
+  section{padding:44px 0}
+  .beat{grid-template-columns:36px 1fr;gap:14px}
+  .beat__n{font-size:1.2rem}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+</style>
+
+<div class="shell">
+
+<header class="mast">
+  <p class="eyebrow">Alfonso · Ronda 2026-08-24 <span>/</span> <span>reunión Rubén + cierre de Sergio</span></p>
+  <h1>El ritmo que pide Rubén</h1>
+  <p class="stand">Rubén no pide más preguntas ni menos. Pide <strong>otra cadena</strong> —dónde va cada pregunta— y <strong>otra forma</strong> —cómo está formulada—. El tono se queda como está: Sergio fue explícito, «esa parte no la tocaríamos».</p>
+
+  <nav class="toc" aria-label="Índice">
+    <ol>
+      <li><a href="#ya">Parte de lo que pide ya está aplicado</a></li>
+      <li><a href="#censo">Las dos puertas: el censo completo</a></li>
+      <li><a href="#banco">El banco de sustitutos · para que elijas</a></li>
+      <li><a href="#marco">El marco: contexto de la vida, no del método</a></li>
+      <li><a href="#cadena">La cadena nueva · seis preguntas</a></li>
+      <li><a href="#contexto">La fase de contexto, escrita</a></li>
+      <li><a href="#bloqueo">El bloqueo, como lo quiere Rubén</a></li>
+      <li><a href="#cualif">La cualificación</a></li>
+      <li><a href="#solo">El «voy solo», sin ser tan directo</a></li>
+      <li><a href="#bugs">Lo que encontré de paso</a></li>
+      <li><a href="#notoca">Lo que no se toca</a></li>
+    </ol>
+  </nav>
+</header>
+
+<section id="ya">
+  <p class="skey">Punto de partida</p>
+  <h2>Parte de lo que pide ya está aplicado</h2>
+  <p>Rubén revisó conversaciones producidas por una versión anterior del prompt. Dos de sus peticiones entraron ya entre el 18 y el 22 de agosto: la retirada de «¿qué te aportaría a ti conseguirlo?» y la cualificación reducida a una sola pregunta con la disponibilidad fuera. La fase de contexto existe, pero como nota a pie dentro de otro elemento y con una definición que él acaba de corregir.</p>
+  <p>Queda entonces: el tic de las dos puertas, la fase de contexto de verdad, el bloqueo bien llevado y la escalera del «voy solo». Eso es la ronda.</p>
+</section>
+
+<section id="censo">
+  <p class="skey">Hallazgo 1 · el censo</p>
+  <h2>Las dos puertas: el censo completo</h2>
+
+  <blockquote>
+    <p>Espero que no siempre dé dos opciones. Que esto es lo que no me ha terminado de convencer. […] De vez en cuando está bien, porque lo hace más humano, pero es que aquí ya lleva como seis preguntas así.</p>
+    <cite>Rubén</cite>
+  </blockquote>
+
+  <p>Conté todas las que hay dentro del bloque: <strong>21 demostraciones repartidas en 14 familias</strong>. Y lo decisivo no es el número, es dónde caen: hay una demostrada <strong>en cada uno de los pasos del descubrimiento</strong>. Si el modelo coge el literal canónico de cada paso —que es exactamente lo que le pedimos—, salen todas con dos opciones. Rubén contó seis y estaba contando bien.</p>
+
+  <div class="tw">
+  <table>
+    <thead><tr><th>Familia</th><th class="n">Dem.</th><th>Dónde</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>«te lo has marcado ahora <strong>o</strong> llevas ya tiempo con ello en la cabeza?»</td><td class="n">4</td><td class="loc">225 · 312 · 453 · 486</td><td><span class="chip chip--out">reescribir</span></td></tr>
+      <tr><td>«buscas que alguien te lo estructure <strong>o</strong> prefieres seguir por tu cuenta??»</td><td class="n">3</td><td class="loc">265 · 380 · 509</td><td><span class="chip chip--in">instrumento</span></td></tr>
+      <tr><td>«estás viendo los avances que te gustaría <strong>o</strong> notas que…?»</td><td class="n">3</td><td class="loc">35 · 405 · 497</td><td><span class="chip chip--in">instrumento</span></td></tr>
+      <tr><td>«has intentado bajarla por tu cuenta <strong>o</strong> sería la primera vez?»</td><td class="n">2</td><td class="loc">217 · 309</td><td><span class="chip chip--out">muere</span></td></tr>
+      <tr><td>«es más por recomendación médica <strong>o</strong> es por iniciativa tuya?»</td><td class="n">2</td><td class="loc">89 · 488</td><td><span class="chip chip--out">reescribir</span></td></tr>
+      <tr><td>«voy bien <strong>o</strong> me dejo algo?» (verificación F4)</td><td class="n">2</td><td class="loc">415 · 515</td><td><span class="chip chip--in">se queda</span></td></tr>
+      <tr><td>«te mueves algo <strong>o</strong> nada de nada?»</td><td class="n">1</td><td class="loc">297</td><td><span class="chip chip--out">muere</span></td></tr>
+      <tr><td>«tienes algo en mente, una cifra <strong>o</strong> cómo te gustaría verte?»</td><td class="n">1</td><td class="loc">484</td><td><span class="chip chip--out">reescribir</span></td></tr>
+      <tr><td>«dirías que es solo del curro <strong>o</strong> que va con cómo estás?»</td><td class="n">1</td><td class="loc">490</td><td><span class="chip chip--out">reescribir</span></td></tr>
+      <tr><td>«ese cambio lo buscas más por ti <strong>o</strong> por seguirles el ritmo?»</td><td class="n">1</td><td class="loc">838</td><td><span class="chip chip--out">reescribir</span></td></tr>
+      <tr><td>«es porque te aburres <strong>o</strong> porque no ves resultados?»</td><td class="n">1</td><td class="loc">193</td><td><span class="chip chip--out">muere</span></td></tr>
+      <tr><td>«lo dejas porque no es prioridad <strong>o</strong> es que no ves por dónde empezar?»</td><td class="n">1</td><td class="loc">649</td><td><span class="chip chip--in">objeción</span></td></tr>
+      <tr><td>«qué te haría dudar, el precio <strong>o</strong> si va a funcionar?»</td><td class="n">1</td><td class="loc">750</td><td><span class="chip chip--in">objeción</span></td></tr>
+      <tr><td>«ves que puedes solo? <strong>O</strong> eres de los que cree que con un equipo…»</td><td class="n">1</td><td class="loc">761</td><td><span class="chip chip--out">muere</span></td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h3>Y ahora la parte que corrige lo que te dije ayer</h3>
+  <p>Te propuse un tope: «máximo dos en toda la conversación». <strong>Eso no funciona y ya lo sabemos.</strong> Es justo el antipatrón que medimos con el «Y dime» de Pablo López: el setter genera un turno cada vez, no lleva contador entre turnos, y el Splitter parte el turno en burbujas, así que un cupo global es inejecutable. Aquella ronda de cupos subió el tic de 4 a 25 apariciones y el problema seguía.</p>
+
+  <div class="note note--flag">
+    <span class="lbl">La causa raíz: hay una línea que lo bendice</span>
+    <p>En <code>coach_tone_voiceprint</code> está escrito, literal: «la de dos puertas es UNA pregunta y es <strong>un molde aprobado</strong>».</p>
+    <p>Esa frase existe para defender otra regla —que dos puertas no rompen el «una pregunta por mensaje»—, pero lo que el modelo lee es la bendición. Con 21 demostraciones repartidas por todo el bloque y una línea que las aprueba, el tic no es un despiste: es lo que el bloque enseña. Es el mismo caso que los emojis de Alex, donde la cuota nunca ganó porque otra regla los autorizaba en otro sitio.</p>
+  </div>
+
+  <h3>Cómo se quita de verdad</h3>
+  <ol class="steps">
+    <li><strong>Quitar la licencia primero.</strong> La línea sigue defendiendo que dos puertas ≠ dos preguntas —eso hace falta—, pero deja de llamarlas molde aprobado y las acota a los tres sitios donde viven.</li>
+    <li><strong>Reescribir la distribución demostrada.</strong> Las seis familias del camino de descubrimiento pasan a abiertas, con su sustituto escrito. Sin sustituto, el modelo compensa por otro lado o sale seco.</li>
+    <li><strong>Dejar la regla binaria y comprobable mirando solo el mensaje que se escribe:</strong> si tu pregunta ofrece dos respuestas posibles y no es una de las instrumentales nombradas, reescríbela abierta. Sin contadores.</li>
+    <li><strong>Recensar todas las familias al terminar</strong>, incluidas las nuevas. La poda del 5 de agosto en este mismo bloque dejó viva «por tu cuenta o sería»: ese tic lo sembró la ronda anterior, y no quiero repetirlo.</li>
+  </ol>
+
+  <h4>Las que sobreviven, y por qué</h4>
+  <p>La expectativa vs realidad y el filtro de intención se quedan porque ahí las dos puertas <em>son</em> el instrumento: la pregunta enfrenta dos estados y necesita las dos. Lo mismo dentro de una objeción. Y el desambiguador no cuenta —«a qué te refieres con que no te organizas?? Lo dices por el entreno o es otra cosa?»— porque el segundo interrogante acota al primero sobre lo mismo en vez de abrir un tema distinto.</p>
+
+  <p>Los sustitutos, con alternativas y hueco para tu versión, van en la sección siguiente.</p>
+</section>
+
+<section id="banco">
+  <p class="skey">El banco</p>
+  <h2>El banco de sustitutos</h2>
+  <p>Las nueve que cambian, cada una con sus alternativas. Están numeradas para que puedas decirme «la 2b vale» o «en la 4 yo diría…» sin tener que copiar nada. Y cada ficha lleva su hueco abajo para tu versión, que es la que acaba entrando al bloque.</p>
+  <p>Las alternativas no son sinónimos: cada una entra por un ángulo distinto, porque rotar entre sinónimos de la misma familia el lead lo lee como la misma pregunta repetida.</p>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">1</span><p class="swap__t">Aterrizar el objetivo</p><span class="swap__loc">línea 484</span></div>
+    <div class="swap__b">
+      <p style="margin:0 0 14px;font-size:.92rem;color:var(--muted)"><em>lead:</em> «quiero ponerme en forma otra vez»</p>
+      <div class="dead"><span class="dead__tag">retirado</span>Cuando me dices lo de ponerte en forma, tienes algo en mente, una cifra o cómo te gustaría verte?</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">1a</div><div class="alt__b"><span class="bub">Cuando me dices ponerte en forma, cómo te gustaría verte tú?</span><em>Por el estado. La cifra, si la tiene, la suelta él solo.</em></div></div>
+        <div class="alt"><div class="alt__k">1b</div><div class="alt__b"><span class="bub">Pues cuéntame, qué objetivo te has marcado tú exactamente?</span><em>Por el objetivo marcado. Es la formulación de Rubén.</em></div></div>
+        <div class="alt"><div class="alt__k">1c</div><div class="alt__b"><span class="bub">Hasta dónde te gustaría bajar esa barriga??</span><em>Por el destino, con su palabra dentro. Cierra la referencia, que es marca de que no es plantilla.</em></div></div>
+        <div class="alt alt--note"><div class="alt__k">1r</div><div class="alt__b"><span class="bub">Una cifra aproximada aunque sea, cuánto crees que te sobra?</span><em>Rescate, solo si contesta que no sabe. Aquí la dos-puertas de la cifra sigue viva, pero como rescate y no como entrada.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">2</span><p class="swap__t">Recorrido · la más sembrada, 4 demostraciones</p><span class="swap__loc">225 · 312 · 453 · 486</span></div>
+    <div class="swap__b">
+      <p style="margin:0 0 14px;font-size:.92rem;color:var(--muted)"><em>lead:</em> «unos 20 kilos, sé que es mucho pero tengo bastante sobrepeso»</p>
+      <div class="dead"><span class="dead__tag">retirado</span>Así que el tema de quitarte la barriga te lo has marcado ahora o llevas ya tiempo con ello en la cabeza?</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">2a</div><div class="alt__b"><span class="bub">Cuánto tiempo llevas dándole vueltas a esto?</span><em>Literal de Rubén. Produce un dato —«dos años»— y ese dato es la bisagra al bloqueo. La versión cerrada no produce nada: contesta «llevo tiempo» y ahí muere.</em></div></div>
+        <div class="alt"><div class="alt__k">2b</div><div class="alt__b"><span class="bub">20 kilos es un objetivo abordable, no te vayas a pensar que es imposible</span><span class="bub">Pero cuánto tiempo llevas persiguiéndolo?</span><em>Criterio delante, pregunta abierta detrás. Movimiento 3 de los openers.</em></div></div>
+        <div class="alt"><div class="alt__k">2c</div><div class="alt__b"><span class="bub">Y ese objetivo hace mucho que te lo pusiste?</span><em>Por la fecha en vez de por la duración. Ojo: abre con «Y» y gasta cupo de bisagra.</em></div></div>
+        <div class="alt alt--note"><div class="alt__k">2s</div><div class="alt__b"><span class="bub">Ha pasado algo en concreto para ponerte ahora con ello?</span><em>Solo si es ÉL quien dice que el objetivo es nuevo. Entonces la premisa la puso él y deja de ser invención. Es la única forma en que el «por qué ahora» que pide Rubén entra sin romper el test anti-invención.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">3</span><p class="swap__t">El porqué · cuando dice «salud»</p><span class="swap__loc">89 · 488</span></div>
+    <div class="swap__b">
+      <p style="margin:0 0 14px;font-size:.92rem;color:var(--muted)"><em>lead:</em> «quiero reducir grasa para mejorar mi salud»</p>
+      <div class="dead"><span class="dead__tag">retirado</span>Pero el tema de la salud es más por recomendación médica o es por iniciativa tuya?</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">3a</div><div class="alt__b"><span class="bub">Pero cuando dices salud, a qué te refieres exactamente?</span><em>Pide precisión. Ya existe en el bloque como exemplar y es mejor que la cerrada: si es por el médico te lo dice igual, y si no, te da algo suyo.</em></div></div>
+        <div class="alt"><div class="alt__k">3b</div><div class="alt__b"><span class="bub">Pero por qué dirías que es importante para ti conseguirlo??</span><em>Va al porqué directo. Es uno de los moldes que Rubén aprueba en voz alta.</em></div></div>
+        <div class="alt"><div class="alt__k">3c</div><div class="alt__b"><span class="bub">Pero lo de la salud, de dónde te viene la preocupación?</span><em>Por el origen, sin ofrecerle las dos opciones.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">4</span><p class="swap__t">Impacto · la falta de energía</p><span class="swap__loc">línea 490</span></div>
+    <div class="swap__b">
+      <p style="margin:0 0 14px;font-size:.92rem;color:var(--muted)"><em>lead:</em> «llego reventado del curro y sin energía»</p>
+      <div class="dead"><span class="dead__tag">retirado</span>Pero esa falta de energía, dirías que es solo del curro o que va con cómo estás ahora físicamente?</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">4a</div><div class="alt__b"><span class="bub">Pero esa falta de energía a qué la achacas tú?</span><em>Le devuelve el criterio a él en vez de darle las dos opciones ya pensadas.</em></div></div>
+        <div class="alt"><div class="alt__k">4b</div><div class="alt__b"><span class="bub">Pero llegar reventado todos los días en qué te está afectando más?</span><em>Al impacto, con su palabra («reventado») dentro. Pasa el test anti-invención porque la palabra es suya.</em></div></div>
+        <div class="alt"><div class="alt__k">4c</div><div class="alt__b"><span class="bub">Llegar así todos los días tampoco es plan eh</span><span class="bub">Cómo lo estás llevando tú?</span><em>Reacción valorando primero y pregunta corta detrás. Movimiento 1 de los openers.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">5</span><p class="swap__t">Contexto · desaparece entera, es método</p><span class="swap__loc">línea 297</span></div>
+    <div class="swap__b">
+      <div class="dead"><span class="dead__tag">retirado · dos puertas + método</span>Y ahora mismo te mueves algo o nada de nada?</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">5a</div><div class="alt__b"><span class="bub">A qué te dedicas tú por cierto?</span><em>Su vida. Corta, natural, y de la respuesta salen cinco preguntas más.</em></div></div>
+        <div class="alt"><div class="alt__k">5b</div><div class="alt__b"><span class="bub">Para que te entienda bien, cómo es un día normal tuyo?</span><em>El retrato entero de una vez. Ya existe en el bloque como exemplar.</em></div></div>
+        <div class="alt"><div class="alt__k">5c</div><div class="alt__b"><span class="bub">Pero de ese día a día tuyo, hay algo que te esté limitando ahora mismo para ponerte con esto?</span><em>La de Rubén, sin el menú que él enumeraba. Que el horario, los críos o los desplazamientos los nombre él.</em></div></div>
+        <div class="alt alt--note"><div class="alt__k">5p</div><div class="alt__b"><span class="bub">Con dos peques y viajando toda la semana no queda casi nada para ti eh</span><em>Recogida pasiva, sin pregunta. Es lo que más va a pasar: el contexto llega solo mientras cuenta, y entonces no se pregunta, se reacciona y no se gasta pregunta.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">6</span><p class="swap__t">Intento en solitario · muere sin sustituto</p><span class="swap__loc">217 · 309</span></div>
+    <div class="swap__b">
+      <div class="dead"><span class="dead__tag">retirado</span>Pero esa grasa has intentado bajarla por tu cuenta o sería la primera vez que buscas acompañamiento?</div>
+      <div class="alts">
+        <div class="alt alt--note"><div class="alt__k">—</div><div class="alt__b"><span class="bub">No lleva sustituto, y es a propósito.</span><em>Rubén: «esto me lleva a fracasos anteriores… si yo ya te he preguntado si este objetivo lleva mucho tiempo, con esa información ya es suficiente como para no volver a hacer una pregunta sobre fracasos anteriores».</em></div></div>
+        <div class="alt alt--note"><div class="alt__k">↳</div><div class="alt__b"><span class="bub">De dónde sale ahora esa información:</span><em>Lo que esta pregunta pescaba —si está abierto a que alguien le ayude— lo da entero el paso 5, la cualificación. Lo escribo explícito en el bloque para que el modelo no compense buscándolo por otro lado.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión, si crees que hace falta algo aquí</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">7</span><p class="swap__t">Retomar sus palabras · doble problema</p><span class="swap__loc">línea 193</span></div>
+    <div class="swap__b">
+      <p style="margin:0 0 14px;font-size:.92rem;color:var(--muted)"><em>lead:</em> «empiezo bien y a las tres semanas lo dejo»</p>
+      <div class="dead"><span class="dead__tag">retirado · dos puertas + autopsia</span>Que se te caiga a las tres semanas, es porque te aburres o porque no ves resultados?<br><br>Y encima está puesta como el ✅ de cómo retomar sus palabras, así que enseña las dos cosas mal a la vez.</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">7a</div><div class="alt__b"><span class="bub">Que se te caiga a las tres semanas, cómo lo llevas tú?</span><em>Mismo arranque —que es lo bueno de ese ejemplo— pero reacciona a lo que le supone en vez de investigar por qué se cayó.</em></div></div>
+        <div class="alt"><div class="alt__k">7b</div><div class="alt__b"><span class="bub">A qué te refieres con que se te cae a las tres semanas??</span><em>Le pide que lo cuente él. Familia (b) del lexicon.</em></div></div>
+        <div class="alt"><div class="alt__k">7c</div><div class="alt__b"><span class="bub">Y a qué crees que se debe que se te caiga justo ahí?</span><em>Va al PORQUÉ, que sí está permitido. Lo prohibido es el QUÉ («qué se te cae, el entreno o la comida»).</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">8</span><p class="swap__t">Conexión personal</p><span class="swap__loc">línea 838</span></div>
+    <div class="swap__b">
+      <p style="margin:0 0 14px;font-size:.92rem;color:var(--muted)"><em>lead:</em> «con dos críos y viajando toda la semana por trabajo no me da la vida»</p>
+      <div class="dead"><span class="dead__tag">retirado</span>Pero ese cambio lo buscas más por ti o por seguirles el ritmo a ellos?</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">8a</div><div class="alt__b"><span class="bub">Joder, con dos peques y viviendo en la carretera no queda casi nada para ti</span><span class="bub">Pero ese cambio, por quién lo buscas más??</span><em>La misma intención, abierta. Que decida él si son los críos, él, su mujer o el médico.</em></div></div>
+        <div class="alt"><div class="alt__k">8b</div><div class="alt__b"><span class="bub">Pero qué es lo que más te empuja a querer cambiarlo??</span><em>Al motor, sin nombrarle a los críos. Si son ellos, lo dice.</em></div></div>
+        <div class="alt"><div class="alt__k">8c</div><div class="alt__b"><span class="bub">Pero con los peques, en qué notas más que te gustaría estar de otra forma?</span><em>Recoge lo que él puso encima de la mesa y profundiza ahí. Sub-tipo (e), solo si la emoción la verbalizó él.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <div class="swap">
+    <div class="swap__h"><span class="swap__n">9</span><p class="swap__t">«Yo puedo solo» · triple problema</p><span class="swap__loc">línea 761</span></div>
+    <div class="swap__b">
+      <div class="dead"><span class="dead__tag">retirado · dos puertas + frontal + «equipo»</span>Pero siendo sincero, ves que puedes alcanzar perfectamente tus objetivos por tu cuenta? O eres de los que cree que con el acompañamiento de un equipo profesional que ha ayudado a decenas de hombres, va a hacer que los alcances con un mejor resultado y en menos tiempo?<br><br>Dos puertas, le enfrenta contigo, y dice «equipo» cuando la identidad de Alfonso es que trabaja solo.</div>
+      <div class="alts">
+        <div class="alt"><div class="alt__k">9a</div><div class="alt__b"><span class="bub">Claro que puedes eh, si llevas dos años en ello</span><span class="bub">Pero de aquí a unos meses cómo te gustaría verte tú?</span><em>Le da la razón de verdad y luego mira hacia delante. Ni compara ni le pide que admita nada.</em></div></div>
+        <div class="alt"><div class="alt__k">9b</div><div class="alt__b"><span class="bub">Me parece perfecto, además es lo que hace casi todo el mundo al principio</span><span class="bub">Pero qué te falta ahora mismo para llegar ahí, según tú?</span><em>Que nombre él la brecha. La diferencia entre que la vea y que se la enseñes.</em></div></div>
+        <div class="alt"><div class="alt__k">9c</div><div class="alt__b"><span class="bub">Puedes perfectamente, no te digo que no</span><span class="bub">Pero qué pierdes por verlo conmigo primero??</span><em>Sin coste en vez de sin salida. Es el remate más corto de los tres.</em></div></div>
+      </div>
+      <div class="slot"><span>tu versión</span></div>
+    </div>
+  </div>
+
+  <h3>Las que se quedan · dime si vetas alguna</h3>
+  <p>Estas cuatro sobreviven porque ahí las dos puertas <em>son</em> el instrumento: la pregunta enfrenta dos estados y necesita los dos.</p>
+  <div class="keep">
+    <div class="keep__row"><span>«estás viendo los avances que te gustaría o notas que existe margen de mejora?»</span><span class="keep__why">expectativa</span></div>
+    <div class="keep__row"><span>«buscas que alguien te lo estructure o prefieres seguir probando por tu cuenta??»</span><span class="keep__why">filtro</span></div>
+    <div class="keep__row"><span>«voy bien o me dejo algo?»</span><span class="keep__why">verificación F4</span></div>
+    <div class="keep__row"><span>«qué te haría dudar más, el precio en sí o si va a funcionar en tu caso?»</span><span class="keep__why">objeción</span></div>
+  </div>
+  <p>Y una que no cuenta como dos puertas aunque lo parezca: «a qué te refieres con que no te organizas?? Lo dices por el entreno o es otra cosa?». El segundo interrogante <strong>acota</strong> al primero sobre lo mismo en vez de abrir un tema distinto, así que sigue siendo una pregunta y le pone más fácil contestar.</p>
+</section>
+
+<section id="marco">
+  <p class="skey">Marco mental · guardado</p>
+  <h2>Contexto de la vida, no del método</h2>
+
+  <p>Las cuatro contradicciones que levanté no son cuatro despistes: son una sola cosa mal escrita en cuatro sitios. Lo dejo guardado como marco para no volver a perderlo.</p>
+
+  <div class="note note--ok">
+    <span class="lbl">La regla</span>
+    <p><strong>No se pregunta por el proceso.</strong> Se pregunta por lo que hay <strong>alrededor</strong> de su objetivo —a qué se dedica, qué horarios lleva, si tiene críos, si viaja, si pasa el día sentado—. Nunca por lo que <strong>hace con</strong> su objetivo —qué rutina tiene montada, cuántos días entrena, qué come, qué plan sigue—. Y con el nicho de hombres, más todavía.</p>
+    <p><strong>Test:</strong> si su respuesta te deja hacerle una pregunta más suya, es contexto. Si solo te deja opinar sobre su método, fuera.</p>
+  </div>
+
+  <blockquote>
+    <p>En el momento que le haces estas preguntas de «¿qué rutina tienes ahora?», pues «ahora voy a empezar a hacer no sé qué y voy a entrenar tres días»… luego salir de ahí es imposible, tío.</p>
+    <p>Enfrentarnos con lo que ha hecho con otros profesionales anteriormente es de lo peor que se puede hacer, porque seguramente hay una relación incluso de amistad o hay una autoridad para esa persona.</p>
+    <cite>Rubén</cite>
+  </blockquote>
+
+  <p>De ahí caen las cuatro de golpe, y todas por el mismo motivo:</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Qué sale</th><th>Dónde vivía</th><th>Por qué</th></tr></thead>
+    <tbody>
+      <tr><td>«has intentado bajarlo por tu cuenta o sería la primera vez?»</td><td class="loc">ángulo (d), elem. 3</td><td>Es la puerta a los fracasos anteriores. Y la duración ya te da esa información sin abrirla.</td></tr>
+      <tr><td>«qué plan o rutina tienes montada actualmente?»</td><td class="loc">objections_solo, mov. 1</td><td>Prohibido en F2 y F3, pero autorizado literal aquí. Es su método.</td></tr>
+      <tr><td>«cuáles son los cambios más considerables que has notado?»</td><td class="loc">objections_solo, mov. 3</td><td>Le manda a pensar en sus logros justo cuando quieres que vea la brecha.</td></tr>
+      <tr><td>«si se mueve algo y cuántos días»</td><td class="loc">contexto presente</td><td>Es el inventario del método disfrazado de contexto. Rubén lo nombró expresamente.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="note note--flag">
+    <span class="lbl">Esto no es solo Alfonso</span>
+    <p>La definición vieja —con el «cuántos días» dentro— bajó el 22 de agosto a <code>doctrina-universal.md</code> §33 y desde ahí a Frodo, Roberto, Andrea, Andrea SOP, Luis Royán, Miguel y Beatriz Juan. Lo aplico primero en Alfonso, pero <strong>la fuente única hay que corregirla también</strong> o el resto se queda con la versión descartada. Dime si lo abro en esta ronda o va en una propia.</p>
+  </div>
+
+  <h3>Un matiz sobre el literal de Rubén</h3>
+  <p>Su formulación lleva un menú dentro —«como tu horario de trabajo, si llevas una vida sedentaria, si tienes cargas familiares»— y el menú está prohibido en el bloque, además de ser algo que él mismo ataca en el mismo audio. Mi lectura es que te estaba enumerando <em>qué</em> hay que averiguar, no dictándote la frase. Por eso lo parto en dos preguntas abiertas. Si tu lectura es otra, se cambia.</p>
+</section>
+
+<section id="cadena">
+  <p class="skey">El esqueleto</p>
+  <h2>La cadena nueva · seis preguntas</h2>
+
+  <blockquote>
+    <p>Conexión · objetivos · cuánto tiempo lleva con esos objetivos o si son nuevos «por qué ahora» · contexto (2 preguntas) · bloqueos · cualificación · puente · llamada.</p>
+    <cite>Rubén, por escrito en el chat</cite>
+  </blockquote>
+
+  <p>Esa cadena pasa a ser el esqueleto literal del descubrimiento. Hoy el bloque tiene cuatro «elementos» cubribles en cualquier orden más una máquina de cinco ángulos de la que el modelo elige uno. Eso es lo que produce el olor a formulario: es un menú, y un menú se recorre. Una cadena avanza.</p>
+
+  <div class="beats">
+    <div class="beat"><div class="beat__n">0</div><div>
+      <p class="beat__t">Conexión</p>
+      <p class="beat__d">F1 tal cual está. Aquí no se cualifica.</p>
+      <p class="beat__q">0 preguntas</p>
+    </div></div>
+    <div class="beat"><div class="beat__n">1</div><div>
+      <p class="beat__t">Objetivo</p>
+      <p class="beat__d">Qué quiere conseguir, aterrizado a una cifra o a un estado. Abierta, sin menú.</p>
+      <p class="beat__q">1 pregunta · +1 solo si vino genérico</p>
+    </div></div>
+    <div class="beat"><div class="beat__n">2</div><div>
+      <p class="beat__t">Recorrido</p>
+      <p class="beat__d">Cuánto tiempo lleva con ese objetivo. Y el porqué, si no ha salido solo.</p>
+      <p class="beat__q">1 pregunta</p>
+    </div></div>
+    <div class="beat"><div class="beat__n">3</div><div>
+      <p class="beat__t">Contexto</p>
+      <p class="beat__d">Su vida: a qué se dedica y qué le limita. La mayoría de las veces llega solo, y entonces no se pregunta, se reacciona.</p>
+      <p class="beat__q">1-2 preguntas</p>
+    </div></div>
+    <div class="beat"><div class="beat__n">4</div><div>
+      <p class="beat__t">Bloqueo</p>
+      <p class="beat__d">Qué le frena hoy, con su contexto delante. Más una de curiosidad encima, que es lo que Rubén pide expresamente.</p>
+      <p class="beat__q">1 pregunta + 1 de curiosidad</p>
+    </div></div>
+    <div class="beat"><div class="beat__n">5</div><div>
+      <p class="beat__t">Cualificación</p>
+      <p class="beat__d">Una sola, con las dos palancas dentro. Y ahí se acaba el descubrimiento.</p>
+      <p class="beat__q">1 pregunta</p>
+    </div></div>
+  </div>
+
+  <div class="note note--ok">
+    <span class="lbl">Presupuesto · aprobado</span>
+    <p>Seis preguntas de cualificación en toda la conversación, una por paso, más la reacción-con-pregunta a algo personal que él suelte —que ya estaba fuera de cuenta—. Sube desde cuatro porque el tope de cuatro se puso cuando no existía la fase de contexto: meter dos de contexto dentro de cuatro se comía la profundización del bloqueo, que es justo lo que Rubén pide añadir.</p>
+    <p>Y sigue siendo un límite, no un guion: si los pasos se cubren solos mientras cuenta, no se gastan.</p>
+  </div>
+
+  <p><strong>El orden es flexible, las piezas no.</strong> Sergio: «objetivo y contexto son las dos piezas obligatorias, pero da igual cuál va primero; si la persona arranca contando su día a día, seguimos por ahí y luego vamos al objetivo». Rubén: «perfecto». Eso ya estaba escrito; lo que faltaba era que el contexto existiera como pieza para poder reordenarlo.</p>
+
+  <p><strong>Y la máquina de cinco ángulos desaparece.</strong> La duración pasa a ser el paso 2, el impacto vive dentro de ese mismo paso, la expectativa vs realidad sigue como move de valor, el intento en solitario muere y la profundización emocional no era un ángulo sino una reacción. El bloque queda más corto, que es como tiene que salir de cada ronda.</p>
+</section>
+
+<section id="contexto">
+  <p class="skey">Paso 3 · pieza nueva</p>
+  <h2>La fase de contexto, escrita</h2>
+
+  <p>Dos preguntas como mucho, abiertas, sobre su vida. Y lo primero de la sección tiene que ser esto: <strong>la mayoría de las veces el contexto llega solo mientras cuenta</strong>. Entonces no se pregunta, se recoge y se reacciona. La pregunta es para cuando no ha llegado.</p>
+
+  <div class="turn">
+    <p class="turn__lead"><b>lead</b>dos años ya, y ahí sigo</p>
+    <div class="bank">
+      <div class="say say--in"><span class="say__tag">pregunta 1 · quién es</span><span class="bub">Joder, dos años ya es bastante tiempo eh</span><span class="bub">A qué te dedicas tú por cierto?</span></div>
+      <div class="say say--in"><span class="say__tag">variante</span><span class="bub">Para que te entienda bien, cómo es un día normal tuyo?</span></div>
+      <div class="say say--in"><span class="say__tag">pregunta 2 · qué le limita</span><span class="bub">Pero de ese día a día tuyo, hay algo que te esté limitando ahora mismo para ponerte con esto?</span><span class="say__why">Abierta, sin el menú. Que el horario, los críos o los desplazamientos los nombre él.</span></div>
+      <div class="say say--in"><span class="say__tag">recogida pasiva · sustituye a la pregunta si ya lo contó</span><span class="bub">Con dos peques y viajando toda la semana no queda casi nada para ti eh</span><span class="say__why">Esto es lo que más va a pasar. Reaccionas y sigues, sin gastar pregunta.</span></div>
+      <div class="say say--out"><span class="say__tag">prohibido en este paso</span><span class="bub">Qué plan o rutina tienes montada actualmente?</span><span class="bub">Cuántos días entrenas a la semana?</span><span class="bub">Y ahora mismo te mueves algo o nada de nada?</span><span class="bub">Cómo lo estás trabajando ahora mismo por tu cuenta?</span><span class="say__why">Las cuatro son su método. Le ponen a defender lo que hace y de ahí no se sale.</span></div>
+    </div>
+  </div>
+
+  <p>Para qué sirve, dicho en el bloque para que el modelo entienda el porqué y no solo la prohibición: sin ese retrato tus frases valen para cualquiera y tus propuestas chocan con su realidad. Con el retrato delante, la siguiente pregunta ya es suya.</p>
+</section>
+
+<section id="bloqueo">
+  <p class="skey">Paso 4 · el corazón</p>
+  <h2>El bloqueo, como lo quiere Rubén</h2>
+
+  <blockquote>
+    <p>Eso es lo que me falta aquí, <strong>en el presente</strong>. No en el pasado, no es «cuando lo has intentado otras veces qué te ha costado». No, es ahora, tío, ¿cuáles son los problemas que tienes?</p>
+    <p>No es «qué plan o rutina tienes montada», es: tío, a la hora de conseguir perder esos 20 kilos, ¿qué es lo que más te cuesta? ¿Qué es lo que más difícil se te hace? ¿Dónde está el problema? Seguir la alimentación, entrenar de manera frecuente, odio entrenar, no puedo ir al gimnasio, no soy una persona constante, lo que sea. Tengo que identificar el problema aquí.</p>
+    <cite>Rubén</cite>
+  </blockquote>
+
+  <p>De ahí salen cuatro cosas que hoy no están escritas así, y son las que hacen que el paso funcione o no.</p>
+
+  <h4>1 · La pregunta lleva su objetivo dentro</h4>
+  <p>Rubén nunca dice «¿qué te frena?» a secas. Siempre «<em>a la hora de conseguir perder esos 20 kilos</em>, ¿qué es lo que más te cuesta?». El objetivo va DENTRO de la pregunta, y es lo que la separa de una de catálogo.</p>
+  <div class="turn">
+    <div class="bank">
+      <div class="say say--out"><span class="say__tag">seca</span><span class="bub">Dónde dirías que está tu mayor obstáculo ahora mismo?</span></div>
+      <div class="say say--in"><span class="say__tag">con su objetivo dentro</span><span class="bub">Pues con esos turnos que llevas, qué dirías que es lo que más te cuesta para quitarte esos 20 kilos?</span></div>
+    </div>
+  </div>
+
+  <h4>2 · Abierta por defecto; apuntar es la variante</h4>
+  <p>La pregunta abierta es la que Rubén alabó en la conversación buena, y ahora funciona porque va con el retrato delante. La versión de apuntar —tu criterio con el «entiendo no??» pegado— sigue viva, pero solo cuando el contexto te ha dado algo concreto a lo que apuntar. Hoy el bloque tiene el orden al revés: manda apuntar y desaconseja la abierta.</p>
+  <div class="turn">
+    <p class="turn__lead"><b>lead</b>trabajo a turnos, algunas semanas de noche, y con la peque en casa</p>
+    <div class="bank">
+      <div class="say say--in"><span class="say__tag">por defecto</span><span class="bub">Pues con esos turnos que llevas, qué dirías que es lo que más te cuesta para quitarte esa barriga?</span></div>
+      <div class="say say--in"><span class="say__tag">variante · solo si el contexto te da a qué apuntar</span><span class="bub">Entonces entre los turnos y la peque no es poca cosa eh</span><span class="bub">Pero si me dices que la barriga sigue estando, esto va más por el lado de la alimentación entiendo no??</span><span class="say__why">Sin el «entiendo no??» sería un diagnóstico y estaría prohibido.</span></div>
+    </div>
+  </div>
+
+  <h4>3 · Una categoría amplia YA es el bloqueo</h4>
+  <p>Rubén enumera qué cuenta como respuesta válida: la alimentación, entrenar seguido, odio entrenar, no puedo ir al gimnasio, no soy constante. Cualquiera de esas <strong>cierra el paso</strong>. No hace falta afinar más, y afinar más es exactamente donde el bloque se va a la autopsia. En cuanto lo nombra, se ancla ahí y todo lo demás gira sobre eso: un bloqueo bien entendido, no cinco problemas mapeados.</p>
+
+  <h4>4 · La profundización va al PORQUÉ, nunca al QUÉ</h4>
+  <p>Ésta es la línea fina de todo el paso, y la que separa la curiosidad de la autopsia. Rubén pide expresamente una pregunta más de curiosidad encima del bloqueo —«hostia, ¿y por qué esto te suele costar tanto?»—. Esa pregunta puede ir al porqué. No puede ir al qué.</p>
+  <div class="turn">
+    <p class="turn__lead"><b>lead</b>que no me organizo, empiezo bien y a las dos semanas lo suelto</p>
+    <div class="bank">
+      <div class="say say--in"><span class="say__tag">al porqué · sí</span><span class="bub">Joder, y a qué crees que se debe que justo eso se te haga tan cuesta arriba?</span></div>
+      <div class="say say--in"><span class="say__tag">al porqué · sí</span><span class="bub">A qué te refieres con que no te organizas?? Lo dices por el entreno o es otra cosa?</span><span class="say__why">Dos interrogantes, pero el segundo acota al primero sobre lo mismo. No es dos puertas: es una pregunta acotada.</span></div>
+      <div class="say say--out"><span class="say__tag">al qué · no</span><span class="bub">Qué pasa a las dos semanas, se te cae el entreno, la alimentación o las dos cosas?</span><span class="bub">Y qué estás comiendo normalmente?</span><span class="bub">Qué haces cuando llegas a ese punto?</span><span class="say__why">Menú, método y autopsia. Ahí muere la conversación.</span></div>
+    </div>
+  </div>
+  <p>Una sola, y a cualificar. Rubén: «profundiza un poco en esos bloqueos y ya paso a cualificar, ya está».</p>
+</section>
+
+<section id="cualif">
+  <p class="skey">Paso 5</p>
+  <h2>La cualificación</h2>
+  <p>Sergio pide una sola pregunta. Rubén pide que nombre las dos palancas: entrenar y cuidar la alimentación. Se fusionan, y las tres piezas que protegiste en julio se quedan intactas —«algunos puntos de», «sin que te suponga un cambio drástico» y «a verlo y saber cómo sería»—.</p>
+  <div class="turn">
+    <div class="bank">
+      <div class="say say--out"><span class="say__tag">hoy</span><span class="bub">Vale tío, ahora te entiendo mucho mejor</span><span class="bub">Y si para llegar a ese objetivo hubiera que cambiar algunos puntos de la rutina que llevas ahora, sin que te suponga un cambio drástico, estarías dispuesto a verlo y saber sobre cómo sería??</span></div>
+      <div class="say say--in"><span class="say__tag">propuesto</span><span class="bub">Vale tío, ahora te entiendo mucho mejor</span><span class="bub">Y si para quitarte esa barriga hubiera que ajustar algunos puntos del entreno y de la alimentación, sin que te suponga un cambio drástico, estarías dispuesto a verlo y saber cómo sería??</span><span class="say__why">Único cambio: «algunos puntos de la rutina» pasa a «algunos puntos del entreno y de la alimentación». Y el objetivo entra con su palabra.</span></div>
+    </div>
+  </div>
+  <div class="note">
+    <span class="lbl">Cabo suelto menor</span>
+    <p>Rubén dice «dos, tres preguntas para cualificar» y separa que quiera cambiar <em>ahora</em> de que esté dispuesto a las dos palancas. Sergio dice una sola, y Rubén aprobó el resumen de Sergio. Propongo una que lleve las dos dentro y una segunda solo si la primera vuelve a medias. Si prefieres las dos siempre, se separa.</p>
+  </div>
+</section>
+
+<section id="solo">
+  <p class="skey">El rediseño</p>
+  <h2>El «voy solo», sin ser tan directo</h2>
+
+  <p>Tenías razón en que la escalera estaba trabajada: no es que esté mal pensada, es que está construida mirando hacia el sitio equivocado. Vale la pena nombrar exactamente por qué se lee agresiva, porque el arreglo sale de ahí.</p>
+
+  <div class="dec">
+    <div class="dec__h">Por qué suena a machete</div>
+    <div class="dec__b">
+      <div class="opt"><div class="opt__k">1</div><p class="opt__t">El movimiento 1 <strong>audita su método</strong> («qué plan o rutina tienes montada»). Lo primero que hace es ponerle a defenderse.</p></div>
+      <div class="opt"><div class="opt__k">2</div><p class="opt__t">Los movimientos 1, 2 y 3 son <strong>tres preguntas seguidas cuyo único trabajo es reunir pruebas</strong>. El lead nota el expediente montándose. Eso es lo que Rubén llama «muy de venta».</p></div>
+      <div class="opt"><div class="opt__k">3</div><p class="opt__t">El movimiento 4 <strong>entrega el veredicto en forma de pregunta con una sola respuesta aceptable</strong>. O admite que va a fracasar o te discute. Las dos salidas son malas.</p></div>
+      <div class="opt"><div class="opt__k">4</div><p class="opt__t">Y todo mira <strong>hacia atrás</strong>, a lo que no ha conseguido. Mirar atrás obliga a defenderse; mirar adelante no cuesta nada.</p></div>
+    </div>
+  </div>
+
+  <div class="note note--ok">
+    <span class="lbl">El principio</span>
+    <p><strong>La objeción se trabaja mirando hacia donde él quiere ir, nunca hacia lo que no ha conseguido.</strong></p>
+    <p>Y de ahí caen cuatro reglas: cero preguntas sobre lo que hace o ha logrado (ya lo tienes del descubrimiento; si preguntas, se nota el expediente) · la primera reacción no lleva pregunta · la pregunta apunta a su objetivo, no a su método · y el cierre es <em>sin coste</em>, no <em>sin salida</em>.</p>
+  </div>
+
+  <h3>La secuencia, de cinco movimientos a tres</h3>
+  <div class="turn">
+    <p class="turn__lead"><b>lead</b>de momento prefiero intentarlo por mi cuenta</p>
+    <div class="bank">
+      <div class="say say--in"><span class="say__tag">mov. 1 · le das la razón, y sin pregunta</span><span class="bub">Me parece perfecto eh, además es lo que hace casi todo el mundo al principio</span><span class="bub">Y llevas dos años dándole vueltas, así que ganas desde luego no te faltan</span><span class="say__why">El dato de los dos años es suyo, del paso 2. No se repregunta, se le devuelve. Responder una objeción con una pregunta se lee como que no le has escuchado; aquí el primer turno es solo acuerdo.</span></div>
+      <div class="say say--in"><span class="say__tag">mov. 2 · la pregunta mira hacia delante</span><span class="bub">Pero por curiosidad simplemente, de aquí a unos meses cómo te gustaría verte tú?</span><span class="say__why">Contestarla no le cuesta nada y no le obliga a defender nada. Y la respuesta suele traer la brecha dentro, dicha por él: es la diferencia entre que la vea y que se la enseñes.</span></div>
+      <div class="say say--in"><span class="say__tag">mov. 3 · la puerta sin coste → molde 2 de F5</span><span class="bub">Pues justo por eso te lo comento</span><span class="bub">Sentarnos un rato no te compromete a nada, y te llevas la hoja de ruta de tu caso igual, decidas lo que decidas después</span><span class="bub">Qué te parece si la organizamos??</span></div>
+    </div>
+  </div>
+
+  <h4>Lo que ya no se dice</h4>
+  <div class="turn">
+    <div class="bank">
+      <div class="say say--out"><span class="say__tag">fuera</span><span class="bub">Cómo lo estás trabajando ahora mismo por tu cuenta? Es decir qué plan o rutina tienes montada actualmente</span><span class="bub">Y ahora mismo cuánto tiempo llevas trabajando así??</span><span class="bub">En todo este tiempo cuáles son los cambios más considerables que has notado en tu cuerpo?</span><span class="bub">Sientes que siguiendo por tu cuenta durante los próximos 6 meses vas a notar algún cambio real y diferencial?</span><span class="bub">Ves que puedes alcanzar tus objetivos por tu cuenta? O eres de los que cree que con el acompañamiento de un equipo profesional…</span></div>
+    </div>
+  </div>
+
+  <h3>Y el tope</h3>
+  <p>Si tras el movimiento 3 sigue diciendo que va por su cuenta, se cierra cálido y con la puerta abierta a la primera. Sin cuarta vuelta.</p>
+  <p>Sé que eso roza tu regla de que «voy bien por mi cuenta» no es un no y no se respeta a la primera. La secuencia sigue existiendo —no se le suelta cuando lo dice—, pero se trabaja hacia delante y en tres movimientos, y ahí se para. La versión larga tampoco los estaba ganando: Rubén dice que «enfrenta a todas las personas con las que hablan», y un tío enfrentado no te dice que no, se queda callado. Si prefieres mantener la cuarta vuelta, dímelo y la dejo.</p>
+</section>
+
+<section id="bugs">
+  <p class="skey">De paso</p>
+  <h2>Lo que encontré de paso</h2>
+  <p>Nada de esto lo pidió Rubén. Lo levanto porque estaba mirando el bloque entero.</p>
+
+  <h3>Alfonso habla en plural en seis sitios</h3>
+  <p><code>coach_identity_role</code> dice «hablas SIEMPRE en primera persona del singular. Alfonso trabaja SOLO, no tiene equipo». Y la lista NUNCA del léxico prohíbe expresamente «nosotros», «mi equipo» y «el equipo». Pero:</p>
+  <div class="tw">
+  <table>
+    <thead><tr><th>Dónde</th><th>Qué dice</th><th class="loc">Línea</th></tr></thead>
+    <tbody>
+      <tr><td>Movimiento 4 de los openers</td><td>«Para los hombres con quienes <strong>trabajamos</strong>…»</td><td class="loc">180</td></tr>
+      <tr><td>Propuesta F5, molde 1</td><td>«cada semana <strong>trabajamos</strong> con decenas de hombres…»</td><td class="loc">534</td></tr>
+      <tr><td>Propuesta F5, molde 2</td><td>«la explicación que les <strong>dábamos</strong>…»</td><td class="loc">539</td></tr>
+      <tr><td>Objeción «más adelante», mov. 2</td><td>«los hombres con los que <strong>trabajamos</strong>…»</td><td class="loc">671</td></tr>
+      <tr><td>Objeción «yo puedo solo»</td><td>«el acompañamiento de un <strong>equipo profesional</strong>…»</td><td class="loc">761</td></tr>
+      <tr><td>Objeción «ya probé otras cosas»</td><td>«todos los hombres con los que <strong>trabajamos</strong>…»</td><td class="loc">762</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Son los mensajes de más peso —los dos cierres y tres objeciones—, así que es donde más se nota. Y la de «equipo profesional» dice literalmente lo que la identidad niega. Es cambio mecánico: todo a singular. ¿Lo meto en esta ronda?</p>
+
+  <h3>Y una que quiero que decidas tú</h3>
+  <p>Rubén dice sobre el cierre de la propuesta: «¿te parece que lo organicemos? Esta pregunta me parece agresiva. No lo veo, eh». Mi lectura es que venía leyendo del tirón toda la ristra de preguntas y la agresividad era acumulada, no de esa frase: el cierre en cuatro movimientos lo diseñamos hace nada y es la pieza que mejor está. Si quitamos la rampa —la autopsia, la confrontación, las seis dos-puertas—, ese cierre aterriza suave solo. Yo no lo tocaría todavía y lo miraría otra vez con conversaciones nuevas delante. Pero si tú lo lees como una petición directa, se cambia.</p>
+</section>
+
+<section id="notoca">
+  <p class="skey">Fronteras</p>
+  <h2>Lo que no se toca</h2>
+  <ul class="tick">
+    <li><strong>El tono y la voz.</strong> Sergio: «el tono y los mensajes están bien, hay bastante variabilidad entre conversaciones y la gente sigue el hilo sin problema. Esa parte no la tocaríamos». Ni voiceprint, ni muletillas, ni emojis, ni exemplars de voz: solo cambian los literales de las preguntas que cambian de forma.</li>
+    <li><strong>El feedback de la setter.</strong> Rubén: «por ahora a la sete no le hagas caso. Vamos a intentar que haga esto. Si todo esto lo hace perfecto, entonces ya que la sete nos diga». Lo de «sed más directos» queda congelado.</li>
+    <li><strong>El apagado y F6.</strong> <code>manual_attention</code> + <code>skip_reply</code>, el audio después del sí, la agenda fuera del chat.</li>
+    <li><strong>La frontera de salud</strong> y el mensaje de detección de IA. Intactos.</li>
+  </ul>
+  <div class="note">
+    <span class="lbl">El listón de esta ronda</span>
+    <p>Rubén lo dejó dicho: <em>«para mí la clave es que termine comportándose así. Si vemos cinco conversaciones y las cinco repiten esto, a partir de ahí vemos. Pero hasta que no lleguemos ni siquiera a esto, es dar palos de ciego»</em>. Así que la ronda no busca mejorar nada más: busca que la cadena se cumpla siempre.</p>
+  </div>
+</section>
+
+<p class="foot">
+  Fuentes: transcripción «reunión con Rubén» + mensajes de cierre de Sergio y Rubén.<br>
+  Bloque revisado: <span class="mono">Downloads/coach_block_alfonso.md</span> · 844 líneas · espejo del repo en <span class="mono">prompts/coach-engineering/academia/alfonso.md</span><br>
+  Censo de dos puertas verificado por grep sobre el fichero. Nada aplicado todavía.
+</p>
+
+</div>

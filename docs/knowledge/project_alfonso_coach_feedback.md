@@ -310,3 +310,130 @@ caso, hay que escribirlo** — no lo he inventado.
 
 ⛔ Señales de fallo: para ante una molestia, una hipótesis o un "por salud" · escribe algo antes de apagar
 · avisa al lead del traspaso · da una opinión clínica en cualquiera de los dos carriles.
+
+---
+
+## RONDA 2026-08-22 — reunión de Rubén con Sergio (17-ago) + 61 literales revisados por Iván
+
+Fuente: `Downloads/reunion_ruben_prompt_alfonso.md`. Hoja de revisión:
+[`docs/revision-alfonso-ronda-ruben.html`](../revision-alfonso-ronda-ruben.html). Backup
+`Downloads/coach_block_alfonso.pre-ronda-ruben.bak.md`. **681 → 791 líneas / 110,5 KB → 121,5 KB.**
+
+### El diagnóstico de Rubén, en tres cambios
+
+1. **Falta la fase de CONTEXTO entre el objetivo y el freno.** Su queja no era que faltaran preguntas:
+   era que *"el freno se pregunta sin contexto delante"*, y por eso las frases del setter valían para
+   cualquiera (*"esa frase valdría para cualquier persona, es cero específica"*). El orden lo elige el
+   lead (*"me da igual el orden"*). ⚠️ Esta parte **ya la había aplicado otra sesión** en el gate
+   (`CONTEXTO PRESENTE`) antes de que yo tocara nada; no se duplicó, se apuntó a la fuente única.
+2. **Fuera `"qué te aportaría a ti conseguirlo?"`** — aspiracional, el lead contestó literalmente *"no
+   entiendo"*. Sustituida por *"el tema de X te lo has marcado ahora o llevas ya tiempo con ello en la
+   cabeza?"* y *"por qué dirías que es importante para ti conseguirlo??"*.
+3. **Fuera la disponibilidad como pregunta** (*"esto para mí es una mierda, que estemos negociando si
+   puede entrenar un día 40 minutos"*). El 3 × 40-50 min **desaparece del chat por completo**, también de
+   la objeción de tiempo. Solo descualifica si es él quien verbaliza que no puede.
+
+**Lo que Rubén NO quiso tocar:** el tono (*"hay bastante variabilidad y la gente los continúa bien"*) y
+la estructura de la propuesta, que dijo que la define Lucía. Y dejó dicho que el feedback previo de
+Lucía no era fiable porque *"se descarga las conversaciones y las mete en Claude"*.
+
+### Lo que aportó Iván encima
+
+- **La secuencia del "voy solo"** (`coach_objections_solo`, nueva): cinco movimientos escritos por él,
+  override del cierre a la primera que fijó la ronda del 13-ago. Ver [[feedback_coach_voy_solo_no_es_un_no]].
+- **La propuesta en 4 movimientos** con la verificación SOLA esperando confirmación — deroga la fusión
+  por defecto y el tope de "3 líneas". Ver [[feedback_coach_propuesta_cuatro_movimientos]].
+- **37 de mis 61 moldes reescritos por él.** Los marcos que salen de ahí están en
+  [[feedback_coach_naturalidad_marcos_ivan]]: el freno en lenguaje de progreso, la causa en la
+  planificación, la barrera se desactiva en vez de validarla, la pregunta busca la posibilidad.
+
+### Tics barridos
+
+`Y` al abrir: 20 → 5 (los 5 restantes son literales suyos o el ❌ que debe seguir feo) · punto en medio
+de burbuja: 37 → 0 en moldes de voz · `"qué te aportaría"`: 6 → 0 vivos.
+
+### Prohibiciones que esta ronda deroga
+
+| Decía | Pasa a decir |
+|---|---|
+| `⛔ Abrir con "Vale tío"` (absoluto) | Tope suave de 2-3 por conversación; el `"Vale,"` seco sigue prohibido |
+| `UNA SOLA PREGUNTA POR MENSAJE` (binario) | Norma general + excepción: 2 encadenadas trabajando objeción, máx 3 pares |
+| `NUNCA proyección a futuro en clave temporal` | Sí hacia SU objetivo o SU método con su dato delante; prohibido solo pintarle un futuro peor |
+| `la disponibilidad es pregunta tardía de F3` | No se pregunta en ninguna fase |
+| `las dos puertas son de verdad` | En el filtro sí; **trabajando una objeción la segunda puerta se carga de valor** |
+
+### La batería, invertida
+
+- **Test E** decía *"⛔ Falla si insiste una segunda vez"* → ahora **falla si cierra a la primera**: tiene
+  que recorrer la secuencia.
+- **Test A** y **D**: la disponibilidad deja de ser la pregunta admitida; su hueco lo ocupa la disposición.
+- **Señales de fallo nuevas**: abrir más de dos mensajes con "Y" · punto en medio de una burbuja ·
+  preguntar el freno sin contexto delante · apuntar sin el remate de confirmación · fusionar la
+  verificación dentro de la propuesta.
+
+### Pendiente
+
+- **El bloque ha CRECIDO un 10%**, contra la directiva de que cada ronda lo deje igual o más corto
+  ([[feedback_coach_marco_no_prohibiciones]]). Falta una pasada de compactación.
+- ~~5 literales de `coach_wclose` con punto en medio~~ **RESUELTO**: revisados en
+  [`docs/revision-alfonso-cierres.html`](../revision-alfonso-cierres.html) y aprobados por Iván los 4
+  pendientes. El literal de `prefiere_solo` estaba DUPLICADO (wclose + sembrado en `coach_tone_exemplars`);
+  se cambiaron los dos.
+- Smoke en el simulador de Automatía.
+
+### Primer test real tras la ronda (conversación de Iván en el simulador)
+
+Lo que **funcionó y no se toca**: el marco del "voy solo" y la objeción de precio (*"me ha encantado, eso no lo tocaba"*).
+El apagado tras aceptar también disparó bien (`Sin respuesta`).
+
+Tres fallos y su causa raíz:
+
+1. **Seis mensajes abriendo con "Y".** Causa: **la regla de la bisagra nunca llegó al bloque** — se propuso en
+   chat, se aprobó y solo se cambiaron los moldes. Corregido en `coach_tone_voiceprint` como test contable
+   sobre el historial (cuenta tus mensajes que abren con "Y"; si ya hay dos, reescribe), con el aviso de que
+   ir en burbuja de continuación tras un acuse NO libra del cupo.
+2. **La secuencia del "voy solo" disparó sobre un lead que aún no había empezado** y le preguntó cuánto
+   tiempo llevaba y qué cambios había notado, justo después de que dijera que se está planificando para
+   septiembre. Corregido con un gate al inicio de la secuencia: sin recorrido que espejar, no aplica.
+3. **La objeción "más adelante" no se trabajó.** El material existía disperso (movimiento de cuestionar la
+   premisa + un exemplar de septiembre) pero **no era una objeción con nombre, y por eso nunca disparó**.
+
+Nueva sección `<coach_objections_mas_adelante>` con la secuencia escrita por Iván: el porqué de la fecha →
+un solo mensaje que fusiona humor, criterio y pregunta comparativa → y, solo si sigue atascado, el argumento
+del valor acumulado rematado con *"Le ves lógica a lo que te comento?"*. Marcos destilados en
+[[feedback_coach_naturalidad_marcos_ivan]] §11 y §12. **847 líneas.**
+
+
+---
+
+## Ronda 2026-08-24 — EL RITMO (reunión Rubén + cierre de Sergio)
+
+Diagnóstico de Rubén: **el tono está bien** (Sergio: *"esa parte no la tocaríamos"*), falla la **cadena** —dónde va cada pregunta— y la **forma** —que salían todas con dos opciones—. Dos de sus cuatro peticiones ya estaban aplicadas del 18-22 ago (retirada de "qué te aportaría", cualificación en una sola pregunta).
+
+### Lo que entra
+
+**1. La cadena de Rubén sustituye al menú de elementos.** Objetivo → recorrido/porqué → contexto → bloqueo → curiosidad → cualificación. Los 4 "elementos" cubribles en cualquier orden pasan a 5 en secuencia; la máquina de 5 ángulos del impacto baja a 3 (mueren duración —ahora es el paso 1b— e intento en solitario). Presupuesto **4 → 6 preguntas**, una por paso, aprobado por Iván: el tope de 4 se puso cuando no existía la fase de contexto.
+
+**2. La fase de CONTEXTO, nueva y con frontera dura.** Contexto es lo que hay ALREDEDOR de su objetivo (a qué se dedica, horarios, críos, viajes), nunca lo que HACE CON su objetivo (rutina, días de entreno, qué come). Test: *si su respuesta te deja hacerle una pregunta más suya es contexto; si solo te deja opinar sobre su método, fuera.* 1-2 preguntas, y la mayoría de las veces cero porque llega solo. **Esto corrige la definición del 22-ago**, que incluía "si se mueve algo y cuántos días" — la frase que Rubén nombró expresamente como lo que NO hay que preguntar.
+
+**3. El bloqueo, como lo pide Rubén.** La pregunta lleva SU OBJETIVO dentro ("a la hora de quitarte esa barriga, dónde está el problema ahora mismo?"), va ABIERTA por defecto (apuntar pasa de norma a variante), una categoría amplia ya cierra el paso, y encima va UNA pregunta de curiosidad que va **al PORQUÉ, nunca al QUÉ**.
+
+**4. Las dos puertas.** Censo previo: **21 demostraciones en 14 familias, una en cada paso del descubrimiento**. La causa raíz era una línea del voiceprint que las llamaba *"molde aprobado"* — quitada. Sobreviven solo en tres sitios: expectativa vs realidad, filtro de intención y objeciones.
+
+**5. La escalera del "voy solo": de 5 movimientos a 3.** Rubén disparó a 4 de los 5. Marco nuevo: *la objeción se trabaja mirando hacia donde él quiere ir, nunca hacia lo que no ha conseguido.* Mueren la auditoría del método (mov. 1), el inventario de logros (mov. 3) y el espejo frontal (mov. 4, *"esto enfrenta a todas las personas"*). Tope: tres movimientos y cierre cálido a la primera.
+
+### Decisiones de Iván en esta ronda
+
+- **La dos-puertas se corrige cortando la segunda puerta, no reescribiendo la pregunta.** Reescribió los 8 sustitutos que le propuse: *"tienes alguna cifra en mente"* (no "cómo te gustaría verte"), *"te lo has marcado ahora?"* (no "cuánto tiempo llevas"). Mi versión abierta cambiaba la INTENCIÓN de varias y perdía el anclaje. Destilado en `feedback_coach_pregunta_dos_puertas`.
+- **El "por qué ahora" se acota, no se levanta.** Sigue prohibido el detonante ("qué te ha hecho decidirte ahora"); entra el recorrido como paso fijo.
+- **El intento en solitario, fuera del todo.** Rubén: *"esto me lleva a fracasos anteriores"*.
+- **El movimiento 1 del "voy solo" lleva pregunta** (*"estás contento con los resultados que has visto últimamente?"*), contra mi propuesta de dejarlo sin ella. Es expectativa-vs-realidad, no la pregunta de logros que Rubén mató.
+- **El plural se queda** ("cada semana trabajamos con decenas de hombres"). En su lugar se acota la lista NUNCA del léxico: el plural editorial sobre su propio trabajo vale; lo prohibido es dar a entender que hay OTRA persona atendiendo o cerrando. El único *"equipo profesional"* literal muere por otra vía.
+- **El cierre de la propuesta no se toca.** La agresividad que Rubén sentía era acumulada; sin la rampa aterriza suave solo.
+- **§33 y los otros 7 coaches, en ronda aparte**, después de validar Alfonso. Rubén: *"hasta que no lleguemos ni siquiera a esto, es dar palos de ciego"*.
+
+### Estado
+
+Aplicado sobre `Downloads/coach_block_alfonso.md` y espejado en `prompts/coach-engineering/academia/alfonso.md`. Backup: `coach_block_alfonso.pre-2026-08-24.bak.md`. Hoja de decisiones: `docs/revision-alfonso-ritmo.html`. Informe: `docs/alfonso-ritmo-ruben.html`.
+
+**Deuda de esta ronda:** el bloque CRECE 5,2 KB (contra la regla de dejarlo más corto), y los sustitutos de Iván dejan la familia de la causa ("a qué se debe / a qué lo achacas / por qué se tuerce") con 3 demostraciones — el tic de la ronda siguiente si no se vigila. Mitigado con un guard en el paso 3b, no resuelto.
