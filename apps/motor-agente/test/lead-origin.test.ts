@@ -155,7 +155,13 @@ describe('renderFormAnswers', () => {
   it('trunca valores largos con elipsis', () => {
     const out = renderFormAnswers({ historia: 'x'.repeat(1000) }) ?? '';
     expect(out).toContain('…');
-    expect(out.length).toBeLessThan(FORM_ANSWERS_MAX_VALUE_CHARS + 200);
+    // Cota sanitaria: valor truncado + preámbulo fijo (rotulado como datos +
+    // regla de saltar preguntas ya respondidas). Si esto crece, es el preámbulo
+    // el que ha engordado, no el valor sin truncar.
+    expect(out.length).toBeLessThan(FORM_ANSWERS_MAX_VALUE_CHARS + 450);
+    // Y la verdadera garantía: el valor en sí quedó truncado.
+    const bullet = out.split('\n').find((l) => l.startsWith('- historia:')) ?? '';
+    expect(bullet.length).toBeLessThan(FORM_ANSWERS_MAX_VALUE_CHARS + 20);
   });
 
   it('colapsa saltos de línea (un valor multilínea no rompe el formato)', () => {
