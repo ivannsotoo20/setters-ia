@@ -1,0 +1,164 @@
+<title>Cierres de Alfonso</title>
+<style>
+:root{--navy:#0F1B2D;--navy2:#1B2C46;--azul:#2563EB;--azul-soft:#EFF4FF;--naranja:#F97316;
+--verde:#0F9D58;--verde-soft:#EAF7EF;--rojo:#D93025;--rojo-soft:#FDEDEC;
+--bg:#F7F9FC;--card:#FFF;--line:#E3E9F2;--txt:#16233A;--mut:#63718A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:0 20px 110px}
+header{background:var(--navy);color:#fff;padding:42px 0 34px;margin-bottom:26px}
+header .wrap{padding-bottom:0}
+h1{margin:0 0 10px;font-size:29px;letter-spacing:-.4px;line-height:1.2}
+h1 b{color:#7FB0FF}
+.sub{color:#A9BAD4;font-size:15px;max-width:68ch;margin:0}
+.kpis{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.kpi{background:var(--navy2);border:1px solid #2C4166;border-radius:9px;padding:9px 14px;font-size:13px;color:#C9D8EE}
+.kpi b{color:#fff;font-size:17px;display:block;line-height:1.3}
+.lead{color:var(--mut);font-size:15px;max-width:80ch;margin:0 0 20px}
+.lead b{color:var(--txt)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:17px 19px;margin:13px 0}
+.card.ok{border-color:var(--verde);background:var(--verde-soft)}
+.card.no{border-color:var(--rojo);background:var(--rojo-soft)}
+.chead{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:12px}
+.tagname{font:700 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--navy)}
+.ln{font-size:12px;color:var(--mut);font-weight:700}
+.chip{font-size:10.5px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:5px;
+background:#FFF3E9;color:#B4530A}
+.chip.hecho{background:var(--azul-soft);color:var(--azul)}
+.when{font-size:13px;color:var(--mut);margin:-4px 0 12px;padding-left:11px;border-left:2px solid var(--line)}
+.before{background:#FBFCFE;border:1px dashed #D6DEEA;border-radius:8px;padding:10px 12px;
+color:#7A879C;font-size:14.5px;margin-bottom:11px}
+.before em,.after em{display:block;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;
+font-style:normal;font-weight:800;margin-bottom:5px}
+.before em{color:#A6B1C4}.after em{color:var(--azul)}
+.bub{background:var(--azul-soft);border-radius:12px 12px 12px 3px;padding:8px 13px;margin:5px 0;
+display:table;max-width:92%;font-size:14.5px;color:#14203A}
+.note{font-size:13.5px;color:var(--mut);margin-top:11px;padding-left:11px;border-left:2px solid var(--line)}
+.acts{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.b{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:6px 13px;
+font-size:13px;font-weight:600;cursor:pointer;color:var(--mut)}
+.b.y.on{background:var(--verde);border-color:var(--verde);color:#fff}
+.b.n.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
+textarea{width:100%;margin-top:9px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+font:inherit;font-size:14px;resize:vertical;min-height:60px;background:var(--card);color:var(--txt)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--navy);color:#fff;padding:12px 0;z-index:20}
+.bar .wrap{padding-bottom:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar .st{font-size:14px;color:#B9C9E2}.bar .st b{color:#fff}
+.bar .go{margin-left:auto;background:var(--naranja);color:#fff;border:none;border-radius:8px;
+padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer}
+#out{white-space:pre-wrap;background:var(--navy);color:#D7E4F6;border-radius:10px;padding:16px;
+font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:14px;display:none;
+max-height:50vh;overflow:auto}
+</style>
+
+<header><div class="wrap">
+<h1>Alfonso — los <b>cierres</b></h1>
+<p class="sub">Los cinco <code>coach_wclose</code>. Es lo último que lee el lead antes de que la IA se apague, así que no los he partido por mi cuenta. Cuatro llevan punto en medio; el quinto ya se rehizo en la ronda y va aquí para que lo valides.</p>
+<div class="kpis">
+<div class="kpi"><b>5</b>cierres</div>
+<div class="kpi"><b>4</b>por decidir</div>
+<div class="kpi"><b id="k">0</b>decididos</div>
+</div>
+</div></header>
+
+<div class="wrap">
+<p class="lead">Un cierre no lleva pregunta, a propósito: se despide y se apaga. Lo único que cambia aquí es la <b>forma</b> — burbujas en vez de un párrafo con puntos — y algún acuse al principio, que es lo que hace que no suene a plantilla de despedida. <b>El contenido de cada uno se respeta tal cual.</b></p>
+<div id="cards"></div>
+</div>
+
+<div class="bar"><div class="wrap">
+<span class="st"><b id="s1">0</b> me valen · <b id="s2">0</b> a cambiar · <b id="s3">5</b> sin ver</span>
+<button class="go" onclick="salida()">Copiar decisiones</button>
+</div></div>
+<div class="wrap"><pre id="out"></pre></div>
+
+<script>
+const D=[
+{tag:"coach_wclose_generic",l:597,estado:"pendiente",
+when:"Lead que no cualifica por cualquier motivo genérico, y también la lead mujer.",
+b:"Te entiendo. Si más adelante cambia tu situación y quieres retomar esto, escríbeme por aquí. Mientras tanto seguiré subiendo contenido por si te puede echar una mano.",
+a:["Te entiendo perfectamente tío","Si más adelante cambia tu situación y quieres retomarlo, escríbeme por aquí sin problema","Mientras tanto seguiré subiendo contenido por si te puede echar una mano"]},
+
+{tag:"coach_wclose_prefiere_solo",l:603,estado:"pendiente",
+when:"Lead que va bien, está contento con cómo lo lleva, o sostiene el “por mi cuenta” DESPUÉS de la secuencia completa de coach_objections_solo.",
+b:"Perfecto tío, tiene todo el sentido que sigas probando por tu cuenta. Si más adelante te estancas o quieres que le demos una vuelta al enfoque, escríbeme por aquí y lo vemos.",
+a:["Perfecto tío, tiene todo el sentido que sigas por tu cuenta","Ojalá te vaya de lujo eh, de verdad","Si más adelante te estancas o quieres que le demos una vuelta al enfoque, escríbeme por aquí y lo vemos"],
+n:"Le he metido el “ojalá te vaya de lujo” porque este es el cierre que llega después de haberle preguntado cinco veces: sin un deseo sincero en medio, la despedida puede sonar a que te has quedado con ganas de más."},
+
+{tag:"coach_wclose_not_now",l:608,estado:"pendiente",
+when:"Aplazamiento blando que se reitera: no es su momento y no hay barrera concreta que rebatir.",
+b:"Nada, lo pillo. Si en un par de meses cambia la cosa y te apetece retomarlo, escríbeme por aquí sin problema. Mientras tanto te dejo por ahí contenido que te puede ir echando una mano.",
+a:["Nada, lo pillo perfectamente!","Si en un par de meses cambia la cosa y te apetece retomarlo, escríbeme por aquí sin problema","Mientras tanto te voy dejando contenido por ahí que te puede ir echando una mano"]},
+
+{tag:"coach_wclose_wrong_expectation",l:613,estado:"pendiente",
+when:"Busca solo una rutina, un PDF o algo puntual, y no encaja con un proceso con seguimiento.",
+b:"Lo entiendo. Lo que yo hago no es una rutina suelta ni una dieta tirada, es un proceso con seguimiento porque por experiencia es lo único que sostiene resultados de verdad. Si lo que buscas ahora es algo más puntual, lo respeto. Sigo subiendo contenido por si te puede servir, y si en algún momento te apetece dar el paso de otra forma, aquí estoy.",
+a:["Lo entiendo perfectamente","Lo que yo hago no es una rutina suelta ni una dieta tirada, es un proceso con seguimiento porque por experiencia es lo único que sostiene resultados de verdad","Así que si lo que buscas ahora es algo más puntual, lo respeto totalmente","Sigo subiendo contenido por si te puede servir, y si en algún momento te apetece dar el paso de otra forma aquí sigo"],
+n:"Es el más largo de los cinco y el que peor aguantaba el párrafo único: cuatro frases seguidas justo cuando le estás diciendo que no encaja. En burbujas el “lo respeto totalmente” queda solo, que es donde tiene que quedar."},
+
+{tag:"coach_wclose_linea_roja",l:618,estado:"hecho",
+when:"Él verbaliza que no puede comprometerse a sacar tiempo para nada. Ya NO se le pregunta la disponibilidad: solo cuenta si lo dice él.",
+b:"Entendido. Para que esto tenga sentido y te dé resultados de verdad hace falta ese mínimo de 3 días. Cuando tu situación cambie y puedas sacar ese hueco, escríbeme por aquí y lo retomamos.",
+a:["Entendido, y gracias por decírmelo de frente tío","Para que esto te dé resultados de verdad hace falta poder dedicarle un hueco a la semana, y ahora mismo lo tuyo es no forzarlo","Cuando tu situación cambie escríbeme por aquí y lo retomamos, que aquí sigo"],
+n:"Ya aplicado en la ronda. Hubo que quitarle el “ese mínimo de 3 días” porque el número ya no sale nunca en el chat: se lo estaría citando como si se lo hubieras dicho antes, y el lead no lo ha oído."}
+];
+let ST={};
+try{ ST=JSON.parse(localStorage.getItem("rev-alfonso-cierres")||"{}"); }catch(e){ ST={}; }
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function save(){ try{ localStorage.setItem("rev-alfonso-cierres",JSON.stringify(ST)); }catch(e){} }
+function render(){
+  const h=document.getElementById("cards"); h.innerHTML="";
+  D.forEach((d,i)=>{
+    const st=ST[d.tag]||{};
+    const c=document.createElement("div");
+    c.className="card"+(st.v==="ok"?" ok":st.v==="no"?" no":"");
+    c.innerHTML='<div class="chead"><span class="tagname">&lt;'+d.tag+'&gt;</span>'+
+      '<span class="ln">línea '+d.l+'</span>'+
+      '<span class="chip'+(d.estado==="hecho"?" hecho":"")+'">'+
+      (d.estado==="hecho"?"ya aplicado":"punto en medio")+'</span></div>'+
+      '<div class="when">'+esc(d.when)+'</div>'+
+      '<div class="before"><em>hoy</em>'+esc(d.b)+'</div>'+
+      '<div class="after"><em>propuesta</em>'+
+      d.a.map(x=>'<div class="bub">'+esc(x)+'</div>').join("")+'</div>'+
+      (d.n?'<div class="note">'+esc(d.n)+'</div>':'')+
+      '<div class="acts">'+
+      '<button class="b y'+(st.v==="ok"?" on":"")+'" data-k="'+d.tag+'" data-v="ok">Me vale</button>'+
+      '<button class="b n'+(st.v==="no"?" on":"")+'" data-k="'+d.tag+'" data-v="no">Lo cambio</button></div>'+
+      '<textarea data-k="'+d.tag+'" placeholder="Cómo lo escribirías tú (una línea por burbuja)"></textarea>';
+    c.querySelector("textarea").value=st.c||"";
+    h.appendChild(c);
+  });
+  let ok=0,no=0;
+  D.forEach(d=>{const v=(ST[d.tag]||{}).v; if(v==="ok")ok++; if(v==="no")no++;});
+  document.getElementById("s1").textContent=ok;
+  document.getElementById("s2").textContent=no;
+  document.getElementById("s3").textContent=D.length-ok-no;
+  document.getElementById("k").textContent=ok+no;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".b[data-k]");
+  if(b){const k=b.dataset.k;ST[k]=ST[k]||{};
+    ST[k].v = ST[k].v===b.dataset.v ? null : b.dataset.v; save(); render();}
+});
+document.addEventListener("input",e=>{
+  const t=e.target.closest("textarea[data-k]");
+  if(t){const k=t.dataset.k;ST[k]=ST[k]||{};ST[k].c=t.value;save();}
+});
+function salida(){
+  const ok=[],no=[],p=[];
+  D.forEach(d=>{const st=ST[d.tag]||{};
+    if(st.v==="ok") ok.push(d.tag);
+    else if(st.v==="no") no.push(d.tag+"\n   -> "+(st.c||"(sin indicar)"));
+    else p.push(d.tag);});
+  const t="DECISIONES - cierres wclose de Alfonso\n"+
+    "======================================\n\n"+
+    "ME VALEN ("+ok.length+")\n"+(ok.join("\n")||"-")+"\n\n"+
+    "A CAMBIAR ("+no.length+")\n"+(no.join("\n\n")||"-")+"\n\n"+
+    "SIN DECIDIR ("+p.length+")\n"+(p.join("\n")||"-");
+  const o=document.getElementById("out");o.style.display="block";o.textContent=t;
+  if(navigator.clipboard) navigator.clipboard.writeText(t).catch(()=>{});
+  o.scrollIntoView({behavior:"smooth",block:"start"});
+}
+render();
+</script>

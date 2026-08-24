@@ -75,8 +75,11 @@ Mejora a ambos registros. Observación del patrón → pregunta SITUACIONAL conc
 tarde, energía a las 6, horarios), nunca pregunta genérica de formulario ("¿qué te cuesta más?", "¿cómo
 va tu rutina?", "¿qué te frena?"). Reformular la opinión en pregunta reflexiva, EN PRESENTE ("el problema
 es que has hecho dietas restrictivas" → "¿qué es lo que más se te hace cuesta arriba ahora para
-sostenerlo?"); nunca preguntar por intentos pasados ("qué has probado", §11.8/§19). Profundizar ≥1 turno
-sobre un dato concreto antes de cambiar de tema (nombrar, no eco). Detalle universal: doctrina §18.
+sostenerlo?"); nunca preguntar por intentos pasados ("qué has probado", §11.8/§19). El CONTEXTO presente,
+en cambio, SÍ se pregunta y va antes del freno (cómo es su semana, si se mueve algo, a qué se dedica) —
+1-2 y solo si no ha llegado solo (§33): es lo que convierte la pregunta genérica en una pregunta suya.
+Profundizar ≥1 turno sobre un dato concreto antes de cambiar de tema (nombrar, no eco). Detalle
+universal: doctrina §18.
 
 **P9 — Cada literal pasa SU voiceprint (modo de falla detectado en Julia).**
 PROHIBIDO heredar cierres cálidos / notia / mensajes de fase del canónico de OTRA coach sin adaptar el

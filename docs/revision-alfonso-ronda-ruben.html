@@ -1,0 +1,367 @@
+<title>Revisión Alfonso</title>
+<style>
+:root{
+  --navy:#0F1B2D; --navy2:#1B2C46; --azul:#2563EB; --azul-soft:#EFF4FF;
+  --naranja:#F97316; --naranja-soft:#FFF3E9;
+  --verde:#0F9D58; --verde-soft:#EAF7EF; --rojo:#D93025; --rojo-soft:#FDEDEC;
+  --bg:#F7F9FC; --card:#FFFFFF; --line:#E3E9F2; --txt:#16233A; --mut:#63718A;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px 110px}
+header{background:var(--navy);color:#fff;padding:44px 0 38px;margin-bottom:28px}
+header .wrap{padding-bottom:0}
+h1{margin:0 0 10px;font-size:31px;line-height:1.2;letter-spacing:-.4px}
+h1 b{color:#7FB0FF;font-weight:700}
+.sub{color:#A9BAD4;font-size:15px;max-width:70ch;margin:0}
+.kpis{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+.kpi{background:var(--navy2);border:1px solid #2C4166;border-radius:9px;padding:9px 14px;font-size:13px;color:#C9D8EE}
+.kpi b{color:#fff;font-size:17px;display:block;line-height:1.3}
+h2{font-size:21px;margin:38px 0 6px;letter-spacing:-.2px;padding-bottom:9px;border-bottom:2px solid var(--line)}
+h2 .n{color:var(--naranja);font-weight:800;margin-right:8px}
+.lead{color:var(--mut);font-size:15px;margin:0 0 18px;max-width:80ch}
+.box{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 22px;margin:14px 0}
+.box h3{margin:0 0 10px;font-size:16px}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;margin:18px 0 6px}
+.step{flex:1 1 150px;min-width:150px;background:var(--card);border:1px solid var(--line);
+  border-radius:11px;padding:14px;position:relative}
+.step+.step{margin-left:26px}
+.step+.step:before{content:"";position:absolute;left:-20px;top:50%;width:14px;height:2px;background:#C3CEDF}
+.step+.step:after{content:"";position:absolute;left:-9px;top:50%;margin-top:-4px;
+  border:4px solid transparent;border-left-color:#C3CEDF}
+.step .tag{font-size:11px;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);font-weight:700}
+.step .ttl{font-weight:700;margin:3px 0 5px;font-size:15px;line-height:1.25}
+.step .d{font-size:13px;color:var(--mut);line-height:1.45}
+.step.new{border-color:var(--azul);background:var(--azul-soft);box-shadow:0 0 0 3px rgba(37,99,235,.09)}
+.step.new .tag{color:var(--azul)}
+.step.gone{border-style:dashed;background:#FAFBFD}
+.step.gone .ttl{text-decoration:line-through;color:#93A1B7}
+.flownote{font-size:13.5px;color:var(--mut);margin:14px 0 0}
+.flownote b{color:var(--azul)}
+table{width:100%;border-collapse:collapse;font-size:14.5px;margin:12px 0}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--mut)}
+tr.out td{color:#93A1B7}
+tr.out td:first-child{text-decoration:line-through}
+.tot td{font-weight:700;border-top:2px solid var(--navy);border-bottom:none}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0 4px;
+  position:sticky;top:0;background:var(--bg);padding:12px 0;z-index:5;border-bottom:1px solid var(--line)}
+.fbtn{border:1px solid var(--line);background:var(--card);border-radius:20px;padding:6px 14px;
+  font-size:13px;cursor:pointer;color:var(--mut);font-weight:600}
+.fbtn.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.count{margin-left:auto;font-size:13px;color:var(--mut)}
+.sec>h4{font-size:13px;letter-spacing:1.1px;text-transform:uppercase;color:var(--mut);
+  margin:24px 0 10px;font-weight:800}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:11px 0}
+.card.ok{border-color:var(--verde);background:var(--verde-soft)}
+.card.no{border-color:var(--rojo);background:var(--rojo-soft)}
+.chead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:11px}
+.ln{font-size:12px;color:var(--mut);font-weight:700;font-variant-numeric:tabular-nums}
+.chip{font-size:10.5px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:5px}
+.c-Y{background:#EDE7FA;color:#5B3FBF}
+.c-PUNTO{background:var(--naranja-soft);color:#B4530A}
+.c-APORTA{background:var(--rojo-soft);color:var(--rojo)}
+.c-BAJA{background:#E7EAF0;color:#42506B}
+.c-REEMPLAZO{background:var(--azul-soft);color:var(--azul)}
+.before{background:#FBFCFE;border:1px dashed #D6DEEA;border-radius:8px;padding:10px 12px;
+  color:#7A879C;font-size:14.5px;margin-bottom:10px}
+.before em,.after em{display:block;font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;
+  font-style:normal;font-weight:800;margin-bottom:5px}
+.before em{color:#A6B1C4}
+.after em{color:var(--azul)}
+.bub{background:var(--azul-soft);border-radius:12px 12px 12px 3px;padding:8px 13px;margin:5px 0;
+  display:table;max-width:90%;font-size:14.5px;color:#14203A}
+.bub.sep{background:transparent;color:var(--mut);font-size:12px;font-style:italic;padding:3px 0}
+.note{font-size:13.5px;color:var(--mut);margin-top:10px;padding-left:11px;border-left:2px solid var(--line)}
+.acts{display:flex;gap:7px;align-items:center;margin-top:12px;flex-wrap:wrap}
+.b{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:6px 13px;
+  font-size:13px;font-weight:600;cursor:pointer;color:var(--mut)}
+.b.y.on{background:var(--verde);border-color:var(--verde);color:#fff}
+.b.n.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
+textarea{width:100%;margin-top:9px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+  font:inherit;font-size:14px;resize:vertical;min-height:44px;background:var(--card);color:var(--txt)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--navy);color:#fff;padding:12px 0;z-index:20}
+.bar .wrap{padding-bottom:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar .st{font-size:14px;color:#B9C9E2}
+.bar .st b{color:#fff}
+.bar .go{margin-left:auto;background:var(--naranja);color:#fff;border:none;border-radius:8px;
+  padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer}
+.bar .ghost{background:transparent;border:1px solid #3A4E70;color:#B9C9E2;font-weight:600;
+  border-radius:8px;padding:9px 15px;font-size:13px;cursor:pointer}
+#out{white-space:pre-wrap;background:var(--navy);color:#D7E4F6;border-radius:10px;padding:16px;
+  font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:14px;display:none;
+  max-height:52vh;overflow:auto}
+@media(max-width:760px){
+  .step+.step{margin-left:0;margin-top:22px}
+  .step+.step:before{left:50%;top:-16px;width:2px;height:10px}
+  .step+.step:after{left:50%;top:-8px;margin-left:-4px;margin-top:0;
+    border-color:transparent;border-top-color:#C3CEDF}
+}
+</style>
+
+<header><div class="wrap">
+<h1>Alfonso — ronda de <b>Rubén</b></h1>
+<p class="sub">Los literales que arrastran los tics, el presupuesto de preguntas y la estructura de la conversación. Marca lo que cambiarías, escribe cómo lo dirías tú, y al final copias las decisiones.</p>
+<div class="kpis">
+  <div class="kpi"><b id="k1">0</b>literales a revisar</div>
+  <div class="kpi"><b>3</b>cambios que pide Rubén</div>
+  <div class="kpi"><b>6</b>preguntas de tope, igual que ahora</div>
+  <div class="kpi"><b id="k2">0</b>decididos</div>
+</div>
+</div></header>
+
+<div class="wrap">
+
+<h2><span class="n">1</span>La estructura, como la quiere Rubén</h2>
+<p class="lead">Su diagnóstico no fue que faltaran preguntas: fue que el freno se preguntaba <b>sin contexto delante</b>, y por eso todo lo que venía después valía para cualquiera. Entre el objetivo y el freno falta una pieza.</p>
+
+<div class="box">
+<h3>Antes</h3>
+<div class="flow">
+  <div class="step"><div class="tag">F2</div><div class="ttl">Objetivo</div><div class="d">Dos preguntas, y aquí la aspiracional que no se entiende</div></div>
+  <div class="step"><div class="tag">F2</div><div class="ttl">Freno</div><div class="d">Abierto y en frío, sin saber nada de él</div></div>
+  <div class="step"><div class="tag">F3</div><div class="ttl">Disponibilidad</div><div class="d">3 días × 40-50 min, y a negociar</div></div>
+  <div class="step"><div class="tag">F5</div><div class="ttl">Propuesta</div><div class="d">Tres líneas, misma plantilla siempre</div></div>
+</div>
+<p class="flownote">Rubén sobre esto: <i>“hemos hecho dos preguntas sobre objetivos y ya impedimento y cualifico”</i> · <i>“esa frase valdría para cualquier persona, es cero específica”</i> · <i>“toda esta fase de cualificación yo la cambiaría”</i>.</p>
+</div>
+
+<div class="box">
+<h3>Ahora</h3>
+<div class="flow">
+  <div class="step"><div class="tag">F2</div><div class="ttl">Objetivo</div><div class="d">Aterrizado, y el porqué preguntado con curiosidad</div></div>
+  <div class="step new"><div class="tag">F2 · nuevo</div><div class="ttl">Contexto</div><div class="d">A qué se dedica, cómo es su semana, si se mueve algo</div></div>
+  <div class="step new"><div class="tag">F2</div><div class="ttl">Freno apuntando</div><div class="d">Tu criterio con el remate pegado, no otra pregunta abierta</div></div>
+  <div class="step gone"><div class="tag">F3</div><div class="ttl">Disponibilidad</div><div class="d">Sale como pregunta</div></div>
+  <div class="step new"><div class="tag">F3</div><div class="ttl">Disposición</div><div class="d">¿Estarías dispuesto a verlo y saber cómo sería?</div></div>
+  <div class="step new"><div class="tag">F5</div><div class="ttl">Propuesta</div><div class="d">Verificación sola, y después los cuatro movimientos</div></div>
+</div>
+<p class="flownote"><b>El orden lo elige el lead.</b> Si entra por el objetivo, se termina el objetivo y se pasa al contexto. Si entra contando su vida, se termina el contexto y se pasa al objetivo. Rubén: <i>“me da igual el orden… si eso lo pudiéramos hacer sería la hostia”</i>.</p>
+</div>
+
+<h2><span class="n">2</span>El presupuesto de preguntas</h2>
+<p class="lead">El bloque tiene un tope duro de cuántas preguntas de cualificación puede hacer el setter <b>en toda la conversación</b>. La edición que entró hoy metió el contexto sumando una séptima, y eso alarga justo lo que Rubén quería acortar. La propuesta es que el contexto ocupe el hueco que deja la disponibilidad.</p>
+<div class="box">
+<table>
+<tr><th>Pregunta</th><th class="n">Antes</th><th class="n">Lo de hoy</th><th class="n">Propuesta</th></tr>
+<tr><td>Objetivo concreto</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+<tr><td>Bloqueo en presente</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+<tr><td>Impacto personal</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+<tr><td>Intención / disposición</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+<tr><td>Reacción a algo personal suyo</td><td class="n">1</td><td class="n">1</td><td class="n">1</td></tr>
+<tr><td><b>Contexto presente</b></td><td class="n">—</td><td class="n">1</td><td class="n">1</td></tr>
+<tr class="out"><td>Disponibilidad (3 días × 40-50 min)</td><td class="n">1</td><td class="n">1</td><td class="n">0</td></tr>
+<tr class="tot"><td>Tope de la conversación</td><td class="n">6</td><td class="n">7</td><td class="n">6</td></tr>
+</table>
+<p class="note" style="margin-top:16px"><b>Por qué en el caso de Alfonso esto importa tanto.</b> Su avatar es un tío de 35 a 55 con turnos, críos y poco margen, y la conversación entra por Instagram, en frío y en el mismo momento. No ha visto tu contenido, no te conoce y no tiene ninguna razón para aguantar un cuestionario. Cada pregunta de más no cuesta un mensaje: acerca el momento en que te pregunta por qué le interrogas, que es exactamente el feedback que dio su propia setter. Y la disponibilidad es la peor de las siete para gastarla, porque es la única que no descubre nada: es logística, se contesta con un número y arrastra a negociar si puede sacar un día más. Rubén lo dijo así: <i>“esto para mí es una mierda, que estemos negociando si puede entrenar un día 40 minutos”</i>. El contexto, en cambio, es la única que hace que las otras cinco salgan mejor.</p>
+<p class="note"><b>El mínimo de 3 días no desaparece.</b> Deja de ser una pregunta que se lanza en F3 y pasa a ser reactivo: si es él quien saca el tema del tiempo se le contesta con el mínimo, y si verbaliza que no puede sacarlo sigue descualificando igual. Lo que se retira es ir a buscarlo.</p>
+</div>
+
+<h2><span class="n">3</span>Los literales</h2>
+<p class="lead">Cada ficha lleva lo que hay hoy y lo que propongo. Lo nuevo va en burbujas, que es como sale en el chat: una burbuja por movimiento, sin puntos en medio, y el conector de giro en vez del “Y” encadenado.</p>
+
+<div class="filters">
+  <button class="fbtn on" data-f="all">Todos</button>
+  <button class="fbtn" data-f="Y">Abren con “Y”</button>
+  <button class="fbtn" data-f="PUNTO">Punto en medio</button>
+  <button class="fbtn" data-f="APORTA">“qué te aportaría”</button>
+  <button class="fbtn" data-f="REEMPLAZO">Reemplazos</button>
+  <button class="fbtn" data-f="BAJA">Bajas</button>
+  <button class="fbtn" data-f="pend">Sin decidir</button>
+  <span class="count" id="cnt"></span>
+</div>
+<div id="cards"></div>
+
+<h2><span class="n">4</span>La batería de pruebas</h2>
+<p class="lead">Alfonso tiene una batería escrita que hoy le suspendería por hacer justo lo que has pedido. Estos son los tests que hay que dar la vuelta.</p>
+<div class="box">
+<table>
+<tr><th style="width:26%">Test</th><th>Decía</th><th>Pasa a decir</th></tr>
+<tr><td><b>E</b> · “voy a probar por mi cuenta”</td><td>Una sola binaria y cierre a la primera. <i>Falla si insiste una segunda vez</i></td><td>Recorre la secuencia de cinco movimientos. <b>Falla si cierra a la primera</b></td></tr>
+<tr><td><b>A</b> · happy path</td><td>Disponibilidad como pregunta admitida</td><td>Contexto antes del freno, y la disposición en su lugar</td></tr>
+<tr><td><b>D</b> · lo suelta todo de golpe</td><td><i>Total admitido: 1 (disponibilidad) + propuesta</i></td><td>Total admitido: 1 (disposición) + propuesta</td></tr>
+<tr><td><b>B</b> · lead sin necesidad</td><td>Cierre cálido sin forzar</td><td>Igual. La secuencia no sirve para fabricarle un problema</td></tr>
+<tr><td colspan="3" style="border-bottom:none;padding-top:14px"><b>Señales de fallo nuevas:</b> abrir más de dos mensajes con “Y” · punto en medio de una burbuja · preguntar el freno sin contexto delante · apuntar sin el remate de confirmación · fusionar la verificación dentro de la propuesta</td></tr>
+</table>
+</div>
+
+<h2><span class="n">5</span>Pasada adversarial — las juntas</h2>
+<p class="lead">El daño de una ronda nunca está en las piezas, está en las junturas. Esto es lo que se rompe si aplico los cambios sin más, y cómo lo cierro.</p>
+<div class="box">
+<table>
+<tr><th style="width:32%">Junta</th><th>Qué pasa y cómo se cierra</th></tr>
+<tr><td><b>Disponibilidad en 6 sitios</b></td><td>Sale de F3 como pregunta, pero se nombra además en el gate, en el trigger de cierre temprano, en los criterios, en la detección temprana y en el cierre de línea roja. Si solo la quito de F3, cinco punteros quedan mintiendo. Se repuntan todos al uso reactivo.</td></tr>
+<tr><td><b>“Vale tío” prohibido vs tus acuses</b></td><td>El bloque lo prohíbe en absoluto y tus literales lo usan. Pasa a tope suave de 2-3 por conversación, y el “Vale,” seco sigue prohibido.</td></tr>
+<tr><td><b>Una sola pregunta por mensaje</b></td><td>Es regla binaria del voiceprint y tus moldes encadenan dos. Se mantiene como norma con excepción declarada: máximo 3 pares en toda la conversación.</td></tr>
+<tr><td><b>La verificación deja de fusionarse</b></td><td>F4 dice hoy que “por defecto va fusionada dentro de la propuesta”. Con el molde 1 pasa a ir siempre en su turno, esperando confirmación. Hay que corregir F4, F5 y el trigger de cierre temprano, que también lo ordena.</td></tr>
+<tr><td><b>La proyección de futuro</b></td><td>El bloque prohíbe la hipotética de plazo por fabricar urgencia. Tu movimiento 4 proyecta a seis meses. Se escribe la frontera: pintar un futuro peor sin dato está prohibido, preguntar por la proyección de su propio método <b>con su dato delante</b> es lo que se hace.</td></tr>
+<tr><td><b>El cierre de F5 pide día y hora</b></td><td>El bloque prohíbe proponer día, ofrecer huecos o recoger franja. Se escribe explícito que es una pregunta de aceptación: cualquier respuesta que acepte, incluso si contesta con un día, dispara el apagado, y la IA no confirma ni cuadra nada.</td></tr>
+<tr><td><b>La secuencia y el presupuesto</b></td><td>Son cinco preguntas y el tope es de seis en total. Se escribe que la secuencia <b>sustituye</b> al descubrimiento pendiente, no se le suma: si estás en ella, las preguntas que te quedaran ya no se hacen.</td></tr>
+<tr><td><b>Contexto duplicado</b></td><td>La edición que entró hoy ya escribió el contexto en el gate. No lo vuelvo a escribir en F2: se apunta a la fuente única, o acabamos con la misma regla en dos sitios, que es lo que provocó el bug de la frontera de salud.</td></tr>
+</table>
+</div>
+
+</div>
+
+<div class="bar"><div class="wrap">
+<span class="st"><b id="s1">0</b> me valen · <b id="s2">0</b> a cambiar · <b id="s3">0</b> sin ver</span>
+<button class="ghost" onclick="reset()">Reiniciar</button>
+<button class="go" onclick="salida()">Copiar decisiones</button>
+</div></div>
+<div class="wrap"><pre id="out"></pre></div>
+
+<script>
+const D=[
+{l:66,t:"Y",s:"Voiceprint y anti-IA",b:"Y a día de hoy, dónde dirías que se te atasca?",a:["Pero a día de hoy, dónde dirías que se te atasca?"]},
+{l:74,t:"PUNTO",s:"Voiceprint y anti-IA",b:"Puede que el problema no sea tu esfuerzo, sino cómo están coordinados el entreno, la comida y la progresión. Puede ser?",a:["Puede que el problema no sea tu esfuerzo, sino cómo están coordinados el entreno, la comida y la progresión","Puede ser?"],n:"El remate de confirmación va en su propia burbuja: es lo que separa apuntar de diagnosticar."},
+{l:81,t:"Y",s:"Voiceprint y anti-IA",b:"Y esa frustración con tu cuerpo, desde cuándo la arrastras?",a:["Pero lo que me dices de la frustración con tu cuerpo, desde cuándo la arrastras?"],n:"Anclaje sin eco con “lo que me dices de”."},
+{l:82,t:"Y",s:"Voiceprint y anti-IA",b:"Y lo de la salud, te lo ha dicho alguien o lo notas tú?",a:["Pero el tema de la salud es más por recomendación médica o es por iniciativa tuya?"],n:"Tu corrección B3. Dos puertas más limpias, y “el tema de” en vez del “Lo de” que el bloque prohíbe."},
+{l:159,t:"PUNTO",s:"Los 7 movimientos",b:"Dos meses seguidos con el lío que llevas ya tiene mérito eh. Y ahora dónde se te está torciendo?",a:["Dos meses seguidos con el lío que llevas ya tiene mérito eh","Pero ahora dónde dirías que se está torciendo?"],n:"Corregido por ti."},
+{l:160,t:"PUNTO",s:"Los 7 movimientos",b:"Pues es un buen objetivo, de verdad. Cómo te gustaría verte tú?",a:["Pues es un buen objetivo eh","Cómo te gustaría verte tú?"]},
+{l:162,t:"PUNTO",s:"Los 7 movimientos",b:"Es que a todos nos ha pasado eh, yo el primero jajaja. Y desde cuándo te viene esto?",a:["Es que a todos nos ha pasado eh, yo el primero jajaja","Pero desde cuándo te viene pasando??"],n:"Corregido por ti."},
+{l:164,t:"PUNTO",s:"Los 7 movimientos",b:"Diez kilos con tu edad y tu ritmo es de lo más abordable, te lo digo de verdad. Qué crees tú que te está frenando ahora?",a:["Diez kilos con tu edad y tu ritmo es de lo más abordable, te lo digo de verdad","Pero qué dirías tú que te está frenando ahora?"]},
+{l:166,t:"PUNTO",s:"Los 7 movimientos",b:"Es que enero es el mes de todos los propósitos, y en marzo el gimnasio está medio vacío otra vez jajaja. Cómo lo llevas tú con eso de arrancar y sostenerlo?",a:["Es que enero es el mes de todos los propósitos, y en marzo el gimnasio está medio vacío otra vez jajaja","Cómo lo llevas tú con eso de arrancar y sostenerlo?"]},
+{l:167,t:"Y",s:"Los 7 movimientos",b:"Y las cenas de empresa y los findes con la familia se cargan cualquier plan, eso es así. A ti dónde se te tuerce más?",a:["Es que las cenas de empresa y los findes con la familia se cargan cualquier plan, eso es así","A ti dónde se te tuerce más?"]},
+{l:199,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Entre el curro y los críos entonces se te va el día. Dónde dirías que se te atasca más?",a:["Entre el curro y los críos entonces se te va el día","Pero dónde dirías que se te atasca más?"]},
+{l:201,t:"Y",s:"Exemplars por sub-tipo",b:"Y cuando dices salud, en qué estás pensando tú?",a:["Pero cuando dices salud, en qué estás pensando tú?"]},
+{l:202,t:"Y",s:"Exemplars por sub-tipo",b:"Y esa grasa has intentado bajarla por tu cuenta o sería la primera vez que buscas acompañamiento?",a:["Pero esa grasa has intentado bajarla por tu cuenta o sería la primera vez que buscas acompañamiento?"]},
+{l:209,t:"APORTA",s:"Exemplars por sub-tipo",b:"Perder esos kilos es algo abordable totalmente, y en caso de lograrlo, qué te aportaría a ti conseguirlo?",a:["Perder esos kilos es algo abordable totalmente","Así que el tema de quitártelos te lo has marcado ahora o llevas ya tiempo con ello en la cabeza?"],n:"Retirada la aspiracional que Rubén dice que no se entiende. Entra tu B1."},
+{l:212,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Le pasa a más gente de la que crees créeme. Pero si te puedo preguntar, qué te gustaría que fuera diferente esta vez?",a:["Le pasa a más gente de la que crees créeme","Pero si te puedo preguntar, qué te gustaría que fuera diferente esta vez?"]},
+{l:217,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Ya.. después de todo el día trabajando es lo último que puede apetecer. Cómo ves viable enfocarlo para que encaje en tu día?",a:["Ya.. después de todo el día trabajando es lo último que puede apetecer","Cómo dirías que se podría enfocar para que te encaje en el día?"]},
+{l:220,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Mira, a casi todos los que me dicen eso, al mirar bien su caso el freno estaba en otro sitio. Cuándo fue la última vez que alguien te miró el tuyo de verdad?",a:["Mira, a casi todos los que me dicen eso, al mirar bien su caso el freno estaba en otro sitio","Cuándo fue la última vez que alguien te miró el tuyo de verdad?"]},
+{l:221,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Le pasa a más gente de la que crees, y casi siempre no era la persona, era que el plan no estaba hecho para su vida. Qué te gustaría que fuera distinto esta vez?",a:["Le pasa a más gente de la que crees, y casi siempre no era la persona, era que el plan no estaba hecho para su vida","Qué te gustaría que fuera distinto esta vez?"]},
+{l:222,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Con la gente más liada que llevo, casi nunca es el rato que tienen, es que nadie les montó el plan a su ritmo real. Cómo es un día normal tuyo?",a:["Con la gente más liada que llevo, casi nunca es el rato que tienen, es que nadie les montó el plan a su ritmo real","Cómo es un día normal tuyo?"],n:"La última burbuja ya es la pregunta de contexto presente."},
+{l:225,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Dos meses seguidos ya tiene mérito con el lío que lleva todo el mundo eh. Y en esos dos meses, qué esperabas ver que no estás viendo?",a:["Dos meses seguidos ya tiene mérito con el lío que lleva todo el mundo eh","Pero en esos dos meses, qué esperabas ver que no estás viendo?"]},
+{l:227,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Diez kilos es de lo más abordable con tiempo por delante, te lo digo de verdad. Qué crees que te está frenando ahora para ponerte?",a:["Diez kilos es de lo más abordable con tiempo por delante, te lo digo de verdad","Pero qué dirías que te está frenando ahora para ponerte?"]},
+{l:228,t:"PUNTO",s:"Exemplars por sub-tipo",b:"Ya, aunque septiembre es cuando se apunta todo el mundo y en noviembre el gimnasio está medio vacío otra vez jajaja. Qué te haría falta para poder arrancar ya?",a:["Ya, aunque septiembre es cuando se apunta todo el mundo y en noviembre el gimnasio está medio vacío otra vez jajaja","Qué te haría falta para poder arrancar ya?"]},
+{l:229,t:"APORTA",s:"Exemplars por sub-tipo",b:"Te pillo, con esos turnos no queda mucho margen. Aunque hay algo que quiero preguntarte: qué te aportaría a ti quitarte esa barriga?",a:["Te pillo, con esos turnos no queda mucho margen","Pero ya por preguntarte simplemente, por qué dirías que es importante para ti quitarte esa barriga??"],n:"Retirada. Entra tu B2."},
+{l:232,t:"APORTA",s:"Pregunta directa pura",b:"Y quitarte esos diez kilos, qué te aportaría a ti?",a:["Así que el tema de quitarte esos diez kilos, por qué dirías que es importante para ti??"],n:"Retirada, y conector de consecuencia en vez de suma."},
+{l:233,t:"Y",s:"Pregunta directa pura",b:"Y con los turnos que llevas, dónde se te está torciendo?",a:["Pero con los turnos que llevas, dónde se te está torciendo?"]},
+{l:238,t:"Y",s:"Pregunta directa pura",b:"Y ahora mismo, buscas que alguien te lo estructure o prefieres seguir probando por tu cuenta?",a:["Pero ahora mismo buscas que alguien te lo estructure o prefieres seguir probando por tu cuenta??"],n:"Rubén validó esta pregunta (“muy cualificado”). Solo cambia el conector y la coma."},
+{l:435,t:"Y",s:"Fase 1",b:"Y dime, qué te gustaría cambiar de cómo estás?",a:["Cuéntame, qué te gustaría cambiar de cómo estás?"],n:"El “Y dime,” ya está marcado como tic en otro coach."},
+{l:443,t:"PUNTO",s:"Fase 1",b:"Genial, gracias. Hay algo de lo que voy subiendo que te pudiera servir de más ayuda ahora mismo? Cuéntame 😊",a:["Genial, gracias!","Hay algo de lo que voy subiendo que te pudiera servir de más ayuda ahora mismo? Cuéntame 😊"]},
+{l:443,t:"PUNTO",s:"Fase 1",b:"Mil gracias. Hay algún tema en concreto que te esté tocando justo ahora? Cuéntame y vemos.",a:["Mil gracias!","Hay algún tema en concreto que te esté tocando justo ahora? Cuéntame y vemos"]},
+{l:449,t:"APORTA",s:"Fase 2",b:"Y quitarte esa barriga, qué te aportaría a ti?",a:["Pues es un buen objetivo eh","Así que el tema de quitarte la barriga te lo has marcado ahora o llevas ya tiempo con ello en la cabeza?"],n:"Retirada. Es el molde principal del punto 2, el más sembrado de todos."},
+{l:450,t:"Y",s:"Fase 2",b:"Y lo de la salud, te lo ha dicho alguien o lo notas tú?",a:["Gracias por decírmelo tío!","Pero el tema de la salud es más por recomendación médica o es por iniciativa tuya?"],n:"Tu corrección B3."},
+{l:452,t:"Y",s:"Fase 2",b:"Y esa falta de energía, dirías que es solo del curro o que va con cómo estás ahora físicamente?",a:["Pero esa falta de energía, dirías que es solo del curro o que va con cómo estás ahora físicamente?"]},
+{l:454,t:"Y",s:"Fase 2",b:"Y dónde se te está torciendo la cosa?",a:["Pero dónde dirías que se está torciendo la cosa?"]},
+{l:457,t:"Y",s:"Fase 2",b:"Y esas 3 semanas aguantando para luego soltarlo, cómo lo llevas?",a:["Pero esas 3 semanas aguantando para luego soltarlo, cómo lo llevas?"]},
+{l:458,t:"Y",s:"Fase 2",b:"Y ese arrancar y parar te acerca a como te quieres ver, o sientes que sigues donde empezaste?",a:["Pero ese arrancar y parar te acerca a como te quieres ver, o sientes que sigues donde empezaste?"]},
+{l:459,t:"PUNTO",s:"Fase 2",b:"Se nota que le pones. Y siendo sincero, estás viendo los avances que te gustaría o notas que te has quedado ahí?",a:["Se nota que le pones eh","Pero siendo sincero, estás viendo los avances que te gustaría o notas que te has quedado ahí?"]},
+{l:462,t:"BAJA",s:"Fase 3",b:"Disponibilidad: “Con tu semana actual, podrías sacar 3 días de unos 40-50 min?” · “Para que tenga sentido harían falta unos 3 días de 40-50 min, eso lo ves viable con tu semana?”",a:["[ se retiran como pregunta de F3 ]"],n:"Rubén: “esto para mí es una mierda, que estemos negociando si puede entrenar un día 40 minutos”. El mínimo sigue vivo como respuesta si es él quien saca el tiempo, y sigue descualificando si verbaliza que no puede."},
+{l:465,t:"REEMPLAZO",s:"Fase 3",b:"Y ahora mismo, buscas que alguien te lo estructure o prefieres seguir probando por tu cuenta?",a:["Vale tío, ahora te entiendo mucho mejor","Y si para llegar a ese objetivo hubiera que cambiar algunos puntos de la rutina que llevas ahora, sin que te suponga un cambio drástico, estarías dispuesto a verlo y saber sobre cómo sería??"],n:"Molde principal nuevo, tu C1. La de “buscas que alguien te lo estructure” pasa a ser la variante para el lead que ya dijo que va solo."},
+{l:466,t:"REEMPLAZO",s:"Fase 3",b:"Y con lo de la barriga, buscas que alguien te lo estructure o prefieres seguir a tu manera un tiempo más?",a:["Si para quitarte la barriga hubiera que meter un enfoque un poco distinto sin que te suponga un cambio drástico","Estarías dispuesto a verlo y saber cómo sería??"],n:"Tu C2."},
+{l:489,t:"REEMPLAZO",s:"Fase 5 — la propuesta",b:"Por lo que me cuentas tendría sentido revisar tu caso y ver qué habría que ajustar. Te encajaría que lo viéramos en una videollamada estos días, sin compromiso?",a:["Entonces lo que más te frena ahora es que arrancas y a las tres semanas va ya cayendo esa constancia, correcto?","— esperas su confirmación —","Estupendo! Pues justo por eso te lo comento, porque cada semana trabajamos con decenas de hombres que estaban en el mismo punto que tú, y han podido alcanzar sus objetivos gracias a una hoja de ruta que han podido llevar perfectamente","Así que honestamente por lo que me has ido comentando, me gustaría decirte que quiero ayudarte a alcanzar tus metas","Entonces lo que suelo hacer llegados a este punto de la conversación, es organizar una videollamada para mirar tu caso con mucha mayor calma, y comentarte el plan de acción que trabajaría para tu caso en concreto","Por lo que te parece que la organicemos para el mejor día y hora que puedas regalarme??"],n:"Molde 1, escrito por ti. La verificación va sola y espera respuesta. Cualquier mensaje que acepte, incluso si contesta con un día, dispara el apagado."},
+{l:491,t:"REEMPLAZO",s:"Fase 5 — la propuesta",b:"Puede que el freno no sea lo que le metes, sino cómo encajan el entreno y la comida en tu semana. Eso es justo lo que me gustaría mirar contigo en una videollamada, sin compromiso. Lo vemos?",a:["Claro pues por eso mismo te lo pregunto, porque después de haberme sentado con decenas de hombres que estaban en tu mismo punto y cuando veían la explicación que les dábamos en base a su contexto era cuando entendían todo lo que podían conseguir y cómo","Así que te parece que hagamos lo mismo, nos sentamos en una videollamada y vemos tu caso con más calma para comentarte ese plan de acción que trabajaría para tu caso concreto??"],n:"Molde 2, escrito por ti. Es el remate de la secuencia del “voy solo”."},
+{l:493,t:"BAJA",s:"Fase 5 — la propuesta",b:"MOLDE 3 con verificación: “Entonces lo que más te pesa ahora es arrancar y que se te caiga a las semanas, es así? Si es eso, te propongo que lo veamos en una videollamada conmigo, sin compromiso, y le buscamos la vuelta.”",a:["[ se elimina ]"],n:"No te gustó nada, y su función de verificar aparte ya la hace el molde 1."},
+{l:524,t:"PUNTO",s:"Objeciones",b:"Prefiero enseñarte todo bien cuando entienda bien tu caso. Cuéntame, [pregunta anclada a su objetivo o su bloqueo]",a:["Prefiero enseñarte todo bien cuando entienda bien tu caso","Pero cuéntame, [pregunta anclada a su objetivo o su bloqueo]"]},
+{l:589,t:"PUNTO",s:"Objeciones",b:"Lo respeto. Solo por saberlo, lo de quitarte la barriga lo dejas aparcado del todo o es que ahora mismo no ves por dónde meterle?",a:["Lo respeto","Pero solo por saberlo, el tema de quitarte la barriga lo dejas aparcado del todo o es que ahora mismo no ves por dónde meterle?"]},
+{l:594,t:"PUNTO",s:"Objeciones",b:"La vemos sin compromiso y ya lo valoras tú con calma. Te animas?",a:["La vemos sin compromiso y ya lo valoras tú con calma","Te animas?"]},
+{l:606,t:"PUNTO",s:"Objeciones",b:"Ya, y un rango sin valorar tu caso te lo pinta peor o mejor de lo que sería, y no quiero liarte. Antes de números, cuéntame: qué te está frenando a ti para conseguirlo?",a:["Entiendo que quieras saberlo, de hecho es lo más normal","Pero te mentiría si te suelto una cifra por aquí sin conocer tu caso, porque según lo que veamos incluso puede ser un precio inferior al que te diga ahora","Así que te parece que siga preguntándote un poco sobre tu contexto para poder darte la mejor cifra posible?"],n:"Tu corrección D. Pide permiso para seguir y lo justifica en su beneficio, en vez del esquive defensivo."},
+{l:609,t:"PUNTO",s:"Objeciones",b:"El precio depende mucho de tu caso, por eso no te suelto un número al aire. Justo eso lo vemos limpio en la videollamada, sin que te comprometa a nada, y es accesible. Qué es lo que más te haría dudar, el número en sí o si esto te va a funcionar a ti?",a:["El precio depende mucho de tu caso, por eso no te suelto un número al aire","Justo eso lo vemos limpio en la videollamada, sin que te comprometa a nada","Pero qué es lo que más te haría dudar, el número en sí o si esto te va a funcionar a ti?"]},
+{l:616,t:"PUNTO",s:"Objeciones",b:"Te entiendo, con la vida que llevas el tiempo es lo que más aprieta. Aun así, para que esto funcione harían falta 3 huecos de 40-50 min a la semana, lo ves viable con tu semana?",a:["Te entiendo, con la vida que llevas el tiempo es lo que más aprieta","Pero para que esto funcione harían falta unos 3 huecos de 40-50 min a la semana, lo ves viable?"],n:"Este sí se queda: es la respuesta cuando es él quien saca el tiempo. Lo que se retira es preguntarlo a puerta fría en F3."},
+{l:617,t:"PUNTO",s:"Objeciones",b:"Puede ser. Y siendo sincero, lo ves como algo que sacas tú solo o te vendría bien tener a alguien que te lo monte a tu medida para no dar palos de ciego?",a:["Puede ser","Pero siendo sincero, lo ves como algo que sacas tú solo o te vendría bien tener a alguien que te lo monte a tu medida para no dar palos de ciego?"]},
+{l:618,t:"PUNTO",s:"Objeciones",b:"Le pasa a un montón de los que llevo, y casi nunca era la persona, era que el plan no estaba hecho para su vida. Cuánto tiempo llevas ya dándole sin terminar de conseguirlo?",a:["Le pasa a un montón de los que llevo, y casi nunca era la persona, era que el plan no estaba hecho para su vida","Pero cuánto tiempo llevas ya dándole sin terminar de conseguirlo?"]},
+{l:619,t:"PUNTO",s:"Objeciones",b:"Ya, y saber qué hacer y sostenerlo con tu semana son cosas bien distintas. Sostenerlo es justo lo que se suele complicar, te pasa a ti también?",a:["Ya, y saber qué hacer y sostenerlo con tu semana son cosas bien distintas","Sostenerlo es justo lo que se suele complicar, te pasa a ti también?"]},
+{l:620,t:"PUNTO",s:"Objeciones",b:"Te entiendo. Y con los que llevo de tu edad el freno casi nunca es la edad, es que el plan no estaba pensado para un cuerpo de 45 y no de 25. Qué es lo que más notas tú que te cuesta ahora?",a:["Te entiendo","Con los que llevo de tu edad el freno casi nunca es la edad, es que el plan no estaba pensado para un cuerpo de 45 y no de 25","Pero qué dirías tú que es lo que más te cuesta ahora?"]},
+{l:621,t:"PUNTO",s:"Objeciones",b:"Muchas veces lo que parece raro es de lo más normal en cuanto lo miras de cerca. Cuéntame qué te hace pensar que el tuyo es distinto, que me interesa.",a:["Muchas veces lo que parece raro es de lo más normal en cuanto lo miras de cerca","Pero cuéntame qué te hace pensar que el tuyo es distinto, que me interesa"]},
+{l:622,t:"PUNTO",s:"Objeciones",b:"Puede ser, aunque muchas veces el freno no es hacer más, es que no hay una estructura que aguante tu semana. Te suena eso de empezar fuerte y que se te caiga a las semanas?",a:["Puede ser, aunque muchas veces el freno no es hacer más, es que no hay una estructura que aguante tu semana","Te suena eso de empezar fuerte y que se te caiga a las semanas?"]},
+{l:634,t:"PUNTO",s:"Objeciones",b:"Entiendo, con la oposición encima tienes la cabeza ahí y es normal. Cuándo la tienes?",a:["Entiendo, con la oposición encima tienes la cabeza ahí y es normal","Cuándo la tienes?"]},
+{l:635,t:"PUNTO",s:"Objeciones",b:"Pues hacemos una cosa: justo después te escribo yo, vemos qué tal fue y le buscamos el hueco a ponerte en serio con lo tuyo. Te encaja?",a:["Pues hacemos una cosa","Justo después te escribo yo, vemos qué tal fue y le buscamos el hueco a ponerte en serio con lo tuyo","Te encaja?"]},
+{l:656,t:"PUNTO",s:"Protocolos y conexión",b:"Sí, a lo que me decías de haberte probado el traje y ver que ya no entraba como antes. Y ese momento cómo lo llevaste?",a:["Sí, a lo que me decías de haberte probado el traje y ver que ya no entraba como antes","Pero ese momento cómo lo llevaste?"]},
+{l:659,t:"PUNTO",s:"Protocolos y conexión",b:"Entre los compromisos sociales y que luego te encadena la semana, el lunes empieza ya cargado. Y arrancar así el lunes, cómo lo llevas?",a:["Entre los compromisos sociales y que luego te encadena la semana, el lunes empieza ya cargado","Pero arrancar así el lunes, cómo lo llevas?"]},
+{l:660,t:"PUNTO",s:"Protocolos y conexión",b:"Cierto, perdona. Entonces con la peque y el curro pillas el rato como puedes. Cómo de importante es para ti poder tener ese cambio físico adaptado a tu día a día?",a:["Cierto, perdona!","Entonces con la peque y el curro pillas el rato como puedes","Pero cómo de importante dirías que es para ti tener ese cambio adaptado a tu día a día?"]},
+{l:681,t:"PUNTO",s:"Protocolos y conexión",b:"❌ Lead: “con dos críos y viajando toda la semana no me da la vida” → “Entiendo. Y cuántos días a la semana podrías sacar?”",a:["❌ … → “Entiendo. Y cuántos días entrenas ahora?”"],n:"El ejemplo de lo que NO se hace tiene que dejar de enseñar la pregunta de disponibilidad, que ya no existe. La lección se mantiene: ignora lo que abrió y dispara el contexto en seco."},
+{l:682,t:"PUNTO",s:"Protocolos y conexión",b:"Joder, con dos peques y viviendo en la carretera no queda casi nada para ti. Y ese cambio lo buscas más por ti o por seguirles el ritmo a ellos?",a:["Joder, con dos peques y viviendo en la carretera no queda casi nada para ti","Pero ese cambio lo buscas más por ti o por seguirles el ritmo a ellos?"]}
+];
+const K="rev-alfonso-ruben";
+let ST={};
+try{ ST=JSON.parse(localStorage.getItem(K)||"{}"); }catch(e){ ST={}; }
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const id=(d,i)=>"m"+i+"_"+d.l;
+let FL="all";
+
+function render(){
+  const host=document.getElementById("cards"); host.innerHTML="";
+  let shown=0; const secs={}; const order=[];
+  D.forEach((d,i)=>{
+    const k=id(d,i), st=ST[k]||{};
+    if(FL!=="all"){
+      if(FL==="pend"){ if(st.v) return; }
+      else if(d.t!==FL) return;
+    }
+    if(!secs[d.s]){ secs[d.s]=[]; order.push(d.s); }
+    secs[d.s].push([d,i,k,st]); shown++;
+  });
+  order.forEach(sn=>{
+    const w=document.createElement("div"); w.className="sec";
+    const h=document.createElement("h4"); h.textContent=sn; w.appendChild(h);
+    secs[sn].forEach(([d,i,k,st])=>{
+      const c=document.createElement("div");
+      c.className="card"+(st.v==="ok"?" ok":st.v==="no"?" no":"");
+      c.innerHTML=
+        '<div class="chead"><span class="ln">línea '+d.l+'</span>'+
+        d.t.split("+").map(t=>'<span class="chip c-'+t+'">'+t+'</span>').join("")+'</div>'+
+        '<div class="before"><em>hoy</em>'+esc(d.b)+'</div>'+
+        '<div class="after"><em>propuesta</em>'+
+        d.a.map(x=>'<div class="bub'+(/^[—[]/.test(x)?' sep':'')+'">'+esc(x)+'</div>').join("")+'</div>'+
+        (d.n?'<div class="note">'+esc(d.n)+'</div>':'')+
+        '<div class="acts">'+
+        '<button class="b y'+(st.v==="ok"?" on":"")+'" data-k="'+k+'" data-v="ok">Me vale</button>'+
+        '<button class="b n'+(st.v==="no"?" on":"")+'" data-k="'+k+'" data-v="no">Lo cambio</button></div>'+
+        '<textarea data-k="'+k+'" placeholder="Cómo lo escribirías tú (una línea por burbuja)"></textarea>';
+      c.querySelector("textarea").value=st.c||"";
+      w.appendChild(c);
+    });
+    host.appendChild(w);
+  });
+  document.getElementById("cnt").textContent=shown+" de "+D.length;
+  stats();
+}
+function stats(){
+  let ok=0,no=0;
+  D.forEach((d,i)=>{const v=(ST[id(d,i)]||{}).v; if(v==="ok")ok++; if(v==="no")no++;});
+  document.getElementById("s1").textContent=ok;
+  document.getElementById("s2").textContent=no;
+  document.getElementById("s3").textContent=D.length-ok-no;
+  document.getElementById("k1").textContent=D.length;
+  document.getElementById("k2").textContent=ok+no;
+}
+function save(){ try{ localStorage.setItem(K,JSON.stringify(ST)); }catch(e){} }
+document.addEventListener("click",e=>{
+  const f=e.target.closest(".fbtn");
+  if(f){ FL=f.dataset.f;
+    document.querySelectorAll(".fbtn").forEach(x=>x.classList.toggle("on",x===f));
+    render(); return; }
+  const b=e.target.closest(".b[data-k]");
+  if(b){ const k=b.dataset.k; ST[k]=ST[k]||{};
+    ST[k].v = ST[k].v===b.dataset.v ? null : b.dataset.v; save(); render(); }
+});
+document.addEventListener("input",e=>{
+  const t=e.target.closest("textarea[data-k]");
+  if(t){ const k=t.dataset.k; ST[k]=ST[k]||{}; ST[k].c=t.value; save(); }
+});
+function reset(){ if(confirm("¿Borrar todas las decisiones?")){ ST={}; save(); render(); } }
+function salida(){
+  const ok=[],no=[],pend=[];
+  D.forEach((d,i)=>{
+    const st=ST[id(d,i)]||{};
+    const h="L"+d.l+" ["+d.s+"] "+d.b.slice(0,70);
+    if(st.v==="ok") ok.push(h);
+    else if(st.v==="no") no.push(h+"\n   -> "+(st.c||"(sin indicar)"));
+    else pend.push(h);
+  });
+  const txt="DECISIONES - Alfonso, ronda de Ruben\n"+
+    "====================================\n\n"+
+    "ME VALEN ("+ok.length+")\n"+(ok.join("\n")||"-")+"\n\n"+
+    "A CAMBIAR ("+no.length+")\n"+(no.join("\n\n")||"-")+"\n\n"+
+    "SIN DECIDIR ("+pend.length+")\n"+(pend.join("\n")||"-");
+  const o=document.getElementById("out");
+  o.style.display="block"; o.textContent=txt;
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{});
+  o.scrollIntoView({behavior:"smooth",block:"start"});
+}
+render();
+</script>

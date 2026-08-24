@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Anatomía de los Setters</title>
+<style>
+  /* ---------- reset mínimo ---------- */
+  html { -webkit-text-size-adjust: 100%; }
+  * { box-sizing: border-box; }
+  img { max-width: 100%; height: auto; }
+
+  :root {
+    --ground: #F0F1EC;
+    --surface: #FAFBF7;
+    --surface-2: #E7E9E1;
+    --ink: #18211D;
+    --ink-soft: #5C6862;
+    --ink-faint: #86918B;
+    --rule: #D4D8CE;
+    --rule-soft: #E2E5DC;
+    --accent: #1E6350;
+    --accent-soft: #D8E6E0;
+    --bronze: #8A6222;
+    --bronze-soft: #EFE4CE;
+    --brick: #9C382B;
+    --brick-soft: #F3DCD8;
+    --shadow: 0 1px 2px rgba(24, 33, 29, .05), 0 8px 24px -16px rgba(24, 33, 29, .25);
+
+    --serif: Georgia, "Iowan Old Style", "Palatino Linotype", Palatino, "Times New Roman", serif;
+    --sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    --mono: "Cascadia Mono", ui-monospace, "SF Mono", Consolas, "DejaVu Sans Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131816;
+      --surface: #1A211E;
+      --surface-2: #222b27;
+      --ink: #E4E8E2;
+      --ink-soft: #A2ADA7;
+      --ink-faint: #77837D;
+      --rule: #2C3531;
+      --rule-soft: #232B28;
+      --accent: #63B49B;
+      --accent-soft: #1D3730;
+      --bronze: #CFA260;
+      --bronze-soft: #362B18;
+      --brick: #D9715F;
+      --brick-soft: #3A211C;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .8);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: #131816;
+    --surface: #1A211E;
+    --surface-2: #222b27;
+    --ink: #E4E8E2;
+    --ink-soft: #A2ADA7;
+    --ink-faint: #77837D;
+    --rule: #2C3531;
+    --rule-soft: #232B28;
+    --accent: #63B49B;
+    --accent-soft: #1D3730;
+    --bronze: #CFA260;
+    --bronze-soft: #362B18;
+    --brick: #D9715F;
+    --brick-soft: #3A211C;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .8);
+  }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 22px 100px;
+  }
+
+  @media (min-width: 1080px) {
+    .shell {
+      grid-template-columns: 232px minmax(0, 1fr);
+      gap: 56px;
+      padding: 0 34px 120px;
+    }
+  }
+
+  /* ---------- rail ---------- */
+  .rail { display: none; }
+
+  @media (min-width: 1080px) {
+    .rail {
+      display: block;
+      position: sticky;
+      top: 0;
+      align-self: start;
+      max-height: 100vh;
+      overflow-y: auto;
+      padding: 46px 0 40px;
+      font-family: var(--mono);
+      font-size: 11.5px;
+      line-height: 1.5;
+    }
+  }
+
+  .rail-group { margin-bottom: 22px; }
+
+  .rail-title {
+    text-transform: uppercase;
+    letter-spacing: .13em;
+    color: var(--ink-faint);
+    font-size: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--rule);
+    margin-bottom: 9px;
+  }
+
+  .rail a {
+    display: block;
+    color: var(--ink-soft);
+    text-decoration: none;
+    padding: 3.5px 0 3.5px 10px;
+    border-left: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+  }
+
+  .rail a:hover, .rail a:focus-visible {
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+
+  .rail a .n {
+    color: var(--ink-faint);
+    display: inline-block;
+    width: 20px;
+  }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    padding: 58px 0 40px;
+    border-bottom: 2px solid var(--ink);
+    margin-bottom: 40px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .17em;
+    color: var(--accent);
+    margin: 0 0 18px;
+  }
+
+  h1 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2.5rem, 6.5vw, 4.1rem);
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    margin: 0 0 20px;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    font-family: var(--serif);
+    font-size: clamp(1.05rem, 2vw, 1.28rem);
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0 0 30px;
+  }
+
+  .meta-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 34px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  .meta-strip b {
+    display: block;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: -.01em;
+  }
+
+  /* ---------- generic ---------- */
+  section { margin-bottom: 74px; scroll-margin-top: 24px; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(1.6rem, 3.2vw, 2.15rem);
+    line-height: 1.14;
+    letter-spacing: -.015em;
+    margin: 0 0 6px;
+    text-wrap: balance;
+  }
+
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 1px solid var(--rule);
+    padding-bottom: 12px;
+    margin-bottom: 26px;
+  }
+
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: .1em;
+    padding-top: 6px;
+    flex: none;
+  }
+
+  h3 {
+    font-family: var(--sans);
+    font-size: 1.02rem;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    margin: 34px 0 10px;
+  }
+
+  p { margin: 0 0 15px; max-width: 68ch; }
+  .lede { max-width: 66ch; color: var(--ink-soft); }
+  strong { font-weight: 650; color: var(--ink); }
+
+  a.inline {
+    color: var(--accent);
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+
+  /* ---------- callout ---------- */
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--bronze);
+    border-radius: 3px;
+    padding: 20px 24px;
+    margin: 26px 0;
+    box-shadow: var(--shadow);
+  }
+
+  .callout.is-accent { border-left-color: var(--accent); }
+
+  .callout h4 {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: var(--bronze);
+    margin: 0 0 10px;
+    font-weight: 600;
+  }
+
+  .callout.is-accent h4 { color: var(--accent); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  /* ---------- phase spine ---------- */
+  .spine {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 24px 0 8px;
+  }
+
+  .spine-cell {
+    background: var(--surface);
+    padding: 15px 15px 17px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .spine-cell .code {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .spine-cell .nm {
+    font-weight: 650;
+    font-size: .93rem;
+    letter-spacing: -.01em;
+  }
+
+  .spine-cell .ds {
+    font-size: .8rem;
+    line-height: 1.42;
+    color: var(--ink-soft);
+  }
+
+  .spine-note {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin: 0;
+  }
+
+  /* ---------- matrix ---------- */
+  .scroller {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    margin: 24px 0;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 940px;
+    font-size: .855rem;
+  }
+
+  thead th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .11em;
+    color: var(--ink-faint);
+    font-weight: 600;
+    padding: 13px 14px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-2);
+    white-space: nowrap;
+    vertical-align: bottom;
+  }
+
+  tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+    line-height: 1.45;
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  td.nm {
+    font-weight: 650;
+    white-space: nowrap;
+  }
+
+  td.nm small {
+    display: block;
+    font-weight: 400;
+    color: var(--ink-faint);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .04em;
+  }
+
+  /* ---------- tags ---------- */
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 2.5px 7px;
+    border-radius: 2px;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .tag.obj { background: var(--accent-soft); color: var(--accent); }
+  .tag.prob { background: var(--bronze-soft); color: var(--bronze); }
+  .tag.emo { background: var(--brick-soft); color: var(--brick); }
+  .tag.neu { background: var(--surface-2); color: var(--ink-soft); }
+
+  /* ---------- coach ficha ---------- */
+  .ficha {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    margin-bottom: 22px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    scroll-margin-top: 20px;
+  }
+
+  .ficha-head {
+    padding: 20px 24px 18px;
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface-2);
+  }
+
+  .ficha-head .row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 7px;
+  }
+
+  .ficha-head h3 {
+    font-family: var(--serif);
+    font-size: 1.42rem;
+    font-weight: 400;
+    letter-spacing: -.015em;
+    margin: 0;
+  }
+
+  .ficha-head .slug {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    letter-spacing: .05em;
+  }
+
+  .ficha-head .avatar {
+    font-size: .885rem;
+    color: var(--ink-soft);
+    line-height: 1.5;
+    max-width: 78ch;
+    margin: 0 0 12px;
+  }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .ficha-body { padding: 4px 0 0; }
+
+  .fase {
+    display: grid;
+    grid-template-columns: 66px minmax(0, 1fr);
+    gap: 0 18px;
+    padding: 15px 24px;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+
+  .fase:last-child { border-bottom: none; }
+
+  .fase-code {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    color: var(--accent);
+    padding-top: 2px;
+  }
+
+  .fase-code small {
+    display: block;
+    font-weight: 400;
+    color: var(--ink-faint);
+    letter-spacing: .02em;
+    font-size: 9.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .fase-what {
+    font-size: .89rem;
+    line-height: 1.52;
+    color: var(--ink-soft);
+    margin: 0;
+    max-width: 74ch;
+  }
+
+  .fase-what b { color: var(--ink); font-weight: 650; }
+
+  .qs {
+    list-style: none;
+    margin: 11px 0 0;
+    padding: 0 0 0 15px;
+    border-left: 2px solid var(--accent-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .qs li {
+    font-family: var(--serif);
+    font-size: .945rem;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  .qs li::before {
+    content: "\201C";
+    color: var(--ink-faint);
+  }
+
+  .qs li::after {
+    content: "\201D";
+    color: var(--ink-faint);
+  }
+
+  /* ---------- findings ---------- */
+  .finding {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr);
+    gap: 0 16px;
+    padding: 19px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .finding:last-child { border-bottom: none; }
+
+  .finding-n {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-faint);
+    padding-top: 3px;
+  }
+
+  .finding h4 {
+    margin: 0 0 7px;
+    font-size: 1rem;
+    font-weight: 650;
+    letter-spacing: -.01em;
+  }
+
+  .finding p { margin: 0 0 8px; font-size: .91rem; color: var(--ink-soft); }
+  .finding p:last-child { margin-bottom: 0; }
+
+  .sev {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 2px;
+    margin-left: 8px;
+    vertical-align: 2px;
+  }
+
+  .sev.ok { background: var(--accent-soft); color: var(--accent); }
+  .sev.warn { background: var(--bronze-soft); color: var(--bronze); }
+  .sev.risk { background: var(--brick-soft); color: var(--brick); }
+
+  /* ---------- pending ---------- */
+  .pending-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px;
+    margin: 22px 0;
+  }
+
+  .pending-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--brick);
+    border-radius: 3px;
+    padding: 17px 19px;
+  }
+
+  .pending-card h4 {
+    margin: 0 0 6px;
+    font-size: .93rem;
+    font-weight: 650;
+  }
+
+  .pending-card p { margin: 0; font-size: .855rem; color: var(--ink-soft); }
+
+  ul.plain { padding-left: 20px; margin: 0 0 15px; max-width: 68ch; }
+  ul.plain li { margin-bottom: 7px; color: var(--ink-soft); }
+  ul.plain li b { color: var(--ink); }
+
+  footer {
+    border-top: 2px solid var(--ink);
+    padding-top: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-faint);
+    line-height: 1.7;
+  }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  /* ---------- impresión ---------- */
+  @media print {
+    :root {
+      --ground: #FFFFFF;
+      --surface: #FFFFFF;
+      --surface-2: #F2F3EE;
+      --ink: #14201B;
+      --ink-soft: #44504A;
+      --ink-faint: #6E7A74;
+      --rule: #BFC6BC;
+      --rule-soft: #DCE1D9;
+      --shadow: none;
+    }
+    body { background: #FFFFFF; font-size: 11.5pt; }
+    .shell { display: block; max-width: none; padding: 0; }
+    .rail { display: none; }
+    .masthead { padding-top: 0; }
+    section { margin-bottom: 34px; page-break-inside: auto; }
+    .sec-head { page-break-after: avoid; }
+    .ficha, .finding, .callout, .pending-card { page-break-inside: avoid; box-shadow: none; }
+    .scroller { overflow: visible; box-shadow: none; }
+    table { min-width: 0; font-size: 8.5pt; }
+    h1 { font-size: 30pt; }
+    h2 { font-size: 17pt; page-break-after: avoid; }
+    .ficha-head h3 { font-size: 14pt; }
+    footer { page-break-before: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="rail" aria-label="Índice">
+    <div class="rail-group">
+      <div class="rail-title">Informe</div>
+      <a href="#alcance"><span class="n">01</span>Alcance</a>
+      <a href="#esqueleto"><span class="n">02</span>Esqueleto común</a>
+      <a href="#matriz"><span class="n">03</span>Matriz</a>
+      <a href="#fichas"><span class="n">04</span>Fichas</a>
+      <a href="#hallazgos"><span class="n">05</span>Hallazgos</a>
+      <a href="#pendiente"><span class="n">06</span>Qué falta</a>
+    </div>
+    <div class="rail-group">
+      <div class="rail-title">Los 13 nichos</div>
+      <a href="#alfonso">Alfonso</a>
+      <a href="#roberto">Roberto Cordobilla</a>
+      <a href="#frodo">Frodo</a>
+      <a href="#miguel">Miguel Aguado</a>
+      <a href="#andrea">Andrea Oliver</a>
+      <a href="#pepe">Pepe Jiménez</a>
+      <a href="#alex">Alex · escalada</a>
+      <a href="#beatriz">Beatriz Juan</a>
+      <a href="#luis">Luis Royán</a>
+      <a href="#chema">Chema · dolor crónico</a>
+      <a href="#andreasop">Andrea · SOP</a>
+      <a href="#gonzalo">Gonzalo · oncología</a>
+      <a href="#efra">Efra · cadera</a>
+    </div>
+  </nav>
+
+  <main>
+
+    <header class="masthead">
+      <p class="eyebrow">Auditoría estructural · Prompts de setter</p>
+      <h1>Anatomía de los Setters</h1>
+      <p class="standfirst">Cómo está construida, nicho a nicho, la conversación que dirigen nuestros setters de IA: el esqueleto que comparten los trece, en qué se desvía cada uno y con qué preguntas reales lo hace.</p>
+      <div class="meta-strip">
+        <div>Bloques analizados<b>13</b></div>
+        <div>Fases por conversación<b>7 (F0–F6)</b></div>
+        <div>Preguntas catalogadas<b>706</b></div>
+        <div>Fuente<b>prompts/coach-engineering/academia</b></div>
+        <div>Fecha<b>16 agosto 2026</b></div>
+      </div>
+    </header>
+
+    <!-- ============ 01 ALCANCE ============ -->
+    <section id="alcance">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <h2>Qué entra aquí</h2>
+      </div>
+
+      <p class="lede">Este informe cubre los <strong>trece bloques de coach de la academia</strong> — los que corren sobre Automatía y están versionados en el repositorio. Cada uno se ha leído entero: identidad, criterios de cualificación, instrucciones de cada fase y bancos de preguntas.</p>
+
+      <div class="callout is-accent">
+        <h4>Una corrección a la premisa, antes de empezar</h4>
+        <p>La petición asumía que cada nicho tiene su propia arquitectura de fases. <strong>No es así, y es una buena noticia.</strong> Las siete fases son comunes a los trece y viven en el bloque CORE, no en el bloque de cada entrenador. Lo que cambia por nicho es el contenido de cada fase: por dónde se entra, qué se pregunta y qué se prohíbe preguntar, qué se cualifica y cómo se cierra.</p>
+        <p>Por eso el informe se ordena así: <strong>el esqueleto una sola vez</strong>, y debajo, nicho a nicho, en qué se desvía y con qué preguntas. Es también lo que mejor responde a la preocupación de fondo — si un setter falla, va a fallar por cómo dirige la conversación, y la dirección es exactamente lo que se ve en las desviaciones.</p>
+      </div>
+
+    </section>
+
+    <!-- ============ 02 ESQUELETO ============ -->
+    <section id="esqueleto">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2>El esqueleto que comparten los trece</h2>
+      </div>
+
+      <p class="lede">Toda conversación recorre la misma secuencia. La numeración importa: es un orden real, y saltarse una fase — sobre todo el Puente — es el fallo que más aparece en las revisiones.</p>
+
+      <div class="spine">
+        <div class="spine-cell">
+          <span class="code">F0</span>
+          <span class="nm">Contexto</span>
+          <span class="ds">La bienvenida y el recurso, escritos fuera del turno de la IA. Aquí se decide por qué carril entra el lead.</span>
+        </div>
+        <div class="spine-cell">
+          <span class="code">F1</span>
+          <span class="nm">Conexión</span>
+          <span class="ds">Apertura anclada en lo que el lead acaba de decir. Introducción más pregunta, nunca pregunta pelada.</span>
+        </div>
+        <div class="spine-cell">
+          <span class="code">F2</span>
+          <span class="nm">Descubrimiento</span>
+          <span class="ds">El bloque más largo y donde se gana o se pierde la conversación. Es la fase que más varía entre nichos.</span>
+        </div>
+        <div class="spine-cell">
+          <span class="code">F3</span>
+          <span class="nm">Cualificación</span>
+          <span class="ds">Tardía, después del descubrimiento. Pocas preguntas, una sola vez, sin debatirlas.</span>
+        </div>
+        <div class="spine-cell">
+          <span class="code">F4</span>
+          <span class="nm">Puente</span>
+          <span class="ds">Resumen en las palabras del lead más una pregunta de confirmación. En su propio turno.</span>
+        </div>
+        <div class="spine-cell">
+          <span class="code">F5</span>
+          <span class="nm">Propuesta</span>
+          <span class="ds">La videollamada. Zona principal de objeciones: aquí es donde el lead duda y se le trabaja.</span>
+        </div>
+        <div class="spine-cell">
+          <span class="code">F6</span>
+          <span class="nm">Cierre</span>
+          <span class="ds">Agendamiento y apagado de la IA. Tres modelos distintos según el entrenador.</span>
+        </div>
+      </div>
+      <p class="spine-note">Excepción: el bloque de Alex sigue el formato antiguo, con siete fases desplazadas (su F5 es el Puente, su F6 la propuesta, su F7 el envío del enlace).</p>
+
+      <h3>Las tres reglas que no cambian en ningún nicho</h3>
+      <ul class="plain">
+        <li><b>El Puente es obligatorio.</b> Sin resumen previo confirmado, la propuesta de llamada suena a venta. Los trece lo dicen, y varios lo repiten con la advertencia de que ni con un lead caliente se salta.</li>
+        <li><b>La llamada no se nombra antes de tiempo.</b> Hasta la propuesta, ninguno escribe «videollamada», «llamada» ni «el programa» — tampoco al responder una objeción.</li>
+        <li><b>Una duda no descualifica.</b> Los trece separan explícitamente la objeción (se trabaja) de la descualificación (requiere que el lead verbalice el motivo, nunca se infiere).</li>
+      </ul>
+    </section>
+
+    <!-- ============ 03 MATRIZ ============ -->
+    <section id="matriz">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <h2>Los trece nichos de un vistazo</h2>
+      </div>
+
+      <p class="lede">La columna que más información da es <strong>el eje de la Fase 2</strong>: es lo que determina el carácter entero de la conversación. Los nichos de objetivo entran preguntando a dónde quiere llegar; los de problema tienen prohibido preguntarlo.</p>
+
+      <div class="scroller">
+        <table>
+          <thead>
+            <tr>
+              <th>Nicho</th>
+              <th>Avatar</th>
+              <th>Eje de F2</th>
+              <th>Qué cualifica en F3</th>
+              <th>Quién atiende la llamada</th>
+              <th>Cómo se agenda</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="nm">Alfonso<small>hombres · grasa</small></td>
+              <td>Hombres 35-55 con trabajo y familia. Perder barriga sin vivir en el gimnasio.</td>
+              <td><span class="tag obj">Objetivo</span></td>
+              <td>Disponibilidad (3 días × 40-50 min) e intención de que se lo estructuren</td>
+              <td>Él solo</td>
+              <td>Audio suyo, sin enlace</td>
+            </tr>
+            <tr>
+              <td class="nm">Roberto Cordobilla<small>hombres · +100 kg</small></td>
+              <td>Hombres con sobrepeso u obesidad, la mayoría desde +100 kg. Historial de dietas fallidas.</td>
+              <td><span class="tag obj">Objetivo</span></td>
+              <td>Disposición a hacer las cosas distinto ahora</td>
+              <td>Él solo</td>
+              <td>Recoge WhatsApp, escribe él</td>
+            </tr>
+            <tr>
+              <td class="nm">Frodo<small>hombres · recomposición</small></td>
+              <td>Hombres que buscan recomposición sostenible, no una transformación de 30 días.</td>
+              <td><span class="tag obj">Objetivo</span></td>
+              <td>Prioridad real y necesidad de acompañamiento verbalizada por él</td>
+              <td>Él solo</td>
+              <td>Calendly</td>
+            </tr>
+            <tr>
+              <td class="nm">Miguel Aguado<small>mujeres · sin dietas</small></td>
+              <td>Mujeres 35-70 atrapadas en el bucle de empezar y abandonar. Perder peso sin dietas restrictivas.</td>
+              <td><span class="tag obj">Objetivo</span></td>
+              <td>Escalera de cambio: impacto, importancia, urgencia y necesidad</td>
+              <td>Él solo</td>
+              <td>Handoff — la llamada la ofrece él</td>
+            </tr>
+            <tr>
+              <td class="nm">Andrea Oliver<small>mujeres · fuerza</small></td>
+              <td>Mujeres 35-45 sanas. Fuerza y comer sin restricción; también hyrox y deka.</td>
+              <td><span class="tag obj">Objetivo</span></td>
+              <td>Por qué ahora y qué cambiaría. La prioridad se lee, no se pregunta</td>
+              <td>Ella sola</td>
+              <td>Pide número, coordina por WhatsApp</td>
+            </tr>
+            <tr>
+              <td class="nm">Pepe Jiménez<small>hyrox</small></td>
+              <td>Hombres y mujeres 20-40 que quieren iniciarse o bajar tiempos en HYROX.</td>
+              <td><span class="tag obj">Objetivo</span></td>
+              <td>Expectativa contra realidad, y compromiso</td>
+              <td>Equipo de admisiones</td>
+              <td>Calendly</td>
+            </tr>
+            <tr>
+              <td class="nm">Alex<small>escalada</small></td>
+              <td>Escaladores estancados o lesionados. Único nicho fuera del corpus de fitness.</td>
+              <td><span class="tag neu">Actividad</span></td>
+              <td>Importancia del deporte y disponibilidad con ancla</td>
+              <td>Equipo</td>
+              <td>Enlace de reservas</td>
+            </tr>
+            <tr>
+              <td class="nm">Beatriz Juan<small>postparto</small></td>
+              <td>Madres que han perdido la conexión con su cuerpo. Culpa, agotamiento, no reconocerse.</td>
+              <td><span class="tag emo">Emocional</span></td>
+              <td>Método, disponibilidad e importancia en escala 0-10</td>
+              <td>Ella sola</td>
+              <td>Handoff tras una pregunta de franja</td>
+            </tr>
+            <tr>
+              <td class="nm">Luis Royán<small>menopausia</small></td>
+              <td>Mujeres 40-60 en peri y menopausia. El cuerpo dejó de responder a lo que siempre funcionó.</td>
+              <td><span class="tag prob">Problema</span></td>
+              <td>Solo la línea roja: 20-30 minutos al día</td>
+              <td>Él, con equipo detrás</td>
+              <td>Calendly</td>
+            </tr>
+            <tr>
+              <td class="nm">Chema<small>dolor crónico</small></td>
+              <td>Fibromialgia, lumbar, migrañas, dolor pélvico. Años probando sin resultado.</td>
+              <td><span class="tag prob">Problema</span></td>
+              <td>Una sola pregunta: disposición a probar un enfoque distinto</td>
+              <td>Chema, con equipo de 5 sanitarios</td>
+              <td>Formulario previo</td>
+            </tr>
+            <tr>
+              <td class="nm">Andrea<small>SOP</small></td>
+              <td>Mujeres 18-55 con ovario poliquístico diagnosticado o sospechado.</td>
+              <td><span class="tag prob">Problema</span></td>
+              <td>Verificación del tema principal. Nada de importancia ni urgencia</td>
+              <td>Equipo</td>
+              <td>Calendly</td>
+            </tr>
+            <tr>
+              <td class="nm">Gonzalo Camacho<small>oncología</small></td>
+              <td>Personas con cáncer en tratamiento activo. También familiares que escriben por ellas.</td>
+              <td><span class="tag prob">Problema</span></td>
+              <td>Disposición a un rol activo, no solo a esperar el tratamiento</td>
+              <td>Especialista de su equipo</td>
+              <td>Pide teléfono, llama recepción</td>
+            </tr>
+            <tr>
+              <td class="nm">Efra<small>cadera</small></td>
+              <td>Dolor y lesiones de cadera: artrosis, pinzamiento, labrum, displasia, trocanteritis.</td>
+              <td><span class="tag prob">Problema</span></td>
+              <td>Satisfacción con el camino actual. Nada más</td>
+              <td>Compañero de su equipo</td>
+              <td>Enlace de valoración</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="spine-note">Eje de F2 — <strong>Objetivo</strong>: se entra preguntando a dónde quiere llegar. <strong>Problema</strong>: el objetivo se da por sentado y preguntarlo está prohibido. <strong>Emocional</strong>: se entra por cómo se siente. <strong>Actividad</strong>: se entra por su práctica deportiva.</p>
+    </section>
+
+    <!-- ============ 04 FICHAS ============ -->
+    <section id="fichas">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2>Ficha por nicho</h2>
+      </div>
+
+      <p class="lede">Qué hace cada fase en ese nicho concreto y con qué preguntas lo hace. Las preguntas están tomadas literalmente del bloque — son las que el setter tiene escritas, no reconstrucciones.</p>
+
+      <!-- ALFONSO -->
+      <article class="ficha" id="alfonso">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Alfonso</h3>
+            <span class="slug">hombres · pérdida de grasa</span>
+          </div>
+          <p class="avatar">Hombres de 35 a 55 con trabajo, familia y poco tiempo. Perder barriga y grasa de los flotadores sin vivir en el gimnasio ni a dieta. Trabaja solo: la videollamada es con él.</p>
+          <div class="chips"><span class="tag obj">Eje objetivo</span><span class="tag neu">Instagram + WhatsApp</span><span class="tag neu">Sin enlace de agenda</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Conexión real, no entrevista. El primer mensaje se ancla en lo que el lead respondió a la bienvenida. <b>Tope de 4 mensajes</b> y mínimo 2 interacciones antes de avanzar.</p>
+              <ul class="qs">
+                <li>Cuéntame, hay algo con lo que andes atascado y por lo que te hayas pasado por aquí?</li>
+                <li>Y dime, qué te gustaría cambiar de cómo estás?</li>
+                <li>Hay algún tema en concreto que te esté tocando justo ahora?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Tres puntos en orden de referencia: <b>resultado → impacto en presente → obstáculo</b>, adaptable si el lead entra por su bloqueo. Prohibido preguntar qué come o qué entrena: eso se valora en la llamada.</p>
+              <ul class="qs">
+                <li>Cuando me dices lo de ponerte en forma, tienes algo en mente, una cifra o cómo te gustaría verte?</li>
+                <li>Y quitarte esa barriga, qué te aportaría a ti?</li>
+                <li>Qué dirías que te está rompiendo el ritmo ahora para quitarte esa barriga?</li>
+                <li>Y siendo sincero, estás viendo los avances que te gustaría o notas que te has quedado ahí?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Tardía, nunca antes. Dos cosas y una sola vez cada una. No se pregunta el «por qué ahora» — escribe él primero, así que suena raro. <b>Tope de 2 mensajes.</b></p>
+              <ul class="qs">
+                <li>Con tu semana actual, podrías sacar 3 días de unos 40-50 min?</li>
+                <li>Y ahora mismo, buscas que alguien te lo estructure o prefieres seguir probando por tu cuenta?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Puente <b>corto, de una línea</b>: solo el bloqueo principal con la palabra del lead. Prohibido el resumen completo de todo lo hablado — le repite lo que acaba de decir y suena a guion.</p>
+              <ul class="qs">
+                <li>Entonces lo que más te pesa ahora es arrancar y que se te caiga a las semanas, es así?</li>
+                <li>voy bien o me dejo algo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Un solo mensaje, tres líneas máximo, eligiendo entre <b>tres moldes distintos</b> para que no todas las conversaciones acaben igual. La duración no se anuncia.</p>
+              <ul class="qs">
+                <li>Te encajaría que lo viéramos en una videollamada estos días, sin compromiso?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Tras el sí, la IA <b>no escribe nada más</b> y se apaga. El audio con los detalles lo manda Alfonso. Nunca se propone día ni hora, nunca se envía enlace.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ROBERTO -->
+      <article class="ficha" id="roberto">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Roberto Cordobilla</h3>
+            <span class="slug">hombres · sobrepeso +100 kg</span>
+          </div>
+          <p class="avatar">Hombres con sobrepeso u obesidad, la mayoría partiendo de más de 100 kilos. Historial de dietas de cajón y de empezar fuerte y dejarlo al mes. Su autoridad es haber pasado por ahí.</p>
+          <div class="chips"><span class="tag obj">Eje objetivo</span><span class="tag neu">Instagram DM</span><span class="tag neu">Sin enlace de agenda</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Único de los trece que <b>entrega el lead magnet dentro de la Fase 1</b>: saludo cálido, frase de conexión desde su propia experiencia, envío del recurso y pregunta sobre el plan de comidas.</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Resultado → contexto e impacto → obstáculo. Foco en alimentación y cuerpo. <b>Este avatar no se abre emocionalmente</b>: no se busca dolor emocional salvo que lo saque él. Tope de 3-4 preguntas.</p>
+              <ul class="qs">
+                <li>Ahora mismo qué es lo que más te molesta de ese sobrepeso?</li>
+                <li>Qué es lo que más inseguridad te genera de tu físico o de cómo te encuentras?</li>
+                <li>Con todo lo que me cuentas, qué dirías que es lo que más te está frenando ahora mismo para conseguirlo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Una sola pregunta sutil, con <b>sesgo por defecto a cualificar</b>: ante duda, se sigue. Si ya lo verbalizó antes, se salta.</p>
+              <ul class="qs">
+                <li>Tú ahora mismo realmente quieres salir de esta situación y ponerte serio con ello, o sientes que todavía no es tu momento?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Tres datos bastan: situación, objetivo y bloqueo. Regla anti-bucle: si tras los topes no tiene los tres, <b>va al puente con lo que haya</b> en vez de insistir.</p>
+              <ul class="qs">
+                <li>Es así o me dejo algo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">La llamada es con él. Nunca se menciona duración, solo «con calma». Una sola reconducción si la rechaza pidiendo seguir por chat.</p>
+              <ul class="qs">
+                <li>Te parece buena idea?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Agendamiento sin enlace, en tres mensajes: <b>pedir el WhatsApp, pedir la franja orientativa y cerrar</b> con que le escribe él. Nunca se cierra día ni hora.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- FRODO -->
+      <article class="ficha" id="frodo">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Frodo</h3>
+            <span class="slug">hombres · recomposición</span>
+          </div>
+          <p class="avatar">Hombres que quieren perder barriga y construir un cuerpo atlético de forma sostenible. Sin emojis y en minúsculas: su voz es la más marcada del corpus.</p>
+          <div class="chips"><span class="tag obj">Eje objetivo</span><span class="tag neu">Instagram DM</span><span class="tag neu">Calendly</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Conexión pura: dos o tres mensajes que se interesan por él, <b>sin objetivos ni cifras</b>. El tema principal se identifica leyendo lo que va revelando, no preguntándolo. Tope de 5 mensajes.</p>
+              <ul class="qs">
+                <li>cuánto llevas dándole vueltas?</li>
+                <li>qué te hizo escribirme justo ahora?</li>
+                <li>a qué te dedicas tú?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Encadenado: objetivo → porqué con curiosidad del mismo hilo → bloqueo en presente. <b>Gate de método</b>: prohibido preguntar qué entrena, qué come o qué ha probado.</p>
+              <ul class="qs">
+                <li>cuando me dices perder barriga, tienes una cifra en mente o cómo te gustaría verte?</li>
+                <li>qué sientes que te falta ahora mismo para quitarte esa barriga?</li>
+                <li>qué te aportaría a ti conseguirlo?</li>
+                <li>qué te está rompiendo el ritmo ahora?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Cierra los elementos que quedaron abiertos y cubre dos: prioridad real y <b>consciencia de necesitar acompañamiento, verbalizada por él</b>. Leerla entre líneas no basta. Tope de 4 mensajes.</p>
+              <ul class="qs">
+                <li>cuánto de importante es esto para ti ahora mismo?</li>
+                <li>lo ves como algo que puedes tú solo o te vendría bien que alguien te lo marque?</li>
+                <li>si tuvieras el plan hecho y alguien marcándote, te sería más fácil?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Condición de entrada binaria: <b>los cinco elementos constan con palabras del lead</b>. Si falta uno, no falta puente, falta descubrimiento. Nunca en el mismo mensaje que la propuesta.</p>
+              <ul class="qs">
+                <li>voy bien o me dejo algo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">La llamada es con él. Tras enviarla la IA sigue viva: es la zona donde se trabajan las objeciones antes de cualquier cierre.</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Calendly y, cuando confirma la reserva, despedida y apagado. Si hay problema con el enlace, un mensaje y apagado igual.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- MIGUEL -->
+      <article class="ficha" id="miguel">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Miguel Aguado</h3>
+            <span class="slug">mujeres 35-70 · sin dietas</span>
+          </div>
+          <p class="avatar">Mujeres con trabajo, familia y años de subidas y bajadas: dietas, retos, batidos. Siempre vuelven al mismo punto y han perdido la confianza en conseguirlo. Enseñar a dejar de hacer dietas para siempre.</p>
+          <div class="chips"><span class="tag obj">Eje objetivo</span><span class="tag neu">Instagram</span><span class="tag prob">Sin F6</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what"><b>El primer mensaje de la lead elige el carril</b>, y es la única fuente que lo decide. Si contesta al ofrecimiento de la bienvenida va el listado de la compra; si trae tema propio, no hay recurso que enviar y se abre por ahí.</p>
+              <ul class="qs">
+                <li>Desde qué parte de España me escribes?</li>
+                <li>hay algo de mi contenido que te haya interesado o que te haya llamado la atención?</li>
+                <li>Cuéntame un poco, cómo lo llevas ahora mismo con la alimentación?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Etapa crítica, donde más tiempo se pasa. Objetivos primero, luego contexto; las dificultades emergen solas. <b>Orientación siempre al presente</b>: nunca «qué dietas has hecho» ni «cuánto pesabas».</p>
+              <ul class="qs">
+                <li>Cómo estás llevando ahora el tema de la alimentación?</li>
+                <li>Y cómo te está afectando esto en tu día a día?</li>
+                <li>Qué es lo que más te pesa de estar así ahora mismo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Intención</small></div>
+            <div>
+              <p class="fase-what">Corta, 2-3 mensajes: detonante temporal y proyección del cambio. El peso del tramo final está en la fase siguiente. <b>Prohibidas las escalas numéricas</b> y las preguntas con opciones cerradas.</p>
+              <ul class="qs">
+                <li>Qué te ha hecho plantearte esto justo ahora?</li>
+                <li>Cómo te imaginas sintiéndote el día que lo hayas conseguido?</li>
+                <li>Qué crees que necesitarías para dar ese paso?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Valorar</small></div>
+            <div>
+              <p class="fase-what">La desviación más grande del corpus: aquí vive la <b>escalera de cambio</b> — impacto, importancia, urgencia y necesidad. Mínimo tres de los cuatro escalones y el cuarto siempre. Es ella quien tiene que nombrar que necesita ayuda.</p>
+              <ul class="qs">
+                <li>Y cómo de importante es para ti resolver esto ahora?</li>
+                <li>Sientes que ya es el momento de ponerte con ello?</li>
+                <li>Sinceramente, por todo lo que me has contado, qué crees que puedes necesitar para conseguirlo?</li>
+                <li>Piensas que igual te puede faltar algo de ayuda o de guía para llegar ahí?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Handoff</small></div>
+            <div>
+              <p class="fase-what">El setter <b>no propone la llamada</b>: manda un mensaje puente y pasa la conversación a Miguel, que la ofrece con su audio. Prohibido enviar enlace o proponer fechas.</p>
+              <ul class="qs">
+                <li>Oye [NOMBRE], y por todo lo que me has contado, que te parece que le echemos un ojo a tu caso más en detalle y vemos cómo encajarlo para [OBJETIVOS]?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>—</small></div>
+            <div>
+              <p class="fase-what"><b>No se ejecuta.</b> Modelo de closer sin equipo: tras el handoff coordina Miguel directamente.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ANDREA OLIVER -->
+      <article class="ficha" id="andrea">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Andrea Oliver</h3>
+            <span class="slug">mujeres 35-45 · fuerza</span>
+          </div>
+          <p class="avatar">Mujeres sanas que quieren reencontrarse con una versión de sí mismas con la que se sentían bien. Fuerza, comer sin prohibiciones y rutinas que se sostienen. También preparación de hyrox y deka.</p>
+          <div class="chips"><span class="tag obj">Eje objetivo</span><span class="tag neu">Instagram</span><span class="tag neu">Se auto-cierra</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Igual que Miguel, <b>el primer mensaje elige el carril</b>: guía o conversación. Conecta con lo que ella escribió, ancla una palabra suya y deriva en pregunta abierta. Si suelta un evento vital duro, primero empatía.</p>
+              <ul class="qs">
+                <li>Hay algo este año que te has prometido a ti misma que no quieres volver a posponer?</li>
+                <li>cuéntame una cosita, qué es lo que más te gustaría conseguir?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Resultado → impacto hoy → obstáculo, este último en <b>una sola pregunta abierta y una sola vez</b> en toda la conversación. Gate de método inviolable. Nunca se dice «dieta» ni «restricción».</p>
+              <ul class="qs">
+                <li>dime, cómo te está afectando eso en tu día a día?</li>
+                <li>Qué es lo que más se te está resistiendo ahora?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Tres señales, pero la tercera <b>se lee, no se interroga</b>: si ya ha mostrado seriedad, se da por leída y se pasa al puente. Por defecto no se pregunta. Tope de 3 mensajes.</p>
+              <ul class="qs">
+                <li>y dime, por qué justo ahora quieres darle la vuelta?</li>
+                <li>Es ese tipo de ayuda lo que buscas ahora mismo, o más bien alguna orientación puntual para seguir por tu cuenta?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Situación, objetivo y freno en sus palabras. Nunca incluir datos que no haya dicho.</p>
+              <ul class="qs">
+                <li>Voy bien o me dejo algo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Obligatoria y <b>siempre en su propio turno</b>. La confirmación del puente no es aceptación de la llamada: es el error que este bloque persigue explícitamente.</p>
+              <ul class="qs">
+                <li>Te parece bien que la hagamos entonces?</li>
+                <li>y dime una cosa, hay algo de la llamada en sí que te eche para atrás o que te genere desconfianza?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Pide el teléfono y se apaga. Solo después de una propuesta aceptada — nunca se pide el número sin ese sí.</p>
+              <ul class="qs">
+                <li>Me pasas un número de teléfono y coordinamos la llamada por WhatsApp?</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- PEPE -->
+      <article class="ficha" id="pepe">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Pepe Jiménez</h3>
+            <span class="slug">hyrox · rendimiento híbrido</span>
+          </div>
+          <p class="avatar">Hombres y mujeres de 20 a 40 que quieren iniciarse o bajar tiempos en HYROX. Avatar de objetivo puro: el dolor es un obstáculo hacia la meta, no una herida. Público muy frío al inicio.</p>
+          <div class="chips"><span class="tag obj">Eje objetivo</span><span class="tag neu">Instagram + WhatsApp</span><span class="tag neu">Equipo de admisiones</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F0<small>Contexto</small></div>
+            <div>
+              <p class="fase-what">Lo que Pepe o su equipo hayan escrito a mano antes decide el carril, y hay <b>cuatro carriles</b>: presentación, regalo, lead magnet ya entregado o conversación. La rutina de movilidad sale en uno solo.</p>
+              <ul class="qs">
+                <li>Y ya por curiosidad, has competido alguna vez en HYROX o estás metiéndote en el mundillo ahora?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Conexión pura y ligera, con la dirección baja: la proporción alta de dirección empieza en F2. Ante lesión o percance, primero se empatiza — aquí encaja su propia operación de menisco.</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what"><b>Foco invertido respecto al resto del corpus</b>: ambición primero, no dolor. Y una pieza que no tiene ningún otro coach — el reconocimiento con criterio es obligatorio en cuanto suelte un dato duro. Cuando hay una decisión detrás, se pregunta por la decisión, nunca por el dato.</p>
+              <ul class="qs">
+                <li>a qué tiempo quieres llegar?</li>
+                <li>ya has competido en HYROX o estás empezando?</li>
+                <li>En carrera, dónde notas que se te va el tiempo?</li>
+                <li>Ostras entiendo, y por qué crees que ahora en verano no es una buena opción para arrancar?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Expectativa contra realidad para el que ya entrena y parece conforme, más una sola pregunta de compromiso. El «voy a intentarlo por mi cuenta» <b>ya no se respeta a la primera</b>: se trabaja con una escalera de tres peldaños.</p>
+              <ul class="qs">
+                <li>Con lo que haces ahora, estás viendo los avances que te gustaría o sientes que te has estancado?</li>
+                <li>Hay algo que sientas que tendrías que cambiar para conseguirlo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Es el <b>único resumen de toda la conversación</b>: no hay recaps previos. Única fase donde se parafrasea, y único sitio donde se usa «a ver si te he pillado bien».</p>
+              <ul class="qs">
+                <li>Creo que no se me escapa nada no?</li>
+                <li>Voy bien o me dejo algo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what"><b>Cinco casillas obligatorias</b> antes de proponer. La llamada se propone con valor, con un pre-frame de encaje, y como máximo dos veces en toda la conversación. Prohibido «sin compromiso» y «es gratis»: rebajan la llamada.</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Calendly del equipo. En el cierre, <b>quien gestiona con el equipo es el propio setter</b>: nunca se le pide al lead que repita su caso a otra persona.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ALEX -->
+      <article class="ficha" id="alex">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Alex · Escalada Inteligente</h3>
+            <span class="slug">escaladores · formato antiguo</span>
+          </div>
+          <p class="avatar">Escaladores estancados o lesionados. Único nicho fuera del corpus de fitness y salud. Su bloque conserva el formato antiguo, con once bloques numerados y siete fases.</p>
+          <div class="chips"><span class="tag neu">Eje actividad</span><span class="tag emo">Formato antiguo</span><span class="tag neu">7 fases</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Prohibido preguntar por su situación antes de saber qué escalada practica y dónde. Cada mensaje tiene que contener una pregunta que acerque a experiencia, frecuencia o tema: <b>regla anti-rapport vacío</b>.</p>
+              <ul class="qs">
+                <li>Y cuánto hace que practicas escalada?</li>
+                <li>Qué es lo que más te está frenando ahora mismo para...?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Profundizar</small></div>
+            <div>
+              <p class="fase-what">Cada pregunta nace de lo que acaba de decir, no de un guion mental. <b>Regla del tercio</b>: lo que escribe el setter debe ser un tercio de lo que escribe la persona.</p>
+              <ul class="qs">
+                <li>En qué momento exacto notas ese bloqueo?</li>
+                <li>Qué pasa justo antes de que te bloquees?</li>
+                <li>Cuando me dices que llevas un año igual, qué es lo que más notas que no avanza?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">La pregunta de disponibilidad va con <b>ancla primero y cerrada después</b> — es una de las dos excepciones a la prohibición de preguntas cerradas. En abierto devuelve una lista de actividades que no sirve.</p>
+              <ul class="qs">
+                <li>Para que te hagas una idea, nosotros solemos trabajar con 2 sesiones a la semana de rocódromo de 1 hora, más 1 sesión de entrenamiento específico de 40-50 minutos... Crees que llegado el caso es un tiempo que podrías dedicarle?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Soluciones</small></div>
+            <div>
+              <p class="fase-what">Fase que ningún otro bloque tiene: <b>búsqueda conjunta de soluciones</b>. Primero se decide si su nivel de consciencia es alto o bajo, y según eso se explora su expectativa o se guía. Máximo 3 mensajes.</p>
+              <ul class="qs">
+                <li>qué crees que te ayudaría ahora para conseguir [OBJETIVO]?</li>
+                <li>te gustaría ver cómo sería y al menos conocer la opción?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Resumen en tres elementos: situación, dolor y objetivo, en sus palabras. Si se descubre proponiendo la llamada sin puente, para y lo hace primero.</p>
+              <ul class="qs">
+                <li>Voy bien?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Tres mensajes: transición que recoge el sí del puente, beneficios con salida digna, y cierre. La propuesta debe caer, no lanzarse.</p>
+              <ul class="qs">
+                <li>Te parece buena idea?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F7<small>Enlace</small></div>
+            <div>
+              <p class="fase-what">Secuencia de cuatro mensajes con el enlace de reservas y activación de urgencia por disponibilidad. Fallback a WhatsApp si no ve horarios.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- BEATRIZ -->
+      <article class="ficha" id="beatriz">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Beatriz Juan</h3>
+            <span class="slug">madres · postparto</span>
+          </div>
+          <p class="avatar">Madres que han perdido la conexión con su cuerpo tras la maternidad. No es solo físico: la culpa por dedicarse tiempo, el agotamiento y no reconocerse en el espejo. Su autoridad es haberlo vivido.</p>
+          <div class="chips"><span class="tag emo">Eje emocional</span><span class="tag neu">Instagram</span><span class="tag prob">Sin F6</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Validación de apertura una sola vez en toda la conversación, y una pregunta de tiempo solo si no se la han contestado ya. Empatía de madre obligatoria cuando ella dice que lo es.</p>
+              <ul class="qs">
+                <li>para saber un poco, cuánto tiempo llevas sin estar en tu peso?</li>
+                <li>qué tal estás llevando el postparto?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Impacto emocional</small></div>
+            <div>
+              <p class="fase-what">Único bloque con un <b>repertorio de siete familias emocionales</b> y preguntas marcadas como «cazadoras» para destapar el dolor real. Cuatro frenos de salida: al primero que se cumpla, se cierra la fase. Nunca dos preguntas de sentir seguidas.</p>
+              <ul class="qs">
+                <li>ahora mismo con estos kilos que has ganado, cómo te sientes?</li>
+                <li>qué es lo que más ha cambiado en ti desde que fuiste madre?</li>
+                <li>sinceramente, notas que esto ha afectado a tu autoestima?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Tres bloques encadenados: exploración de método, visualización con autoridad y <b>escala de importancia 0-10</b>. El bloque de método es una desviación consciente de la doctrina, con cinco blindajes documentados.</p>
+              <ul class="qs">
+                <li>anteriormente qué has intentado hacer para bajar de peso?</li>
+                <li>ahora mismo, cómo es tu relación con la comida?</li>
+                <li>ahora mismo para ti, del 0 al 10 cómo de importante es este cambio para ti?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Un párrafo y muy corto. Aquí se usa el <b>tema central</b> guardado en F2 como espejo emocional: es el dato más potente de todo el bloque.</p>
+              <ul class="qs">
+                <li>cierto?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Propuesta y, si acepta, <b>una sola pregunta de franja</b> — mañana o tarde — y parada inmediata. Es un override consciente del Core, con límites duros escritos.</p>
+              <ul class="qs">
+                <li>te parece que la organicemos con calma estos días?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>—</small></div>
+            <div>
+              <p class="fase-what"><b>No se ejecuta.</b> Toda la coordinación la retoma Beatriz en persona tras la parada de F5.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- LUIS -->
+      <article class="ficha" id="luis">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Luis Royán</h3>
+            <span class="slug">mujeres 40-60 · menopausia</span>
+          </div>
+          <p class="avatar">Mujeres en perimenopausia y menopausia que notan que su cuerpo dejó de responder a lo que siempre les funcionó. Peso sin cambiar nada, sofocos, sueño roto, pérdida de fuerza. Nunca se dice la palabra «menopausia»: se dice «esta etapa».</p>
+          <div class="chips"><span class="tag prob">Eje problema</span><span class="tag neu">Instagram DM</span><span class="tag neu">Calendly</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Conexión</small></div>
+            <div>
+              <p class="fase-what">Apertura <b>por cambios, no por objetivos</b>. Mínimo tres interacciones antes de avanzar. Nada de método, nada de médico, nada de explicar el programa. El nombre no se pregunta nunca.</p>
+              <ul class="qs">
+                <li>Por tener un poquito de contexto, qué es lo que más estás notando ahora mismo?</li>
+                <li>Por tener un poquito de contexto, desde cuándo notas que el cuerpo dejó de responder como antes?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Cambios, impacto y <b>confusión</b> — la confusión es la señal cualificadora del nicho. Regla de parada: máximo dos preguntas seguidas de impacto, a la tercera pivote obligatorio. Las dosis de claridad van siempre con permiso.</p>
+              <ul class="qs">
+                <li>cómo fue apareciendo, poco a poco o notaste un antes y un después?</li>
+                <li>y tú a qué lo achacas?</li>
+                <li>y esto que te está pasando, tú te lo explicas de alguna forma?</li>
+                <li>Y esto te lo ha llegado a explicar alguien?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Una sola cosa: la línea roja de disponibilidad. No se pregunta importancia, fe, compromiso ni urgencia. Lo único que descualifica aquí es no poder sacar el rato.</p>
+              <ul class="qs">
+                <li>Para que esto te funcione, con tu semana normal ves viable sacar unos 20-30 minutos al día para dedicarte a ti?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">No es el resumen estándar. Es resumen empático más una <b>pregunta espejo que le hace ver que no tiene el mapa</b>. La respuesta suele ser «no tengo ni idea», y de ahí nace el permiso de la fase siguiente.</p>
+              <ul class="qs">
+                <li>ahora que hemos hablado de lo que te está pasando, tú tendrías claro cómo darle la vuelta?, cuál sería el paso a paso?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">La estructura más elaborada del corpus: <b>tres pasos en tres turnos distintos</b> — permiso, cómo lo abordaría él, y solo entonces la propuesta. Es también el único con tres zonas de lo nombrable, con la frontera en el permiso y no en la propuesta.</p>
+              <ul class="qs">
+                <li>Y si hubiera una forma de adaptar todo esto a lo que necesita tu cuerpo ahora mismo, te gustaría conocerla?</li>
+                <li>Crees que un enfoque así podría ayudarte?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Calendly con autoagenda.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- CHEMA -->
+      <article class="ficha" id="chema">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Chema · Programa Fénix</h3>
+            <span class="slug">dolor crónico · setter «Cristina»</span>
+          </div>
+          <p class="avatar">Fibromialgia, dolor lumbar, migrañas y dolor pélvico, principalmente en mujeres de 20 a 69. Años probando tratamientos sin resultado, sintiéndose incomprendidas por el sistema sanitario. Detrás hay un equipo de cinco profesionales sanitarios.</p>
+          <div class="chips"><span class="tag prob">Eje problema</span><span class="tag neu">DM</span><span class="tag neu">Formulario previo</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Apertura</small></div>
+            <div>
+              <p class="fase-what">Apertura <b>diagnóstica, no personal</b>. Se presenta como Cristina del Equipo Fénix, pide el nombre y lleva pronto a la pregunta diagnóstica. Nada de buscar puntos en común ni de aficiones. Tope de 5 mensajes.</p>
+              <ul class="qs">
+                <li>Cómo te gustaría que te llamara?</li>
+                <li>Cuéntame, hay algún dolor o síntoma con el que estés lidiando ahora mismo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Diagnóstico</small></div>
+            <div>
+              <p class="fase-what">El bloque más extenso de todo el corpus: <b>mínimo 4 preguntas y máximo 8</b>, un override del Core justificado en que este avatar necesita sentirse escuchado clínicamente. Recorrido médico → su lectura del diagnóstico → impacto → bloqueo → tratamientos y efectividad.</p>
+              <ul class="qs">
+                <li>Qué te han dicho los médicos sobre esto?</li>
+                <li>Tú qué piensas de ese diagnóstico?</li>
+                <li>Qué es lo que más te está costando con todo esto?</li>
+                <li>Cuéntame, qué tipo de tratamientos estás probando ahora mismo?</li>
+                <li>De verdad sientes que te están ayudando?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Una sola pregunta, la de disposición a cambiar de enfoque. <b>No se pregunta importancia, fe, compromiso ni urgencia</b>, ni se menciona la duración del programa ni la inversión.</p>
+              <ul class="qs">
+                <li>ahora mismo estarías dispuesta a cambiar algo de lo que estás haciendo y probar un enfoque distinto si vieras que encaja en tu caso, o prefieres seguir con lo de ahora?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Patología y recorrido, impacto y <b>carencia</b> — lo que querría recuperar. Sin objetivo cuantificado ni proyección. Fidelidad numérica obligatoria.</p>
+              <ul class="qs">
+                <li>Lo he entendido bien?</li>
+                <li>Te encaja esto con lo que vives?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Tres mensajes. La entrevista se encuadra como <b>valoración para ver si el programa encaja</b>, nunca como consulta médica gratis. Prohibido decir «voy a avisar a Chema».</p>
+              <ul class="qs">
+                <li>Te parece buena idea?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Envío del formulario previo y handoff inmediato.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- ANDREA SOP -->
+      <article class="ficha" id="andreasop">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Andrea · Conquista tu SOP</h3>
+            <span class="slug">SOP · síndrome de ovario poliquístico</span>
+          </div>
+          <p class="avatar">Mujeres de 18 a 55 con SOP diagnosticado o con sospecha fuerte por sus síntomas: ciclos irregulares, inflamación, acné hormonal, antojos, dificultad para tonificar aunque entrene. La setter ha vivido SOP en primera persona, y esa complicidad es su palanca principal.</p>
+          <div class="chips"><span class="tag prob">Eje problema</span><span class="tag neu">Instagram + WhatsApp</span><span class="tag neu">Equipo atiende</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F1<small>Apertura</small></div>
+            <div>
+              <p class="fase-what">Se conecta <b>por síntomas, no por objetivos ni por peso</b>. El primer mensaje no puede ser solo una pregunta: agradece que esté ahí y abre. Tope de 4 mensajes.</p>
+              <ul class="qs">
+                <li>Ahora mismo, qué síntomas son los que más te notas?</li>
+                <li>Y eso cómo lo estás llevando en el día a día?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Síntomas, impacto y confusión, eligiendo <b>un movimiento de seis por turno</b> con alternancia obligatoria. Aquí vive la pregunta sobre tonificar, que es la que más identifica el nicho. Tope de 8 turnos.</p>
+              <ul class="qs">
+                <li>y eso de la inflamación, a qué hora del día lo llevas peor?</li>
+                <li>Y tú a qué se lo achacas?</li>
+                <li>y esto tú te lo explicas de alguna forma?</li>
+                <li>Aun así, hay cosas que antes hacías sin pensar y ahora evitas?</li>
+                <li>notas que te cuesta perder grasa por más que lo intentes?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Verificación</small></div>
+            <div>
+              <p class="fase-what">No cualifica: <b>verifica el tema principal</b>, una sola cosa y una sola vez. Prohibido preguntar importancia, urgencia, compromiso, escala del 1 al 10 o disponibilidad — preguntarlo es lo que convierte la conversación en un examen.</p>
+              <ul class="qs">
+                <li>Aparte de esto, hay algo más que te preocupe?</li>
+                <li>Esto que me cuentas de [SU SÍNTOMA], es lo que más te preocupa ahora mismo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">En mensaje propio, nunca pegado a la propuesta. <b>Nunca se salta</b>, tampoco con lead caliente.</p>
+              <ul class="qs">
+                <li>Te gustaría que pudiéramos ver tu caso más en detalle?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Tres mensajes en el mismo turno, tal y como están escritos. La videollamada <b>la atiende el equipo, no ella</b>, y se habla siempre en plural.</p>
+              <ul class="qs">
+                <li>Te parece una buena idea?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Enlace y apagado en el mismo turno: en cuanto un mensaje contiene el Calendly, se para.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- GONZALO -->
+      <article class="ficha" id="gonzalo">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Gonzalo Camacho</h3>
+            <span class="slug">oncología · tratamiento activo</span>
+          </div>
+          <p class="avatar">Personas con cáncer en tratamiento activo — quimioterapia, radioterapia, hormonoterapia, postoperatorio — que llegan agotadas, con ahogo, con neuropatías y perdiendo autonomía. También familiares que escriben por ellas. Avatar de problema: nadie escribe para ponerse en forma.</p>
+          <div class="chips"><span class="tag prob">Eje problema</span><span class="tag neu">Instagram DM</span><span class="tag neu">Sin emojis</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F0<small>Contexto</small></div>
+            <div>
+              <p class="fase-what">Bienvenida escrita por Gonzalo y entrega de una guía en PDF. Entregar la guía <b>no cierra la conversación</b>: en el mismo turno o el siguiente se enlaza con la apertura.</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F1<small>Apertura</small></div>
+            <div>
+              <p class="fase-what">Consulta profesional, cálida y sin prisa. <b>Cero preguntas de charla social.</b> Si ha soltado una mala noticia, el turno entero es para eso y la pregunta espera.</p>
+              <ul class="qs">
+                <li>Por si puedo ayudarte en algo más, en qué situación te encuentras?</li>
+                <li>Y en qué momento estás ahora, acabas de empezar el tratamiento o llevas ya un tiempo?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">La fase larga, donde se gana la conversación. Se alterna reconocimiento clínico, preguntas ancladas y ciclos de claridad <b>siempre con permiso</b>. El objetivo no se pregunta: se da por sentado. No puede acabar sin saber si alguien le ha explicado qué puede hacer ella.</p>
+              <ul class="qs">
+                <li>A ti en qué momento del día se te hace más cuesta arriba?</li>
+                <li>Qué otras cosas has ido dejando?</li>
+                <li>Y alguien te ha explicado qué puedes hacer tú durante el tratamiento para llevarlo mejor?</li>
+                <li>Quieres que te cuente cómo lo veo yo, por lo que trabajo con personas que están en tu misma situación?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">Una sola pregunta de disposición a un <b>rol activo</b>, anunciando el giro. Se rota entre tres moldes. Sin escala numérica, sin pedir compromiso, sin decir «por tu cuenta».</p>
+              <ul class="qs">
+                <li>Aunque hay una cosa que quiero preguntarte, y es la que de verdad marca la diferencia. Tú querrías hacer algo más que dependa de ti para llegar mejor a todo esto, o prefieres centrarte solo en el tratamiento?</li>
+                <li>Y esto es algo que quieres empezar a mover ahora, o lo estabas dejando para cuando termine el tratamiento?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Mensaje literal con estructura fija y contenido en sus palabras. Si un hueco no se puede rellenar con algo que ella haya dicho, <b>no se está en Fase 4</b>. Banco de tres cierres de confirmación para que no todas acaben igual.</p>
+              <ul class="qs">
+                <li>Es así o se me escapa algo?</li>
+                <li>Te reconoces en eso o lo estoy simplificando?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">Entrevista con un especialista de su equipo. Si pregunta qué se ve en ella, hay un <b>banco de siete componentes de los que se eligen dos o tres</b>, los que enganchen con lo que ella ha contado. Prohibido «sin compromiso» y «es gratis».</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Se pide el teléfono <b>una sola vez</b> y la IA se apaga; llama recepción. Si en vez del número responde con una pregunta, se contesta esa pregunta y se apaga — no se vuelve a pedir. Prohibido Calendly.</p>
+              <ul class="qs">
+                <li>Si te parece bien, cuando puedas déjame tu teléfono y mi compañera de recepción se pondrá en contacto contigo</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- EFRA -->
+      <article class="ficha" id="efra">
+        <div class="ficha-head">
+          <div class="row">
+            <h3>Efra</h3>
+            <span class="slug">cadera · dolor y lesiones</span>
+          </div>
+          <p class="avatar">Artrosis de cadera, pinzamiento femoroacetabular, rotura de labrum, displasia y trocanteritis. Llegan con tres meses o más de dolor, ya han pasado por medicación, masajes, infiltraciones o quirófano. El bloque más reciente del corpus.</p>
+          <div class="chips"><span class="tag prob">Eje problema</span><span class="tag neu">Menú de recursos</span><span class="tag neu">Equipo atiende</span></div>
+        </div>
+        <div class="ficha-body">
+          <div class="fase">
+            <div class="fase-code">F0<small>Contexto</small></div>
+            <div>
+              <p class="fase-what">Menú de tres recursos a elegir, y después la pregunta filtro. Si no elige ninguno y suelta directamente su problema, no se insiste con el menú.</p>
+              <ul class="qs">
+                <li>No quiero quitarte más tiempo, solo por si puedo ayudarte, padeces algún dolor o lesión en la cadera en este momento?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F1<small>Apertura</small></div>
+            <div>
+              <p class="fase-what">Que cuente en sus palabras qué le pasa, desde cuándo y qué le impide hacer. <b>Sin objetivo y sin resultado</b>: no se pregunta ninguno de los dos. Esta conversación empieza como una consulta, no como un chat entre colegas.</p>
+              <ul class="qs">
+                <li>Para entender un poco mejor tu caso, cómo te está limitando ese dolor en el día a día?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F2<small>Descubrimiento</small></div>
+            <div>
+              <p class="fase-what">Dos movimientos obligatorios en orden: <b>el recorrido</b> — qué le han dicho y cómo le ha ido, sin valorar ni corregir a nadie — y <b>el miedo</b>. Aquí vive la regla de diferenciación: se nombra lo propio y se pregunta si lo ha tenido, en vez de criticar al fisio o a la mutua.</p>
+              <ul class="qs">
+                <li>aparte de todo lo que te han dicho, cuéntame tú, qué es lo que más te preocupa?</li>
+                <li>una cadera necesita ir progresando y que te vayan corrigiendo sobre la marcha, a ti cuántas veces te han cambiado el plan desde que empezaste?</li>
+                <li>cuando te dieron esos ejercicios, te los corrigieron sobre la marcha o te los llevaste a casa y ya?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F3<small>Cualificación</small></div>
+            <div>
+              <p class="fase-what">El único gate duro, y el criterio más específico del corpus: <b>satisfacción con el camino actual</b>. Ni importancia ni urgencia — se dan por sentadas en alguien que lleva meses con dolor. No tener camino es criterio de encaje, no de cierre.</p>
+              <ul class="qs">
+                <li>estás contento con lo que estás haciendo ahora para la cadera, o sigues buscando otra cosa?</li>
+                <li>tienes pensado ponerte con ello o de momento lo vas llevando?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F4<small>Puente</small></div>
+            <div>
+              <p class="fase-what">Le devuelve el tiempo que lleva y <b>el hueco entre donde está y donde esperaba estar</b>. Solo datos que él haya verbalizado.</p>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F5<small>Propuesta</small></div>
+            <div>
+              <p class="fase-what">La valoración se propone como <b>consulta profesional sobre su caso</b>, nunca como sesión gratuita. La atiende un compañero de su equipo. Prohibido mencionar porcentajes de mejora o cifras de resultado.</p>
+              <ul class="qs">
+                <li>Que te parecería que hiciéramos una valoración la semana que viene con mi equipo?</li>
+                <li>Te sigue apeteciendo que veamos tu caso con calma o prefieres dejarlo para más adelante?</li>
+              </ul>
+            </div>
+          </div>
+          <div class="fase">
+            <div class="fase-code">F6<small>Cierre</small></div>
+            <div>
+              <p class="fase-what">Enlace y apagado. No espera confirmación, no pregunta si ha reservado, no reengancha.</p>
+            </div>
+          </div>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- ============ 05 HALLAZGOS ============ -->
+    <section id="hallazgos">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <h2>Lo que se ve al ponerlos uno al lado del otro</h2>
+      </div>
+
+      <p class="lede">Ocho observaciones que solo aparecen comparando. Las tres primeras son estructurales; las cinco siguientes son deuda concreta con nombre y apellidos.</p>
+
+      <div class="finding">
+        <div class="finding-n">1</div>
+        <div>
+          <h4>El esqueleto aguanta<span class="sev ok">Sólido</span></h4>
+          <p>Doce de trece siguen la misma secuencia de siete fases, con el Puente obligatorio y la llamada sin nombrar hasta la propuesta. Eso significa que una mejora en el CORE se propaga a doce nichos a la vez, y que un setter nuevo se construye rellenando huecos, no inventando arquitectura.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">2</div>
+        <div>
+          <h4>La verdadera división no es por nicho, es por tipo de avatar<span class="sev ok">Estructural</span></h4>
+          <p>Los trece se agrupan en dos familias que se comportan de forma opuesta en la Fase 2. Los <strong>avatares de objetivo</strong> (Alfonso, Roberto, Frodo, Miguel, Andrea Oliver, Pepe) entran preguntando a dónde quiere llegar. Los <strong>avatares de problema</strong> (Luis Royán, Chema, Andrea SOP, Gonzalo, Efra) tienen prohibido preguntarlo: el objetivo se da por sentado y preguntar «qué te gustaría conseguir» a alguien en quimioterapia o con artrosis rompe la conversación.</p>
+          <p>Beatriz Juan entra por lo emocional y Alex por la actividad deportiva, y son los dos únicos casos sueltos. Esta es la variable que hay que decidir primero al abrir un nicho nuevo — antes que el tono, antes que las preguntas.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">3</div>
+        <div>
+          <h4>La cualificación es donde más divergen, y hay un patrón detrás<span class="sev ok">Estructural</span></h4>
+          <p>Hay siete criterios distintos en trece bloques. Pero no es desorden: los nichos clínicos han <strong>eliminado la pregunta de importancia y urgencia</strong> — se dan por sentadas — y cualifican por disposición a cambiar de camino. Los de objetivo la conservan y añaden una línea roja de disponibilidad horaria. Efra lo lleva al extremo: una única pregunta obligatoria en toda la conversación.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">4</div>
+        <div>
+          <h4>La escala del 0 al 10 sobrevive en un solo bloque<span class="sev warn">Revisar</span></h4>
+          <p>Doce bloques prohíben explícitamente las escalas numéricas — «del 1 al 10 cuánto te importa» está en la lista de preguntas vetadas de Andrea SOP, Miguel, Gonzalo y varios más. <strong>Beatriz Juan la mantiene</strong> en su bloque 3-C como escala de importancia. Está documentado como desviación consciente, pero es la única inconsistencia de criterio que atraviesa el corpus entero.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">5</div>
+        <div>
+          <h4>Cinco setters todavía niegan ser una IA<span class="sev risk">Riesgo</span></h4>
+          <p>El acuerdo de agosto dice que un setter no miente sobre ser una IA: o se apaga en silencio, o dice que es el asistente virtual y la conversación sigue. <strong>Andrea Oliver, Beatriz Juan, Miguel Aguado, Roberto y Luis Royán</strong> conservan literales que lo niegan de frente («que va bonita, soy Andrea de verdad», «Jajajja, no no, soy Miguel»).</p>
+          <p>Es el hallazgo con más exposición de marca de todo el informe, y se arregla con una línea por bloque.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">6</div>
+        <div>
+          <h4>Dos bloques no siguen el formato del sistema<span class="sev warn">Deuda</span></h4>
+          <p><strong>Alex</strong> conserva el formato antiguo entero: once bloques numerados y siete fases desplazadas, sin las secciones canónicas que tienen los demás. <strong>Miguel Aguado</strong> es un caso intermedio: usa el esquema nuevo pero no tiene sección de fases, y toda su arquitectura vive dentro de las modificaciones estructurales. Los dos funcionan, pero ninguno se beneficia de un cambio en el CORE de la misma forma que el resto.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">7</div>
+        <div>
+          <h4>Tres modelos de cierre, y en dos nichos la Fase 6 no existe<span class="sev warn">Atención</span></h4>
+          <p>Seis agendan con enlace, tres piden el teléfono y coordinan por fuera, y dos — <strong>Miguel y Beatriz Juan</strong> — hacen handoff puro: el setter no propone la llamada, la propone el entrenador. Alfonso es un cuarto caso: acepta la llamada y se apaga sin enviar nada, porque el audio con los detalles lo manda él.</p>
+          <p>Merece decisión consciente, porque cambia dónde se pierde el lead: con enlace se pierde en la reserva, con handoff se pierde si el entrenador tarda en entrar.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="finding-n">8</div>
+        <div>
+          <h4>Hay compuertas abiertas que bloquean despliegue<span class="sev risk">Bloqueante</span></h4>
+          <p><strong>Gonzalo Camacho</strong> es sanitario y el bloque habla en su nombre: tiene que firmar los literales antes de desplegarse. <strong>Beatriz Juan</strong> lleva un override consciente de la doctrina — el bloque de método de su Fase 3 — que está marcado en el repositorio como pendiente de revisar antes de desplegar. <strong>Efra</strong> se escribió con una sola conversación real; le hacen falta diez o quince para validar. <strong>Roberto</strong> tiene el número de teléfono pendiente.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 06 PENDIENTE ============ -->
+    <section id="pendiente">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <h2>Lo que falta para cerrar el informe</h2>
+      </div>
+
+      <p class="lede">Tres huecos, todos con una vía de cierre corta. Ninguno cambia el análisis estructural de arriba: solo completan el recuento de activos.</p>
+
+      <div class="pending-grid">
+        <div class="pending-card">
+          <h4>Qué está desplegado hoy</h4>
+          <p>El repositorio guarda la última ronda de feedback, no el estado en Automatía. Se cierra con una lista de nombres o con un export de las conversaciones.</p>
+        </div>
+        <div class="pending-card">
+          <h4>Los bloques sin versionar</h4>
+          <p>Una decena de entrenadores más con bloque escrito fuera del repositorio. Son la respuesta a «plantillas hechas pero no activas», y hay que verificar cuáles siguen vivos.</p>
+        </div>
+        <div class="pending-card">
+          <h4>El CORE de la academia</h4>
+          <p>Las siete fases se han reconstruido desde los trece bloques. El texto maestro que las define vive fuera del repositorio a propósito, y conviene contrastarlo.</p>
+        </div>
+      </div>
+
+      <h3>Y una propuesta, ya que estamos</h3>
+      <p>Este informe se ha construido leyendo los bloques uno a uno, pero el trabajo de extraer la estructura y las preguntas está automatizado. Regenerarlo cuando cambien los bloques cuesta minutos, no días. Si sirve como radiografía periódica, se puede dejar montado para que se actualice solo cada vez que se cierra una ronda de feedback con un entrenador.</p>
+    </section>
+
+    <footer>
+      <p>Anatomía de los Setters · Auditoría estructural de los 13 bloques de coach de la academia<br>
+      Fuente: prompts/coach-engineering/academia · 706 preguntas catalogadas · 16 de agosto de 2026<br>
+      Documento interno. El estado de activación está pendiente de confirmar.</p>
+    </footer>
+
+  </main>
+</div>
+
+</body>
+</html>

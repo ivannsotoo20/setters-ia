@@ -82,6 +82,8 @@ son UNA pregunta sí/no, NO un tema a debatir ni a orbitar.
   si procede, aplicar el gate de inversión + reencuadre "servicio profesional, no app gratis". NO
   preguntar "¿has trabajado antes con alguien / qué has probado?" (pregunta de pasado, §11.8/§19; el
   intento previo solo se trabaja si el lead lo saca como objeción "ya lo probé todo", ver P8).
+  ⚠️ El CONTEXTO presente sí se pregunta y va ANTES del bloqueo (§33): de dónde parte hoy, a qué se
+  dedica, si se mueve algo. Sin él, el bloqueo se pregunta a ciegas y las frases salen de catálogo.
 - **El obstáculo de F2 SIEMPRE se pregunta abierto** (prohibido "¿es la comida, el gym o las dos?");
   si responde "ambas/todo", recoger en una frase y AVANZAR, no re-preguntar.
 ⚠️ **La profundidad del gating en chat depende de quién cierra:** en coaches que se AUTO-CIERRAN

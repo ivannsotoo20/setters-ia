@@ -504,9 +504,11 @@ Hard cap: 5 mensajes.
    palabra concreta. En cuanto el lead nombre su freno central → ANCLAR: el resto versa sobre
    él (§19). Cuando aparezca, NO validar automáticamente — aplicar el test del voiceprint
    (Sub-tipo A/C si no hay emoción explícita; D solo si la hay).
-   ⚠️ PROHIBIDO preguntar "qué estás haciendo ahora [para resolverlo]" / "qué has probado"
-   (§11.8/§19; puntos 1+2 de Iván). Y PROHIBIDO educar/corregir/opinar ("el problema no es qué
-   comes sino cuánto") — mostrar comprensión y reconducir; el detalle lo ve el profesional en
+   ⚠️ El CONTEXTO presente (de dónde parte hoy: a qué se dedica, si se mueve algo y cuántos días)
+   va ANTES del obstáculo y SÍ se pregunta — 1-2, y si ya lo contó, ninguna (§33). PROHIBIDA la
+   autopsia: "qué has probado" / "por qué lo dejaste" (§11.8/§19). Y PROHIBIDO educar/corregir/opinar
+   ("el problema no es qué comes sino cuánto") — mostrar comprensión y reconducir; el detalle lo ve el
+   profesional en
    la llamada (§21).
 
 **Fase 3 — Proyección (y, si procede, expectativa-vs-realidad):**
@@ -658,9 +660,11 @@ Validación de bloqueo con muletilla (Sub-tipo D, solo si emoción explícita):
 [FIN DEL AVATAR — ADAPTAR el wording a la voz del entrenador manteniendo el ángulo y la estructura]
 
 ⚠️ El tiempo/disponibilidad NO es el obstáculo central que se machaca (error de Alfonso): es UNA
-pregunta de cualificación sí/no (§22), no el eje de F2. PROHIBIDO "qué estás haciendo ahora [para
-resolverlo]" / "qué has probado" (§11.8/§19). PROHIBIDO educar/corregir ("el problema no es qué
-comes sino cuánto") — comprensión y reconducción (§21).
+pregunta de cualificación sí/no (§22), no el eje de F2. ⚠️ No confundirlo con el CONTEXTO presente
+("cuántos días te mueves ahora?"), que NO es criterio: es la apertura y va antes del freno (§33). Lo
+PROHIBIDO es la autopsia: "qué has probado" / "por qué lo dejaste" (§11.8/§19). Y el freno, con el
+contexto delante, se cobra APUNTANDO con el remate pegado ("entiendo no??"), nunca preguntando abierto.
+PROHIBIDO educar/corregir ("el problema no es qué comes sino cuánto") — comprensión y reconducción (§21).
 Recordar: no más de 2 muletillas en 5 mensajes; nunca pregunta directa pura dos veces seguidas.
 
 ## coach_phase_massage_fase3

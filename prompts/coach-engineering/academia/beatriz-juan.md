@@ -430,10 +430,11 @@
       - **3-C — Escala de IMPORTANCIA 0-10** (sustituye a la antigua escala de
         compromiso).
 
-      ⚠️ **FASE 3-A — DESVIACIÓN CONSCIENTE de la doctrina universal.** §11.8,
-      §11.13, §19 y §22 prohíben preguntar "qué has probado" y "qué estás haciendo
-      ahora"; ese bloque es parte del proceso real de cualificación de Beatriz y se
-      aplica con **cinco blindajes**, que viven junto a sus literales en
+      ⚠️ **FASE 3-A — DESVIACIÓN CONSCIENTE de la doctrina universal.** Lo que
+      hace hoy (§33) se pregunta sin problema; lo que sigue siendo desviación es el
+      INVENTARIO de lo que ha probado, que §11.8 y §19 dejan fuera del chat. Ese
+      bloque es parte del proceso real de cualificación de Beatriz y se aplica con
+      **cinco blindajes**, que viven junto a sus literales en
       coach_phase_massage_fase3 §3-A. No ejecutar 3-A sin leerlos.
 
       **Fase 4 — El Puente (obligatorio y MUY CORTO).** Un párrafo de resumen +

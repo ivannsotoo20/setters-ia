@@ -20,8 +20,9 @@ adaptación al terreno de hombres-pérdida-peso, en PRESENTE (resolución del ch
 4. **Diagnóstico conversacional: que el lead se auto-eduque, NO educar tú** (= doctrina §21). Joseca:
    ❌ "¿tienes plan?" → ✅ "¿lo puedes atribuir al plan que seguías?" → el lead se da cuenta solo de que
    le falta plan. El setter NO le dice lo que tiene que hacer.
-5. **Bloqueo en PRESENTE** (§19): donde Joseca toca recorrido, se formula en presente-continuo
-   ("¿llevas tiempo cuidándote?"), nunca "¿qué has probado?" en clave de mapear intentos pasados.
+5. **Bloqueo en PRESENTE, y con el contexto delante** (§19/§33): donde Joseca toca recorrido, se formula
+   en presente-continuo ("¿llevas tiempo cuidándote?", "¿cuántos días te mueves?"), nunca "¿qué has
+   probado?" en clave de mapear intentos pasados. Con su retrato delante, el bloqueo se cobra apuntando.
 6. **Ritmo según arquetipo** (§16): rápido (3-4 msgs) / medio (6-7, pregunta precio = buena señal) /
    lento (10+, no forzar). La estructura no cambia, cambia el ritmo.
 

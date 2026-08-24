@@ -153,7 +153,7 @@ Lo que confirma (y dónde quedó cada cosa, sin duplicar):
 | Leads cerrados (hombres): pregunta súper abierta, el silencio cualifica | universal + avatar | doctrina §24 + principios P10 |
 | Flujo de preguntas encadenado tipo Joseca; misma estructura en todas | universal + avatar | doctrina §25 + [`referencia-estructura-joseca.md`](referencia-estructura-joseca.md) |
 | Empatía ante evento vital en F1 (lesión/accidente) | universal | doctrina §5 (enmienda) |
-| Bloqueo en PRESENTE, nunca "qué haces ahora" / "qué has probado" | universal | doctrina §1/§11.8/§19 (resolución del choque pasado/presente) |
+| Contexto presente ANTES del bloqueo; nunca la autopsia ("qué has probado" / "por qué lo dejaste") | universal | doctrina §33 (invierte §11.13) + §1/§11.8/§19 |
 
 **Avatar (deltas hombres):** P3 reordenado (porqué temprano + curiosidad + bloqueo presente +
 preguntas con la palabra del lead), P7 acotado (criterios = una pregunta; fuera el sondeo de
@@ -190,7 +190,7 @@ cambiaría"). **P2 — preguntas SIMPLES y directas que no obliguen a releer** (
 "cuál es el mayor bloqueo que te estás encontrando ahora mismo?" en vez de envoltorios largos). El resto son
 universales (objeciones/agendamiento aplican a cualquier avatar). **Frodo (13-jul):** se quitaron las preguntas
 de PROCESO que Rubén le marcó en la reunión ("vienes entrenando?", "qué estás haciendo?") → freno en presente,
-simple; + pregunta muerta → emocional; + curiosidad F2 (caso "montaña"); Calendly se MANTIENE (no se cambió su
+simple (⚠️ REVERTIDO por §33: el contexto presente vuelve, lo que se queda fuera es la autopsia del pasado); + pregunta muerta → emocional; + curiosidad F2 (caso "montaña"); Calendly se MANTIENE (no se cambió su
 agendamiento, a diferencia de Roberto).
 
 **Coach (queda en cada uno):** el método de agendamiento (Calendly vs pedir WhatsApp vs formulario) es del

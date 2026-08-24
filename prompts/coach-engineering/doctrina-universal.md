@@ -13,13 +13,14 @@ tono/validación/conversación, y cuando aparezca un patrón de error para ver s
 CR8 (validación con tope), `verbosity_controls` (3 modos de apertura A/B/C, tope 1 de cada 3
 muletilla), `objections_protocol` (PCSC/PSSC), fases F0–F6.
 
-Última actualización: 2026-07-13. Incorporados: postmortem Pablo López Fraga (v1→v8) + destilado de
+Última actualización: 2026-08-22. Incorporados: postmortem Pablo López Fraga (v1→v8) + destilado de
 Daniel (2.º coach hombres, §13–§17) + destilado de Julia/Mireya (2.º coach mujeres, §18 + eje de registro
 en §9 + modo de falla §11.9) + **feedback reunión Rubén 2026-06-18 (DIRECCIÓN de la conversación: §19–§25 +
 enmiendas §1/§5/§18.3 + modos de falla §11.11–14)** + **ronda coaches academia 2026-07-13 (objeciones +
 agendamiento: §26 no nombrar la llamada antes de F5, §27 objeciones hiladas, §28 rebatir vs cerrar con cariño,
-§29 compromiso temporal por evento, modo de falla §11.15, enmiendas §19/§20)**. Cada punto se confirma como
-universal porque aplica a cualquier avatar.
+§29 compromiso temporal por evento, modo de falla §11.15, enmiendas §19/§20)** + **§32 (lo que va antes de la
+pregunta)** + **§33 (la fase de CONTEXTO: el presente se pregunta, el pasado no — invierte §11.13 y enmienda
+§1/§19/§22)**. Cada punto se confirma como universal porque aplica a cualquier avatar.
 
 > **Marco rector del feedback de Rubén (2026-06-18):** el tono y la fluidez ya están resueltos; lo que falla
 > es la DIRECCIÓN. §19–§25 existen para que la conversación tenga rumbo: identificar el bloqueo central y
@@ -41,9 +42,9 @@ al modelo el patrón alternativo.
 - **NO usar prohibición** cuando es comportamental y abstracta ("no hagas eco", "no preguntes
   por el pasado"). Reformular en positivo: en vez de "no preguntes por el pasado" → "las
   preguntas sobre el freno se formulan en PRESENTE y apuntan al bloqueo: 'qué te está frenando
-  ahora'" + exemplars solo en presente. (Ojo: el presente correcto es el del BLOQUEO, no el de la
-  actividad: "qué te está frenando ahora" SÍ; "qué estás haciendo ahora" NO — esto último mapea
-  el problema/solución y está prohibido, ver §19 y punto 1 de Iván.)
+  ahora'" + exemplars solo en presente. (Ojo: lo que se prohíbe es el PASADO, no el presente de la
+  actividad: "qué te está frenando ahora" SÍ, "cuántos días entrenas" SÍ, "qué probaste y por qué
+  lo dejaste" NO. La frontera exacta, en §33.)
 
 Test: si describes bien cómo SÍ se hace + exemplars + contrast pairs, la prohibición sobra.
 
@@ -217,7 +218,8 @@ Lista cerrada de errores recurrentes. Aplicar como tests proactivos en cada coac
 6. **Opciones cerradas en preguntas** (alto/bastante/máximo). → Pregunta abierta salvo
    excepción literal documentada.
 7. **Saltos de fase prematuros.** → Reglas de avance explícitas.
-8. **Preguntas sobre el pasado** ("¿qué has probado?"). → CR7 + exemplars solo en presente.
+8. **Autopsia del método pasado** ("¿qué has probado?", "¿por qué lo dejaste?"). → CR7 + exemplars
+   solo en presente. ⚠️ No confundir con el CONTEXTO presente, que SÍ se pregunta (§33).
 9. **Heredar literales del canónico de OTRO coach sin adaptar el registro/voz.** Cierres cálidos, notia o
    mensajes de fase calcados de otro coach contradicen el voiceprint del coach actual. Caso real: los
    `coach_wclose` de Julia (registro profesional) vinieron en tono María (afectivo "cielo" + 🫶),
@@ -233,9 +235,10 @@ Lista cerrada de errores recurrentes. Aplicar como tests proactivos en cada coac
    el detalle lo ve el profesional en la llamada (§21).
 12. **No anclar en el bloqueo central → bandazos.** La conversación salta de tema en tema sin un eje. → Tras
    objetivo + motivo, nombrar el bloqueo central en una frase y anclar (§19).
-13. **Preguntar "qué estás haciendo ahora" / "qué has probado"** (frame solución-primero, mapea el problema). →
-   Pregunta por el FRENO en presente, no por la actividad ni por los intentos pasados (§19, §1, CR7, punto 1+2
-   de Iván).
+13. **Preguntar por el FRENO sin tener el contexto delante.** Es el modo de falla, y va al revés de como
+   estuvo escrito: el problema no es preguntar qué hace hoy, es preguntarle qué le frena sin saberlo. Sin
+   contexto las frases salen de catálogo y las propuestas chocan con su realidad. → Recoge el contexto
+   presente primero y cobra el freno APUNTANDO, no preguntando abierto (§33).
 14. **Cerrar preguntas con el lead cerrado** (dar 2 opciones cuando ya da poca info). → Pregunta súper abierta
    que pide contexto; si no responde, eso cualifica (§24).
 15. **Pregunta muerta / vaga que mata la conversación** ("¿qué cambiaría en tu día a día / en tu vida?"). Da
@@ -339,9 +342,10 @@ En cuanto aparece, **identificarlo y anclar**: el resto de la conversación vers
 llamada. Sin ese ancla la conversación "va dando bandazos".
 
 **Marco mental anti-"solución con calzador":** el setter NO intenta encajar una solución en la situación, NO
-investiga "qué estás haciendo ahora" (punto 1 de Iván) ni "qué has hecho para resolverlo" (CR7 / §11.8), NO
-diagnostica ni mapea cada problema (punto 2 de Iván). El bloqueo es la **BRÚJULA que da dirección** — se
-nombra en PRESENTE y NO se resuelve en el chat (eso es trabajo del profesional en la llamada).
+investiga "qué has hecho para resolverlo" (CR7 / §11.8) y NO diagnostica ni mapea cada problema. El bloqueo es
+la **BRÚJULA que da dirección** — se nombra en PRESENTE y NO se resuelve en el chat (eso es trabajo del
+profesional en la llamada). ⚠️ Anclar el bloqueo exige **tener el contexto delante primero**: el freno se cobra
+apuntando sobre lo que él ya te contó, nunca preguntándolo en abstracto (§33).
 
 **Profundizar SÍ, autopsia del método NO (reconciliación, 2026-07-13):** cuando un trainer pide "profundizar más"
 (que la IA no acepte la respuesta del lead a la primera), es válido — pero se profundiza SOLO sobre **impacto /
@@ -400,6 +404,10 @@ de cualificación, como una pregunta obligatoria sí/no** ("¿podrías sacar X h
 cualifica / no descualifica). NO orbitar la conversación alrededor de ellos ni darles peso de tema central
 (caso Alfonso: insistía en "3 huecos de 40 min"). Analogía de Rubén (titulación): preguntas una vez, no
 debates "qué estudiaste y qué no".
+
+⚠️ **No confundir el criterio con el contexto.** "¿Podrías sacar 3 huecos?" es un criterio y se pregunta una
+vez, en cualificación. "¿Cuántos días te mueves ahora?" NO es un criterio: es **contexto presente** y vive en
+la apertura (§33). Meter el segundo dentro del primero fue lo que dejó a varios coaches sin fase de contexto.
 
 **Lectura de señal negativa:** si el lead dice claramente "yo puedo solo / no necesito ayuda" → NO está
 cualificado. Hay una pregunta directa válida ("¿necesitas ayuda o lo ves como algo que puedes hacer tú
@@ -679,6 +687,57 @@ con…" · "Y" tras conexión. Nunca dos mensajes seguidos con la misma forma.
 
 Cross-link [[§2]] (validación ≠ eco), [[§19]] (anclar el bloqueo), [[§21]] (no educar), [[§25]] (flujo
 encadenado), [[§31]] (CUÁNTO vs CÓMO).
+
+---
+
+## §33 — La fase de CONTEXTO: el presente se pregunta, el pasado no
+
+Antes de preguntar por el freno hay que saber **qué hace hoy**. Sin ese retrato el setter escribe frases que
+valen para cualquiera (*"la mayoría de la gente que lleva tiempo moviéndose no sabe dónde está el freno"*) y
+propone soluciones que chocan con la realidad del lead. **Ningún prompt puede impedir conocer el contexto de
+la persona.**
+
+**La frontera, en una frase: el PRESENTE se pregunta, el PASADO no.**
+
+| CONTEXTO — se pregunta | AUTOPSIA — no se pregunta |
+|---|---|
+| a qué se dedica, cómo es su semana | qué plan o dieta siguió |
+| si se mueve algo y cuántos días | por qué lo dejó / por qué no le funcionó |
+| qué deporte hace, si compite o es afición | qué probó antes de escribirte |
+| cuánto lleva así y qué ha visto en ese tiempo | qué se le cayó y en qué punto |
+
+**Test de una línea:** si su respuesta te sirve para hacerle una pregunta más SUYA → es contexto,
+pregúntala. Si solo te serviría para opinar sobre lo que hizo mal → es autopsia, no la hagas.
+
+**Objetivo y contexto son las dos mitades de la apertura, y el ORDEN lo elige el LEAD.** Si entra hablando de
+su objetivo, se termina el objetivo y luego se va al contexto; si entra contando su situación, al revés. Lo
+que no puede pasar es que falte una de las dos mitades.
+
+**1-2 preguntas, no tres.** Y la mayoría de las veces el contexto llega solo: entonces **no se pregunta**
+(recogida pasiva). Lo que el lead ya te dio no se vuelve a preguntar (§18, §31).
+
+**El contexto se cobra APUNTANDO, no volviendo a preguntar abierto.** Una vez tienes su retrato, la siguiente
+NO es *"y dónde crees que está el freno??"* — eso desperdicia lo que acabas de recoger y es la pregunta
+genérica de siempre. Es **tu criterio sometido a confirmación**:
+
+> "Entonces entre los turnos y los dos días de pádel no es poca cosa eh"
+> "Pero en cambio si me dices que la barriga sigue estando, se debe a algo más relacionado con la alimentación
+> entiendo no??"
+
+Pasa el test anti-invención causal **solo porque lleva el hedge pegado** (*"entiendo no??"*) y porque habla de
+un enfoque general (la alimentación), no de un mecanismo de su cuerpo. Sin ese remate sería un diagnóstico y
+estaría prohibido.
+
+**El modo de falla se INVIERTE** (§11.13): lo que hay que vigilar ya no es preguntar el contexto, es preguntar
+por el freno sin tenerlo.
+
+**Ensanche dentro de la objeción "voy solo":** ahí el contexto se pide expresamente (cómo lleva hoy su
+alimentación y su entrenamiento), porque es el material con el que se construye el espejo.
+
+**Lo que sigue prohibido y no se toca:** educar, corregir u opinar sobre lo que el lead hace mal (§21), y la
+autopsia del método pasado (CR7).
+
+Cross-link [[§13]], [[§18]], [[§19]], [[§22]], [[§25]], [[§31]], [[§32]].
 
 ---
 

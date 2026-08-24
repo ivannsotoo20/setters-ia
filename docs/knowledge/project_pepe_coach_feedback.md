@@ -352,3 +352,82 @@ El fichero empieza en `<coach_block>` y termina en `</coach_block>`, sin changel
 - **Bug fuera del prompt:** la IA envió *"Sin respuesta."* cuando el lead sí había respondido, y siguió como si nada. Es del pipeline de Automatía (generator/splitter emitiendo un placeholder), no del coach. Sin diagnosticar.
 - ~~`{{tracked_calendar_url}}` y `trainer_preferences` en un bloque de academia~~ → resueltos en la ronda 3: eliminados. El Calendly del EQUIPO PJ va literal.
 - **Smoke de la ronda 3 sin hacer.** Lo que hay que ver en Automatía: (a) que con la bienvenida del regalo la IA manda el YouTube en su primer turno y sigue conversando en vez de callarse; (b) que la comunidad sale en el último mensaje de un cierre sin cita y NO se repite si ya se mandó antes; (c) que responde "6 meses" sin mandarlo a la llamada; (d) que tras el cierre post-agenda no escribe ni una burbuja más.
+
+---
+
+## RONDA 2026-08-24 — feedback del equipo (Héctor) + 129 mensajes revisados por Iván
+
+Fichero autoritativo `Downloads/coach_block_pepe.md` = [`academia/pepe.md`](../../prompts/coach-engineering/academia/pepe.md).
+Backup `coach_block_pepe.pre-revision.bak.md`. Hoja de revisión:
+[`docs/revision-pepe-mensajes.html`](../revision-pepe-mensajes.html). **1044 → 1084 líneas.**
+
+### El feedback venía redactado por una IA: lo que era real y lo que no
+
+- **REAL — "no asumir el objetivo del lead" (su Feedback 2, el prioritario).** Y la causa estaba escrita
+  en el bloque: el tercer mensaje de la entrega de la rutina preguntaba *"has competido alguna vez en
+  HYROX o estás metiéndote en el mundillo"*, y ese mensaje va a **todo el mundo**. Era además un literal
+  del propio Pepe, así que no se cambió por criterio propio: se cambió con el OK de Iván.
+- **REAL — faltan los avatares 2 y 3.** La identidad solo contempla HYROX y rendimiento híbrido.
+- **FALSO — "la IA usa la misma apertura para todos".** El bloque ya tenía cuatro carriles de entrada
+  (A/B/C/D). Lo que faltaba era cruzar ese eje con el del SOP (de dónde viene el lead), no crearlo.
+- **NO ENTRA — dos piezas de su propia documentación vienen marcadas *"Borrador — pendiente de
+  validación"*** por quien las escribió: la apertura de CTA-historia y la tabla avatar × nivel de
+  consciencia. Iván validó la tabla con dos correcciones (fuera *"comparación con su preparador actual"*,
+  que obliga a juzgar a otro profesional, y fuera *"directo al dolor estético"*). La apertura nº4 **no
+  entra al prompt**: ese mensaje lo manda una automatización, no la IA.
+
+### La regla de apertura, ahora explícita
+
+Sección nueva al inicio de `coach_phase_massage_fase0`, con prioridad sobre cualquier literal de esa
+sección: **en el primer turno la pregunta es ABIERTA y HYROX solo se nombra si lo ha nombrado él.**
+Molde `"Y ya por curiosidad, qué fue lo que te trajo por la comunidad?"` (sale del propio SOP del equipo)
++ tres anclajes para cuando ya ha dicho a qué viene (prueba / oposición / cambio físico) + prohibición
+explícita de las dos frases que lo asumían. Entregar un recurso **no** autoriza a asumir el avatar.
+
+### Los 129 mensajes
+
+77 aprobados tal cual · **40 reescritos con el texto literal de Iván** · 3 quitados · 6 descartados por
+ser mensajes del LEAD y no de la IA (defecto de mi extractor, ver
+[[feedback_coach_turno_en_burbujas]]). **Iván aplicó a Pepe el formato de Alfonso a propósito**, para
+que el literal multi-burbuja quede como estándar de los once coaches.
+
+**Bug colateral:** el Calendly del bloque (`calendly.com/equipopj`) estaba **en tres sitios** y no era la
+URL buena. Corregido a `calendly.com/d/dvrv-nq6-kdt/sesion-de-evaluacion-pj`.
+
+### Dos decisiones de interpretación, marcadas
+
+- El mensaje corregido en la línea 478 era el **❌ de una pareja de contraste**, y la hoja no lo
+  etiquetaba como tal. Su texto pasó a ✅ y se borró el ✅ viejo (asumía HYROX). ⚠️ Esa pareja ya no
+  enseña *"no abras con ¡ ni ¿"*, y *"Cómo puedo ayudarte con tu preparación?"* queda sembrado como
+  ejemplar bueno pese a ser primo del *"¿en qué puedo ayudarte?"* que otros bloques prohíben.
+- Al quitar uno de los dos ejemplos de la regla del peldaño repetido la frase quedaba coja: se reescribió
+  sin ejemplos.
+
+### Segunda tanda — aplicada entera (1084 → 1123 líneas, 121 KB)
+
+- **Los tres avatares entran en `coach_identity_niche`** con su motor (lógico el 1 y el 2, emocional el 3)
+  y la orden de identificarlos preguntando, nunca deduciendo.
+- **Dos canales de autoridad con disparador binario:** si trae CIFRA, marca, prueba o fecha →
+  RECONOCIMIENTO (avatares 1 y 2); si trae un ADJETIVO sobre sí mismo o su cuerpo → **COMPRENSIÓN**
+  (avatar 3). Si trae las dos cosas, manda el adjetivo. La comprensión reconoce **el intento** y no el
+  resultado, nombra lo que él dijo sin dramatizar, y desplaza la causa de la persona al plan.
+  **CORREGIR CON CRITERIO queda SUSPENDIDO en el avatar 3** hasta después de la propuesta.
+- **Tabla de aperturas por origen** con los literales del SOP: un solo esqueleto (*saludo → el porqué de
+  que escribas → el placer de conectar → la pregunta abierta*) y solo **dos casillas variables**. La
+  apertura de CTA-historia no entra: la manda una automatización.
+- **El periodo de conexión, obligatorio y comprobable:** antes de la primera pregunta sobre su objetivo o
+  su entreno tiene que haber habido al menos un intercambio que NO sea de fitness.
+- **`coach_objections_avatar` abre con "ya estoy con otro preparador"**: se nombra lo tuyo y se pregunta
+  si eso lo ha tenido, nunca se juzga al otro.
+
+### La pasada adversarial encontró cuatro juntas rotas
+
+Los tres avatares nuevos chocaban con reglas **binarias y anteriores** que decían que esto es solo HYROX —
+y en este bloque la binaria siempre gana al ejemplar. Corregidas las cuatro: el `coach_identity_niche`
+(*"quieren iniciarse o mejorar sus tiempos en HYROX"*), el foco invertido de **Fase 2** (*"este avatar es
+de OBJETIVO y es ambition-native"*, que no vale para el 3), el **criterio de cualificación 1** (solo
+admitía HYROX / físico híbrido) y **`coach_program_is`**.
+
+⚠️ **`coach_program_is` lo he ampliado a los tres avatares** porque si los criterios cualifican al avatar 3
+y la definición del programa lo excluye, el setter recibe órdenes contradictorias. Es lo único de esta
+tanda que toca la definición de producto y no una regla de conversación: **conviene que lo confirme Pepe.**

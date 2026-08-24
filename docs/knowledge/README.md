@@ -162,6 +162,15 @@ valor, nunca el valor. Escanear antes de commitear.
   corpus. ✅ **La videollamada la atiende el equipo, no Andrea** (confirmado 07-08; era el mismo P0
   que Pepe) y ✅ **la setter es "Andrea" a secas**, sin apellido y sin nombrar al entrenador: por eso
   el slug va por nicho, única excepción a la convención por entrenador. **Sin compuertas abiertas.**
+- [Bea — embarazo y posparto](project_bea_coach_embarazo.md) — **avatar nuevo (el 7º) y el tercero
+  clínico**. Entrenadora que llega **quemada de la competencia** (Scalex + la app de un freelance)
+  porque le ha caído la **asistencia** a llamada. Ronda 0 el **2026-08-22**: destilado del análisis de
+  Rubén sobre sus dos IAs + la lección de contexto de la reunión de Alfonso, **antes** de tener su
+  documentación. El delta del nicho: la conciencia del problema es ALTA (los objetivos se eliminan) y
+  lo que falta es el **permiso** — la conversación se dirige a **miedos, intención y brecha
+  expectativa-realidad**, y el problema **lo nombra ella**. Principios en
+  [`avatares/embarazo-posparto/principios.md`](../../prompts/coach-engineering/avatares/embarazo-posparto/principios.md).
+  ⚠️ **Compuertas abiertas**: si es o no Beatriz Juan, el runtime, el alcance y la frontera clínica.
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 
