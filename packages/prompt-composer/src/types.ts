@@ -40,6 +40,14 @@
 
 export interface ComposeOptions {
   tenantId: number;
+  /**
+   * Canal por el que va la conversación. Si el tenant tiene un bloque con
+   * `channel_override` igual a este valor, ese bloque sustituye al genérico.
+   *
+   * Si se omite (o el tenant no tiene bloque para ese canal), se usa el
+   * genérico: añadir un canal nuevo nunca deja a nadie sin coach.
+   */
+  channel?: PromptChannel | null;
   /** Fase activa 1..6 del protocolo de setting. Inyectada por el motor por turno. */
   currentPhase: number;
   /**
@@ -161,11 +169,23 @@ export interface HandoffContext {
 }
 
 /** Una fila de `prompt_blocks` que el builder necesita para componer. */
+/** Canales que pueden tener su propio bloque de coach. */
+export type PromptChannel = 'whatsapp' | 'instagram_dm' | 'facebook_messenger';
+
 export interface PromptBlockRow {
   block_key: string;
   content: string;
   sort_order: number;
   tenant_id: number | null;
+  /**
+   * Canal al que pertenece este bloque. `null` = sirve a todos.
+   *
+   * Un bloque con canal GANA al genérico del mismo `block_key` cuando la
+   * conversación va por ese canal. Permite tener un coach distinto para
+   * WhatsApp y para Instagram: el de WhatsApp arranca sabiendo que ya hay
+   * teléfono y contexto de formulario; el de Instagram, no.
+   */
+  channel_override?: PromptChannel | null;
 }
 
 export interface ComposedBlock {

@@ -121,6 +121,12 @@ export interface GeneratorInput {
    */
   composeOverrides?: {
     /**
+     * Canal de la conversación. Si el entrenador tiene un bloque de coach para
+     * ese canal (`prompt_blocks.channel_override`), sustituye al genérico.
+     * Sin canal o sin bloque propio, se usa el genérico.
+     */
+    channel?: 'whatsapp' | 'instagram_dm' | 'facebook_messenger' | null;
+    /**
      * Cerebro v5 — Instrucción focal corta para la fase actual (~30-80 tokens).
      * Construida por el motor con `apps/motor-agente/src/lib/phase-focus.ts`
      * (`buildPhaseFocusInstruction(currentPhase, isHandoff)`). El composer la

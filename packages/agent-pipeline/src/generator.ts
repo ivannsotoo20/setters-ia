@@ -100,6 +100,7 @@ export async function runGenerator(
     availableSlots: input.composeOverrides?.availableSlots,
     currentDateIso: input.composeOverrides?.currentDateIso,
     leadContact: input.composeOverrides?.leadContact,
+    channel: input.composeOverrides?.channel,
     leadTimezoneLabel: input.composeOverrides?.leadTimezoneLabel,
     trainerTimezoneLabel: input.composeOverrides?.trainerTimezoneLabel,
     // Hito 12.1 — extraSystemSuffix (directiva mirror_lead u otros append-only futuros).

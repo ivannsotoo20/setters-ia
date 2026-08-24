@@ -520,3 +520,74 @@ describe('buildComposedPrompt — interpolación trainer_phone (compat Sprint Ga
     expect(coreBlock!.text).toBe('Core sin placeholders');
   });
 });
+
+describe('bloque de coach por canal (channel_override)', () => {
+  // Decision de Ivan (2026-08-24): un bloque completo por canal, no una capa.
+  // El enrutado es trivial (GHL = Instagram, YCloud = WhatsApp) y el coach de
+  // WhatsApp arranca sabiendo que ya hay telefono y contexto de formulario.
+  const TENANT = 7;
+  const core = {
+    block_key: 'core_v5_base',
+    content: 'CEREBRO',
+    sort_order: 0,
+    tenant_id: null,
+    channel_override: null,
+  };
+  const contract = {
+    block_key: 'output_contract_v5',
+    content: 'CONTRATO',
+    sort_order: 100,
+    tenant_id: null,
+    channel_override: null,
+  };
+  const coachGenerico = {
+    block_key: 'coach_v5',
+    content: 'COACH GENERICO',
+    sort_order: 5,
+    tenant_id: TENANT,
+    channel_override: null,
+  };
+  const coachWhatsapp = {
+    block_key: 'coach_v5',
+    content: 'COACH WHATSAPP',
+    sort_order: 5,
+    tenant_id: TENANT,
+    channel_override: 'whatsapp' as const,
+  };
+
+  const compose = (rows: typeof core[], channel?: 'whatsapp' | 'instagram_dm' | null) =>
+    buildComposedPrompt(rows as never, { tenantId: TENANT, currentPhase: 1, channel });
+
+  const coachTexto = (out: ReturnType<typeof compose>) =>
+    out.blocks.find((b) => b.key === 'coach_v5')?.text;
+
+  it('por WhatsApp gana el bloque de WhatsApp', () => {
+    const out = compose([core, contract, coachGenerico, coachWhatsapp], 'whatsapp');
+    expect(coachTexto(out)).toBe('COACH WHATSAPP');
+  });
+
+  it('por Instagram, sin bloque propio, cae al generico', () => {
+    const out = compose([core, contract, coachGenerico, coachWhatsapp], 'instagram_dm');
+    expect(coachTexto(out)).toBe('COACH GENERICO');
+  });
+
+  it('sin canal declarado usa el generico', () => {
+    const out = compose([core, contract, coachGenerico, coachWhatsapp], null);
+    expect(coachTexto(out)).toBe('COACH GENERICO');
+  });
+
+  it('el orden de las filas no decide el ganador', () => {
+    const alReves = compose([coachWhatsapp, coachGenerico, contract, core], 'whatsapp');
+    expect(coachTexto(alReves)).toBe('COACH WHATSAPP');
+  });
+
+  // La red de seguridad que impide que anadir un canal deje a alguien mudo.
+  it('si SOLO existe el bloque de WhatsApp, Instagram no se queda sin coach', () => {
+    expect(() => compose([core, contract, coachWhatsapp], 'instagram_dm')).toThrow(
+      /missing required blocks/,
+    );
+    // …y con el generico presente, funciona.
+    const out = compose([core, contract, coachWhatsapp, coachGenerico], 'instagram_dm');
+    expect(coachTexto(out)).toBe('COACH GENERICO');
+  });
+});

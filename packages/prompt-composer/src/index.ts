@@ -35,7 +35,7 @@ export async function composePrompt(
 ): Promise<ComposedPrompt> {
   const { data, error } = await supabase
     .from('prompt_blocks')
-    .select('block_key, content, sort_order, tenant_id')
+    .select('block_key, content, sort_order, tenant_id, channel_override')
     .eq('is_active', true)
     .eq('version', 1)
     .or(`tenant_id.is.null,tenant_id.eq.${options.tenantId}`);
@@ -54,6 +54,7 @@ export async function composePrompt(
     content: String(r.content),
     sort_order: Number(r.sort_order),
     tenant_id: r.tenant_id === null ? null : Number(r.tenant_id),
+    channel_override: (r.channel_override ?? null) as PromptBlockRow['channel_override'],
   }));
 
   // Construir/aumentar TrainerContext a partir de trainer_preferences + options explícitas.

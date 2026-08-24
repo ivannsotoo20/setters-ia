@@ -45,23 +45,40 @@ export function buildComposedPrompt(
     cacheStrategy = 'two-point',
     cacheTtl = '1h',
     trainerContext,
+    channel = null,
   } = options;
 
   if (currentPhase < 1 || currentPhase > 6) {
     throw new Error(`composePrompt: currentPhase must be 1..6, got ${currentPhase}`);
   }
 
-  // Índice por block_key. Si hay duplicados (p.ej. shared y tenant), preferir tenant.
+  // Índice por block_key. Con varios candidatos para la misma clave, gana el
+  // más específico, en este orden:
+  //
+  //   1. del tenant Y de este canal   (coach de WhatsApp cuando hablas por WhatsApp)
+  //   2. del tenant, sin canal         (su coach de siempre)
+  //   3. compartido                    (el cerebro común)
+  //
+  // El respaldo es deliberado: si un entrenador escribe el bloque de WhatsApp y
+  // no el de Instagram, Instagram sigue con el genérico. Añadir un canal nuevo
+  // nunca puede dejar a nadie sin coach.
+  const specificity = (r: PromptBlockRow): number => {
+    const isTenant = r.tenant_id === tenantId;
+    const matchesChannel =
+      channel != null && r.channel_override != null && r.channel_override === channel;
+    if (isTenant && matchesChannel) return 3;
+    if (isTenant && r.channel_override == null) return 2;
+    if (!isTenant && r.channel_override == null) return 1;
+    // Bloque de OTRO canal (o compartido con canal): no sirve para esta conversación.
+    return 0;
+  };
+
   const byKey = new Map<string, PromptBlockRow>();
   for (const r of rows) {
+    const score = specificity(r);
+    if (score === 0) continue;
     const existing = byKey.get(r.block_key);
-    if (!existing) {
-      byKey.set(r.block_key, r);
-      continue;
-    }
-    const existingIsTenant = existing.tenant_id === tenantId;
-    const incomingIsTenant = r.tenant_id === tenantId;
-    if (incomingIsTenant && !existingIsTenant) {
+    if (!existing || score > specificity(existing)) {
       byKey.set(r.block_key, r);
     }
   }

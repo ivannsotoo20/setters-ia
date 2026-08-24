@@ -193,6 +193,9 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
               expectedAddressing,
             },
             composeOverrides: {
+              // Mismo enrutado por canal que produccion: el entrenador prueba
+              // el coach que de verdad se usaria en ese canal.
+              channel: body.channel,
               currentPhaseFocus,
               extraSystemSuffix: systemDirectives,
               trackedCalendarUrl: calendar.url,

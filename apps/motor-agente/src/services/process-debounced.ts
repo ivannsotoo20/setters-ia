@@ -448,6 +448,9 @@ export async function processDebounced(
           expectedAddressing,
         },
         composeOverrides: {
+          // Enrutado por canal: si el entrenador tiene coach de WhatsApp y la
+          // conversacion va por WhatsApp, se usa ese; si no, el generico.
+          channel: channelTypeDb,
           currentPhaseFocus,
           trackedCalendarUrl,
           availableSlots,
