@@ -2,7 +2,6 @@ import type { FastifyInstance } from 'fastify';
 import { dropDebounce, enqueueDebounce, getExpiredDebounces } from '../lib/debounce-buffer.js';
 import { getRedis } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
-import { getAnthropic } from '../lib/anthropic.js';
 import { processDebounced } from '../services/process-debounced.js';
 import { sendNextBatch } from '../services/outbound-sender.js';
 import { processNotificationQueue } from '../services/notify-trainer.js';
@@ -40,7 +39,10 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
       const expired = await getExpiredDebounces(redis, Date.now(), 25);
       if (expired.length === 0) return;
       const supabase = getSupabase();
-      const anthropic = getAnthropic();
+      // El cliente Anthropic NO se construye aqui: cada conversacion del lote
+      // puede ser de un tenant distinto, y processDebounced lo resuelve por
+      // tenant en cuanto sabe de quien es (clave propia del entrenador si la
+      // trajo).
       for (const entry of expired) {
         // `dropDebounce` es el CLAIM, no una limpieza: `ZREM` es atomico, asi
         // que solo el tick que se queda con la conversacion recibe true.
@@ -62,10 +64,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
           continue;
         }
         try {
-          const out = await processDebounced(
-            { supabase, anthropic: anthropic as unknown as import('@anthropic-ai/sdk').default },
-            entry.conversationId,
-          );
+          const out = await processDebounced({ supabase }, entry.conversationId);
           app.log.info(
             {
               conversationId: entry.conversationId,

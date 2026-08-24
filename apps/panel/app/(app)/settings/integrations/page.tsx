@@ -12,15 +12,26 @@ import { IntegrationsTabs } from './integrations-tabs';
 import { HealthSection } from './health-section';
 import { WhatsAppSection } from './whatsapp-section';
 import { InstagramSection } from './instagram-section';
+import { AnthropicKeyCard } from './anthropic-key-card';
+import { getAnthropicKeyState } from '@/lib/actions/anthropic-key';
 
 export const dynamic = 'force-dynamic';
 
 export default async function IntegrationsPage() {
-  const result = await listIntegrations();
+  const [result, anthropicKey] = await Promise.all([
+    listIntegrations(),
+    getAnthropicKeyState(),
+  ]);
   const integrations = result.ok ? result.data ?? [] : [];
 
   const listSection = (
     <>
+      {anthropicKey.ok ? (
+        <AnthropicKeyCard
+          initial={anthropicKey.data ?? { hasOwnKey: false, hint: null }}
+        />
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">

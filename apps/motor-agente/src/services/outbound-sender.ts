@@ -16,7 +16,7 @@ import {
   rescheduleForRetry,
 } from './scheduler.js';
 import { personalizeFollowupMessage } from './personalize-followup.js';
-import { getAnthropic } from '../lib/anthropic.js';
+import { getAnthropic, getAnthropicForTenant } from '../lib/anthropic.js';
 import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
@@ -225,7 +225,8 @@ export async function sendNextBatch(
         aiGuide &&
         (!messageText || messageText.trim().length === 0)
       ) {
-        const anthropic = getAnthropic();
+        // Tambien por tenant: el seguimiento personalizado lo paga quien lo usa.
+        const anthropic = await getAnthropicForTenant(supabase, Number(row.tenant_id));
         const personalized = await personalizeFollowupMessage({
           supabase,
           anthropic: anthropic as unknown as Anthropic,

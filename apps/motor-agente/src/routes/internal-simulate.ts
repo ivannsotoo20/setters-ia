@@ -47,7 +47,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z, ZodError } from 'zod';
 import { runPipeline } from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
-import { getAnthropic } from '../lib/anthropic.js';
+import { getAnthropicForTenant } from '../lib/anthropic.js';
 import { getSupabase } from '../lib/supabase.js';
 import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
@@ -115,7 +115,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       }
 
       const supabase = getSupabase();
-      const anthropic = getAnthropic();
+      // Por tenant: el entrenador prueba con SU clave, igual que en produccion.
+      const anthropic = await getAnthropicForTenant(supabase, body.tenant_id);
 
       // Mismas preferencias que usaría producción para este tenant: tope de
       // burbujas, palabras prohibidas y tratamiento. Si el simulador usara otras,

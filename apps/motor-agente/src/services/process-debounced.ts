@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
+import { getAnthropicForTenant } from '../lib/anthropic.js';
 import { isTenantAiEnabled } from '../lib/ai-enabled.js';
 import { enrichMediaMessages, type EnrichMediaResult } from './enrich-media-messages.js';
 import {
@@ -37,7 +38,11 @@ type AudioLanguage = 'es' | 'en' | 'auto';
 
 export interface ProcessDebouncedDeps {
   supabase: SupabaseClient;
-  anthropic: Anthropic;
+  /**
+   * Cliente Anthropic. Opcional: si no se pasa, se resuelve por tenant una vez
+   * cargada la conversación (clave propia del entrenador si la tiene).
+   */
+  anthropic?: Anthropic;
 }
 
 export interface ProcessDebouncedResult {
@@ -70,7 +75,7 @@ export async function processDebounced(
   deps: ProcessDebouncedDeps,
   conversationId: number,
 ): Promise<ProcessDebouncedResult> {
-  const { supabase, anthropic } = deps;
+  const { supabase } = deps;
 
   // 1. Cargar conversación + tenant
   const { data: conv, error: convErr } = await supabase
@@ -85,6 +90,13 @@ export async function processDebounced(
   const tenantId = Number(conv.tenant_id);
   const channelId = Number(conv.channel_id);
   const currentPhase = Number(conv.phase_number) || 1;
+
+  // El cliente Anthropic se resuelve AQUI, no en el caller: es el primer punto
+  // donde se sabe de quien es la conversacion. Si el entrenador trajo su clave,
+  // el consumo va a su cuenta; si no, a la de la plataforma. El caller puede
+  // seguir pasando uno en `deps` (tests, scripts), y entonces manda ese.
+  const anthropic =
+    deps.anthropic ?? ((await getAnthropicForTenant(supabase, tenantId)) as unknown as Anthropic);
 
   // 1.5. Gate: si IA está pausada (humano se hizo cargo via OutboundMessage GHL
   // sin ZWSP, pausa manual desde panel, o gate `ghl_inbound_mode=classified_only`
