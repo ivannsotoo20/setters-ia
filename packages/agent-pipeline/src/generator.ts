@@ -259,8 +259,21 @@ export function validateSetterOutput(raw: unknown): SetterToolOutput {
   const r = raw as Record<string, unknown>;
 
   const message_raw = r.message_raw;
-  if (typeof message_raw !== 'string' || message_raw.length === 0) {
-    throw new Error('Generator tool_use missing or empty `message_raw`');
+  if (typeof message_raw !== 'string') {
+    throw new Error('Generator tool_use missing `message_raw`');
+  }
+  // Un mensaje vacío es válido SOLO como apagado silencioso: el coach ordena no
+  // contestar nada (p.ej. cuando preguntan si eres una IA) y la conversación se
+  // pasa a un humano sin decir ni una palabra.
+  //
+  // Antes esto lanzaba siempre, así que el apagado era inexpresable: el modelo
+  // intentaba obedecer al coach, el turno reventaba por validación y la
+  // conversación quedaba SIN handoff registrado — es decir, sin pausa y sin
+  // aviso al entrenador, que es justo lo contrario de lo que la regla busca.
+  if (message_raw.length === 0 && r.conversation_status !== 'handoff') {
+    throw new Error(
+      'Generator devolvió `message_raw` vacío sin conversation_status="handoff" (el apagado silencioso exige handoff)',
+    );
   }
 
   const conversation_status = r.conversation_status;

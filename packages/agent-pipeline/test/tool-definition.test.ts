@@ -54,14 +54,30 @@ describe('validateSetterOutput', () => {
     expect(out.reasoning).toBeTruthy();
   });
 
-  it('rejects empty message_raw', () => {
+  it('rechaza message_raw vacio cuando NO es un apagado', () => {
     expect(() =>
       validateSetterOutput({
         message_raw: '',
         conversation_status: 'active',
         phase_decision: 1,
       }),
-    ).toThrow(/empty `message_raw`/);
+    ).toThrow(/apagado silencioso exige handoff/);
+  });
+
+  // El apagado silencioso: el coach ordena no contestar nada (p.ej. cuando
+  // preguntan si eres una IA). Antes esto lanzaba SIEMPRE, asi que el apagado
+  // era inexpresable: el turno reventaba por validacion y la conversacion
+  // quedaba sin handoff, es decir sin pausa y sin aviso al entrenador.
+  it('acepta message_raw vacio cuando el turno es un handoff', () => {
+    const out = validateSetterOutput({
+      message_raw: '',
+      conversation_status: 'handoff',
+      phase_decision: 1,
+      handoff_cause: 'C_descualificado',
+    });
+    expect(out.message_raw).toBe('');
+    expect(out.conversation_status).toBe('handoff');
+    expect(out.handoff_cause).toBe('C_descualificado');
   });
 
   it('rejects invalid conversation_status', () => {

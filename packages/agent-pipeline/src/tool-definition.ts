@@ -59,8 +59,14 @@ export function buildRespondAsSetterTool(opts: { maxParts: 1 | 2 | 3 | 4 } = { m
             `mensajes consecutivos, sepáralos con doble salto de línea (\\n\\n). El splitter posterior los ` +
             `particionará en burbujas de chat de 20-280 chars (máximo ${opts.maxParts} burbujas). NO incluyas ` +
             `placeholders [NOMBRE], [SITUACIÓN], etc. — sustitúyelos por los valores reales tomados del coach ` +
-            `y de la conversación.`,
-          minLength: 1,
+            `y de la conversación.
+
+` +
+            `APAGADO SILENCIOSO: cadena VACÍA ("") si el coach ordena no contestar nada a este ` +
+            `turno (típicamente cuando preguntan si eres una IA). Solo es válido junto a ` +
+            `conversation_status="handoff" y su handoff_cause. Con cualquier otro estado, el ` +
+            `mensaje no puede ir vacío.`,
+          minLength: 0,
           maxLength,
         },
       user_summary: {

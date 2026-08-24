@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { runGenerator } from '../src/generator.js';
+import { buildRespondAsSetterTool } from '../src/tool-definition.js';
 
 /**
  * Mock minimal de SupabaseClient: solo necesita responder a:
@@ -233,5 +234,21 @@ describe('runGenerator', () => {
         },
       ),
     ).rejects.toThrow(/rate_limit_error/);
+  });
+});
+
+describe('apagado silencioso (message_raw vacio)', () => {
+  // Caso real (2026-08-24): el coach de Tania ordena no contestar NADA cuando
+  // preguntan si eres una IA. El esquema exigia minLength 1 y el generator
+  // lanzaba, asi que el apagado era inexpresable: el turno reventaba por
+  // validacion y la conversacion quedaba SIN handoff registrado — sin pausa y
+  // sin aviso al entrenador, justo lo contrario de lo que la regla busca.
+  it('el esquema de la tool admite cadena vacia', () => {
+    const tool = buildRespondAsSetterTool({ maxParts: 3 });
+    const schema = tool.input_schema as {
+      properties: { message_raw: { minLength: number; description: string } };
+    };
+    expect(schema.properties.message_raw.minLength).toBe(0);
+    expect(schema.properties.message_raw.description).toMatch(/APAGADO SILENCIOSO/);
   });
 });

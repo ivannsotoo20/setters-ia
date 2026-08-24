@@ -86,8 +86,20 @@ export async function runPipeline(
     llmCallId: generatorOut.llmCallId,
   });
 
-  // Si el Generator decidió handoff explícito, devolvemos su mensaje sin pasar por Judge/Splitter.
-  // Mejor: lo pasamos igual por Judge/Splitter para que el último mensaje sea limpio antes del handoff.
+  // APAGADO SILENCIOSO: el coach ordenó no contestar nada. No hay texto que
+  // juzgar ni que trocear, así que se cortocircuita aquí. Lo que importa río
+  // abajo es el handoff, no el mensaje: el caller pausa la conversación y avisa
+  // al entrenador. Pasarlo por el Judge solo podría estropearlo.
+  if (generatorOut.setterOutput.message_raw.length === 0) {
+    return {
+      parts: [],
+      generator: generatorOut,
+      judge: { decision: 'pass', violations: [], reasoning: 'apagado silencioso: no hay mensaje que juzgar' },
+      validator: { ok: true, violations: [], finalText: '' } as unknown as ValidationResult,
+      stages,
+      totals: computeTotals(stages, Date.now() - startedAt),
+    };
+  }
 
   // === 2. Judge ===
   const judgeOut = await runJudge(deps, {
@@ -227,16 +239,7 @@ export async function runPipeline(
   });
 
   // === Totals ===
-  const totals = stages.reduce(
-    (acc, s) => {
-      acc.costUsd += s.usage.costUsd;
-      acc.tokensInTotal += s.usage.tokensInUncached + s.usage.tokensInCacheRead + s.usage.tokensInCacheWrite;
-      acc.tokensOutTotal += s.usage.tokensOut;
-      return acc;
-    },
-    { costUsd: 0, latencyMs: Date.now() - startedAt, tokensInTotal: 0, tokensOutTotal: 0 },
-  );
-  totals.costUsd = Number(totals.costUsd.toFixed(6));
+  const totals = computeTotals(stages, Date.now() - startedAt);
 
   return {
     parts: splitterOut.parts,
@@ -250,4 +253,23 @@ export async function runPipeline(
     stages,
     totals,
   };
+}
+
+/** Agrega coste y tokens de las etapas que llegaron a ejecutarse. */
+function computeTotals(
+  stages: PipelineStageMetric[],
+  latencyMs: number,
+): PipelineOutput['totals'] {
+  const totals = stages.reduce(
+    (acc, s) => {
+      acc.costUsd += s.usage.costUsd;
+      acc.tokensInTotal +=
+        s.usage.tokensInUncached + s.usage.tokensInCacheRead + s.usage.tokensInCacheWrite;
+      acc.tokensOutTotal += s.usage.tokensOut;
+      return acc;
+    },
+    { costUsd: 0, latencyMs, tokensInTotal: 0, tokensOutTotal: 0 },
+  );
+  totals.costUsd = Number(totals.costUsd.toFixed(6));
+  return totals;
 }
