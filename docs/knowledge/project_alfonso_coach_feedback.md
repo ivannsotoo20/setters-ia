@@ -437,3 +437,29 @@ Diagnóstico de Rubén: **el tono está bien** (Sergio: *"esa parte no la tocar�
 Aplicado sobre `Downloads/coach_block_alfonso.md` y espejado en `prompts/coach-engineering/academia/alfonso.md`. Backup: `coach_block_alfonso.pre-2026-08-24.bak.md`. Hoja de decisiones: `docs/revision-alfonso-ritmo.html`. Informe: `docs/alfonso-ritmo-ruben.html`.
 
 **Deuda de esta ronda:** el bloque CRECE 5,2 KB (contra la regla de dejarlo más corto), y los sustitutos de Iván dejan la familia de la causa ("a qué se debe / a qué lo achacas / por qué se tuerce") con 3 demostraciones — el tic de la ronda siguiente si no se vigila. Mitigado con un guard en el paso 3b, no resuelto.
+
+### Cierre de la ronda — los 4 literales secos
+
+Auditoría posterior: de los 10 literales que enseñan la cadena, **4 iban anclados pero secos**, sin ninguno de los movimientos delante — y eran justo los pasos nuevos (contexto, bloqueo, curiosidad) más el follow-up de energía. Pasó porque la ronda iba de estructura y los literales se escribieron como especímenes de la regla, no como mensajes. Corregido: contexto lleva el movimiento 6 (anuncia el giro), bloqueo el 2 (ponte a su lado), curiosidad el 4 (opina del mundo con humor) y energía el 2.
+
+De paso se retiraron las tres prohibiciones que el positivo dejaba sobrando (la frontera del método duplicada en el gate y en F2, y la de la pregunta-menú, que el par ❌/✅ de debajo ya enseña).
+
+### Mapa para la poda pendiente
+
+El bloque queda en **129.378 caracteres y 163 marcadores** de prohibición o alerta. Dónde está el grueso:
+
+| Regla | Repetida en |
+|---|---|
+| No inventar emoción no verbalizada | 9 sitios |
+| No repreguntar lo ya contestado | 6 |
+| No fabricar urgencia / hipotética de plazo | 6 |
+| Autopsia del método | 6 |
+| La disponibilidad no se pregunta | 5 |
+| Cierre cálido, no insistir | 4 |
+| Su rutina / cuántos días / qué come | 3 |
+| No nombrar la llamada antes de F5 | 3 |
+| La pregunta-menú | 3 |
+
+Nueve reglas ocupando 45 sitios. Y por secciones, `coach_structural_modifications` es el **35 %** del bloque y `coach_tone` otro **25 %**: entre las dos, el 60 %.
+
+**Directiva de Iván para toda la autoría a partir de aquí** (destilada en `feedback_coach_marco_no_prohibiciones` §10-11): la prohibición deja de ser el recurso por defecto — se escribe exactamente lo que hay que hacer y con eso sobra, porque prohibir algo obliga a describirlo y describirlo es meterlo en el prompt. Y cuando una prohibición o un tope sobrevivan, basta decirlos UNA vez: si la regla está bien escrita se entiende que rige en todo el bloque.
