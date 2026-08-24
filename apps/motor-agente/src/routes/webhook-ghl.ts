@@ -350,6 +350,24 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
+      // 2.6. Eventos de ciclo de vida de la app (INSTALL / UNINSTALL). GHL los
+      //      envia a este mismo webhook y el parser no los conoce, asi que
+      //      caian al 400 de abajo. Importa porque GHL desactiva un webhook que
+      //      falla de forma repetida: esos 400 ponian en riesgo la llegada de
+      //      los MENSAJES, que es lo unico que de verdad necesitamos de aqui.
+      //
+      //      No hay nada que hacer con ellos (la fila de integracion la crea el
+      //      flujo OAuth o el PIT), pero se acusa recibo con 200.
+      const rawTypeLifecycle = (request.body as { type?: unknown } | null)?.type;
+      if (rawTypeLifecycle === 'INSTALL' || rawTypeLifecycle === 'UNINSTALL') {
+        const locId = (request.body as { locationId?: unknown } | null)?.locationId;
+        request.log.info(
+          { type: rawTypeLifecycle, locationId: typeof locId === 'string' ? locId : null },
+          'webhook-ghl(oauth): evento de ciclo de vida de la app; se acusa recibo y se ignora',
+        );
+        return reply.code(200).send({ ack: true, ignored: true, type: rawTypeLifecycle });
+      }
+
       // 3. Parse payload
       let payload;
       try {
