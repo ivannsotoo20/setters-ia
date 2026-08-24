@@ -20,26 +20,27 @@ const MODES: {
 }[] = [
   {
     value: 'all',
-    label: 'Responder a todo el mundo',
-    description: 'Cualquier mensaje WA inbound activa la IA. Comportamiento por defecto.',
+    label: 'A cualquiera que te escriba',
+    description:
+      'Tu asistente contesta a todo el que te escriba por WhatsApp, venga de donde venga.',
     tradeoff:
-      'Filtro mínimo. Si recibes mensajes WhatsApp en frío que no quieres responder, mejor usa "form" o "keyword".',
+      'Es el que más oportunidades coge y también el que menos filtra: contestará igual a un conocido, a un proveedor o a alguien que se equivocó de número.',
   },
   {
     value: 'form_only',
-    label: 'Solo si vinieron por formulario',
+    label: 'Solo a quien rellenó tu formulario',
     description:
-      'La IA solo responde a leads que llegaron por /automations/lead-form (formulario VSL, GHL Workflow, Tally, Meta Lead Ads…). Lead frío en WA → silencio.',
+      'Contesta únicamente a las personas que dejaron sus datos en un formulario tuyo. Si alguien te escribe directo sin haber pasado por ahí, tu asistente no responde.',
     tradeoff:
-      'Más estricto. Útil si quieres que solo respondas a leads cualificados por formulario y no a contactos random.',
+      'El más estricto. Te aseguras de hablar solo con quien ya mostró interés, a costa de dejar pasar a quien te escribe por su cuenta.',
   },
   {
     value: 'keyword',
-    label: 'Solo si matchea una keyword',
+    label: 'Solo si dicen una palabra concreta',
     description:
-      'Acepta leads de formulario + leads frescos cuyo primer mensaje contenga alguna keyword tipo wa_open (ej: "hola", "INFO", "me interesa"). Configura keywords en /keywords.',
+      'Contesta a quien venga de formulario y, además, a quien escriba alguna de las palabras que tú elijas (por ejemplo "info" o "quiero empezar"). Las defines en Palabras clave.',
     tradeoff:
-      'Modo intermedio. Necesitas tener al menos 1 keyword wa_open activa o todos los inbound de leads frescos quedarán silenciados.',
+      'Punto medio, y el más seguro para empezar a probar. Ojo: si no defines ninguna palabra, tu asistente no contestará a nadie que te escriba nuevo.',
   },
 ];
 
@@ -49,7 +50,7 @@ export function WaModeForm({ currentMode, waOpenKeywordCount }: Props) {
 
   const onSubmit = () => {
     if (selected === currentMode) {
-      toast.info('Ya estás en este modo');
+      toast.info('Ya tienes seleccionada esta opción');
       return;
     }
     startTransition(async () => {
@@ -60,7 +61,7 @@ export function WaModeForm({ currentMode, waOpenKeywordCount }: Props) {
         setSelected(currentMode);
         return;
       }
-      toast.success(`Modo cambiado a "${selected}"`);
+      toast.success('Guardado. Tu asistente ya responde con este criterio.');
     });
   };
 
@@ -99,11 +100,11 @@ export function WaModeForm({ currentMode, waOpenKeywordCount }: Props) {
               <p className="mt-1 text-xs italic text-muted-foreground/70">{mode.tradeoff}</p>
               {disabled && (
                 <p className="mt-1 text-xs text-warning/95">
-                  Necesitas crear al menos 1 keyword wa_open en{' '}
+                  Para elegir esta opción, define antes al menos una palabra en{' '}
                   <Link href="/keywords" className="underline">
-                    /keywords
-                  </Link>{' '}
-                  antes de poder seleccionar este modo.
+                    Palabras clave
+                  </Link>
+                  . Si no, no contestaría a nadie.
                 </p>
               )}
             </button>

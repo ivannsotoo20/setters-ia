@@ -75,19 +75,19 @@ export async function WhatsAppSection() {
               modeResult.data!.waOpenKeywordCount === 0 ? (
                 <div className="mt-4 rounded-lg border border-warning/40 bg-warning/8 p-3 text-sm">
                   <p className="font-medium text-warning">
-                    ⚠️ Sin keywords WA configuradas
+                    Ahora mismo tu asistente no contesta a nadie por WhatsApp
                   </p>
                   <p className="mt-1 text-warning/90 text-xs">
-                    Estás en modo <code className="font-mono">keyword</code> pero no
-                    tienes keywords <code className="font-mono">wa_open</code>{' '}
-                    activas. Todos los mensajes WA inbound de leads frescos quedarán
-                    silenciados.
+                    Has elegido responder solo a quien diga una palabra concreta, pero
+                    todavía no has definido ninguna. Mientras siga así, quien te escriba
+                    de nuevo por WhatsApp no recibirá respuesta y{' '}
+                    <strong>su mensaje tampoco se guardará aquí</strong>.
                   </p>
                   <Link
                     href="/keywords"
                     className="mt-2 inline-flex items-center gap-1 text-warning underline text-xs"
                   >
-                    Configurar keywords
+                    Definir mis palabras
                     <ArrowRight className="size-3.5" />
                   </Link>
                 </div>

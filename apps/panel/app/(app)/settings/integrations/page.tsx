@@ -11,6 +11,7 @@ import { AddIntegrationDialog } from './add-integration-dialog';
 import { IntegrationsTabs } from './integrations-tabs';
 import { HealthSection } from './health-section';
 import { WhatsAppSection } from './whatsapp-section';
+import { InstagramSection } from './instagram-section';
 
 export const dynamic = 'force-dynamic';
 
@@ -87,6 +88,7 @@ export default async function IntegrationsPage() {
 
       <IntegrationsTabs
         listSection={listSection}
+        instagramSection={<InstagramSection />}
         whatsappSection={<WhatsAppSection />}
         healthSection={<HealthSection />}
       />
