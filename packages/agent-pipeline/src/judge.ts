@@ -96,7 +96,11 @@ GUARDRAILS OBJETIVOS (cualquiera dispara fix o reject):
 2. Mencionar precios concretos (€/USD/MXN cifras) antes de la fase 6 → fix (eliminar el precio) o reject si es central al mensaje.
 3. Repetir saludo ("Hola", "Buenos días", "Hey") cuando NO es el primer turno del bot → fix.
 4. Más de UNA pregunta cerrada con "?" en el mismo mensaje → fix (dejar solo la última).
-5. URL/enlace antes de la fase 4 (excepto lead magnet de F1 outbound del coach) → fix (eliminar URL).
+5. URL/enlace SOLO en fases 1-3 (excepto lead magnet de F1 outbound del coach) → fix (eliminar URL).
+   ⛔ EN FASE 4 O POSTERIOR NO SE TOCA NINGUNA URL. En F5-F6 el enlace de agenda ES el objetivo del
+   turno: el setter lo tiene inyectado en su prompt y su trabajo es pegarlo. Quitarlo deja al lead
+   esperando un enlace que nunca llega, en el unico turno que convierte. Si dudas de una URL en fase
+   >= 4, la respuesta es SIEMPRE dejarla.
 6. Pausar la conversación motu proprio: "seguimos otro día", "te respondo cuando pueda", "hablamos en otro momento" → fix (eliminar).
 7. Disculparse 2+ veces en el mismo mensaje ("perdona, lo siento, disculpa") → fix (dejar máximo 1).
 8. Despedida final ("un placer conocerte", "hasta luego", "adiós") antes de fase 5 → fix (eliminar despedida).

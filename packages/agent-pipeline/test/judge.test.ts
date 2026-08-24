@@ -190,3 +190,21 @@ describe('el Judge no inventa motivos de reject', () => {
     expect(JUDGE_SYSTEM_PROMPT).toMatch(/SIN NINGUN mensaje/i);
   });
 });
+
+describe('el Judge no puede quitar el enlace de agenda', () => {
+  // Caso real (2026-08-24), visto en llm_calls id 918/919 de la tercera bateria:
+  // el Generator produjo el turno de fase 6 CON la URL correcta y el Judge la
+  // borro, razonando "Mencion de enlace sin contexto claro en F6... Removemos
+  // referencia para seguridad". Guardrail 5 estaba escrito como "URL antes de la
+  // fase 4 -> eliminar" y el modelo lo aplico en fase 6.
+  //
+  // Es el fallo mas caro posible: el unico turno que convierte, tras hasta 13
+  // turnos de trabajo, entregado sin enlace.
+  it('el guardrail 5 prohibe explicitamente tocar URLs en fase 4 o posterior', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/FASE 4 O POSTERIOR NO SE TOCA NINGUNA URL/);
+  });
+
+  it('y dice que ante la duda se deja', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/la respuesta es SIEMPRE dejarla/);
+  });
+});
