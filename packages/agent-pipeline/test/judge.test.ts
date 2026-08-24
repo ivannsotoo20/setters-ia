@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { runJudge, JUDGE_TOOL_NAME } from '../src/judge.js';
+import { runJudge, JUDGE_TOOL_NAME, judgeMessageTool, JUDGE_SYSTEM_PROMPT } from '../src/judge.js';
 
 function makeFakeSupabase() {
   return {
@@ -165,5 +165,28 @@ describe('runJudge', () => {
     );
     expect(out.decision).toBe('reject');
     expect(out.violations).toContain('Reveló ser IA');
+  });
+});
+
+describe('el Judge no inventa motivos de reject', () => {
+  // Caso real (2026-08-24): una lead con dolor de rodilla, fuera del nicho de la
+  // entrenadora. El setter emitio el cierre correcto y el Judge lo RECHAZO,
+  // dejando a la lead sin ningun mensaje. Su razonamiento se contradecia solo:
+  // "no viola ninguno de los 8 guardrails... pero marca como REJECT".
+  //
+  // La causa no estaba en el prompt sino en la DESCRIPCION de la tool, que
+  // enumeraba "descualificacion silenciosa" como motivo de reject sin que
+  // existiera entre los 8. El modelo obedecio al schema.
+  it('la descripcion de la tool no nombra motivos que no esten en los 8 guardrails', () => {
+    const desc = JSON.stringify(judgeMessageTool);
+    expect(desc).not.toMatch(/descualificaci/i);
+    // Los dos unicos motivos legitimos siguen nombrados.
+    expect(desc.toLowerCase()).toContain('ia');
+    expect(desc.toLowerCase()).toContain('precio');
+  });
+
+  it('el prompt dice explicitamente que descartar un lead no es motivo de bloqueo', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/descarte a un lead que no encaja/i);
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/SIN NINGUN mensaje/i);
   });
 });

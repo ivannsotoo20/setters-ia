@@ -57,8 +57,9 @@ export const judgeMessageTool: AnthropicTool = {
         type: 'string',
         enum: ['pass', 'fix', 'reject'],
         description:
-          'pass: el mensaje cumple todos los guardrails. fix: tiene problemas menores y se puede reescribir. ' +
-          'reject: viola un guardrail crítico irrecuperable (revelación IA, mención de precio prohibida, descualificación silenciosa).',
+          'pass: el mensaje cumple los 8 guardrails. fix: viola alguno y se puede reescribir. ' +
+          'reject: solo por revelar ser IA, o por un precio tan central que no se puede quitar sin rehacer el mensaje. ' +
+          'NO existe ningun otro motivo de reject: si no es uno de esos dos, es fix o pass.',
       },
       fixed_text: {
         type: 'string',
@@ -83,7 +84,7 @@ export const judgeMessageTool: AnthropicTool = {
   },
 };
 
-const JUDGE_SYSTEM_PROMPT = `Eres el JUEZ del setter Fyzon. Revisas mensajes ya escritos por el setter principal y decides si cumplen los GUARDRAILS DE SEGURIDAD antes de enviarlos al lead.
+export const JUDGE_SYSTEM_PROMPT = `Eres el JUEZ del setter Fyzon. Revisas mensajes ya escritos por el setter principal y decides si cumplen los GUARDRAILS DE SEGURIDAD antes de enviarlos al lead.
 
 ÁMBITO ESTRICTO: solo juzgas las 8 reglas objetivas listadas abajo.
 NO juzgas estilo, tono, vocabulario coloquial, regionalismos, expresiones venezolanas/españolas/mexicanas, longitud, ni si el mensaje "suena profesional". El setter principal tiene el coach completo del entrenador y ya valida el estilo. Tu trabajo es SOLO red de seguridad técnica.
@@ -108,7 +109,11 @@ CONTEXTO QUE RECIBES:
 OUTPUTS:
 - pass: el mensaje cumple los 8 guardrails. NO devuelvas fixed_text.
 - fix: 1-3 violaciones de los 8 guardrails. Devuelve fixed_text reescrito conservando contenido, fase, y estilo del setter. NUNCA reescribas para "mejorar el estilo" — solo para corregir el guardrail concreto.
-- reject: violación crítica irrecuperable (revelación de IA, mención central de precio que cambia toda la propuesta).
+- reject: SOLO dos casos, no hay mas. (a) revelar ser IA. (b) un precio tan central que quitarlo obliga a rehacer el mensaje entero.
+
+Si te descubres razonando "no viola ninguno de los 8, pero aun asi..." — para: eso es un pass. Un reject deja al lead SIN NINGUN mensaje, que casi siempre es peor que el mensaje imperfecto que ibas a bloquear.
+
+NO es motivo de reject, ni de fix: que el setter descarte a un lead que no encaja con el entrenador. Descartar bien es parte de su trabajo, no un fallo. El entrenador define en su bloque a quien atiende y con que palabras se despide; tu no revisas ese criterio ni en que fase se aplica.
 
 Si dudas entre pass y fix, elige pass. La permisividad sobre vocabulario es DELIBERADA — el setter ya está alineado al coach.`;
 
