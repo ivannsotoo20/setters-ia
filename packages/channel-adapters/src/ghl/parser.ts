@@ -41,6 +41,42 @@ export class GhlParseError extends Error {
 }
 
 // ---------------------------------------------------------------------------
+// Alias reales de `messageType`
+// ---------------------------------------------------------------------------
+
+/**
+ * GHL no siempre manda el nombre canonico del canal. Visto en produccion
+ * (2026-08-24): un webhook de Facebook con `messageType: "FB"`, que el enum
+ * rechazaba con invalid_enum_value y tiraba el mensaje entero.
+ *
+ * El sintoma es silencioso y caro: el lead escribe, GHL nos avisa, y el mensaje
+ * se descarta con un 400 que nadie mira. Ni lead, ni conversacion, ni registro.
+ *
+ * Se normaliza ANTES de validar en vez de ampliar el enum, para que el resto del
+ * codigo siga viendo un unico nombre por canal.
+ */
+const MESSAGE_TYPE_ALIASES: Record<string, GhlWebhookMessageType> = {
+  fb: 'FB Messenger',
+  facebook: 'FB Messenger',
+  'fb messenger': 'FB Messenger',
+  messenger: 'FB Messenger',
+  ig: 'IG',
+  instagram: 'IG',
+  'instagram dm': 'IG',
+  whatsapp: 'WhatsApp',
+  wa: 'WhatsApp',
+  sms: 'SMS',
+  email: 'Email',
+  custom: 'Custom',
+};
+
+/** Devuelve el nombre canonico si el valor es un alias conocido; si no, lo deja tal cual. */
+export function normalizeMessageType(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw;
+  return MESSAGE_TYPE_ALIASES[raw.trim().toLowerCase()] ?? raw;
+}
+
+// ---------------------------------------------------------------------------
 // Schema 1 — Marketplace App webhook (con firma RSA)
 // ---------------------------------------------------------------------------
 
@@ -50,7 +86,10 @@ const marketplaceSchema = z.object({
   contactId: z.string().min(1),
   conversationId: z.string().optional(),
   body: z.string(),
-  messageType: z.enum(['IG', 'FB Messenger', 'WhatsApp', 'SMS', 'Email', 'Custom']),
+  messageType: z.preprocess(
+    normalizeMessageType,
+    z.enum(['IG', 'FB Messenger', 'WhatsApp', 'SMS', 'Email', 'Custom']),
+  ),
   direction: z.enum(['inbound', 'outbound']),
   messageId: z.string().optional(),
   timestamp: z.string().optional(),
@@ -127,16 +166,18 @@ function resolveMessageType(
   attributionMedium: string | undefined,
 ): GhlWebhookMessageType {
   if (typeof raw === 'string') {
-    // Si ya viene como string, validar contra enum
+    // Si ya viene como string, se normalizan los alias de GHL ("FB", "instagram")
+    // antes de comprobar contra el enum.
+    const normalized = normalizeMessageType(raw);
     if (
-      raw === 'IG' ||
-      raw === 'FB Messenger' ||
-      raw === 'WhatsApp' ||
-      raw === 'SMS' ||
-      raw === 'Email' ||
-      raw === 'Custom'
+      normalized === 'IG' ||
+      normalized === 'FB Messenger' ||
+      normalized === 'WhatsApp' ||
+      normalized === 'SMS' ||
+      normalized === 'Email' ||
+      normalized === 'Custom'
     ) {
-      return raw;
+      return normalized;
     }
   }
   if (typeof raw === 'number' && MESSAGE_TYPE_INT_TO_STRING[raw]) {

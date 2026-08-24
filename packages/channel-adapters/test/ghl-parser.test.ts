@@ -443,3 +443,45 @@ describe('parseGhlWebhookPayload — customData passthrough (legacy "clase" Work
     expect(inbound.channel).toBe('instagram');
   });
 });
+
+describe('alias de messageType que manda GHL de verdad', () => {
+  // Caso real (2026-08-24): GHL envio un webhook de Facebook con
+  // messageType "FB" y el enum lo tiro con invalid_enum_value. El mensaje se
+  // descartaba entero: ni lead, ni conversacion, ni registro.
+  const base = {
+    type: 'InboundMessage' as const,
+    locationId: 'CjbWMHQEMKIAqt86ZAPt',
+    contactId: 'c1',
+    body: 'hola',
+    direction: 'inbound' as const,
+  };
+
+  it('acepta "FB" y lo trata como Facebook Messenger', () => {
+    const out = parseGhlWebhookPayload({ ...base, messageType: 'FB' });
+    expect(out.messageType).toBe('FB Messenger');
+  });
+
+  it('acepta variantes sueltas de cada canal', () => {
+    expect(parseGhlWebhookPayload({ ...base, messageType: 'facebook' }).messageType).toBe('FB Messenger');
+    expect(parseGhlWebhookPayload({ ...base, messageType: 'instagram' }).messageType).toBe('IG');
+    expect(parseGhlWebhookPayload({ ...base, messageType: 'ig' }).messageType).toBe('IG');
+    expect(parseGhlWebhookPayload({ ...base, messageType: 'whatsapp' }).messageType).toBe('WhatsApp');
+  });
+
+  it('sigue aceptando los nombres canonicos sin tocarlos', () => {
+    expect(parseGhlWebhookPayload({ ...base, messageType: 'IG' }).messageType).toBe('IG');
+    expect(parseGhlWebhookPayload({ ...base, messageType: 'FB Messenger' }).messageType).toBe('FB Messenger');
+  });
+
+  it('sigue rechazando un canal que no existe', () => {
+    expect(() => parseGhlWebhookPayload({ ...base, messageType: 'Telegram' })).toThrow();
+  });
+
+  it('el mensaje de Facebook acaba en el canal facebook, no en otro', () => {
+    // Encadenado como en produccion: primero se valida (y ahi se normaliza),
+    // luego se parsea el inbound.
+    const payload = parseGhlWebhookPayload({ ...base, messageType: 'FB' });
+    const parsed = parseGhlInboundMessage(payload, 7);
+    expect(parsed.channel).toBe('facebook');
+  });
+});
