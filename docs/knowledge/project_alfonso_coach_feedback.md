@@ -463,3 +463,24 @@ El bloque queda en **129.378 caracteres y 163 marcadores** de prohibición o ale
 Nueve reglas ocupando 45 sitios. Y por secciones, `coach_structural_modifications` es el **35 %** del bloque y `coach_tone` otro **25 %**: entre las dos, el 60 %.
 
 **Directiva de Iván para toda la autoría a partir de aquí** (destilada en `feedback_coach_marco_no_prohibiciones` §10-11): la prohibición deja de ser el recurso por defecto — se escribe exactamente lo que hay que hacer y con eso sobra, porque prohibir algo obliga a describirlo y describirlo es meterlo en el prompt. Y cuando una prohibición o un tope sobrevivan, basta decirlos UNA vez: si la regla está bien escrita se entiende que rige en todo el bloque.
+
+### La poda de las 9 reglas repetidas
+
+Aplicada sobre el mapa de arriba. Cada regla se queda en UNA casa y el resto se corta; donde el puntero hacía trabajo real se deja, donde solo repetía el argumento se va.
+
+| Regla | Casa única | Sitios antes → ahora |
+|---|---|---|
+| No inventar emoción | `coach_tone_voiceprint` · TEST BINARIO | 12 → 8 |
+| No repreguntar | `coach_special_protocols` · NO RE-PREGUNTAR | 6 → 4 |
+| No fabricar urgencia | `coach_commitment_gate` | 8 → 6 |
+| Autopsia del método | `coach_discovery_gate` · elemento 4 | 11 → 5 |
+| La disponibilidad | F3 de `..._phases` | 4 → 2 |
+| No insistir / buscarle el dolor | `coach_commitment_gate` · PUERTA B | 4 → 0 |
+| Su rutina / días / qué come | `coach_discovery_gate` · LA FRONTERA | 1 → 0 |
+| La llamada antes de F5 | `coach_tone_lexicon` | 5 → 1 |
+| La pregunta-menú | `coach_tone_voiceprint` | 5 → 2 |
+| **Total** | | **56 → 28** |
+
+Dos frases se reescribieron en positivo en vez de borrarse, porque la prohibición era la única formulación que había: *"PROHIBIDO afirmar tú el estancamiento… es PREGUNTA"* pasa a *"el estancamiento se PREGUNTA, no se afirma"*, y la disponibilidad deja de enumerar dónde no se pregunta (*"ni aquí, ni en F2, ni al trabajar la objeción de tiempo"*) para decir una sola vez que **rige en todo el bloque**.
+
+**Resultado medido:** 21 podas, −1.691 caracteres, sitios a la mitad. Los marcadores de prohibición quedan en **156, por debajo de los 158 con los que empezó la ronda**. El tamaño sigue **+3.147 sobre el punto de partida**: la poda paga las prohibiciones, no paga la fase de contexto ni el paso 4b, que son contenido nuevo. Verificado tras podar: 48 secciones XML balanceadas, cero líneas huérfanas, todos los punteros resuelven y **las 9 reglas conservan exactamente una casa**.
