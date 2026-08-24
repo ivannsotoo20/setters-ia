@@ -18,7 +18,8 @@ import { verifyGhlSignature, type VerifyGhlResult } from './webhook-verify-ghl.j
  *   - Si llega `x-wh-signature` → usa el verifier RSA existente
  *     (`webhook-verify-ghl.ts`).
  *   - Si llega `x-ghl-signature` → usa HMAC con `sharedSecret`.
- *   - Si llegan ambos → prefiere RSA (más estricto).
+ *   - Si llegan ambos → prefiere RSA (más estricto). Si llega RSA pero no hay
+ *     public key configurada, cae al HMAC en vez de fallar.
  *   - Si no llega ninguno → `missing_signature`.
  *
  * Diseño puro (no lee env, no hace I/O). El caller decide qué hacer según
@@ -68,7 +69,24 @@ export function verifyMarketplaceWebhook(opts: VerifyMarketplaceOptions): Verify
 
   if (hasRsa) {
     if (!isNonEmpty(opts.rsaPublicKeyPem)) {
-      // RSA header llegó pero no hay public key configurada — no podemos verificar.
+      // RSA header llegó pero no hay public key configurada.
+      //
+      // GHL manda AMBAS firmas a la vez, así que antes de rendirnos probamos la
+      // vía HMAC: su secreto sale del portal del propio dueño de la app, no de
+      // una clave pública que haya que ir a buscar por ahí. Sin este fallback,
+      // pasar a `enforce` era imposible salvo consiguiendo la PEM, y quedarse en
+      // `warn` significa aceptar webhooks sin verificar de nadie.
+      //
+      // No debilita nada: cuando la PEM está configurada, RSA sigue ganando.
+      if (hasHmac && isNonEmpty(opts.hmacSharedSecret)) {
+        return verifyHmacSignature({
+          rawBody: opts.rawBody,
+          signatureHeader: opts.hmacSignatureHeader!,
+          sharedSecret: opts.hmacSharedSecret,
+          toleranceSeconds: opts.hmacToleranceSeconds ?? 300,
+          nowMs: opts.nowMs ?? Date.now(),
+        });
+      }
       return { ok: false, reason: 'no_secret_configured' };
     }
     const result = verifyGhlSignature({

@@ -156,3 +156,46 @@ describe('verifyMarketplaceWebhook — RSA path', () => {
     if (r.ok) expect(r.method).toBe('rsa');
   });
 });
+
+describe('fallback a HMAC cuando llega RSA pero no hay public key', () => {
+  // GHL manda las dos firmas a la vez. Sin este fallback, un tenant sin la PEM
+  // de GHL no podia pasar a `enforce` y se quedaba aceptando webhooks sin
+  // verificar de nadie. El secreto HMAC sale del portal del dueno de la app.
+  const secret = 'sh4r3d-s3cr3t-de-la-app';
+  const body = JSON.stringify({ type: 'InboundMessage', locationId: 'abc' });
+  const hmac = createHmac('sha256', secret).update(body).digest('hex');
+
+  it('verifica por HMAC si hay secreto y no hay PEM', () => {
+    const r = verifyMarketplaceWebhook({
+      rawBody: body,
+      rsaSignatureHeader: 'firma-rsa-que-no-podemos-comprobar',
+      hmacSignatureHeader: hmac,
+      rsaPublicKeyPem: '',
+      hmacSharedSecret: secret,
+    });
+    expect(r.ok).toBe(true);
+    expect(r.ok && r.method).toBe('hmac');
+  });
+
+  it('rechaza si el HMAC no cuadra, aunque venga firma RSA', () => {
+    const r = verifyMarketplaceWebhook({
+      rawBody: body,
+      rsaSignatureHeader: 'firma-rsa',
+      hmacSignatureHeader: createHmac('sha256', 'otro-secreto').update(body).digest('hex'),
+      rsaPublicKeyPem: '',
+      hmacSharedSecret: secret,
+    });
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.reason).toBe('signature_mismatch');
+  });
+
+  it('sigue devolviendo no_secret_configured si tampoco hay secreto HMAC', () => {
+    const r = verifyMarketplaceWebhook({
+      rawBody: body,
+      rsaSignatureHeader: 'firma-rsa',
+      rsaPublicKeyPem: '',
+    });
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.reason).toBe('no_secret_configured');
+  });
+});
