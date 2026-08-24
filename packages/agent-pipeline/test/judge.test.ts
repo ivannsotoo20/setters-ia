@@ -208,3 +208,22 @@ describe('el Judge no puede quitar el enlace de agenda', () => {
     expect(JUDGE_SYSTEM_PROMPT).toMatch(/la respuesta es SIEMPRE dejarla/);
   });
 });
+
+describe('el Judge distingue negar ser IA de decir que eres el asistente', () => {
+  // Caso real (2026-08-24): Ivan decidio que ante "eres un bot?" el setter diga
+  // "soy la asistente virtual de Tania" y derive. El Judge lo BLOQUEO por su
+  // guardrail 1 ("revelar ser IA -> reject"), asi que el turno salio como
+  // rechazo: sin mensaje y sin handoff registrado.
+  //
+  // El Core y el coach decian una cosa y el Judge otra. Ahora los tres dicen lo
+  // mismo: negar es lo prohibido, no reconocerlo.
+  it('prohibe NEGAR y nombrar la tecnologia', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/NEGAR ser una IA/);
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/Claude, Anthropic, OpenAI/);
+  });
+
+  it('permite explicitamente el literal de asistente virtual del entrenador', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/NO es violacion decir "soy el\/la asistente virtual/);
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/Tu no revisas esa decision/);
+  });
+});
