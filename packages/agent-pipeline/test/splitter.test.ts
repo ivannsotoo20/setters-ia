@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deterministicSplit, buildSplitMessageTool, splitMessageTool } from '../src/splitter.js';
+import { deterministicSplit, buildSplitMessageTool, splitMessageTool, splitUrlIntoOwnPart } from '../src/splitter.js';
 
 describe('deterministicSplit fallback', () => {
   it('returns single part if text fits', () => {
@@ -107,5 +107,37 @@ describe('Hito 12.1 — buildSplitMessageTool factory', () => {
   it('export legacy `splitMessageTool` equivale al cap default (4)', () => {
     const legacy = splitMessageTool.input_schema as { properties: { parts: { maxItems: number } } };
     expect(legacy.properties.parts.maxItems).toBe(4);
+  });
+});
+
+describe('splitUrlIntoOwnPart — el enlace va en su propia burbuja', () => {
+  // El caso real que lo motivó: el mensaje de fase 6 con el enlace mide ~160
+  // chars, el fast path lo devolvía como UNA burbuja con texto+URL pegados, y
+  // los coach ordenan "el enlace en su propia burbuja".
+  const URL = 'https://api.leadconnectorhq.com/widget/booking/abc123?fyzon_lead_uuid=xyz';
+
+  it('separa texto + URL en dos burbujas', () => {
+    const out = splitUrlIntoOwnPart(`Te dejo el enlace para que agendes:\n\n${URL}`, 3);
+    expect(out).toEqual(['Te dejo el enlace para que agendes:', URL]);
+  });
+
+  it('separa antes + URL + después en tres burbujas si el cap lo permite', () => {
+    const out = splitUrlIntoOwnPart(`Genial, te lo dejo aquí:\n\n${URL}\n\nAvísame cuando reserves`, 3);
+    expect(out).toEqual(['Genial, te lo dejo aquí:', URL, 'Avísame cuando reserves']);
+  });
+
+  it('con cap 2 y tres trozos, el remate cuelga de la URL sin perder palabras', () => {
+    const out = splitUrlIntoOwnPart(`Te lo dejo aquí:\n\n${URL}\n\nAvísame`, 2);
+    expect(out).toEqual(['Te lo dejo aquí:', `${URL}\n\nAvísame`]);
+  });
+
+  it('no toca una URL que ya va sola', () => {
+    expect(splitUrlIntoOwnPart(URL, 3)).toBeNull();
+  });
+
+  it('no aplica sin URL, con varias URLs o con cap 1', () => {
+    expect(splitUrlIntoOwnPart('sin enlace ninguno', 3)).toBeNull();
+    expect(splitUrlIntoOwnPart(`mira ${URL} y también https://otra.com/x`, 3)).toBeNull();
+    expect(splitUrlIntoOwnPart(`texto ${URL}`, 1)).toBeNull();
   });
 });

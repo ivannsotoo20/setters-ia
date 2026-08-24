@@ -46,13 +46,39 @@ export interface SplitterOutput {
  * según el cap `maxParts`. Antes era una constante con cap hardcoded a 4. Ahora
  * el trainer puede bajar a 1/2/3 vía `aiMessagesPerTurnMax` en sus preferencias.
  */
+/**
+ * Si el texto contiene exactamente UNA URL con texto alrededor y hay hueco de
+ * partes, la separa en su propia burbuja: [antes, URL, después], sin vacíos.
+ *
+ * Devuelve null cuando NO aplica: sin URL, URL ya sola, varias URLs (raro, y
+ * partir mal es peor que no partir), o cap de 1 parte. Si los trozos no caben
+ * en el cap, el texto de después se pega DEBAJO de la URL (nunca se pierden
+ * palabras y la URL sigue abriendo su burbuja).
+ */
+export function splitUrlIntoOwnPart(text: string, maxParts: number): string[] | null {
+  if (maxParts < 2) return null;
+  const urls = text.match(/https?:\/\/\S+/g);
+  if (!urls || urls.length !== 1) return null;
+  const url = urls[0]!;
+  const idx = text.indexOf(url);
+  const before = text.slice(0, idx).trim();
+  const after = text.slice(idx + url.length).trim();
+  if (!before && !after) return null;
+
+  const parts = [before, url, after].filter(Boolean);
+  if (parts.length <= maxParts) return parts;
+  // 3 trozos y cap 2: la URL encabeza la segunda burbuja y el remate va debajo.
+  return [before, `${url}\n\n${after}`];
+}
+
 export function buildSplitMessageTool(maxParts: 1 | 2 | 3 | 4 = DEFAULT_MAX_PARTS): AnthropicTool {
   return {
     name: SPLITTER_TOOL_NAME,
     description:
       `Parte el mensaje del setter en 1-${maxParts} mensaje(s) natural(es) tipo WhatsApp, cada uno entre 20 y 280 caracteres. ` +
       `NO añadas información nueva, NO cambies palabras, solo decide dónde partir para que cada parte sea un mensaje natural ` +
-      `que un humano enviaría. Si el mensaje original ya cabe en una sola burbuja (≤280 chars), devuelve un único elemento.`,
+      `que un humano enviaría. Si el mensaje original ya cabe en una sola burbuja (≤280 chars), devuelve un único elemento — ` +
+      `salvo que contenga una URL: la URL va SIEMPRE sola en su propia parte.`,
     input_schema: {
       type: 'object',
       required: ['parts'],
@@ -85,13 +111,14 @@ function buildSplitterSystemPrompt(maxParts: 1 | 2 | 3 | 4): string {
   return `Eres el SPLITTER del setter Fyzon. Tu único trabajo es partir el mensaje del setter en 1-${maxParts} mensaje(s) natural(es) tipo WhatsApp.
 
 REGLAS:
-1. Cada parte: 20-280 caracteres (excepción: si el mensaje original es <20 chars, devuelve UNA sola parte tal cual).
+1. Cada parte: 20-280 caracteres (excepción: si el mensaje original es <20 chars, devuelve UNA sola parte tal cual; una URL sola también puede ser parte, mida lo que mida).
 2. NUNCA añadas palabras nuevas. NUNCA traduzcas. NUNCA cambies emojis ni signos de puntuación.
 3. Parte por límites naturales: punto-y-aparte, doble salto de línea, transiciones lógicas.
 4. Si hay UNA pregunta al final, déjala SIEMPRE en la última parte (no la pongas suelta sin contexto).
-5. Si el mensaje cabe entero en ≤280 chars, devuelve UNA sola parte con el texto completo.
+5. Si el mensaje cabe entero en ≤280 chars, devuelve UNA sola parte con el texto completo — SALVO la regla 8.
 6. Mantén orden lógico: parte_1 antes que parte_2, etc.
 7. **Hito 12.1 — Cap estricto**: NUNCA devuelvas más de ${maxParts} parte(s). Este es el techo configurado por el trainer.
+8. **URL en su propia burbuja**: si el mensaje contiene una URL (http/https), la URL va SOLA en su propia parte, sin texto antes ni después en esa parte. Esto aplica AUNQUE el mensaje entero cupiera en 280 chars (excepción a la regla 5). Un enlace pegado a un párrafo se lee peor y se toca peor en móvil. Única excepción: si el cap es 1 parte, va todo junto.
 
 NO modifiques contenido. SOLO decides cortes.`;
 }
@@ -114,9 +141,15 @@ export async function runSplitter(
   ) as 1 | 2 | 3 | 4;
 
   // Fast path: si el texto ya cabe en una burbuja, no llamamos al modelo.
+  //
+  // …salvo que lleve una URL con texto alrededor: los coach ordenan "el enlace
+  // en su propia burbuja" y este atajo se lo tragaba (el mensaje de fase 6 con
+  // el enlace mide ~160 chars y salía como UNA burbuja con texto+URL pegados).
+  // La separación es determinística: más fiable y más barata que el modelo.
   if (input.finalText.length <= PART_MAX_CHARS) {
+    const urlParts = splitUrlIntoOwnPart(input.finalText, effectiveMaxParts);
     return {
-      parts: [input.finalText],
+      parts: urlParts ?? [input.finalText],
       usage: zeroUsage(),
       fallback: true,
     };
