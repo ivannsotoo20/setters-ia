@@ -484,3 +484,32 @@ Aplicada sobre el mapa de arriba. Cada regla se queda en UNA casa y el resto se 
 Dos frases se reescribieron en positivo en vez de borrarse, porque la prohibición era la única formulación que había: *"PROHIBIDO afirmar tú el estancamiento… es PREGUNTA"* pasa a *"el estancamiento se PREGUNTA, no se afirma"*, y la disponibilidad deja de enumerar dónde no se pregunta (*"ni aquí, ni en F2, ni al trabajar la objeción de tiempo"*) para decir una sola vez que **rige en todo el bloque**.
 
 **Resultado medido:** 21 podas, −1.691 caracteres, sitios a la mitad. Los marcadores de prohibición quedan en **156, por debajo de los 158 con los que empezó la ronda**. El tamaño sigue **+3.147 sobre el punto de partida**: la poda paga las prohibiciones, no paga la fase de contexto ni el paso 4b, que son contenido nuevo. Verificado tras podar: 48 secciones XML balanceadas, cero líneas huérfanas, todos los punteros resuelven y **las 9 reglas conservan exactamente una casa**.
+
+### Segunda poda: dentro de coach_tone y coach_structural_modifications
+
+Las dos secciones sumaban el 60 % del bloque. La duplicación aquí no era entre secciones (esa la resolvió la poda anterior) sino **dentro de cada una**: reglas que se enuncian arriba y se vuelven a enunciar abajo, desglosadas.
+
+**`coach_tone`** — concentraba 24 de los topes de contador del bloque.
+- `coach_tone_variety`: las cuatro «REGLAS MECÁNICAS DE ALTERNANCIA» repetían la lista que tenían justo encima («relee tus 2 anteriores: no coincidas en apertura / emoji / estructura / validación / esqueleto»). Sobrevive lo único que la lista no cubría —que el **sub-tipo** de introducción también alterna—, y muere la cuota de «máximo 2 con muletilla en ventana de 5 mensajes», que exige contar cinco turnos hacia atrás clasificando cada uno.
+- `coach_tone_voiceprint`: el PRINCIPIO RAÍZ reenunciaba los dos modos de abrir que `coach_tone_openers` ya define con su taxonomía. Pasa a puntero, conservando lo único operativo que aportaba: cuándo se reserva una muletilla.
+- Y el «demostrativo + sustantivo abstracto» estaba en las dos secciones; se queda en openers.
+
+**`coach_discovery_gate`** — 16,5 k, la subsección más grande del bloque.
+- PUERTA DE F5 + COMPROBACIÓN + DECIDIR eran **tres líneas consecutivas** diciendo el mismo suelo desde tres ángulos (el umbral, el repaso y el freno). Una sola línea las cubre las tres sin perder nada.
+- ANTI-BUCLE y «EL PRESUPUESTO ES UN LÍMITE» decían lo mismo; la primera absorbe a la segunda.
+- El «test antes de enviar» de la negación aceptada reenunciaba la prohibición de la línea anterior.
+
+**`coach_trigger_cierre_temprano`** — «el suelo sigue en pie» aparecía al abrir la sección y otra vez al cerrarla, diecisiete líneas después.
+
+**Resultado acumulado de las dos podas** (29 cortes en total, sobre el punto de partida de la ronda):
+
+| | pre-ronda | ahora |
+|---|---|---|
+| Caracteres | 124.540 | 125.363 (**+823**) |
+| Marcadores de prohibición | 158 | **152** |
+| Topes que exigen contar entre turnos | 36 | **32** |
+| Sitios de las 9 reglas repetidas | 56 | **28** |
+
+Verificado tras cada pase: 48 secciones XML balanceadas, cero líneas huérfanas, el bloque abre y cierra bien.
+
+**Dónde queda el techo.** Los +823 caracteres que sobran son contenido que Rubén pidió: la fase de contexto entera, el paso 4b y los cuatro movimientos. Bajar de ahí ya no es podar duplicados, es recortar lo que se acaba de añadir. Los 32 topes que quedan son mayoritariamente **verificables mirando el mensaje que se escribe** (una pregunta por mensaje, máximo 3 líneas, no dos muletillas seguidas); los que exigían memoria de la conversación han caído.
