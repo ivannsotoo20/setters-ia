@@ -699,6 +699,13 @@ la persona.**
 
 **La frontera, en una frase: el PRESENTE se pregunta, el PASADO no.**
 
+⚠️ **Dentro del presente, si se pregunta o no por su MÉTODO lo decide el AVATAR, y no se propaga a
+ciegas.** Test: ¿lo que hace es un **método que le ha fallado** (lo defiende en cuanto se lo tocas → no
+se pregunta) o una **actividad que quiere conservar** (te la cuenta encantada → se pregunta)? En
+hombres-pérdida-de-peso es lo primero y está prohibido; en embarazo/posparto es lo segundo y hace falta
+(hay que saber qué hace para hablarle de adaptar lo suyo). Lo que NO cambia en ningún avatar: la
+autopsia y opinar sobre lo que hace mal.
+
 | CONTEXTO — se pregunta | AUTOPSIA — no se pregunta |
 |---|---|
 | a qué se dedica, cómo es su semana | qué plan o dieta siguió |
