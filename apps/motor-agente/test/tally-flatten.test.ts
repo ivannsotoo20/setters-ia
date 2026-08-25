@@ -94,6 +94,42 @@ describe('flattenTallyPayload', () => {
     expect(flattenTallyPayload(porLabel)?.phone).toBe('+34 600 12 34 56');
   });
 
+  it('los pseudo-campos booleanos de los CHECKBOXES de Tally no ensucian las answers', () => {
+    // Tally manda cada checkbox por duplicado: el campo padre (value=[ids] +
+    // options) y un pseudo-campo booleano por opción con label "Pregunta (Opción)".
+    // Visto en el payload real del formulario de Tania.
+    const conPseudo = structuredClone(TALLY_BODY);
+    conPseudo.data.fields.push(
+      {
+        key: 'question_ZVKLJz_a',
+        label: '¿Dónde te duele? (Zona lumbar)',
+        type: 'CHECKBOXES',
+        value: true,
+      } as never,
+      {
+        key: 'question_ZVKLJz_b',
+        label: '¿Dónde te duele? (Cervicales)',
+        type: 'CHECKBOXES',
+        value: false,
+      } as never,
+    );
+    const answers = flattenTallyPayload(conPseudo)!.answers as Record<string, unknown>;
+    expect('¿Dónde te duele? (Zona lumbar)' in answers).toBe(false);
+    expect('¿Dónde te duele? (Cervicales)' in answers).toBe(false);
+    // El texto elegido sigue estando, una sola vez, en el campo padre.
+    expect(answers['¿Dónde te duele?']).toBe('Zona lumbar');
+  });
+
+  it('el nombre que sale es el primer nombre, no el nombre completo', () => {
+    // La plantilla saluda "Hola {{nombre}}": con "Nombre y apellidos" completo
+    // quedaría "Hola Kristel Sanchez". Mismo criterio que el nombre_corto del n8n.
+    const completo = structuredClone(TALLY_BODY);
+    completo.data.fields = completo.data.fields.map((f) =>
+      f.label === 'Nombre' ? { ...f, label: 'Nombre y apellidos', value: 'Marta García López' } : f,
+    );
+    expect(flattenTallyPayload(completo)?.first_name).toBe('Marta');
+  });
+
   it('un payload plano de siempre NO se toca (n8n / GHL Workflow siguen igual)', () => {
     expect(flattenTallyPayload({ phone: '+34600123456', first_name: 'Ana' })).toBeNull();
     expect(flattenTallyPayload(null)).toBeNull();

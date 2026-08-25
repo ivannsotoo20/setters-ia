@@ -32,12 +32,15 @@ import { env } from '../config/env.js';
 import { tryClaimDedupKey } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { isValidBearer } from '../lib/timing-safe-bearer.js';
+import { getAnthropicForTenant } from '../lib/anthropic.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
+  hasConversationWithSource,
   resolveTenantByToken,
   upsertLead,
 } from '../services/lead-ingest.js';
+import { qualifyFormLead } from '../services/lead-qualifier.js';
 import {
   sendWelcomeTemplate,
   WelcomeTemplateError,
@@ -142,12 +145,24 @@ export function flattenTallyPayload(body: unknown): Record<string, unknown> | nu
     const label = labelOf(f).trim();
     const value = resolveValue(f);
     if (!label || value == null || value === '') continue;
+    // Los CHECKBOXES de Tally llegan por duplicado: el campo padre (value=[ids]
+    // + options, que resolveValue traduce a texto) y un pseudo-campo booleano
+    // por opción con label "Pregunta (Opción)". Los booleanos solo meten ruido:
+    // el texto elegido ya está en el padre.
+    if (typeof value === 'boolean' && /\([^)]+\)$/.test(label)) continue;
     answers[label] = value;
   }
 
+  // El literal del formulario suele ser "Nombre y apellidos"; para saludar en la
+  // plantilla ("Hola {{nombre}}") va solo el primer nombre — mismo criterio que
+  // el nombre_corto del flujo n8n que esto reemplaza.
+  const firstName = nameField
+    ? String(nameField.value).trim().split(/\s+/)[0] ?? null
+    : null;
+
   return {
     phone: String(phoneField.value).trim(),
-    first_name: nameField ? String(nameField.value).trim() : null,
+    first_name: firstName,
     email: emailField ? String(emailField.value).trim() : null,
     source: 'tally',
     external_id:
@@ -257,6 +272,66 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           tenant_id: tenantId,
           phone: phoneNormalized,
         });
+      }
+
+      // 5.1) Guarda de reenvío: si este teléfono YA recibió la bienvenida (tiene
+      //      conversación con source='bienvenida' viva), no se le manda otra.
+      //      Replica el check del n8n que este endpoint reemplaza (consultaba su
+      //      CRM antes de enviar): sin esto, un re-trigger del Workflow GHL o un
+      //      segundo envío del formulario duplicaría la plantilla al lead.
+      const alreadyWelcomed = await hasConversationWithSource(
+        supabase,
+        tenantId,
+        phoneNormalized,
+        'bienvenida',
+      );
+      if (alreadyWelcomed) {
+        request.log.info(
+          { tenantId, phone: phoneNormalized.slice(0, 6) + '…' },
+          'lead-form: lead ya tiene bienvenida activa — no se reenvía',
+        );
+        return reply.code(200).send({
+          ok: true,
+          already_welcomed: true,
+          tenant_id: tenantId,
+        });
+      }
+
+      // 5.2) Cualificación (2026-08-25) — SOLO para payloads de formulario con
+      //      respuestas (Tally). Porta el workflow n8n "Formulario Tally": dos
+      //      reglas deterministas (dolor reciente rechaza, país Tier A aprueba)
+      //      y evaluador IA con los criterios del entrenador para el resto.
+      //      Un payload plano sin answers (Workflow GHL de anuncios) no trae
+      //      nada que cualificar y pasa directo, como siempre.
+      //      Rechazado → NO se crea lead ni se envía nada; queda en el log y en
+      //      llm_calls (role='qualifier') si decidió la IA.
+      if (tallyFlattened && payload.answers && Object.keys(payload.answers).length > 0) {
+        const anthropic = await getAnthropicForTenant(supabase, tenantId);
+        const veredicto = await qualifyFormLead({
+          supabase,
+          anthropic: anthropic as never,
+          tenantId,
+          answers: payload.answers,
+          phone: phoneNormalized,
+        });
+        request.log.info(
+          {
+            tenantId,
+            decision: veredicto.decision,
+            evaluadoPor: veredicto.evaluadoPor,
+            motivo: veredicto.motivo,
+          },
+          'lead-form: cualificación evaluada',
+        );
+        if (veredicto.decision === 'rechazado') {
+          return reply.code(200).send({
+            ok: true,
+            qualified: false,
+            decision: 'rechazado',
+            evaluado_por: veredicto.evaluadoPor,
+            tenant_id: tenantId,
+          });
+        }
       }
 
       // 6) welcome_template_id requerido
