@@ -58,6 +58,35 @@ const HUECO_ENTRE_CORCHETES =
  */
 const MARKDOWN_CON_URL = /[[<][^\]>\n]{0,80}[\]>]\s*\(\s*https?:\/\//i;
 
+/**
+ * La tercera forma del mismo fallo, y la más silenciosa: anunciar la entrega del
+ * enlace y no poner ninguno. Ni corchete ni llaves — nada.
+ *
+ *   "Aquí va el enlace para que reserves tu hueco."   (y ahí se acaba el mensaje)
+ *
+ * Salió en la batería de verificación del 2026-08-25, en el camino feliz. No deja
+ * rastro: quien lo lea por encima ve un mensaje impecable, y la lead ve una promesa
+ * vacía justo cuando iba a reservar.
+ *
+ * Solo cuentan las formas DEÍCTICAS — "aquí va", "ahí tienes", "este es el enlace" —
+ * más el anuncio que se queda colgando de dos puntos. Un "te paso el enlace" a secas
+ * NO cuenta, porque en español vale igual para el presente que para la promesa:
+ *
+ *   "Mándame tu correo y te paso el calendario para que veas los horarios"
+ *
+ * salió en la misma batería y es correcto sin URL. Medirlo contra el corpus real fue
+ * lo que separó una cosa de la otra; con el patrón amplio, ese turno era un falso
+ * positivo y habría tumbado un mensaje bueno.
+ *
+ * OJO — esta regla depende de que se valide el mensaje ENTERO, antes del Splitter.
+ * El Splitter manda la URL en su propia burbuja, así que sobre las partes sueltas
+ * la burbuja del anuncio parecería siempre una violación.
+ */
+const ANUNCIA_ENLACE_SIN_DARLO =
+  /(?:aqu[ií]|ah[ií])\s+(?:va|van|tienes|te\s+(?:dejo|paso))[^.\n]{0,40}(?<![\p{L}\p{N}])(?:enlace|link|calendario)(?![\p{L}\p{N}])|este\s+es\s+(?:el|tu)\s+(?:enlace|link|calendario)|(?<![\p{L}\p{N}])(?:enlace|link|calendario)(?![\p{L}\p{N}])[^\S\n]*:[^\S\n]*$/imu;
+
+const HAY_URL = /https?:\/\/\S+/i;
+
 const PATTERNS: Array<{ re: RegExp; que: string }> = [
   {
     re: /\{\{[^}]{1,80}\}\}/,
@@ -77,6 +106,8 @@ export const V19_placeholderLeak: ValidationRule = {
   id: 'V19',
   description: 'Marcador sin resolver en el mensaje (hueco de enlace, mustache o token interno)',
   check: (text) => {
+    // Los huecos explícitos primero, para que el diagnóstico nombre el hueco y no
+    // el anuncio que lo rodea.
     for (const { re, que } of PATTERNS) {
       const m = text.match(re);
       if (m) {
@@ -88,6 +119,21 @@ export const V19_placeholderLeak: ValidationRule = {
           match: m[0],
           suggestion:
             'O va la URL completa tal y como está en el bloque del coach, o no se menciona el enlace en este turno.',
+        };
+      }
+    }
+
+    // Y la forma sin rastro: promete el enlace y no hay ninguna URL en el turno.
+    if (!HAY_URL.test(text)) {
+      const m = text.match(ANUNCIA_ENLACE_SIN_DARLO);
+      if (m) {
+        return {
+          ruleId: 'V19',
+          description: `anuncia el enlace ("${m[0].trim()}") y el turno no lleva ninguna URL`,
+          severity: 'error',
+          match: m[0].trim(),
+          suggestion:
+            'O va la URL completa tal y como está en el bloque del coach, o no se anuncia el enlace en este turno.',
         };
       }
     }

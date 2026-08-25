@@ -472,6 +472,44 @@ describe('validator V19 marcador sin resolver', () => {
     expect(r.violations.find((x) => x.ruleId === 'V19')).toBeUndefined();
   });
 
+  it('caza el anuncio sin enlace, que es la forma silenciosa del mismo fallo', () => {
+    // Salió en la batería de verificación, en el camino feliz: la lead ve una
+    // promesa vacía justo cuando iba a reservar, y el mensaje parece impecable.
+    const anuncios = [
+      'Genial. Aquí va el enlace para que reserves tu hueco.',
+      'Ahí tienes el link para que elijas hora',
+      'Este es el enlace de la videollamada',
+      'Te dejo el enlace:',
+    ];
+    for (const t of anuncios) {
+      const v = validateMessage(t, ctxF6).violations.find((x) => x.ruleId === 'V19');
+      expect(v, t).toBeDefined();
+      expect(v?.severity).toBe('error');
+    }
+  });
+
+  it('el mismo anuncio CON la URL detrás no se bloquea', () => {
+    const r = validateMessage(`Genial, aquí va el enlace para que reserves:\n${URL_REAL}`, ctxF6);
+    expect(r.violations.find((x) => x.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('una promesa condicional no es un anuncio', () => {
+    // Caso real de la batería: es correcto sin URL, y con el patrón amplio la regla
+    // lo tumbaba. La diferencia es deíctico ("aquí va") vs futuro ("y te paso").
+    const promesas = [
+      'Mándame tu correo y te paso el calendario para que veas los horarios disponibles.',
+      'Antes de pasarte el enlace, dime una cosa: ¿qué te limita más ahora?',
+      'En cuanto me confirmes, te lo paso',
+      'Vamos a llegar, pero quiero que la llamada sea útil para ti',
+    ];
+    for (const t of promesas) {
+      expect(
+        validateMessage(t, ctxF6).violations.find((x) => x.ruleId === 'V19'),
+        t,
+      ).toBeUndefined();
+    }
+  });
+
   it('un markdown con la URL de verdad detrás no se bloquea', () => {
     // Se lee peor de lo que debería (WhatsApp e Instagram no renderizan markdown),
     // pero la URL está: tumbar el turno por esto sería tirar un mensaje utilizable.
