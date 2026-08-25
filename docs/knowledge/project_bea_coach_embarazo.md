@@ -427,6 +427,55 @@ a recuperar"*), se dice de lo que pasa en general (*"se recuperan"*). Sección n
 
 ---
 
+## RONDA 5 — Iván poda el bloque, y el enlace pasa a decidirlo el activador
+
+### El enlace ya no se elige a ojo
+
+El técnico de Automatía manda el mecanismo real: existe **`conversation.origin.activator`**, que dice
+por dónde entró la conversación. El `coach_links` estaba pidiéndole al setter que **infiriera** el
+origen ("si esta conversación empezó por DM…"), que es justo lo que no puede saber. Ahora es una tabla
+de prefijo → enlace entero:
+
+| `conversation.origin.activator` empieza por | Enlace |
+|---|---|
+| `LM -` · `Bienvenida -` · `CTA Stories -` · `CTA Post -` · `DM -` · `WhatsApp -` | su cola de `?org=…` |
+
+Con fallback explícito a `Bienvenida -` si no matchea o no hay activador, y el enlace se envía **entero**,
+nunca por trozos. ⚠️ **Los nombres de los activadores hay que crearlos con esos prefijos en Automatía**:
+la tabla es una convención propuesta, no algo que ya exista.
+
+### Lo que Iván podó, y por qué importa para los próximos
+
+Bajó el bloque de **1467 a 1269 líneas sin tocar una sola decisión operativa**. Todo lo que quitó cae en
+cuatro familias, y está destilado en [[feedback_coach_lo_que_sobra_en_un_bloque]]:
+
+1. **La justificación de la regla** (*"⚠️ ESTE ES EL FALLO Nº1 DEL NICHO, las dos IAs auditadas fallan
+   aquí…"* → fuera, la regla se queda sola).
+2. **El meta-comentario** sobre el propio bloque y su historia.
+3. **El autoelogio** de la regla (*"es tu movimiento más potente"*).
+4. **Las reglas que los exemplars ya enseñan** — aquí estaba casi todo el peso muerto: borró enteros el
+   banco de arranques, "el acuse corto va primero", "no le recites sus datos" y "un movimiento por
+   burbuja", porque los ejemplos ya los demuestran. Corolario de la doctrina §8: **si el exemplar enseña
+   el patrón, la regla que lo describe sobra.**
+
+El test que queda: *¿esto le dice al modelo QUÉ HACER, o le explica POR QUÉ? Si es lo segundo, fuera —
+el porqué vive en `docs/knowledge/`, no en el prompt.*
+
+### Dos cosas que se rompieron al podar (y cómo se detectan)
+
+- **Puntero huérfano.** El `coach_tone_contrast` seguía diciendo *"es el mismo molde prohibido en el
+  voiceprint"* cuando esa regla del voiceprint ya no existía. Reescrito para sostenerse solo.
+- **Un literal operativo perdido.** Dos de los tres carriles de la brecha se quedaron sin la segunda
+  mitad (*"o hay algo que te gustaría cambiar?"*), que es exactamente lo que Rubén pidió para que no
+  murieran todas las conversaciones. **Lo delató la contradicción interna**: la regla de encima seguía
+  diciendo *"SIEMPRE va con la segunda mitad"* mientras los ejemplos de debajo no la llevaban, y en el
+  tercer carril sí estaba. Restaurado.
+
+**La lección de método:** tras un recorte grande, dos barridos obligatorios — **grep de punteros** (§,
+"ver X", "prohibido en Y") y **contraste regla-vs-ejemplo** en cada sección tocada.
+
+---
+
 ## Batería de la RONDA 0 para el simulador (34 pruebas)
 
 Es un bloque que nunca se ha ejecutado, así que la batería no busca confirmar que funciona: busca los
