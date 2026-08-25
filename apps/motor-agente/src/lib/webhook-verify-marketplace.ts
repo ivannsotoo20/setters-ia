@@ -1,26 +1,34 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { verifyGhlSignature, type VerifyGhlResult } from './webhook-verify-ghl.js';
+import {
+  verifyGhlSignature,
+  verifyGhlEd25519Signature,
+  type VerifyGhlResult,
+} from './webhook-verify-ghl.js';
 
 /**
  * GHL Marketplace App webhook signature verification (Bloque C.E.3).
  *
- * GHL envía webhooks de apps Marketplace con UNA de dos firmas (depende del
- * tipo de evento y configuración):
+ * GHL envía webhooks de apps Marketplace con hasta tres firmas posibles:
  *
- *   - **HMAC-SHA256 con Shared Secret** — header `x-ghl-signature`
- *     (formato `t=<unix_seconds>,s=<hmac_hex>` o solo `<hmac_hex>` raw).
- *     Signed payload = `${t}.${rawBody}` o solo el body si no hay timestamp.
+ *   - **Ed25519 con public key universal GHL** — header `x-ghl-signature`
+ *     con 64 bytes en base64. Es la firma VIGENTE (2026) y la única que
+ *     sobrevive al 2026-09-01, cuando GHL retira la RSA. Verificada en
+ *     producción: los webhooks reales del tenant 7 llegan con ambos headers.
  *
  *   - **RSA-SHA256 con public key universal GHL** — header `x-wh-signature`
- *     (firma base64). Signed payload = rawBody.
+ *     (firma base64). Signed payload = rawBody. Deprecada 2026-09-01.
  *
- * El verifier intenta detectar cuál se usa por presencia del header y delega:
- *   - Si llega `x-wh-signature` → usa el verifier RSA existente
- *     (`webhook-verify-ghl.ts`).
- *   - Si llega `x-ghl-signature` → usa HMAC con `sharedSecret`.
- *   - Si llegan ambos → prefiere RSA (más estricto). Si llega RSA pero no hay
- *     public key configurada, cae al HMAC en vez de fallar.
- *   - Si no llega ninguno → `missing_signature`.
+ *   - **HMAC-SHA256 con Shared Secret** — el formato ANTIGUO del header
+ *     `x-ghl-signature` (`t=<unix_seconds>,s=<hmac_hex>` o `<hmac_hex>` raw).
+ *     Se conserva por si alguna instalación vieja aún lo emite; se distingue
+ *     del Ed25519 sin ambigüedad por la forma del valor (hex/`t=` vs base64
+ *     de 64 bytes).
+ *
+ * Orden de preferencia del verifier:
+ *   1. `x-ghl-signature` con pinta de Ed25519 + clave configurada → Ed25519.
+ *   2. `x-wh-signature` + PEM RSA configurada → RSA.
+ *   3. `x-ghl-signature` formato HMAC + shared secret → HMAC.
+ *   4. Nada verificable → `no_secret_configured` / `missing_signature`.
  *
  * Diseño puro (no lee env, no hace I/O). El caller decide qué hacer según
  * `verify_mode` (disabled / warn / enforce).
@@ -35,6 +43,8 @@ export interface VerifyMarketplaceOptions {
   hmacSignatureHeader?: string | undefined;
   /** Public key PEM de GHL (para RSA). Si vacía, RSA no se intenta. */
   rsaPublicKeyPem?: string;
+  /** Public key PEM Ed25519 de GHL (header x-ghl-signature moderno). Si vacía, no se intenta. */
+  ed25519PublicKeyPem?: string;
   /** Shared secret de la app Marketplace (para HMAC). Si vacía, HMAC no se intenta. */
   hmacSharedSecret?: string;
   /** Tolerancia anti-replay en segundos para timestamp HMAC. Default 300s. */
@@ -44,7 +54,7 @@ export interface VerifyMarketplaceOptions {
 }
 
 export type VerifyMarketplaceResult =
-  | { ok: true; method: 'rsa' | 'hmac' }
+  | { ok: true; method: 'rsa' | 'hmac' | 'ed25519' }
   | {
       ok: false;
       reason:
@@ -59,12 +69,30 @@ export type VerifyMarketplaceResult =
     };
 
 export function verifyMarketplaceWebhook(opts: VerifyMarketplaceOptions): VerifyMarketplaceResult {
-  // Preferencia: RSA > HMAC. Solo elegimos uno (no doble-verify).
   const hasRsa = isNonEmpty(opts.rsaSignatureHeader);
   const hasHmac = isNonEmpty(opts.hmacSignatureHeader);
 
   if (!hasRsa && !hasHmac) {
     return { ok: false, reason: 'missing_signature' };
+  }
+
+  // 1. Ed25519 primero: es la firma vigente y la única que queda tras el
+  //    2026-09-01. Solo si el header tiene la forma de una firma Ed25519
+  //    (base64 de 64 bytes) — un header con formato HMAC (`t=…,s=…` o hex)
+  //    cae a su propia vía más abajo.
+  if (hasHmac && isNonEmpty(opts.ed25519PublicKeyPem) && looksLikeEd25519(opts.hmacSignatureHeader!)) {
+    const result = verifyGhlEd25519Signature({
+      rawBody: opts.rawBody,
+      signatureHeader: opts.hmacSignatureHeader,
+      publicKeyPem: opts.ed25519PublicKeyPem!,
+    });
+    if (result.ok) return { ok: true, method: 'ed25519' };
+    // Si la Ed25519 no casa, NO nos rendimos todavía: la RSA del mismo request
+    // puede validar (GHL manda ambas). Solo si tampoco hay vía RSA, este es el
+    // veredicto final.
+    if (!hasRsa || !isNonEmpty(opts.rsaPublicKeyPem)) {
+      return mapRsaResult(result);
+    }
   }
 
   if (hasRsa) {
@@ -117,6 +145,20 @@ function mapRsaResult(r: VerifyGhlResult): VerifyMarketplaceResult {
 
 function isNonEmpty(s: string | undefined | null): s is string {
   return typeof s === 'string' && s.length > 0;
+}
+
+/**
+ * Distingue sin ambigüedad el valor moderno de `x-ghl-signature` (Ed25519,
+ * base64 de 64 bytes → 88 chars con `==`) del formato HMAC antiguo (`t=…,s=…`
+ * o hex puro). Un hex de 64 chars también es base64 válido, pero decodifica a
+ * 48 bytes, no a 64 — la longitud decodificada es el discriminador.
+ */
+function looksLikeEd25519(header: string): boolean {
+  const t = header.trim();
+  if (t.includes(',')) return false; // `t=…,s=…` → HMAC antiguo
+  if (/^[a-fA-F0-9]+$/.test(t)) return false; // hex puro → HMAC antiguo
+  if (!/^[A-Za-z0-9+/]+=*$/.test(t)) return false;
+  return Buffer.from(t, 'base64').length === 64;
 }
 
 // ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@ import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
-import { verifyGhlSignature } from '../lib/webhook-verify-ghl.js';
+
 import { verifyMarketplaceWebhook } from '../lib/webhook-verify-marketplace.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import { safeLogBody } from '../lib/log-redact.js';
@@ -94,42 +94,36 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
       }
       const { tenantId } = resolved;
 
-      // 2. Verificación firma RSA
+      // 2. Verificación de firma — mismo verifier combinado que el endpoint
+      //    OAuth (Ed25519 vigente > RSA deprecada 2026-09-01 > HMAC legado).
+      //    Hasta 2026-08-25 este endpoint solo miraba la RSA: habría dejado de
+      //    verificar NADA el día que GHL retire ese header.
       const verifyMode = env.GHL_WEBHOOK_VERIFY_MODE;
       if (verifyMode !== 'disabled') {
-        const sigHeader = pickHeader(request, 'x-wh-signature');
-        const pubKey = env.GHL_WEBHOOK_PUBLIC_KEY_PEM ?? '';
-        if (!pubKey) {
+        const rawBody =
+          request.rawBody ??
+          Buffer.from(
+            typeof request.body === 'string' ? request.body : JSON.stringify(request.body ?? {}),
+            'utf8',
+          );
+        const result = verifyMarketplaceWebhook({
+          rawBody,
+          rsaSignatureHeader: pickHeader(request, 'x-wh-signature'),
+          hmacSignatureHeader: pickHeader(request, 'x-ghl-signature'),
+          rsaPublicKeyPem: env.GHL_WEBHOOK_PUBLIC_KEY_PEM,
+          ed25519PublicKeyPem: env.GHL_WEBHOOK_ED25519_PUBLIC_KEY_PEM,
+          hmacSharedSecret: env.GHL_OAUTH_SHARED_SECRET,
+        });
+        if (!result.ok) {
           request.log.warn(
-            { tenantId, verifyMode },
-            'webhook-ghl: GHL_WEBHOOK_PUBLIC_KEY_PEM no configurada',
+            { tenantId, verifyMode, reason: result.reason },
+            `webhook-ghl: signature verification failed (${result.reason})`,
           );
           if (verifyMode === 'enforce') {
-            return reply.code(401).send({ error: 'public_key_not_configured' });
+            return reply.code(401).send({ error: 'invalid signature', reason: result.reason });
           }
         } else {
-          const rawBody =
-            request.rawBody ??
-            Buffer.from(
-              typeof request.body === 'string' ? request.body : JSON.stringify(request.body ?? {}),
-              'utf8',
-            );
-          const result = verifyGhlSignature({
-            rawBody,
-            signatureHeader: sigHeader,
-            publicKeyPem: pubKey,
-          });
-          if (!result.ok) {
-            request.log.warn(
-              { tenantId, verifyMode, reason: result.reason, hasSignature: Boolean(sigHeader) },
-              `webhook-ghl: signature verification failed (${result.reason})`,
-            );
-            if (verifyMode === 'enforce') {
-              return reply.code(401).send({ error: 'invalid signature', reason: result.reason });
-            }
-          } else {
-            request.log.debug({ tenantId }, 'webhook-ghl: signature OK');
-          }
+          request.log.info({ tenantId, method: result.method }, 'webhook-ghl: signature OK');
         }
       }
 
@@ -288,6 +282,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           rsaSignatureHeader: pickHeader(request, 'x-wh-signature'),
           hmacSignatureHeader: pickHeader(request, 'x-ghl-signature'),
           rsaPublicKeyPem: env.GHL_WEBHOOK_PUBLIC_KEY_PEM,
+          ed25519PublicKeyPem: env.GHL_WEBHOOK_ED25519_PUBLIC_KEY_PEM,
           hmacSharedSecret: env.GHL_OAUTH_SHARED_SECRET,
         });
         if (!result.ok) {
@@ -299,7 +294,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
             return reply.code(401).send({ error: 'invalid signature', reason: result.reason });
           }
         } else {
-          request.log.debug({ method: result.method }, 'webhook-ghl(oauth): signature OK');
+          request.log.info({ method: result.method }, 'webhook-ghl(oauth): signature OK');
         }
       }
 

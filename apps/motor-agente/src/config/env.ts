@@ -57,7 +57,23 @@ const envSchema = z.object({
   // con BEGIN/END PUBLIC KEY). Si no está configurada y verify_mode != disabled
   // → toda firma se trata como signature_mismatch. En dev local se puede dejar
   // vacía con verify_mode=disabled.
-  GHL_WEBHOOK_PUBLIC_KEY_PEM: z.string().optional(),
+  //
+  // El `.env.local` del VPS lo lee docker compose vía `env_file`, que NO admite
+  // valores multilínea: el PEM se pega en UNA línea con `\n` literales y el
+  // transform los convierte en saltos reales. Un PEM multilínea normal (dev
+  // local con dotenv) pasa intacto.
+  GHL_WEBHOOK_PUBLIC_KEY_PEM: z
+    .string()
+    .optional()
+    .transform((v) => v?.replace(/\\n/g, '\n')),
+  // Clave pública Ed25519 de GHL para el header `x-ghl-signature`. GHL retira
+  // la firma RSA (`x-wh-signature`) el 2026-09-01: sin esta clave, pasar a
+  // `enforce` funciona una semana y después rechaza TODO el tráfico. Mismo
+  // formato y mismo truco `\n` que la RSA.
+  GHL_WEBHOOK_ED25519_PUBLIC_KEY_PEM: z
+    .string()
+    .optional()
+    .transform((v) => v?.replace(/\\n/g, '\n')),
   // Bloque C.E — App Marketplace GHL propia con OAuth + webhooks firmados.
   // Sub-Account distribution: cada trainer instala la app en su sub-cuenta.
   // El motor mapea install → tenant_id via state param (Redis TTL 600s).

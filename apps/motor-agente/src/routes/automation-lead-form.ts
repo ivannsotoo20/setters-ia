@@ -69,6 +69,93 @@ const payloadSchema = z.object({
 
 type Payload = z.infer<typeof payloadSchema>;
 
+/**
+ * Aplanador del webhook NATIVO de Tally (2026-08-25).
+ *
+ * Hasta hoy este endpoint exigía el payload plano y el aplanado lo hacía n8n.
+ * n8n se apagó (migración de Tania), así que el motor acepta el FORM_RESPONSE
+ * de Tally tal y como Tally lo manda, sin intermediario:
+ *
+ *   { eventId, eventType: "FORM_RESPONSE",
+ *     data: { responseId, fields: [{ key, label, type, value, options? }] } }
+ *
+ * Mapeo:
+ *   - phone      → primer campo de tipo teléfono (INPUT_PHONE_NUMBER / PHONE_NUMBER).
+ *                  Fallback: primer campo cuyo label suene a teléfono/WhatsApp.
+ *   - first_name → primer campo cuyo label sea "nombre"/"name" (best-effort).
+ *   - email      → primer campo de tipo INPUT_EMAIL, o label email/correo.
+ *   - answers    → TODOS los campos como label → valor, con las opciones de
+ *                  choice resueltas a su texto (Tally manda ids).
+ *   - external_id→ data.responseId (dedup), source → 'tally'.
+ *
+ * Devuelve null si el body no tiene la forma de Tally — el caller sigue con el
+ * payload plano de siempre, así que n8n/GHL Workflow siguen funcionando igual.
+ */
+export function flattenTallyPayload(body: unknown): Record<string, unknown> | null {
+  const b = body as { eventType?: unknown; data?: { responseId?: unknown; fields?: unknown } } | null;
+  if (!b || b.eventType !== 'FORM_RESPONSE' || !Array.isArray(b.data?.fields)) return null;
+
+  interface TallyField {
+    label?: unknown;
+    type?: unknown;
+    value?: unknown;
+    options?: Array<{ id?: unknown; text?: unknown }>;
+  }
+  const fields = b.data!.fields as TallyField[];
+
+  const resolveValue = (f: TallyField): unknown => {
+    if (Array.isArray(f.value) && Array.isArray(f.options)) {
+      const byId = new Map(f.options.map((o) => [String(o.id), String(o.text ?? o.id)]));
+      const texts = f.value.map((v) => byId.get(String(v)) ?? String(v));
+      return texts.length === 1 ? texts[0] : texts.join(', ');
+    }
+    return f.value;
+  };
+
+  const isPhoneType = (t: unknown) =>
+    typeof t === 'string' && /PHONE/i.test(t);
+  const labelOf = (f: TallyField) => (typeof f.label === 'string' ? f.label : '');
+
+  const phoneField =
+    fields.find((f) => isPhoneType(f.type) && typeof f.value === 'string' && f.value.trim() !== '') ??
+    fields.find(
+      (f) =>
+        /tel[eé]fono|whatsapp|phone|m[oó]vil|celular/i.test(labelOf(f)) &&
+        typeof f.value === 'string' &&
+        f.value.trim() !== '',
+    );
+  if (!phoneField) return null; // sin teléfono no hay lead WA que crear
+
+  const nameField = fields.find(
+    (f) => /^nombre\b|^name\b|first.?name/i.test(labelOf(f).trim()) && typeof f.value === 'string',
+  );
+  const emailField = fields.find(
+    (f) =>
+      ((typeof f.type === 'string' && /EMAIL/i.test(f.type)) ||
+        /email|correo/i.test(labelOf(f))) &&
+      typeof f.value === 'string' &&
+      f.value.includes('@'),
+  );
+
+  const answers: Record<string, unknown> = {};
+  for (const f of fields) {
+    const label = labelOf(f).trim();
+    const value = resolveValue(f);
+    if (!label || value == null || value === '') continue;
+    answers[label] = value;
+  }
+
+  return {
+    phone: String(phoneField.value).trim(),
+    first_name: nameField ? String(nameField.value).trim() : null,
+    email: emailField ? String(emailField.value).trim() : null,
+    source: 'tally',
+    external_id:
+      typeof b.data!.responseId === 'string' ? b.data!.responseId : null,
+    answers,
+  };
+}
+
 export async function automationLeadFormRoutes(app: FastifyInstance): Promise<void> {
   // GET /ping para que el wizard onboarding y dashboard health puedan verificar
   // conectividad sin disparar el flujo completo.
@@ -131,10 +218,19 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
         }
       }
 
-      // 3) Parse payload
+      // 3) Parse payload. Si el body viene con la forma nativa de Tally
+      //    (FORM_RESPONSE), se aplana primero; si no, se acepta el formato
+      //    plano de siempre (n8n / GHL Workflow / curl).
+      const tallyFlattened = flattenTallyPayload(request.body);
+      if (tallyFlattened) {
+        request.log.info(
+          { answerCount: Object.keys((tallyFlattened.answers as object) ?? {}).length },
+          'lead-form: payload Tally nativo aplanado',
+        );
+      }
       let payload: Payload;
       try {
-        payload = payloadSchema.parse(request.body);
+        payload = payloadSchema.parse(tallyFlattened ?? request.body);
       } catch (err) {
         if (err instanceof ZodError) {
           return reply.code(400).send({ error: 'invalid_payload', issues: err.flatten() });
