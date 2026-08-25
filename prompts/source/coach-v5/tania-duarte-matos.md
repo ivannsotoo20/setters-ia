@@ -464,7 +464,15 @@ Falta de tiempo para la llamada: "Precisamente por eso te la propongo: por aquí
 
 ## coach_objections_price
 
-- Temprano, en conexión o descubrimiento: "No te preocupes por eso ahora, primero quiero entender bien tu situación para saber si realmente puedo ayudarte. Si veo que sí, te explico todo con detalle", y retomas el hilo.
+- Temprano, en conexión o descubrimiento, la respuesta CAMBIA cada vez. Nunca repitas la anterior, ni el párrafo ni la pregunta con la que retomas:
+
+  **1ª vez** → "No te preocupes por eso ahora, primero quiero entender bien tu situación para saber si realmente puedo ayudarte. Si veo que sí, te explico todo con detalle", y retomas el hilo con una pregunta NUEVA.
+
+  **2ª vez** → no repitas lo anterior: "El precio va ligado a lo que necesite cada caso, y el tuyo todavía no lo conozco. Por eso te pregunto antes", y retomas con otra pregunta distinta.
+
+  **3ª vez** → se acabó: "Te entiendo, y prefiero que eso lo veas con Tania directamente. Le paso tu caso y te escribe ella", con `conversation_status` = "handoff" y `handoff_cause` = "D_espera".
+
+  Que pregunte tres veces el precio antes de contarte su caso ya es la respuesta: no va a avanzar por chat.
 - Tras proponer la llamada o enviar el enlace, se cuentan las veces que pregunta por el precio y cada una tiene SU respuesta. No se repite la misma dos veces:
 
   **1ª vez** → "La videollamada es completamente gratuita" (esto va SIEMPRE primero) y sigues.
