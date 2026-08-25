@@ -308,6 +308,125 @@ planteamiento?"*. Esa es la frontera fina entre acotar y cerrar.
 
 ---
 
+## RONDA 3 — primer feedback real: Rubén + 5 hallazgos de Bea
+
+Primera vez que el bloque se prueba fuera de nuestro simulador. **Rubén lo da por bueno** (*"a nivel de
+tono lo hace muy bien"*, *"está mucho mejor de lo que yo veía"*, *"con esos dos detalles estaría listo
+y podemos testearlo"*) y solo pide dos cambios. Bea encuentra cinco cosas, y todas menos una son la
+misma: **repite lo que ya se ha dicho.**
+
+### Los dos de Rubén
+
+1. **"cómo viene siendo tu día a día ahora mismo?" era demasiado abierta.** *"La persona no va a saber
+   interpretarla bien, va a empezar a contar todo el tiempo dándole teta, cosas que no vienen al caso."*
+   Su molde: **"cuéntame cómo lo estás llevando, te estás moviendo algo o de momento lo has dejado un
+   poco aparcado?"** — abierta **dentro del tema**, no abierta del todo.
+   ⚠️ **Ojo al matiz de nicho:** la corrección del 24-ago sobre Alfonso (contexto de vida, no de
+   método) iba dirigida al avatar de hombres, donde preguntar la rutina abre la defensa del plan. Aquí
+   Rubén pide lo contrario y tiene razón: una recién parida no tiene un método que defender, y la
+   pregunta de vida en abierto se le va de tema. **La frontera del método sigue en pie** ("qué rutina
+   llevas?" sigue prohibido); lo que cambia es que la pregunta se acota al movimiento.
+2. **La brecha mataba todas las conversaciones.** *"Si la pregunta no da pie a decir algo malo, lo
+   normal es que la persona diga que sí está contenta… y ya cierra y me descualifica. Casi todas las
+   conversaciones van a morir exactamente igual."* → la pregunta **lleva la puerta de salida dentro**:
+   *"estás contenta con cómo va tu recuperación, o hay algo que te gustaría cambiar?"*
+   Mi parche de la ronda 1 (el "sí tibio" con una segunda pregunta) atacaba el síntoma; esto arregla la
+   pregunta.
+
+También señala que repite *"qué bonita etapa"* un par de veces.
+
+### Los cinco de Bea
+
+| # | Qué pasó | Arreglo |
+|---|---|---|
+| **1** | La lead entra con *"quiero información de posparto"* y el setter le pregunta la etapa igual. Y a la que dice *"embarazada de 5 semanas y es mi segundo embarazo"* le pregunta de cuánto está | **F0 pasa a tener DOS versiones**: con router solo si no sabes su etapa. Y lo que venga pegado a la etapa (semanas, si es el primero) también cuenta como dado |
+| **2** | Pide el precio tres veces y el setter sigue reconduciendo. Acaba diciendo *"por qué te cuesta darme el precio, me da inseguridad"* | **Tres toques y al tercero se da.** 🔴 Bloqueado: el precio no está en su documentación |
+| **3** | Le pregunta si está contenta con su recuperación a una mujer que **no ha podido empezar** por no tener el alta | **La brecha no se pregunta** a quien está en cuarentena o esperando alta. Se sustituye por qué le preocupa de cara a cuando pueda arrancar |
+| **4** | La lead pregunta *"cómo puedo ponerle solución?"* y el setter le devuelve otra pregunta sin contestarle | **Si ella pregunta, se le contesta** antes de seguir. Y entra el **canal de autoridad de Bea**: *"a la mayoría de mujeres no nos explican bien esta parte"* |
+| **5** | Repite la pregunta de disposición y salta a la videollamada sin que ella haya dicho que quiere ayuda | La disposición se hace **una vez**. Y consciencia ≠ intención: reconocer una carencia no abre F5 |
+
+### Enmienda del 25-ago: en ESTE avatar el método SÍ se pregunta
+
+Iván, cerrando el punto de Rubén: *"en cuanto al contexto, se debe preguntar sobre el método, como dice
+Rubén, porque al final no es lo mismo pérdida de peso de hombre que de embarazo."*
+
+El elemento 1 pasa a **permitir el follow-up de qué hace** (*"y qué sueles hacer?"*), porque sin ese
+dato ni sabes de dónde parte ni puedes hablarle de adaptar **lo suyo** en la propuesta — que es
+justo lo que hizo bien el setter en la captura del feedback 5 (*"tanto el pilates como el crossfit"*).
+
+**El test que queda escrito en la doctrina** (§33) para no volver a propagarlo a ciegas:
+
+> ¿Lo que hace es un **método que le ha fallado** (lo defiende en cuanto se lo tocas → no se pregunta) o
+> una **actividad que quiere conservar** (te la cuenta encantada → se pregunta)?
+
+En hombres-pérdida-de-peso es lo primero. En embarazo/posparto es lo segundo: ella no tiene un plan que
+defender, tiene actividad que quiere seguir haciendo **con seguridad**, y preguntárselo la tranquiliza
+en vez de ponerla a la defensiva. Lo que no cambia en ningún avatar: **la autopsia** (qué probó, por qué
+lo dejó) y **opinar sobre lo que hace mal**.
+
+### Lo transversal: una regla anti-repetición con dientes
+
+Las tres reglas que ya había (relee el historial, anti-bucle, "su respuesta cuenta como dato dado")
+estaban **enterradas dentro del gate** y no se cumplían. Ahora hay un bloque **⛔⛔ al principio de
+`coach_structural_modifications`**, antes que nada, con las tres comprobaciones y —lo que faltaba— la
+**lista por nombre de lo que más se repite**: la etapa, las semanas, la disposición y las fórmulas de
+enhorabuena. Más el literal para cuando se le escape y ella se lo haga notar (*"tienes razón,
+perdona!"*), sin justificarse.
+
+**La lección de método:** una regla que pide un comportamiento continuo (releer) no se cumple por estar
+escrita; se cumple cuando además nombra **los casos concretos** donde falla.
+
+---
+
+## RONDA 4 — llega el precio y los resultados de posparto
+
+De las tres cosas pedidas, Bea manda dos. **Los 20 mensajes no los da**: dice que el tono ya les gusta.
+Así que la voz se queda como está — inferida de su formulario y validada por Rubén (*"a nivel de tono
+lo hace muy bien"*), pero sin corpus real detrás. Es una deuda que ya no está bloqueando nada.
+
+### El precio (slot cerrado)
+
+> *"El programa son 24 semanas y el precio parte de 150 euros con opción de pago único o fraccionado
+> (no mensual)."*
+
+Entra en el toque 3 con dos guardarraíles que no estaban en su respuesta y hacen falta:
+- **"parte de" va siempre.** Es un *desde*, no una tarifa, y el modelo tiende a cerrar cifras.
+- **No es cuota mensual.** Ella lo aclara entre paréntesis; si no se escribe, ante *"150 al mes?"* el
+  setter dice que sí.
+
+Y lo que incluye (planificación con ajustes ilimitados, seguimiento diario 1:1, menús por etapa,
+masterclases, clases en directo, comunidad) va con la regla de **dos o tres, las que enganchen**, nunca
+la lista de carrerilla.
+
+### El dato que no venía pedido y era una compuerta abierta
+
+En su literal de deflexión aparece: *"en la videollamada **una de mis compañeras** podrá conocer mejor
+tu situación"*. Eso cierra la compuerta 🟡 de **quién atiende la llamada**, que yo había dejado sin
+resolver escribiendo *"lo vemos con el equipo"* sin prometer a nadie.
+
+Ahora se dice explícitamente en F5, en la objeción de precio post-F5 y en logística. **No es un handoff
+que haya que esconder**: tiene 17 personas, es lo normal, y decirlo evita que la lead llegue esperando
+hablar con Bea. Obligó a matizar `coach_identity_role`, que prohibía en redondo el *"te paso con"*.
+
+### Los resultados de posparto, con el matiz cosido
+
+Su respuesta trae seis resultados y una frase que es la que lo sostiene todo: *"salvo patologías graves
+TODAS consiguen recuperarse, **cada una a su tiempo y depende del compromiso**"*.
+
+Tres de los seis chocan con vetos del bloque y entran **acotados**, no tal cual:
+
+| Su literal | Cómo entra |
+|---|---|
+| *"recuperan su peso, medidas, figura"* | **Solo si lo saca ella**, y con "por lo general" delante. El setter no nombra peso ni medidas por iniciativa propia (veto 3) |
+| *"no tienen dolores de espalda"* | Como lo que pasa en general, nunca como garantía de salud |
+| *"con energía para el bebé"* | *"con más energía"* siempre; *"para el bebé"* solo si ella ha hablado de él (veto 2) |
+
+Y la regla que los gobierna a los tres: **ningún resultado se dice en segunda persona de futuro** (*"vas
+a recuperar"*), se dice de lo que pasa en general (*"se recuperan"*). Sección nueva
+`coach_program_results`.
+
+---
+
 ## Batería de la RONDA 0 para el simulador (34 pruebas)
 
 Es un bloque que nunca se ha ejecutado, así que la batería no busca confirmar que funciona: busca los
