@@ -396,6 +396,8 @@ describe('validator V18 addressing consistency', () => {
 
 describe('validator V19 marcador sin resolver', () => {
   const ctxF6: ValidationContext = { ...baseCtx, currentPhase: 6 };
+  const URL_REAL =
+    'https://api.leadconnectorhq.com/widget/booking/wC54o4jXWdev4UDKsOka?fyzon_lead_uuid=abc123';
 
   it('caza el hueco de enlace literal que salió en producción', () => {
     const r = validateMessage(
@@ -416,6 +418,17 @@ describe('validator V19 marcador sin resolver', () => {
       'Te dejo el [enlace de agenda] cuando quieras',
       'Mira el [calendario] y dime',
       'Agenda en [insertar enlace]',
+      // Los que se le escaparon a la primera versión de la regla, que enumeraba
+      // prefijos: "AQUÍ" lleva tilde y el patrón buscaba "aqui".
+      '[AQUÍ VA EL ENLACE DE AGENDA]',
+      '[AQUI VA EL ENLACE]',
+      'Reserva en [pon aquí tu enlace de calendario] cuando quieras',
+      '[tu url de booking]',
+      // Y el que se escapaba por los guiones bajos: `_` es carácter de palabra,
+      // así que `\burl\b` no casaba aquí dentro. Salió en producción.
+      '[INSERTAR_URL_AGENDA]',
+      '[ENLACE_CALENDARIO]',
+      '<LINK-AGENDA>',
     ];
     for (const t of variantes) {
       const r = validateMessage(t, ctxF6);
@@ -456,6 +469,13 @@ describe('validator V19 marcador sin resolver', () => {
 
   it('un corchete que no habla de enlaces no dispara la regla', () => {
     const r = validateMessage('Me dijo [textualmente] que no podía más', ctxF6);
+    expect(r.violations.find((x) => x.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('un markdown con la URL de verdad detrás no se bloquea', () => {
+    // Se lee peor de lo que debería (WhatsApp e Instagram no renderizan markdown),
+    // pero la URL está: tumbar el turno por esto sería tirar un mensaje utilizable.
+    const r = validateMessage(`Reserva aquí: [tu enlace](${URL_REAL})`, ctxF6);
     expect(r.violations.find((x) => x.ruleId === 'V19')).toBeUndefined();
   });
 });

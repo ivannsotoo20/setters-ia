@@ -28,13 +28,43 @@ import type { ValidationRule } from '../types.js';
  * entrenador es un mal resultado; mandar "[ENLACE]" es peor.
  */
 
+/**
+ * Corchete o ángulo que contiene, EN CUALQUIER POSICIÓN, una palabra de enlace.
+ *
+ * La primera versión de esta regla enumeraba los prefijos posibles
+ * (`(?:aqui\s+)?(?:va\s+)?(?:el\s+)?enlace`) y duró exactamente una batería: se le
+ * escapó `[AQUÍ VA EL ENLACE DE AGENDA]` porque "AQUÍ" lleva tilde. Enumerar cómo
+ * empieza el hueco es perder siempre — el modelo tiene infinitas formas de
+ * redactarlo. Lo que no cambia es que dentro de los corchetes aparece una palabra
+ * de enlace, así que el ancla es esa.
+ *
+ * Las palabras del vocabulario no llevan tilde en ninguna de sus formas, así que no
+ * hace falta normalizar el texto.
+ *
+ * Los límites NO son `\b`: el guion bajo es carácter de palabra para el motor de
+ * regex, así que `\burl\b` no casa dentro de `[INSERTAR_URL_AGENDA]` — que es
+ * exactamente una de las formas que el modelo produjo en producción. Se usan
+ * lookarounds sobre letras y números para que `_`, `-` y los espacios separen.
+ */
+const HUECO_ENTRE_CORCHETES =
+  /[[<][^\]>\n]{0,60}(?<![\p{L}\p{N}])(?:enlace|link|url|calendario|agenda|booking|insertar|pegar)(?![\p{L}\p{N}])[^\]>\n]{0,60}[\]>]/iu;
+
+/**
+ * Enlace en markdown con URL de verdad detrás: `[reserva aquí](https://…)`.
+ *
+ * WhatsApp e Instagram no renderizan markdown, así que se lee peor de lo que
+ * debería — pero la URL ESTÁ, que es lo que esta regla protege. Bloquear el turno
+ * por esto sería tumbar un mensaje utilizable.
+ */
+const MARKDOWN_CON_URL = /[[<][^\]>\n]{0,80}[\]>]\s*\(\s*https?:\/\//i;
+
 const PATTERNS: Array<{ re: RegExp; que: string }> = [
   {
     re: /\{\{[^}]{1,80}\}\}/,
     que: 'placeholder sin resolver',
   },
   {
-    re: /[[<]\s*(?:aqui\s+)?(?:va\s+)?(?:el\s+|tu\s+|su\s+)?(?:enlace|link|url|calendario|agenda|booking|insertar|pegar)[^\]>\n]{0,40}[\]>]/iu,
+    re: HUECO_ENTRE_CORCHETES,
     que: 'hueco de enlace sin rellenar',
   },
   {
@@ -50,6 +80,7 @@ export const V19_placeholderLeak: ValidationRule = {
     for (const { re, que } of PATTERNS) {
       const m = text.match(re);
       if (m) {
+        if (re === HUECO_ENTRE_CORCHETES && MARKDOWN_CON_URL.test(text)) continue;
         return {
           ruleId: 'V19',
           description: `${que}: "${m[0]}" habría llegado tal cual al lead`,
