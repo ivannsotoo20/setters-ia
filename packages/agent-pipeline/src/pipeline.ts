@@ -127,7 +127,7 @@ export async function runPipeline(
 
   const textAfterJudge = judgeOut.finalText;
 
-  // === 3. Validator V0-V17 ===
+  // === 3. Validator V0-V19 ===
   const validatorCtx: ValidationContext = {
     tenantId: input.tenantId,
     conversationId: input.conversationId,
@@ -141,7 +141,7 @@ export async function runPipeline(
     // Hito 12.1 — V17 usa esta lista para detectar vocabulario prohibido.
     forbiddenPhrases: input.validationContext?.forbiddenPhrases,
   };
-  const validatorOut = validateMessage(textAfterJudge, validatorCtx);
+  let validatorOut = validateMessage(textAfterJudge, validatorCtx);
 
   // Hito 12.1 — V17 retry logic. Si el output viola palabras prohibidas del trainer,
   // reinvocamos el Generator una sola vez con instrucción explícita de reescribir.
@@ -211,12 +211,64 @@ export async function runPipeline(
     }
   }
 
+  // V19 — marcador sin resolver ([ENLACE], {{...}}, SIN_CALENDARIO). A diferencia
+  // de V17, aquí no cabe degradar: entregar el mensaje con el hueco es peor que no
+  // entregarlo. Se reintenta UNA vez pidiendo la URL entera, y si el segundo intento
+  // vuelve con el hueco, el turno se tumba abajo por `hasErrors`.
+  //
+  // Caso que lo motivó (batería 2026-08-25, tenant 7): "Aquí está el link para que
+  // revises: [ENLACE]" a un lead que llevaba cinco turnos pidiéndolo.
+  const v19Violations = validateMessage(textForSplitter, validatorCtx, { only: ['V19'] }).violations;
+  if (v19Violations.length > 0) {
+    const hueco = v19Violations[0]!.match ?? '';
+    const retryUserMessage =
+      `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] ` +
+      `Tu respuesta anterior contiene un marcador sin rellenar: "${hueco}". Al lead le llegaría ` +
+      `ese texto tal cual. Reescribe TU ÚLTIMA respuesta: si toca dar el enlace, pega la URL ` +
+      `completa exactamente como aparece en el bloque del coach; si no dispones de la URL ` +
+      `literal, no menciones el enlace en este turno y sigue con el objetivo de la fase. ` +
+      `Nunca escribas corchetes, llaves ni huecos en su lugar. NO menciones esta corrección al lead.`;
+    try {
+      const retryGen = await runGenerator(deps, {
+        ...input,
+        userMessage: retryUserMessage,
+        history: [
+          ...input.history,
+          { role: 'user' as const, content: input.userMessage },
+          { role: 'assistant' as const, content: textForSplitter },
+        ],
+        model: input.models?.generator,
+      });
+      stages.push({
+        role: 'generator',
+        model: retryGen.model,
+        usage: retryGen.usage,
+        llmCallId: retryGen.llmCallId,
+        notes: 'V19_retry',
+      });
+      textForSplitter = retryGen.setterOutput.message_raw;
+      generatorOut.setterOutput.message_raw = textForSplitter;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[pipeline] V19 retry threw (tenant=${input.tenantId}, conv=${input.conversationId}): ${err instanceof Error ? err.message : String(err)}. ` +
+          `Se mantiene el texto original y el turno se tumbará por V19.`,
+      );
+    }
+  }
+
+  // Si algún retry reescribió el mensaje, el veredicto de arriba describe un texto
+  // que ya no es el que va a salir. Se revalida sobre el final.
+  if (textForSplitter !== textAfterJudge) {
+    validatorOut = validateMessage(textForSplitter, validatorCtx);
+  }
+
   if (validatorOut.hasErrors) {
     const errs = validatorOut.violations
       .filter((v) => v.severity === 'error')
       .map((v) => `${v.ruleId}: ${v.description}`)
       .join('; ');
-    throw new Error(`Validator V0-V17 found unrecoverable errors after Judge: ${errs}`);
+    throw new Error(`Validator V0-V19 found unrecoverable errors after Judge: ${errs}`);
   }
 
   // === 4. Splitter ===

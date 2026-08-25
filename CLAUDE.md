@@ -520,8 +520,20 @@ Propagación: `trainer_preferences.preferences.aiMessagesPerTurnMax` → `loadSc
 
 ### Validadores nuevos (V17 + V18)
 
+_(V19 se añadió después, el 2026-08-25 — ver su propia sección más abajo.)_
+
 - **V17** ([`packages/shared-validator/src/rules/V17-forbidden-phrases.ts`](packages/shared-validator/src/rules/V17-forbidden-phrases.ts)): detecta palabras prohibidas con word-boundary Unicode-aware (`\p{L}`/`\p{N}`). Severidad `warn`. El orquestador `runPipeline` detecta V17 específicamente y dispara **1 retry** al Generator con instrucción enriquecida + degradación grácil tras 2do fail (entrega el output, log incidente).
 - **V18** ([`packages/shared-validator/src/rules/V18-addressing.ts`](packages/shared-validator/src/rules/V18-addressing.ts)): heurística tú/usted vs `ctx.expectedAddressing`. Severidad `warn`. NO hay retry por design — heurístico, riesgo de falsos positivos. Solo log. Plan documenta degradar a warning-only si >10% falsos positivos en fixtures.
+
+### V19 — marcador sin resolver (2026-08-25)
+
+[`packages/shared-validator/src/rules/V19-placeholder-leak.ts`](packages/shared-validator/src/rules/V19-placeholder-leak.ts). Caza tres familias de hueco antes de que salgan al lead: mustache sin interpolar (`{{...}}`), corchete o ángulo con vocabulario de enlace dentro (`[ENLACE]`, `<link>`, `[tu calendario]`), y tokens internos nuestros (`SIN_CALENDARIO`).
+
+Nació de un caso real de la batería del tenant 7: un lead que llevaba cinco turnos exigiendo el enlace recibió *"Aquí está el link para que revises: **[ENLACE]**"*, con la URL entera delante en el prompt.
+
+Severidad `error` con **un reintento** en `runPipeline` (bloque paralelo al de V17) pidiendo la URL literal; si el segundo intento vuelve con el hueco, el turno se tumba. Aquí no cabe degradar como en V17: entregar el mensaje roto es peor que no entregarlo.
+
+Efecto colateral corregido en el mismo cambio: `runPipeline` evaluaba `hasErrors` sobre el veredicto del texto **pre-retry**. Ahora, si algún reintento reescribió el mensaje, se revalida sobre el texto final.
 
 ### Helper `detectAddressing` compartido
 
@@ -552,7 +564,7 @@ Uso actual único: `buildMirrorLeadDirective(detected)` cuando `addressingMode='
 
 El Hito 12.2 (uso del nombre del lead + filtro de género del público objetivo) se aplicó en `c19751a` y se **revirtió** en `f8bdfd8`. El 12.3 se re-aplicó después en `2e3f11b` explícitamente "sin Hito 12.2". Por eso la numeración salta de 12.1 a 12.3.
 
-No hay `useLeadNameMode`, ni `targetClientGender`, ni validador **V19** — los validadores llegan hasta V18. Si algún documento afirma que el 12.2 está entregado, está desactualizado. El diseño (ya debatido y cerrado) se conserva en [`docs/knowledge/project_hito_12_2_name_gender_prefs.md`](docs/knowledge/project_hito_12_2_name_gender_prefs.md) por si se retoma; si se retoma, se re-implementa desde cero.
+No hay `useLeadNameMode` ni `targetClientGender`. Ojo con el número: el 12.2 diseñaba un validador **V19** de género que NUNCA se implementó, y el hueco lo ocupa desde 2026-08-25 otro V19 sin relación (marcador sin resolver, ver abajo). Si algún documento afirma que el 12.2 está entregado, está desactualizado. El diseño (ya debatido y cerrado) se conserva en [`docs/knowledge/project_hito_12_2_name_gender_prefs.md`](docs/knowledge/project_hito_12_2_name_gender_prefs.md) por si se retoma; si se retoma, se re-implementa desde cero.
 
 ## Hito 12.3 — Keywords type='inbound' disparan IA también en InboundMessage (2026-05-25)
 

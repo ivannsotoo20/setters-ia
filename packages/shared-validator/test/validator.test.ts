@@ -386,3 +386,76 @@ describe('validator V18 addressing consistency', () => {
     expect(vUsted?.suggestion).toContain('3ª persona');
   });
 });
+
+// =============================================================================
+// 2026-08-25 — V19 marcador sin resolver
+//
+// Caso real (batería tenant 7): a un lead que llevaba cinco turnos pidiendo el
+// enlace le llegó "Aquí está el link para que revises: [ENLACE]".
+// =============================================================================
+
+describe('validator V19 marcador sin resolver', () => {
+  const ctxF6: ValidationContext = { ...baseCtx, currentPhase: 6 };
+
+  it('caza el hueco de enlace literal que salió en producción', () => {
+    const r = validateMessage(
+      'Aquí está el link para que revises: [ENLACE]. ¿Voy bien o me dejo algo?',
+      ctxF6,
+    );
+    const v = r.violations.find((x) => x.ruleId === 'V19');
+    expect(v).toBeDefined();
+    expect(v?.severity).toBe('error');
+    expect(r.hasErrors).toBe(true);
+  });
+
+  it('caza las variantes del mismo hueco', () => {
+    const variantes = [
+      'Te paso el [LINK] para que reserves',
+      'Aquí tienes tu enlace: [url]',
+      'Reserva aquí <enlace>',
+      'Te dejo el [enlace de agenda] cuando quieras',
+      'Mira el [calendario] y dime',
+      'Agenda en [insertar enlace]',
+    ];
+    for (const t of variantes) {
+      const r = validateMessage(t, ctxF6);
+      expect(r.violations.find((x) => x.ruleId === 'V19'), t).toBeDefined();
+    }
+  });
+
+  it('caza un placeholder del composer sin interpolar', () => {
+    const r = validateMessage('Reserva aquí: {{tracked_calendar_url}}', ctxF6);
+    expect(r.violations.find((x) => x.ruleId === 'V19')?.severity).toBe('error');
+  });
+
+  it('caza el token interno de fallback', () => {
+    const r = validateMessage('Te paso el enlace: SIN_CALENDARIO', ctxF6);
+    expect(r.violations.find((x) => x.ruleId === 'V19')?.severity).toBe('error');
+  });
+
+  it('deja pasar la URL de verdad, que es el caso bueno', () => {
+    const r = validateMessage(
+      'Genial, pues te dejo por aquí el enlace para que agendes cuando mejor te venga:\nhttps://api.leadconnectorhq.com/widget/booking/wC54o4jXWdev4UDKsOka?fyzon_lead_uuid=abc123',
+      ctxF6,
+    );
+    expect(r.violations.find((x) => x.ruleId === 'V19')).toBeUndefined();
+  });
+
+  it('no se dispara con mensajes normales de la conversación', () => {
+    const normales = [
+      'Años con dolor dorsal… ¿qué has probado hasta ahora para intentar mejorarlo?',
+      '3 semanas fatal es duro. ¿Qué es lo que más te ha limitado esas semanas del brote?',
+      'Te entiendo, y prefiero que eso lo veas con Tania directamente',
+      'Un año así, con alivio de solo un par de días, tiene que desgastar',
+    ];
+    for (const t of normales) {
+      const r = validateMessage(t, ctxF6);
+      expect(r.violations.find((x) => x.ruleId === 'V19'), t).toBeUndefined();
+    }
+  });
+
+  it('un corchete que no habla de enlaces no dispara la regla', () => {
+    const r = validateMessage('Me dijo [textualmente] que no podía más', ctxF6);
+    expect(r.violations.find((x) => x.ruleId === 'V19')).toBeUndefined();
+  });
+});

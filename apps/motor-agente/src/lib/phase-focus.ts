@@ -27,6 +27,21 @@
  * @param isHandoff    - si la conversación está en flujo de handoff (causa B/C/D)
  * @returns string en formato instrucción imperativa breve
  */
+/**
+ * Dónde vive el enlace de agenda, repetido en las focales de F1 a F4.
+ *
+ * Antes esta disciplina se la daba al modelo el atributo `priority="active"` pegado
+ * a la etiqueta `<phaseN>` dentro del CORE. Al sacar el marcador de la ventana de
+ * caché (2026-08-25) esa señal desapareció, y en la batería de ese día el setter
+ * mandó el enlace desde F2 — y encima como hueco, `[ENLACE]`, en vez de la URL.
+ *
+ * Se dice en positivo, con el sustituto delante: dónde va el enlace y qué hacer
+ * cuando se lo piden antes de tiempo.
+ */
+const LINK_BELONGS_TO_F6 =
+  'El enlace de agenda pertenece a la F6, cuando ya ha aceptado la llamada. ' +
+  'Si te lo pide ahora, le reconoces la petición con naturalidad y sigues con el objetivo de esta fase.';
+
 export function buildPhaseFocusInstruction(
   currentPhase: number,
   isHandoff: boolean = false,
@@ -44,7 +59,8 @@ export function buildPhaseFocusInstruction(
         `AHORA ESTÁS EN FASE 1 — CONEXIÓN + TEMA PRINCIPAL. Hard cap 5 mensajes. ` +
         `Objetivo: conocer situación actual del lead, generar conexión real con microaportes, ` +
         `identificar el TEMA PRINCIPAL ÚNICO sin preguntarlo expresamente. ` +
-        `NO extraer datos de cualificación todavía. Una pregunta abierta por mensaje.`
+        `NO extraer datos de cualificación todavía. Una pregunta abierta por mensaje. ` +
+        LINK_BELONGS_TO_F6
       );
     case 2:
       return (
@@ -52,7 +68,8 @@ export function buildPhaseFocusInstruction(
         `Objetivo: obtener (a) OBJETIVO cuantificado, (b) OBSTÁCULO principal, ` +
         `(c) CONTEXTO de la persona. Validar el TEMA PRINCIPAL hipotetizado en F1. ` +
         `Orden: situación → resultado → obstáculo → validación tema. ` +
-        `Una pregunta por mensaje. Patrón "Cuando dices…" mín 1 vez, máx 2.`
+        `Una pregunta por mensaje. Patrón "Cuando dices…" mín 1 vez, máx 2. ` +
+        LINK_BELONGS_TO_F6
       );
     case 3:
       return (
@@ -60,28 +77,35 @@ export function buildPhaseFocusInstruction(
         `Objetivo: una sola pregunta sutil sobre disposición a cambiar AHORA. ` +
         `Evalúa internamente los 3 criterios universales + criterios <coach_qualification>. ` +
         `Si ya cualifica implícitamente (señales en F1-F2) → SALTA a F4. ` +
-        `Si NO cualifica → cierre cálido con <coach_wclose>.`
+        `Si NO cualifica → cierre cálido con <coach_wclose>. ` +
+        LINK_BELONGS_TO_F6
       );
     case 4:
       return (
         `AHORA ESTÁS EN FASE 4 — PUENTE / RESUMEN. Hard cap 2 mensajes. ` +
         `Objetivo: resumen-puente con SITUACIÓN + OBSTÁCULO + RESULTADO en SUS palabras + ` +
         `pregunta de confirmación cerrada ("¿Voy bien o me dejé algo?"). ` +
-        `NUNCA incluyas datos que el lead NO dijo. Si ya verbalizó necesidad de ayuda → OMITE esa pregunta.`
+        `NUNCA incluyas datos que el lead NO dijo. Si ya verbalizó necesidad de ayuda → OMITE esa pregunta. ` +
+        LINK_BELONGS_TO_F6
       );
     case 5:
       return (
         `AHORA ESTÁS EN FASE 5 — PROPUESTA DE VIDEOLLAMADA. Hard cap 2 mensajes. ` +
         `Objetivo: proponer la llamada como consecuencia natural de la conversación, no como propuesta comercial. ` +
         `Estructura: transición + justificación (su caso) + beneficio analítico + pregunta cierre. ` +
-        `Anclar al TEMA PRINCIPAL del lead. Si duda → 1-2 argumentos distintos antes de cerrar.`
+        `Anclar al TEMA PRINCIPAL del lead. Si duda → 1-2 argumentos distintos antes de cerrar. ` +
+        `Si en este mismo turno acepta la llamada, pasas a F6 y le das el enlace ya, ` +
+        `pegando la URL entera tal y como aparece en <coach_links>.`
       );
     case 6:
       return (
         `AHORA ESTÁS EN FASE 6 — ENVÍO DE ENLACE Y CIERRE. Hard cap 2 mensajes. ` +
         `Objetivo: enviar enlace/formulario/WhatsApp según <coach_links>, instrucción breve ("avísame cuando reserves"). ` +
         `Tras confirmación de reserva → cierre cálido + handoff Tipo A. ` +
-        `NO inventar enlaces. NO modificar enlaces. Si el lead no encuentra hueco → handoff Tipo D.`
+        `El enlace se pega ENTERO y literal, copiado de <coach_links>: una URL que empieza por http. ` +
+        `Si ahí no encuentras una URL literal, no nombras el enlace y haces handoff Tipo D — ` +
+        `escribir un hueco tipo [ENLACE], {{...}} o "te paso el link" sin link es el peor resultado posible. ` +
+        `Si el lead no encuentra hueco → handoff Tipo D.`
       );
     default:
       // Defensivo: fuera de rango → instrucción genérica.
