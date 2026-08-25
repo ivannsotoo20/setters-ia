@@ -12,7 +12,14 @@ import type { TrainerContext } from './types.js';
  *   - `{{lead_timezone_label|fallback}}`
  *   - `{{trainer_timezone_label|fallback}}`
  *   - `{{handoff_directive}}` (placeholder rich — renderiza markdown según ctx.handoff)
- *   - `{{current_phase_focus|fallback}}` (Cerebro v5 — instrucción focal por turno)
+ *   - `{{current_phase_focus|fallback}}` (red de seguridad; ver la nota de abajo)
+ *
+ * NOTA sobre `{{current_phase_focus}}`: desde 2026-08-25 el marcador de fase activa NO
+ * se interpola dentro de `core_v5_base`. El builder lo emite como bloque propio al final
+ * del prompt y fuera de caché, porque cualquier cambio dentro del core invalida también
+ * el coach y el contrato que van detrás (~18k tokens reescritos por cada avance de fase).
+ * El reemplazo se conserva aquí solo para que un bloque que todavía lleve el placeholder
+ * no derrame llaves literales al modelo. No lo vuelvas a meter dentro del core.
  *
  * Diseño defensivo:
  * - `ctx` opcional: si se omite, todos los placeholders caen a fallback.
@@ -65,40 +72,6 @@ export function interpolateTrainerPlaceholders(
       return fallback ?? '';
     })
     .replace(/\{\{handoff_directive\}\}/g, () => renderHandoffDirective(ctx));
-}
-
-/**
- * Cerebro v5 — Interpolación dinámica del atributo `priority="..."` en las
- * etiquetas `<phase1>` … `<phase6>` del bloque `core_v5_base`.
- *
- * Sintaxis en el .md: `priority="{{phase1_priority|reference}}"` (1..6).
- *
- * El composer reemplaza solo la fase ACTIVA con `priority="active"` y deja
- * las restantes con su fallback (típicamente `reference`). Esto baja la
- * atención del modelo sobre las fases inactivas sin necesidad de excluirlas
- * del prompt (coste ≈ 0 tokens vs. solución dinámica con sub-bloques).
- *
- * @param text - texto que contiene placeholders `{{phaseN_priority|fallback}}`
- * @param currentPhase - fase activa 1..6
- * @returns texto con los placeholders reemplazados
- */
-export function interpolatePhasePriorities(text: string, currentPhase: number): string {
-  if (!Number.isInteger(currentPhase) || currentPhase < 1 || currentPhase > 6) {
-    // Fuera de rango — todos caen a fallback. No es bug del composer; el caller debería
-    // haber validado currentPhase. Defensivo: no rompemos la composición.
-    return text.replace(
-      /\{\{phase([1-6])_priority(?:\|([^}]*))?\}\}/g,
-      (_, _n, fallback) => fallback ?? 'reference',
-    );
-  }
-  return text.replace(
-    /\{\{phase([1-6])_priority(?:\|([^}]*))?\}\}/g,
-    (_, n, fallback) => {
-      const phase = parseInt(n, 10);
-      if (phase === currentPhase) return 'active';
-      return fallback ?? 'reference';
-    },
-  );
 }
 
 /**

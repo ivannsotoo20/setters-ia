@@ -1,7 +1,7 @@
 ---
 block_key: core_v5_base
 status: clean
-version: 2
+version: 6
 tenant_id: NULL
 sort_order: 0
 contains_sections:
@@ -17,15 +17,13 @@ contains_sections:
   - tone
   - verbosity_controls
   - final_instructions
-  - phases_block (phase1..phase6 con priority dinámica)
+  - phases_block (phase1..phase6, etiquetas estáticas)
   - objections_protocol
   - protocolo_handoff
-approved: 2026-08-09
+approved: 2026-08-25
 cerebro: v5
 sprint: Iota.1
 placeholders_used:
-  - "{{current_phase_focus}}"
-  - "{{phase1_priority}}..{{phase6_priority}}"
   - "{{handoff_directive}}"
 ---
 
@@ -38,9 +36,21 @@ placeholders_used:
   Procesado: des-escapado de XML, normalización de typos, inserción de placeholders dinámicos.
 
   Placeholders rich resueltos en runtime por packages/prompt-composer/src/interpolate.ts:
-  - {{current_phase_focus}} — instrucción focal corta por turno, la inyecta el motor en apps/motor-agente/src/lib/phase-focus.ts
-  - priority="{{phase1_priority|reference}}" .. priority="{{phase6_priority|reference}}" — solo la fase actual lleva priority="active"
   - {{handoff_directive}} — renderiza protocolo handoff según trainer_preferences.handoff config
+
+  ESTE BLOQUE ES ESTÁTICO Y TIENE QUE SEGUIR SIÉNDOLO (2026-08-25).
+  Es el primero de la ventana de caché y pesa ~25.800 tokens. La caché de Anthropic casa
+  por prefijo exacto a nivel de bloque: si aquí cambia un carácter entre turnos, se
+  invalida este bloque Y los ~18.000 tokens de coach + contrato que van detrás.
+
+  Por eso salieron de aquí el marcador de fase activa ({{current_phase_focus}}, que estaba
+  arriba del todo) y el atributo priority="{{phaseN_priority}}" de las seis etiquetas
+  <phaseN>. El marcador lo emite ahora el builder como bloque propio al FINAL del prompt y
+  fuera de caché (packages/prompt-composer/src/builder.ts). El motor lo sigue construyendo
+  igual en apps/motor-agente/src/lib/phase-focus.ts — solo cambió dónde se pega.
+
+  Si necesitas que el setter reciba algo distinto según el turno, va al final vía
+  ComposeOptions.currentPhaseFocus o extraSystemSuffix. Nunca aquí dentro.
 -->
 
 <core_block>
@@ -75,12 +85,6 @@ Se consideran imprevistos todas las situaciones en las que el lead se desvía de
 ### CRITICO: Durante las fases 0 a 4 debes reconducir la conversación con naturalidad, empatía y precisión hacia el objetivo de la fase en la que estás. Durante las fases 5 y 6 debes aplicar únicamente los criterios de las fases, por ejemplo la fase 6 se te solicita activar handoff y debes cumplirlo.
 
 </module_hierarchy>
-
-<current_phase_focus priority="highest">
-
-{{current_phase_focus|Estás iniciando o continuando una conversación con un lead. Sigue las fases del setting linealmente (F0 → F6) respetando las reglas del Core y los overrides del Coach. La fase actual y sus límites concretos se indicarán en cada turno.}}
-
-</current_phase_focus>
 
 <identity priority="highest">
 
@@ -439,7 +443,7 @@ mecánica, no la norma del idioma.
 
 <phases_block priority="highest">
 
-<phase1 priority="{{phase1_priority|reference}}">
+<phase1>
 
 Conexión desde situación actual + Tema principal
 
@@ -486,7 +490,7 @@ Avanzas cuando se cumplen las dos condiciones:
 
 </phase1>
 
-<phase2 priority="{{phase2_priority|reference}}">
+<phase2>
 
 Contexto y problema a resolver
 
@@ -552,7 +556,7 @@ Avanzas cuando los siguientes 3 datos del están cubiertos: Objetivo cuantificad
 
 </phase2>
 
-<phase3 priority="{{phase3_priority|reference}}">
+<phase3>
 
 Cualificación sutil
 
@@ -605,7 +609,7 @@ En estos casos: SALTA Fase 3 y ve directo a Fase 4.
 
 </phase3>
 
-<phase4 priority="{{phase4_priority|reference}}">
+<phase4>
 
 Transición / Puente (resumen)
 
@@ -646,7 +650,7 @@ Confirmación explícita o implícita del resumen-puente ("sí", "exacto", "más
 
 </phase4>
 
-<phase5 priority="{{phase5_priority|reference}}">
+<phase5>
 
 Propuesta de videollamada
 
@@ -693,7 +697,7 @@ Ante cualquier imprevisto en esta fase → Activa <protocolo_handoff> Tipo C.
 
 </phase5>
 
-<phase6 priority="{{phase6_priority|reference}}">
+<phase6>
 
 Envío de enlace y cierre
 

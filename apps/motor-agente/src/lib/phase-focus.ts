@@ -1,5 +1,5 @@
 /**
- * Cerebro v5 — Instrucciones focales por fase para el placeholder `{{current_phase_focus}}`.
+ * Cerebro v5 — Instrucciones focales por fase.
  *
  * El `core_v5_base` contiene las 6 fases descritas inline. Para que el modelo
  * NO se confunda al ver todas al mismo tiempo, el motor inyecta por turno una
@@ -8,11 +8,15 @@
  *   - El objetivo principal de esa fase.
  *   - El hard cap de mensajes.
  *
- * Combinado con el atributo XML `priority="active|reference"` (también dinámico,
- * resuelto en el composer en `interpolatePhasePriorities`), reduce drásticamente
- * el riesgo de que el modelo aplique reglas de una fase distinta a la actual.
+ * DÓNDE se pega (cambió el 2026-08-25): el composer la emite como bloque propio
+ * al FINAL del system prompt y fuera de caché. Antes se interpolaba dentro del
+ * `core_v5_base`, acompañada de un atributo `priority="active"` en la etiqueta de
+ * la fase. Costaba ≈ 0 tokens, pero al vivir dentro del primer bloque cacheado
+ * invalidaba también el coach y el contrato (~18k tokens) en cada avance de fase.
  *
- * Plan: ~/.claude/plans/c-users-sotob-downloads-bloques-1-md-c-iterative-kitten.md
+ * Por eso el texto que devuelve esta función tiene que bastarse solo: reproduce el
+ * objetivo, el hard cap y el orden de la fase en lugar de remitir a `<phaseN>`.
+ *
  * Sprint Iota.4 (2026-05-18).
  */
 

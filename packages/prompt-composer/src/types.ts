@@ -29,10 +29,11 @@
  *   - Las 11 fuentes shared del v4 (core_v4_base + 6×fase_N_v4 + objeciones + descualificacion + handoff + output_contract)
  *     se consolidan en 2 bloques shared: `core_v5_base` + `output_contract_v5`.
  *   - El filtro dinámico de fase desaparece: el CORE describe las 6 fases inline siempre.
- *   - Marker dinámico de fase activa (coste extra ≈ 0 tokens):
- *     · `{{current_phase_focus}}` — placeholder rich con instrucción focal corta por turno.
- *     · `priority="{{phase1_priority|reference}}"` … `priority="{{phase6_priority|reference}}"` —
- *        solo la fase actual lleva `priority="active"`.
+ *   - Marker dinámico de fase activa: el builder lo emite como bloque propio al FINAL
+ *     del prompt y fuera de caché (`current_phase_focus`). Hasta 2026-08-25 se interpolaba
+ *     dentro del `core_v5_base` junto a un atributo `priority` por etiqueta `<phaseN>`;
+ *     costaba ≈ 0 tokens pero invalidaba la caché del core y de los ~18k tokens de coach +
+ *     contrato en cada avance de fase. Las etiquetas `<phaseN>` son ahora estáticas.
  *   - `coach_v3` queda inactivo (migration 059). El slug v5 unifica naming.
  *   - `INTERPOLATABLE_BLOCK_KEYS` ahora incluye los 2 bloques que llevan placeholders ricos:
  *     `['core_v5_base', 'coach_v5']`.
@@ -53,10 +54,10 @@ export interface ComposeOptions {
   /**
    * Instrucción focal corta de la fase activa (30-80 tokens). El motor (helper
    * `apps/motor-agente/src/lib/phase-focus.ts`) la construye según `currentPhase`
-   * + `isHandoff` y la pasa aquí. El composer la inyecta en `{{current_phase_focus}}`
-   * del `core_v5_base`.
+   * + `isHandoff` y la pasa aquí. El builder la emite como bloque propio al final
+   * del prompt, fuera de caché.
    *
-   * Si se omite, el placeholder cae al fallback genérico definido en el .md.
+   * Si se omite, no se emite el bloque: el CORE describe las 6 fases igualmente.
    */
   currentPhaseFocus?: string | null;
   /**
@@ -138,9 +139,9 @@ export interface TrainerContext {
    */
   handoff?: HandoffContext;
   /**
-   * Cerebro v5 — Instrucción focal corta de la fase activa que se inyecta en
-   * `{{current_phase_focus}}` del `core_v5_base`. La construye el motor en
-   * `apps/motor-agente/src/lib/phase-focus.ts`.
+   * Cerebro v5 — Instrucción focal corta de la fase activa. La construye el motor en
+   * `apps/motor-agente/src/lib/phase-focus.ts` y el builder la emite como bloque propio
+   * al final del prompt, fuera de la ventana de caché.
    */
   currentPhaseFocus?: string | null;
   /**

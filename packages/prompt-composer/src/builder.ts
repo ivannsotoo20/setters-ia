@@ -5,15 +5,19 @@ import type {
   PromptBlockRow,
   SystemContentBlock,
 } from './types.js';
-import {
-  interpolatePhasePriorities,
-  interpolateTrainerPlaceholders,
-} from './interpolate.js';
+import { interpolateTrainerPlaceholders } from './interpolate.js';
 
 /**
  * Cerebro v5 — Bloques que llevan placeholders rich y deben pasar por interpolación.
- * Both el CORE y el COACH llevan placeholders (currentPhaseFocus, phase priorities,
- * tracked_calendar_url, available_slots, etc.).
+ * Both el CORE y el COACH llevan placeholders (tracked_calendar_url, available_slots,
+ * handoff_directive, etc.).
+ *
+ * OJO: aquí NO puede entrar nada que cambie turno a turno. Estos son los bloques que
+ * van dentro de la ventana de caché, y la caché de Anthropic casa por prefijo exacto a
+ * nivel de bloque: si el CORE cambia un carácter se invalida su entrada y TODAS las de
+ * detrás (coach + contrato, ~18k tokens). Eso es justo lo que hacía el marcador de fase
+ * activa hasta 2026-08-25 — cada avance de fase reescribía 18k tokens a precio de
+ * escritura de caché. El marcador vive ahora al final del array, fuera de caché.
  */
 const INTERPOLATABLE_BLOCK_KEYS = new Set<string>(['core_v5_base', 'coach_v5']);
 
@@ -115,15 +119,12 @@ export function buildComposedPrompt(
       continue;
     }
     // Interpolación selectiva (whitelist):
-    // - core_v5_base: {{current_phase_focus}} + phase priorities + handoff_directive
-    //   + (placeholders del lead/trainer si el .md los usa).
+    // - core_v5_base: handoff_directive + (placeholders del lead/trainer si el .md
+    //   los usa). El marcador de fase YA NO se interpola aquí.
     // - coach_v5: placeholders ricos del trainer que el .md utilice.
     let text = row.content;
     if (INTERPOLATABLE_BLOCK_KEYS.has(key)) {
       text = interpolateTrainerPlaceholders(text, trainerContext);
-      // Phase priorities solo aplica al core_v5_base (las etiquetas <phaseN>
-      // viven ahí). Aplicar al coach también es no-op (no contiene esos tokens).
-      text = interpolatePhasePriorities(text, currentPhase);
     }
     blocks.push({
       key,
@@ -190,6 +191,29 @@ export function buildComposedPrompt(
     });
   }
 
+  // El marcador de fase activa va AQUÍ: último bloque del array y fuera de caché.
+  //
+  // Antes vivía interpolado dentro de `core_v5_base`, que es el primer bloque y el más
+  // grande. Como la caché casa por prefijo exacto, cambiar el marcador al avanzar de
+  // fase invalidaba el core Y los ~18k tokens de coach + contrato que van detrás: unos
+  // $0,108 de escritura de caché por cada avance, seis o siete veces en la clase de
+  // conversación que llega a agendar. Medido en producción sobre el tenant de Tania el
+  // 2026-08-25: turnos con la caché entera $0,0245; turnos con el tramo reescrito
+  // $0,1228.
+  //
+  // Al final del prompt la instrucción no pierde fuerza — es lo último que lee el
+  // modelo — y no es un puntero: `buildPhaseFocusInstruction` reproduce el objetivo, el
+  // hard cap y el orden de la fase; no remite a `<phaseN>`.
+  const phaseFocus = trainerContext?.currentPhaseFocus?.trim();
+  if (phaseFocus) {
+    blocks.push({
+      key: 'current_phase_focus',
+      text: `<current_phase_focus priority="highest">\n\n${phaseFocus}\n\n</current_phase_focus>`,
+      cached: false,
+      scope: 'tenant',
+    });
+  }
+
   applyCacheStrategy(blocks, cacheStrategy);
 
   const systemContent: SystemContentBlock[] = blocks.map((b) => {
@@ -227,7 +251,11 @@ function applyCacheStrategy(
   // Hito 12.1 — extra_system_suffix tampoco se cachea: cambia turno a turno
   // (mirror_lead detecta el tratamiento del lead y construye directiva ad-hoc).
   // El breakpoint final se aplica al último bloque que NO sea OUT-of-cache.
-  const OUT_OF_CACHE_KEYS = new Set(['trainer_prefs_v1', 'extra_system_suffix']);
+  const OUT_OF_CACHE_KEYS = new Set([
+    'trainer_prefs_v1',
+    'extra_system_suffix',
+    'current_phase_focus',
+  ]);
   let lastCacheableIdx = blocks.length - 1;
   while (lastCacheableIdx >= 0 && OUT_OF_CACHE_KEYS.has(blocks[lastCacheableIdx]!.key)) {
     lastCacheableIdx--;

@@ -336,7 +336,8 @@ describe('buildComposedPrompt — trainer_prefs_v1', () => {
 });
 
 // =============================================================================
-// Cerebro v5 — interpolación de current_phase_focus + phase priorities
+// Cerebro v5 — interpolación de {{current_phase_focus}} (red de seguridad para bloques
+// que aún lleven el placeholder; el marcador real se emite al final, ver más abajo)
 // =============================================================================
 
 describe('buildComposedPrompt — current_phase_focus interpolation (Cerebro v5)', () => {
@@ -387,53 +388,70 @@ describe('buildComposedPrompt — current_phase_focus interpolation (Cerebro v5)
   });
 });
 
-describe('buildComposedPrompt — phase priority XML interpolation (Cerebro v5)', () => {
-  const coreWithPriorities: PromptBlockRow = {
-    block_key: 'core_v5_base',
-    sort_order: 0,
-    tenant_id: null,
-    content: [
-      '<phase1 priority="{{phase1_priority|reference}}">F1</phase1>',
-      '<phase2 priority="{{phase2_priority|reference}}">F2</phase2>',
-      '<phase3 priority="{{phase3_priority|reference}}">F3</phase3>',
-      '<phase4 priority="{{phase4_priority|reference}}">F4</phase4>',
-      '<phase5 priority="{{phase5_priority|reference}}">F5</phase5>',
-      '<phase6 priority="{{phase6_priority|reference}}">F6</phase6>',
-    ].join('\n'),
-  };
+// =============================================================================
+// 2026-08-25 — El marcador de fase sale del CORE y va al final, fuera de caché.
+//
+// El core_v5_base es el primer bloque de la ventana de caché y pesa ~25.800 tokens.
+// La caché de Anthropic casa por prefijo exacto a nivel de bloque, así que cualquier
+// cosa que cambie ahí dentro entre turnos invalida el core Y los ~18.000 tokens de
+// coach + contrato que van detrás. El marcador de fase cambiaba en cada avance de
+// fase: medido en producción, $0,1228 por turno frente a $0,0245 con la caché entera.
+// =============================================================================
 
-  it('marks only the active phase with priority="active", rest with reference', () => {
-    const out = buildComposedPrompt(
-      [coreWithPriorities, sharedRowsV5[1]!, coachRow],
-      {
-        tenantId: TENANT_ID,
-        currentPhase: 3,
-      },
-    );
-    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
-    expect(coreBlock.text).toContain('<phase3 priority="active">');
-    // Las otras 5 fases caen al fallback reference
-    expect(coreBlock.text).toContain('<phase1 priority="reference">');
-    expect(coreBlock.text).toContain('<phase2 priority="reference">');
-    expect(coreBlock.text).toContain('<phase4 priority="reference">');
-    expect(coreBlock.text).toContain('<phase5 priority="reference">');
-    expect(coreBlock.text).toContain('<phase6 priority="reference">');
-    // Ningún placeholder literal
-    expect(coreBlock.text).not.toContain('{{phase');
+describe('buildComposedPrompt — marcador de fase al final y fuera de caché', () => {
+  const focus = 'AHORA ESTÁS EN FASE 3 — CUALIFICACIÓN SUTIL. Hard cap 2 mensajes.';
+
+  it('emite current_phase_focus como ÚLTIMO bloque y sin cachear', () => {
+    const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
+      tenantId: TENANT_ID,
+      currentPhase: 3,
+      trainerContext: { phone: null, currentPhaseFocus: focus },
+    });
+
+    const last = out.blocks[out.blocks.length - 1]!;
+    expect(last.key).toBe('current_phase_focus');
+    expect(last.text).toContain(focus);
+    expect(last.cached).toBe(false);
+
+    // Los dos breakpoints siguen donde tienen que estar.
+    expect(out.blocks.filter((b) => b.cached).map((b) => b.key)).toEqual([
+      'core_v5_base',
+      'output_contract_v5',
+    ]);
   });
 
-  it('applies to phase 6 correctly', () => {
-    const out = buildComposedPrompt(
-      [coreWithPriorities, sharedRowsV5[1]!, coachRow],
-      {
+  it('no emite el bloque cuando no hay foco que inyectar', () => {
+    for (const ctx of [undefined, { phone: null, currentPhaseFocus: null }, { phone: null, currentPhaseFocus: '   ' }]) {
+      const out = buildComposedPrompt([...sharedRowsV5, coachRow], {
         tenantId: TENANT_ID,
-        currentPhase: 6,
-      },
-    );
-    const coreBlock = out.blocks.find((b) => b.key === 'core_v5_base')!;
-    expect(coreBlock.text).toContain('<phase6 priority="active">');
-    expect(coreBlock.text).toContain('<phase1 priority="reference">');
-    expect(coreBlock.text).not.toContain('{{phase');
+        currentPhase: 3,
+        trainerContext: ctx,
+      });
+      expect(out.blocks.map((b) => b.key)).not.toContain('current_phase_focus');
+    }
+  });
+
+  // ESTE es el test que importa: si alguien vuelve a meter algo dinámico dentro de
+  // un bloque cacheado, aquí se cae. Dos turnos de la misma conversación en fases
+  // distintas tienen que producir bloques cacheados IDÉNTICOS carácter a carácter.
+  it('la parte cacheada no cambia al avanzar de fase', () => {
+    const cachedTextFor = (phase: number) =>
+      buildComposedPrompt([...sharedRowsV5, coachRow], {
+        tenantId: TENANT_ID,
+        currentPhase: phase,
+        trainerContext: {
+          phone: null,
+          currentPhaseFocus: `AHORA ESTÁS EN FASE ${phase} — foco de la fase ${phase}.`,
+        },
+      })
+        .blocks.filter((b) => b.key !== 'current_phase_focus')
+        .map((b) => b.text)
+        .join(' ');
+
+    const base = cachedTextFor(1);
+    for (const phase of [2, 3, 4, 5, 6]) {
+      expect(cachedTextFor(phase)).toBe(base);
+    }
   });
 });
 

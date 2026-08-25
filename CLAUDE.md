@@ -140,9 +140,9 @@ Los `coach_v3` se migraron a `coach_v5` con sub-secciones canónicas inline.
 | 3. admin_overrides_v1 | `admin_overrides_v1` (sort=6) | tenant_id | SOLO Iván admin | UI panel `/admin/tenants/[id]` tab "Overrides" |
 | 4. trainer_prefs_v1 | `trainer_prefs_v1` (sort=110, OUT of cache) | tenant_id | Trainer (autogenerado) | UI panel `/settings/preferences` → JSONB → serializer regenera markdown |
 
-**Marker dinámico de fase activa** (Cerebro v5, ≈ 0 tokens extra): el `core_v5_base` describe las 6 fases inline. El motor inyecta por turno:
-- `{{current_phase_focus}}`: instrucción focal corta construida por `apps/motor-agente/src/lib/phase-focus.ts` (`buildPhaseFocusInstruction(currentPhase, isHandoff)`).
-- `priority="{{phaseN_priority|reference}}"` en cada etiqueta `<phaseN>`: el composer (`interpolatePhasePriorities`) reemplaza solo la fase activa con `priority="active"`.
+**Marker dinámico de fase activa** (Cerebro v5): el `core_v5_base` describe las 6 fases inline con etiquetas `<phaseN>` **estáticas**. El motor construye por turno la instrucción focal en `apps/motor-agente/src/lib/phase-focus.ts` (`buildPhaseFocusInstruction(currentPhase, isHandoff)`), la pasa en `composeOverrides.currentPhaseFocus`, y el builder la emite como **bloque propio `current_phase_focus` al final del prompt, fuera de caché**.
+
+> **Regla dura (2026-08-25)**: nada que cambie turno a turno puede vivir dentro de `core_v5_base`, `coach_v5`, `admin_overrides_v1` ni `output_contract_v5`. La caché de Anthropic casa por prefijo exacto a nivel de bloque: un carácter distinto en el CORE invalida su entrada y las de todos los bloques posteriores (~18k tokens de coach + contrato). Hasta esa fecha el marcador de fase vivía dentro del CORE (`{{current_phase_focus}}` arriba del todo + `priority="{{phaseN_priority}}"` en las 6 etiquetas) y cada avance de fase costaba una reescritura completa: $0,1228 por turno frente a $0,0245 con la caché entera, medido sobre el tenant 7. Lo dinámico va al final vía `ComposeOptions.currentPhaseFocus` o `extraSystemSuffix`. El test que lo protege es `builder.test.ts` → "la parte cacheada no cambia al avanzar de fase".
 
 **Cache strategy** (`two-point` default): breakpoint tras `core_v5_base` (cachea cerebro universal ~13k tokens) + breakpoint tras `output_contract_v5` (cachea prefix invariante de la conversación). Cuando se edita `coach_v5` de un tenant, el primer breakpoint sigue válido → savings ~90% en read cost vs single-point.
 
@@ -287,8 +287,9 @@ Cerebro v5 — la interpolación vive en `packages/prompt-composer/src/interpola
 - `{{current_date|fallback}}` (Hito 10.6.1)
 - `{{lead_contact_status|fallback}}` (Hito 10.6.1)
 - `{{lead_timezone_label|fallback}}`, `{{trainer_timezone_label|fallback}}` (Hito 11)
-- `{{current_phase_focus|fallback}}` (Cerebro v5 — instrucción focal por turno)
-- `{{phase1_priority|reference}}` … `{{phase6_priority|reference}}` (Cerebro v5 — atributo XML dinámico, resuelto por `interpolatePhasePriorities`)
+- `{{current_phase_focus|fallback}}` — **red de seguridad, no el camino**. Desde 2026-08-25 el marcador de fase NO se interpola dentro de ningún bloque cacheado: el builder lo emite como bloque propio al final. El reemplazo sigue existiendo solo para que un bloque que aún lleve el placeholder no derrame llaves literales.
+
+`{{phaseN_priority}}` e `interpolatePhasePriorities` **se eliminaron** (2026-08-25): las etiquetas `<phaseN>` del CORE son estáticas.
 
 **Whitelist** explícita en `packages/prompt-composer/src/builder.ts`:
 ```ts
@@ -478,9 +479,7 @@ Los `coach_v3` se migraron a `coach_v5` (monolítico inline con 9 sub-secciones 
 - Seeds 009, 010 → carga `coach_v5` Pablo + ivan-dev.
 - Migration 059 → deactivate coach_v3 + ensure coach_v5.
 
-**Marker dinámico de fase activa** (≈ 0 tokens extra):
-- `{{current_phase_focus}}`: instrucción focal corta por turno construida en `apps/motor-agente/src/lib/phase-focus.ts`. El motor la inyecta en `composeOverrides.currentPhaseFocus`.
-- `priority="{{phaseN_priority|reference}}"` en cada etiqueta `<phaseN>`: el composer (`interpolatePhasePriorities`) reemplaza solo la fase activa con `priority="active"`. Las inactivas quedan en `priority="reference"` para que el modelo baje su atención sobre ellas sin necesidad de excluirlas.
+**Marker dinámico de fase activa** — diseño original del Sprint Iota, **corregido el 2026-08-25** (ver la regla dura en la sección "Editar prompts"). Nació interpolado dentro del `core_v5_base`: `{{current_phase_focus}}` arriba del todo y `priority="{{phaseN_priority|reference}}"` en las 6 etiquetas `<phaseN>`, con la idea de que costaba ≈ 0 tokens. Costaba ≈ 0 tokens y rompía la caché: el CORE es el primer bloque cacheado, así que cada avance de fase invalidaba también coach + contrato (~18k tokens reescritos). Hoy la instrucción focal se emite como bloque propio al final del prompt y las etiquetas `<phaseN>` son estáticas.
 
 **Cache strategy two-point** (mantenida): breakpoint tras `core_v5_base` (universal) + breakpoint tras `output_contract_v5` (prefix invariante de conversación). `trainer_prefs_v1` sigue OUT of cache. Beneficio: cuando Ivan edita `coach_v5` de un tenant, el primer breakpoint sigue válido → cache read cost para el CORE no se recalienta.
 

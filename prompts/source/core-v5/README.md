@@ -30,9 +30,9 @@ El CORE describe las 6 fases inline (estáticas). Para que el modelo NO se confu
 
 Resueltos en runtime por `packages/prompt-composer/src/interpolate.ts`:
 
-- `{{current_phase_focus|<fallback>}}` — instrucción focal de la fase activa
-- `{{phase1_priority|reference}}` … `{{phase6_priority|reference}}` — atributo XML por fase, dinámico
 - `{{handoff_directive}}` — render dinámico del protocolo handoff Causa B según `trainer_preferences.handoff` config
+
+**Este bloque tiene que seguir siendo estático entre turnos (2026-08-25).** Es el primero de la ventana de caché y pesa ~25.800 tokens; la caché de Anthropic casa por prefijo exacto a nivel de bloque, así que un carácter distinto aquí invalida este bloque y los ~18.000 tokens de coach + contrato que van detrás. Por eso salieron de aquí `{{current_phase_focus}}` (que estaba arriba del todo) y `priority="{{phaseN_priority|reference}}"` de las 6 etiquetas `<phaseN>`: la instrucción focal la emite ahora el builder como bloque propio al FINAL del prompt y fuera de caché, y las etiquetas son estáticas. `{{handoff_directive}}` puede quedarse porque depende de la configuración del trainer, no del turno.
 
 **Nota**: los placeholders ricos `{{tracked_calendar_url}}`, `{{available_slots}}`, `{{current_date}}`, `{{lead_contact_status}}`, `{{lead_timezone_label}}`, `{{trainer_timezone_label}}` ya **NO viven en el CORE**. Cada Coach (`coach_v5`) los incluye en sus secciones `coach_phase_massage_fase6` / `coach_links` si su modo de agendado los requiere. La whitelist del composer permite la interpolación en ambos bloques.
 

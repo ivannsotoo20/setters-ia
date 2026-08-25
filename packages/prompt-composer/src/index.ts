@@ -14,7 +14,6 @@ export type {
 export { buildComposedPrompt } from './builder.js';
 export {
   interpolateTrainerPlaceholders,
-  interpolatePhasePriorities,
   renderHandoffDirective,
 } from './interpolate.js';
 
