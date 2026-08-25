@@ -83,6 +83,7 @@ y si se anota, que quede en su loop de `docs/knowledge/`.
 
 | Fichero | Avatar / perfil | Venía de | Estado |
 |---|---|---|---|
+| [angel-martinez.md](angel-martinez.md) | **Hombres 30-50 recomposición: el que YA se esfuerza** (entrena y come bien y no ve resultados proporcionales) — mismo avatar que Alfonso/Frodo pero con el marco INVERTIDO | formulario "Documentación Avatar" | **Ronda 0, 2026-08-24.** Escrito de cero. Trae **el marco del esfuerzo ya puesto**: el bloqueo no es la constancia (la tiene), es la planificación, y reconocerle el esfuerzo es su canal de autoridad. La expectativa vs realidad deja de ser un extra y pasa a ser el movimiento central del descubrimiento. Nace ya con la cadena de Rubén, §32/§33, el suelo de 5 elementos, la parada §30 y sin negar ser IA. ⚠️ **Compuertas: los emojis, el "jaja" y la config de notia están por confirmar con Ángel** (ver su loop) |
 | [alfonso.md](alfonso.md) | Hombres pérdida de peso | `alfonso_coach.rtf` (antes `coach_block_alfonso_2.0.md`) | Ronda 2026-07-31b (`<coach_discovery_gate>` = suelo de 4 elementos antes de F5 + preámbulo repartido en el esquema + parada = `manual_attention` + `skip_reply`). ⚠️ **Este fichero va POR DELANTE del `.rtf`**: para desplegar, el bueno es este |
 | [roberto.md](roberto.md) | Hombres sobrepeso +100 kg | `coach_block_roberto_3.0.md` | Ronda 2026-07-13. **Número de Rober pendiente** |
 | [frodo.md](frodo.md) | Hombres recomposición | `coach_block_frodoo.md` | Ronda 2026-08-03 (`<coach_discovery_gate>` = suelo de 5 elementos en lugar del tope de 2 preguntas + preámbulo repartido en el esquema + parada migrada a §30 + sub-tipo E de aporte). ⚠️ Los 3 ejemplos de aporte están **pendientes de validar con Frodo** |
@@ -130,13 +131,14 @@ Nunca `handoff_to_human` ni etiquetas de tipo (Tipo A/B/C/D, "Causa F") — ese 
 Automatía no lo consume, así que el bloque describe una pausa que el runtime no ejecuta. Regla completa y la
 frontera con el SaaS en [doctrina §30](../doctrina-universal.md). Referencia bien hecha: `andrea.md`.
 Estado de la migración: ✅ `andrea.md`, ✅ `andrea-sop.md`, ✅ `alfonso.md`, ✅ `luis-royan.md`,
-✅ `frodo.md` · pendientes `alex.md`, `beatriz-juan.md`, `chema.md`, `miguel-aguado.md` (a medias),
+✅ `frodo.md`, ✅ `angel-martinez.md` · pendientes `alex.md`, `beatriz-juan.md`, `chema.md`, `miguel-aguado.md` (a medias),
 `pepe.md`, `roberto.md` — cada uno en su próxima ronda.
 
 **Y no se niega ser una IA** (acuerdo 03-08). Dos configuraciones válidas: **apagado mudo**
 (`manual_attention` + `skip_reply`, motivo `deteccion_ia` — Efra, Pepe, Gonzalo, Andrea SOP) o **decir la
 verdad y seguir** (el asistente virtual se presenta y la conversación continúa — Chema/Cristina, Alex/Lara).
-Nunca "qué va, soy X". Pendientes de migrar: `andrea.md`, `luis-royan.md`, `alfonso.md`, `roberto.md`,
+Nunca "qué va, soy X". Nace ya migrado: **`angel-martinez.md`** (config 2, responde con transparencia y para).
+Pendientes de migrar: `andrea.md`, `luis-royan.md`, `alfonso.md`, `roberto.md`,
 `frodo.md`, `beatriz-juan.md`, `miguel-aguado.md`.
 
 **Nada de credenciales.** Estos bloques llevan enlaces públicos de negocio (Calendly, landings,

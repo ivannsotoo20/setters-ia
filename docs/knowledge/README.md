@@ -171,6 +171,16 @@ valor, nunca el valor. Escanear antes de commitear.
   expectativa-realidad**, y el problema **lo nombra ella**. Principios en
   [`avatares/embarazo-posparto/principios.md`](../../prompts/coach-engineering/avatares/embarazo-posparto/principios.md).
   ⚠️ **Compuertas abiertas**: si es o no Beatriz Juan, el runtime, el alcance y la frontera clínica.
+- [Ángel Martínez — hombres 30-50 recomposición](project_angel_coach_feedback.md) — **4º coach del
+  avatar hombres y el que le da la vuelta al marco.** Ronda 0 el **2026-08-24**, escrito desde cero
+  con su formulario. Su lead no es el que no empieza: es **el que YA se esfuerza** (entrena, come
+  bien, y no ve resultados proporcionales), así que decirle que le falta constancia le insulta.
+  Tres deltas: el bloqueo se nombra en **lenguaje de progreso** y la causa se coloca en la
+  **planificación**, **reconocerle el esfuerzo sustituye a la validación** como canal de autoridad,
+  y la **expectativa vs realidad (§23) pasa a ser el movimiento central del descubrimiento** en vez
+  de un extra. Es también el bloque con la densidad de prohibiciones más baja del corpus, escrito ya
+  bajo la directiva del 24-ago. ⚠️ **Compuertas: notia, "jaja", emojis en contexto, la dos-puertas de
+  su primera pregunta, y corpus de voz corto (5 literales verificados).**
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 
