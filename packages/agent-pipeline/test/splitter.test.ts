@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { deterministicSplit, buildSplitMessageTool, splitMessageTool, splitUrlIntoOwnPart } from '../src/splitter.js';
+import { deterministicSplit, buildSplitMessageTool, splitMessageTool, splitUrlIntoOwnPart, splitQuestionIntoOwnPart, runSplitter } from '../src/splitter.js';
+
+/** Supabase falso: runSplitter solo escribe en llm_calls y solo si llama al modelo. */
+function makeFakeSupabase() {
+  const b = {
+    insert: () => b, select: () => b,
+    single: () => Promise.resolve({ data: { id: 1 }, error: null }),
+  };
+  return { from: () => b } as never;
+}
 
 describe('deterministicSplit fallback', () => {
   it('returns single part if text fits', () => {
@@ -139,5 +148,71 @@ describe('splitUrlIntoOwnPart — el enlace va en su propia burbuja', () => {
     expect(splitUrlIntoOwnPart('sin enlace ninguno', 3)).toBeNull();
     expect(splitUrlIntoOwnPart(`mira ${URL} y también https://otra.com/x`, 3)).toBeNull();
     expect(splitUrlIntoOwnPart(`texto ${URL}`, 1)).toBeNull();
+  });
+});
+
+// =============================================================================
+// 2026-08-26 — El acuse y la pregunta son dos burbujas.
+//
+// Caso real del tenant 7: el turno salió de una pieza porque medía 156 chars y
+// el atajo de ≤280 lo devolvía entero. El bloque del coach ya mandaba "una sola
+// pregunta por turno, SIEMPRE en la última burbuja", pero el mecanismo nunca le
+// daba la oportunidad de cumplirlo.
+// =============================================================================
+
+describe('splitQuestionIntoOwnPart', () => {
+  const REAL =
+    'Más de un año con esa contractura lumbar que vuelve una y otra vez, y encima tantas horas sentado no ayuda. Qué es lo que más te limita de esto en tu día a día?';
+
+  it('separa el acuse de la pregunta en el turno real que lo motivó', () => {
+    const out = splitQuestionIntoOwnPart(REAL, 3);
+    expect(out).toHaveLength(2);
+    expect(out![0]).toBe(
+      'Más de un año con esa contractura lumbar que vuelve una y otra vez, y encima tantas horas sentado no ayuda.',
+    );
+    expect(out![1]).toBe('Qué es lo que más te limita de esto en tu día a día?');
+  });
+
+  it('corta por salto de línea cuando el acuse no lleva punto (regla "sin punto final")', () => {
+    const out = splitQuestionIntoOwnPart('genial\n\nqué es lo que más te limita?', 3);
+    expect(out).toEqual(['genial', 'qué es lo que más te limita?']);
+  });
+
+  it('no parte cuando la pregunta ES el turno entero', () => {
+    expect(splitQuestionIntoOwnPart('Qué es lo que más te limita?', 3)).toBeNull();
+  });
+
+  it('no parte un turno que no cierra en pregunta', () => {
+    expect(splitQuestionIntoOwnPart('Perfecto, te escribo esta tarde', 3)).toBeNull();
+  });
+
+  it('respeta el cap de 1 burbuja del trainer', () => {
+    expect(splitQuestionIntoOwnPart(REAL, 1)).toBeNull();
+  });
+
+  it('con varias preguntas deja la última sola y el resto como acuse', () => {
+    const out = splitQuestionIntoOwnPart('Vaya. Y cuánto llevas así? Qué has probado?', 3);
+    expect(out).toHaveLength(2);
+    expect(out![1]).toBe('Qué has probado?');
+  });
+});
+
+describe('runSplitter — vía rápida ≤280 chars', () => {
+  it('el turno corto con acuse + pregunta ya NO sale de una pieza', async () => {
+    const out = await runSplitter(
+      { supabase: makeFakeSupabase(), anthropic: {} as never },
+      {
+        finalText:
+          'Años con dolor dorsal y sin que nadie te haya dado un plan. Qué es lo que más te limita?',
+        channel: 'whatsapp',
+        tenantId: 7,
+        conversationId: 1,
+        maxParts: 3,
+      },
+    );
+    expect(out.parts).toHaveLength(2);
+    expect(out.parts[1]).toBe('Qué es lo que más te limita?');
+    // Sigue siendo la vía barata: cero llamadas al modelo.
+    expect(out.usage.costUsd).toBe(0);
   });
 });

@@ -71,6 +71,56 @@ export function splitUrlIntoOwnPart(text: string, maxParts: number): string[] | 
   return [before, `${url}\n\n${after}`];
 }
 
+/**
+ * Separa el acuse de recibo de la PREGUNTA final en burbujas distintas.
+ *
+ * Un turno de setter tiene dos movimientos: primero acusa lo que la persona
+ * acaba de decir, después pregunta. En WhatsApp eso son dos burbujas — pegarlos
+ * en una sola hace que el acuse suene a preámbulo de trámite antes del
+ * interrogatorio, en vez de a respuesta.
+ *
+ * Caso real (2026-08-26, tenant 7): "Más de un año con esa contractura lumbar…
+ * no ayuda. ¿Qué es lo que más te limita en tu día a día?" salió en UNA burbuja.
+ * El bloque del coach ya mandaba "una sola pregunta por turno, SIEMPRE en la
+ * última burbuja", pero el atajo de ≤280 chars del splitter nunca le daba la
+ * oportunidad: devolvía el texto entero de una pieza. La regla vivía en el
+ * prompt y el mecanismo la ignoraba.
+ *
+ * Determinístico a propósito, igual que la separación de URL: es más fiable y
+ * más barato que preguntárselo al modelo.
+ *
+ * Devuelve null cuando NO aplica: el turno no cierra en pregunta, la pregunta ES
+ * el turno entero (no hay acuse que separar), o el cap es de 1 burbuja.
+ */
+export function splitQuestionIntoOwnPart(text: string, maxParts: number): string[] | null {
+  if (maxParts < 2) return null;
+  const trimmed = text.trim();
+  if (!trimmed.endsWith('?')) return null;
+
+  // 1) Corte por salto de línea: es el que deja el propio setter cuando ya
+  //    escribe en dos movimientos. Gana sobre el corte por puntuación porque
+  //    con la regla de "sin punto final" el acuse puede no llevar punto.
+  const nlIdx = trimmed.lastIndexOf('\n');
+  if (nlIdx > 0) {
+    const before = trimmed.slice(0, nlIdx).trim();
+    const after = trimmed.slice(nlIdx + 1).trim();
+    if (before && after && after.endsWith('?') && !after.slice(0, -1).includes('?')) {
+      return [before, after];
+    }
+  }
+
+  // 2) Corte por el último cierre de frase antes de la pregunta final.
+  const m = trimmed.match(/^([\s\S]*[.!?…])\s+([^.!?…]*\?)$/);
+  if (m) {
+    const before = m[1]!.trim();
+    const after = m[2]!.trim();
+    // El acuse tiene que ser algo, no un residuo de un signo suelto.
+    if (before.length >= 2 && after.length >= 2) return [before, after];
+  }
+
+  return null;
+}
+
 export function buildSplitMessageTool(maxParts: 1 | 2 | 3 | 4 = DEFAULT_MAX_PARTS): AnthropicTool {
   return {
     name: SPLITTER_TOOL_NAME,
@@ -114,8 +164,8 @@ REGLAS:
 1. Cada parte: 20-280 caracteres (excepción: si el mensaje original es <20 chars, devuelve UNA sola parte tal cual; una URL sola también puede ser parte, mida lo que mida).
 2. NUNCA añadas palabras nuevas. NUNCA traduzcas. NUNCA cambies emojis ni signos de puntuación.
 3. Parte por límites naturales: punto-y-aparte, doble salto de línea, transiciones lógicas.
-4. Si hay UNA pregunta al final, déjala SIEMPRE en la última parte (no la pongas suelta sin contexto).
-5. Si el mensaje cabe entero en ≤280 chars, devuelve UNA sola parte con el texto completo — SALVO la regla 8.
+4. **La pregunta final va SOLA en la última parte.** Un turno tiene dos movimientos —acusar lo que dijo la persona y preguntar— y en WhatsApp eso son dos burbujas. Si el mensaje trae acuse + pregunta, el acuse cierra una parte y la pregunta abre la siguiente. Nunca pegues los dos en la misma.
+5. Si el mensaje cabe entero en ≤280 chars, devuelve UNA sola parte con el texto completo — SALVO las reglas 4 y 8.
 6. Mantén orden lógico: parte_1 antes que parte_2, etc.
 7. **Hito 12.1 — Cap estricto**: NUNCA devuelvas más de ${maxParts} parte(s). Este es el techo configurado por el trainer.
 8. **URL en su propia burbuja**: si el mensaje contiene una URL (http/https), la URL va SOLA en su propia parte, sin texto antes ni después en esa parte. Esto aplica AUNQUE el mensaje entero cupiera en 280 chars (excepción a la regla 5). Un enlace pegado a un párrafo se lee peor y se toca peor en móvil. Única excepción: si el cap es 1 parte, va todo junto.
@@ -148,8 +198,12 @@ export async function runSplitter(
   // La separación es determinística: más fiable y más barata que el modelo.
   if (input.finalText.length <= PART_MAX_CHARS) {
     const urlParts = splitUrlIntoOwnPart(input.finalText, effectiveMaxParts);
+    // Sin URL que separar, se intenta separar el acuse de la pregunta: los dos
+    // movimientos del turno son dos burbujas. Ver splitQuestionIntoOwnPart.
+    const parts =
+      urlParts ?? splitQuestionIntoOwnPart(input.finalText, effectiveMaxParts) ?? [input.finalText];
     return {
-      parts: urlParts ?? [input.finalText],
+      parts,
       usage: zeroUsage(),
       fallback: true,
     };
