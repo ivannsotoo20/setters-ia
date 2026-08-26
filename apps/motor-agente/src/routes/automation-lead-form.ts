@@ -94,6 +94,12 @@ type Payload = z.infer<typeof payloadSchema>;
  * Devuelve null si el body no tiene la forma de Tally — el caller sigue con el
  * payload plano de siempre, así que n8n/GHL Workflow siguen funcionando igual.
  */
+/** ¿El body tiene la forma del webhook nativo de Tally? (independiente de si trae teléfono) */
+export function isTallyShape(body: unknown): boolean {
+  const b = body as { eventType?: unknown; data?: { fields?: unknown } } | null;
+  return b?.eventType === 'FORM_RESPONSE' && Array.isArray(b?.data?.fields);
+}
+
 export function flattenTallyPayload(body: unknown): Record<string, unknown> | null {
   const b = body as { eventType?: unknown; data?: { responseId?: unknown; fields?: unknown } } | null;
   if (!b || b.eventType !== 'FORM_RESPONSE' || !Array.isArray(b.data?.fields)) return null;
@@ -242,6 +248,18 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           { answerCount: Object.keys((tallyFlattened.answers as object) ?? {}).length },
           'lead-form: payload Tally nativo aplanado',
         );
+      } else if (isTallyShape(request.body)) {
+        // FORM_RESPONSE de Tally SIN teléfono utilizable. Pasa con el botón
+        // "Send test request" de Tally (manda datos de ejemplo) y con un envío
+        // real cuyo campo de teléfono venga vacío. Un webhook debe ACK-ear lo
+        // que nunca va a poder procesar: devolver 4xx aquí hace que Tally
+        // marque el endpoint en rojo y reintente sin sentido — un formulario
+        // sin teléfono no puede convertirse en lead de WhatsApp, hoy ni nunca.
+        request.log.warn(
+          {},
+          'lead-form: FORM_RESPONSE de Tally sin teléfono — ack e ignorar (test de Tally o campo vacío)',
+        );
+        return reply.code(200).send({ ok: true, ignored: 'tally_sin_telefono' });
       }
       let payload: Payload;
       try {

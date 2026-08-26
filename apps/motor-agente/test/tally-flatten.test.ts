@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { flattenTallyPayload } from '../src/routes/automation-lead-form.js';
+import { flattenTallyPayload, isTallyShape } from '../src/routes/automation-lead-form.js';
 
 /**
  * Aplanador del webhook nativo de Tally (2026-08-25).
@@ -134,5 +134,21 @@ describe('flattenTallyPayload', () => {
     expect(flattenTallyPayload({ phone: '+34600123456', first_name: 'Ana' })).toBeNull();
     expect(flattenTallyPayload(null)).toBeNull();
     expect(flattenTallyPayload({ eventType: 'FORM_RESPONSE' })).toBeNull();
+  });
+
+  it('isTallyShape separa "es de Tally sin teléfono" de "no es de Tally"', () => {
+    // La distinción importa en la ruta: un FORM_RESPONSE sin teléfono (el botón
+    // "Send test request" de Tally manda datos de ejemplo) se ACK-ea con 200 e
+    // ignora; un payload plano sin phone sigue siendo un 400 de validación.
+    const sinTelefono = structuredClone(TALLY_BODY);
+    sinTelefono.data.fields = sinTelefono.data.fields.filter(
+      (f) => f.type !== 'INPUT_PHONE_NUMBER',
+    );
+    expect(isTallyShape(sinTelefono)).toBe(true);
+    expect(flattenTallyPayload(sinTelefono)).toBeNull();
+
+    expect(isTallyShape({ phone: '+34600123456' })).toBe(false);
+    expect(isTallyShape(null)).toBe(false);
+    expect(isTallyShape(TALLY_BODY)).toBe(true);
   });
 });
