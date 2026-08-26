@@ -336,3 +336,179 @@ y nadie se entera.
 Lo que esta batería **no** puede medir es la VOZ. Con 5 literales verificados suyos, el test de
 indistinguibilidad sigue abierto: eso solo lo cierran conversaciones reales de sus DMs, o que Ángel
 lea los exemplars uno a uno.
+
+---
+
+# RONDA 1 — el primer smoke real (2026-08-24)
+
+Iván pasó el GUION A por el simulador. Dos quejas suyas, y las dos las había sembrado yo en el bloque.
+
+## 1 · "Pero" abriendo absolutamente todos los mensajes
+
+**El censo: 38 de 62 literales del bloque abrían con "Pero".** Y encima la regla de la bisagra lo
+coronaba: *"Repertorio para girar: **Pero** (el más natural, reconoce y gira) · Así que · Entonces…"*.
+El modelo no tenía un tic: **tenía el bloque enseñándoselo**, exactamente igual que las dos puertas en
+Alfonso ([[feedback_coach_pregunta_dos_puertas]]).
+
+Es la tercera vez que aparece el mismo patrón, y ya merece nombre propio: **coronar un elemento del
+repertorio como "el más natural" equivale a demostrarlo en todas partes.** Un repertorio no lleva
+favorito.
+
+**Qué se hizo:**
+- Se quitó la corona. Ahora **el modo por defecto de girar es SIN CONECTOR**, arrancando por el sujeto,
+  que además deja la pregunta más corta.
+- Regla ejecutable, comprobable mirando el mensaje anterior: **si el anterior abrió con "Pero", este no.**
+  (Un cupo global habría sido inejecutable: el setter no lleva contador entre turnos.)
+- **Se redistribuyeron las 38 demostraciones a 18.** Las que quedan viven en objeciones y en el
+  contraste, donde "Pero" de verdad reconoce y gira. En el descubrimiento casi no queda ninguno.
+
+## 2 · Dos opciones dentro de casi todas las preguntas
+
+Salieron cinco en una sola conversación. **Dos de ellas eran literalmente frases mías del bloque:**
+
+| Lo que emitió el setter | De dónde lo sacó |
+|---|---|
+| *"tienes alguna cifra en mente o como te gustaria verte?"* | era **el ❌** de mi propio test de dos puertas |
+| *"Lo dices porque no sabes que comer o mas bien porque no te organizas bien con ella?"* | era **la excepción que yo bendije**: *"no cuenta como dos puertas el desambiguador que ACOTA"* |
+
+Dos lecciones, y la segunda es nueva:
+
+- **La licencia manda sobre la regla.** Mientras el bloque diga en algún sitio que una forma es
+  legítima, el modelo la usará en todas. Se quita la licencia primero.
+- ⚠️ **Un ❌ escrito como frase enviable es munición.** Los pares ❌→✅ enseñan, pero si el ❌ es una
+  pregunta completa y natural, el modelo la tiene ahí escrita y la manda. Los ❌ del bloque ahora
+  **describen el error en vez de darlo redactado**: *"si te sale ofrecerle la cifra **o** cómo le
+  gustaría verse → ✅ …"*. Candidata a doctrina.
+
+**La directiva de Iván, aplicada:** las preguntas van directas y abiertas, y **como máximo DOS en toda
+la conversación ofrecen dos opciones**. Las dos ya están escritas y gastadas: su saludo literal de F1 y
+el filtro de intención de F3. En el descubrimiento quedan **cero** demostraciones.
+Y su matiz nuevo, que refina la regla del 24-ago (*"se corta la segunda puerta y ya"*): **al cortar, te
+quedas con la opción que MÁS ABRE**, no con la primera que escribiste.
+
+## 3 · Lo que no dijo pero también falló
+
+- **El puente fue un resumen de cuatro datos** (*"llevas dos años metiéndole duro, comes fuera casi
+  siempre por el curro, no tienes claro si lo que eliges acompaña, y eso es lo que te frena…"*), que es
+  justo lo prohibido. La regla estaba escrita en negativo y no prendió. Ahora tiene un **test contable**:
+  si al releer el puente aparecen dos o más datos suyos, sobra todo menos el freno.
+- **La cadena salió desordenada**: preguntó el bloqueo (*"dónde ves más margen"*) antes del porqué, y el
+  porqué no llegó hasta el final. El orden adaptable son objetivo y contexto, no el porqué.
+- **Se pasó del presupuesto**: ocho preguntas de cualificación más el filtro.
+- **"tio" cinco veces** en catorce mensajes.
+
+## 4 · Compuerta nueva para Iván
+
+⚠️ **En la transcripción, a partir del segundo turno la PREGUNTA aparece antes que el ACUSE** (*"Pero
+cuando dices quitarte la barriga…"* y debajo *"Con todo lo que llevas metiendo, que no se te vea
+reflejado es lo que más mosquea eh"*). En el primer turno sale bien. Puede ser el orden de renderizado
+del simulador o puede ser real; **si es real es grave**, porque el acuse que va detrás de la pregunta no
+hace su trabajo. No se puede diagnosticar desde la transcripción: hay que mirarlo en Automatía.
+
+## Estado tras la ronda
+
+Bloque de 96 KB y **71 marcadores de prohibición** (Alfonso: 130 KB y 171). Pasada adversarial repetida:
+XML correcto, punteros verificados, `manual_attention` = `skip_reply`, cero literales duplicados.
+Se eliminó `coach_tone_contrast` y sus pares se pegaron a la regla que enseñan (forma canónica de Pepe),
+que es lo que compensa el texto nuevo de las dos reglas.
+
+---
+
+## Añadido a la batería
+
+### T26 · El tic del conector (regresión de la ronda 1)
+Recorrer el **GUION A entero** y contar cuántos mensajes del setter abren con **"Pero"**.
+⛔ Falla si dos mensajes seguidos abren con "Pero". Falla claramente si aparece en más de tres de los
+catorce turnos.
+→ Lo que tiene que verse: la mayoría de las preguntas arrancando **por el sujeto**, sin conector, y el
+resto repartido entre *Entonces · Así que · Pues · Por eso mismo · Aunque*.
+
+### T27 · Dos opciones (regresión de la ronda 1)
+Recorrer el **GUION A entero** y contar las preguntas que ofrecen dos respuestas.
+⛔ Falla si aparece **alguna** en el descubrimiento (objetivo, recorrido, contexto, porqué, bloqueo).
+Las dos únicas permitidas son el saludo de F1 y el filtro de intención de F3, y las dos ya vienen
+escritas.
+→ Vigilar en especial la del **aterrizaje del objetivo** (turno 3) y la de la **causa del bloqueo**
+(turno 8): son las dos donde se coló.
+
+### T28 · El puente de un solo dato (regresión de la ronda 1)
+Llegar al turno 11 del GUION A y leer el puente.
+⛔ Falla si nombra más de UNA cosa suya. El tiempo que lleva, el trabajo, los kilos y la comida en la
+misma frase es el resumen que delata el guion.
+
+---
+
+# RONDA 2 — feedback del entrenador (doc 25/08/26)
+
+Primer feedback de Ángel por escrito, con seis capturas. **Las capturas son posteriores a la ronda 1**
+(se ve porque el setter emite *"cuánto tiempo llevas dándole vueltas a esto?"*, literal introducido esa
+mañana), así que sirvieron de test de la ronda anterior:
+
+| Poda de la ronda 1 | ¿Prendió? | Por qué |
+|---|---|---|
+| "Pero" en todos los mensajes | ✅ **cero** en las seis capturas | escrita **binaria contra T-1** |
+| Dos puertas | ❌ **cinco** en la conversación | escrita como **cupo global** |
+
+**La lección, otra vez la misma:** el setter no lleva contador entre turnos. Lo que se comprueba
+mirando el mensaje anterior se cumple; lo que exige contar toda la conversación, no. La regla de dos
+puertas se reescribió binaria: *si tu pregunta ofrece dos respuestas posibles, la reescribes con una
+sola*, sin cupo que administrar, y las dos excepciones dejan de ser un cupo para ser **literales fijos
+que el setter no genera** (el saludo de F1 y el filtro de F3).
+
+## Lo que pidió, y cómo quedó
+
+1. **Fuera el "eh" de cierre.** *"no me gusta y no encaja con mi forma de comunicarme."* Se lo había
+   puesto yo como rasgo de voz sin tenerlo verificado. Retirado del voiceprint y de los seis literales.
+2. **No restregarle el tiempo sin resultados.** Afina el eje del avatar y es el ajuste más fino del
+   documento: yo escribí "reconocer el esfuerzo" y el setter lo convirtió en *"eso ya es bastante
+   tiempo sin verlo reflejado"*, que no reconoce, **restriega**. La frontera queda escrita: **valoras
+   lo que PUSO, nunca le recuerdas lo que NO consiguió.**
+3. **"y eso?" entra como recurso suyo.** Su pregunta abierta mínima: *"así él es el que me cuenta, ya
+   que quiero que sea quien me vaya dejando migas de pan"*.
+4. **El recorrido se retrasa.** *"«cuánto tiempo llevas dándole vueltas» es una pregunta cerrada muy
+   pronto."* Iván: se mantiene la pregunta, **pero más adelante y solo para casos concretos** (cuando
+   el tiempo cambia algo, o para construir el espejo del "voy solo"). En su lugar, en el paso 2 va **su
+   abierta** — *"y como lo llevas?"* — con la escalera que él describe: si va bien → *"hay algun
+   aspecto del proceso que te este costando especialmente?"*; si no → *"y eso?"*.
+5. **Protocolo del lead perdido** (nuevo, no existía). Ante *"no sé qué estoy haciendo mal"*: primero
+   le quitas el peso de estar perdido, y solo después preguntas. Su literal, en dos burbujas.
+   Iván: la pregunta va **sola**, sin desambiguador detrás; su menú se respeta pero **solo si no
+   concreta**, una vez, nunca de entrada — y **sin "constancia" ni "disciplina"**, que son palabras que
+   él mismo vetó en el formulario.
+6. ⭐ **DOLOR Y OBJETIVO, NUNCA EL MÉTODO.** El punto primordial, y regla obligatoria de Rubén.
+   **Root cause encontrado:** solo había 4 literales de método, así que el problema no estaba en los
+   ejemplos sino en una **licencia** escrita en el test causal — *"puedes hablar del enfoque general
+   (cómo encajan entreno, alimentación, progresión y descanso en su semana)"*. Eso le daba al modelo el
+   catálogo de componentes y dirigía toda la conversación a auditar su plan. Retirada, y escrita en su
+   lugar la regla dura en `_core`: **las preguntas apuntan a qué quiere conseguir y a qué le frena; el
+   desglose lo hace Ángel en la videollamada.** Si es el lead quien nombra una parte de su plan, se
+   recoge con sus palabras y se sigue, sin pedirle que lo desglose.
+7. **El puente cierra con el objetivo.** Su reescritura literal añade *"y poder perder peso mientras
+   vas viéndote con más músculo"*. **Corrige una regla que yo había escrito esa misma mañana** (*"si
+   aparecen dos o más datos suyos, sobra todo menos el freno"*): el puente lleva **dos cosas y solo
+   dos, el freno y el objetivo al que ese freno le impide llegar**. Lo que sobra es el tiempo, el
+   trabajo y los horarios.
+8. **Menos "tio", más nombre.** De 13 literales a 7, con 6 pasados a `[nombre]`, e intercalado escrito
+   como regla: si en el mensaje anterior dijiste "tio", en este va el nombre.
+9. **Preguntas cortas y directas**, criterio tomado de Bea Espínola (la forma, no el contenido):
+   **de 5 a 14 palabras**. *"Si tienes que releerla para entenderla, él también."*
+
+## Y una reincidencia mía, la segunda en el mismo día
+
+Al escribir la regla nueva del método volví a redactar los ❌ como **preguntas completas y enviables**
+(*"donde ves que existe mas margen, en el entreno o mas en la alimentacion?"*). Es exactamente lo que
+había anotado dos horas antes tras el primer smoke. **Un ❌ redactado como frase enviable es munición,
+y el envoltorio ❌ no lo desactiva.** Corregido: ahora describen el error sin escribirlo.
+
+## Estado
+
+99 KB. Creció 3 KB respecto a la ronda 1, y es crecimiento por función pedida (protocolo del lead
+perdido, la escalera, la regla del método, el puente nuevo), no por acumulación de prohibiciones: los
+marcadores se mantienen en 76. Pasada adversarial repetida y limpia: XML correcto, punteros
+verificados, `manual_attention` = `skip_reply`, cero "eh", cero dos-puertas en el descubrimiento, cero
+preguntas de método salvo las dos que son literal suyo.
+
+## Compuerta cerrada
+
+El **orden acuse/pregunta** que quedó abierto en la ronda 1 era el renderizado del simulador: en estas
+seis capturas el acuse va delante en todas. No hay nada que arreglar.

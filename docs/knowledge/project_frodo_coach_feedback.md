@@ -1,6 +1,6 @@
 ---
 name: project_frodo_coach_feedback
-description: "Loop del bloque COACH Frodo (academia/Automatía, hombres recomposición corporal); estado tras la ronda 2026-08-03 (el tope duro de 2 preguntas amordazaba las preguntas del propio entrenador → sustituido por <coach_discovery_gate>, suelo de 5 elementos; preámbulo repartido en el esquema; paradas migradas a §30). Archivo autoritativo: prompts/coach-engineering/academia/frodo.md. Recall si vuelve feedback de Frodo."
+description: "Loop del bloque COACH Frodo (academia/Automatía, hombres recomposición corporal); estado tras la ronda 2026-08-25 (la cadena de Rubén: contexto ANTES del bloqueo, recorrido y curiosidad como pasos fijos, importancia+urgencia e intención como los dos criterios mínimos, y cerrada la puerta trasera que dejaba aplazar una casilla a la llamada). Archivo autoritativo: prompts/coach-engineering/academia/frodo.md. Recall si vuelve feedback de Frodo."
 metadata: 
   node_type: memory
   type: project
@@ -237,5 +237,194 @@ Lo que sí faltaba, y es el fallo nuevo que Frodo señala:
 ⚠️ **Ese mismo 13-ago otra sesión estaba editando en paralelo los coaches de la academia** (pepe → alfonso → roberto → frodo → gonzalo), propagando la escalera del "voy solo". En Frodo entró `<coach_objections_solo>` (dos peldaños, sin el de método, correcto) + los enganches en `<coach_qualification_lentes>`, `<coach_qualification_doesnt>` y `<coach_objections_avatar>`. **No se tocó** desde esta ronda. Lleva sellos de fecha "(12/08)" que son meta-comentario y el [[feedback_coach_marco_no_prohibiciones]] §5 los quita.
 
 **PENDIENTE**: (a) **confirmar qué versión está desplegada en Automatía** — si es la de `Downloads/` pre-03-ago, media queja de Frodo se cae solo con desplegar; (b) desplegar y medir; (c) validar con Frodo los ejemplos de aporte del sub-tipo E y los del nuevo sub-tipo F (son de mi cosecha, construidos con lo que su bloque ya declara que él defiende); (d) decidir si el veto del 1 al 10 se le explica a Frodo o se le enseña una transcripción con E4 ya preguntada.
+
+---
+
+## Ronda 2026-08-25 — LA CADENA DE RUBÉN, la fase de contexto y los dos criterios mínimos
+
+**Encargo de Iván**: *"le está llegando gente muy poco cualificada"*. Aplicar a Frodo lo aprendido con
+Alfonso en la ronda del ritmo (reunión Rubén 24-ago) — el enrutamiento de la conversación y los criterios
+mínimos de cualificación —, priorizando **importancia y urgencia**: que a la llamada solo llegue quien
+tiene un cambio que le importa y lo quiere AHORA, y que a quien tiene poca consciencia se le suba.
+
+Fichero autoritativo: [`prompts/coach-engineering/academia/frodo.md`](../../prompts/coach-engineering/academia/frodo.md),
+espejado en `Downloads/coach_block_frodo.md`. Backup: `coach_block_frodo.pre-2026-08-25.bak.md`.
+
+### Diagnóstico: por qué se colaba gente sin cualificar
+
+Cinco causas, y cuatro estaban escritas en el bloque:
+
+1. **No existía la fase de CONTEXTO** y el bloqueo se preguntaba sin ella. La cadena era objetivo → porqué
+   → bloqueo. Es la queja literal de Rubén sobre Alfonso: *"el freno se pregunta sin contexto delante"*, y
+   por eso las frases del setter valen para cualquiera.
+2. **Una puerta trasera en el suelo.** `SALIDA POR TOPE ALCANZADO` decía, con todas sus letras, *"tiendes el
+   puente con lo que SÍ consta y esa casilla se cierra en la llamada"*. Solo E1 estaba exceptuada — así que
+   la necesidad de acompañamiento, **criterio mínimo declarado**, podía aplazarse a la llamada. La casilla
+   que decide si hay cliente era la más fácil de saltarse.
+3. **La urgencia no era un paso.** El RECORRIDO ("cuánto llevas con esto") vivía como UNA de cinco opciones
+   sueltas de F1, no como elemento. Y el "por qué ahora" era 1 de 4 moldes equivalentes del porqué, así que
+   podía no salir nunca.
+4. **El gate no-método autorizaba justo lo que Rubén prohibió.** F2 decía *"✅ SÍ: vienes entrenando?,
+   cuántos días te mueves?"* — la frase que Rubén nombró expresamente como lo que NO hay que preguntar en
+   este avatar (el hombre con un método que defiende). Venía de §33, propagada sin el test por avatar.
+5. **La licencia de las dos puertas.** El molde del objetivo estaba bendecido dos veces (*"NO es menú
+   cerrado, va tal cual"*) y el desambiguador que ACOTA estaba declarado excepción legítima en el
+   voiceprint — la misma bendición que en Ángel produjo el tic entero.
+
+### La cadena nueva: 6 elementos en orden, con el contexto delante del bloqueo
+
+| | Elemento | Dónde cierra |
+|---|---|---|
+| **E1** | objetivo aterrizado | F2 |
+| **E1b** | **recorrido** — cuánto lleva con ese objetivo (nuevo, pegado a E1) | F2 |
+| **E2** | por qué le importa e impacto en presente (era E3) | F2/F3 |
+| **E3** | **contexto — su VIDA, nunca su MÉTODO** (nuevo) | F2 |
+| **E4** | bloqueo en presente (era E2), **con su objetivo dentro y abierto por defecto** | F2 |
+| **E4b** | **la curiosidad encima del bloqueo, al PORQUÉ nunca al QUÉ** (nuevo) | F2 |
+| **E5** | **importancia y urgencia** (era E4) | F3 |
+| **E6** | intención de que le ayuden (era E5) | F3 |
+
+Renumeración completa verificada por grep; cero punteros huérfanos. Las dos primeras piezas son adaptables
+(si entra contando su día a día, se sigue por ahí); **lo único que no se reordena es que el contexto va
+ANTES del bloqueo**.
+
+### Lo que entra, punto por punto
+
+- **`E3 CONTEXTO` con la frontera dura**: se pregunta lo que hay ALREDEDOR de su objetivo (a qué se dedica,
+  horarios, viajes, críos, comidas fuera); lo que HACE CON su objetivo (rutina, días de entreno, qué come)
+  lo valora Frodo en la llamada, *porque en cuanto se lo preguntas se pone a defenderlo*. Hasta 2 preguntas,
+  y la mayoría de las veces cero porque llega solo. El par mides/pesas **entra aquí** y ocupa una de las dos.
+- **El bloqueo, como lo pide Rubén**: la pregunta lleva SU OBJETIVO dentro, va ABIERTA por defecto (apuntar
+  baja de norma a variante), una categoría amplia ya cierra el paso, y se formula en **lenguaje de progreso**
+  (*"dónde ves tú que hay más margen de mejora?"*), no de derrota — marco 1 de
+  [[feedback_coach_naturalidad_marcos_ivan]].
+- **Las dos puertas, a instrumentos**: retirada la línea que bendecía el molde del objetivo y retirada la
+  excepción del desambiguador. Regla nueva, binaria y comprobable mirando el mensaje que se escribe: *si tu
+  pregunta ofrece dos respuestas, cortas la que sobra y te quedas con **la que más abre***. `"tienes una
+  cifra en mente o cómo te gustaría verte?"` → **`"cómo te gustaría verte tú?"`** (el caso exacto que Iván
+  resolvió el 24-ago). Sobreviven dos, las dos declaradas instrumentos: la lente "puedo solo" y el paso 1 de
+  expectativa-vs-realidad.
+- **E5 = importancia Y urgencia**, con `⛔ NO SE OMITE POR ECONOMÍA` y su momento fijado (en cuanto E2
+  cierra). Sigue sin escala numérica: quinta vez que se sostiene el veto.
+- **E6 estrena el filtro de intención de Rubén, con las dos palancas**: *"si para quitarte esa barriga
+  hubiera que ajustar algunos puntos del entreno y de la alimentación, sin que te suponga un cambio drástico,
+  estarías dispuesto a verlo y saber cómo sería?"*. Sustituye a la vieja *"si tuvieras el plan hecho y alguien
+  marcándote, te sería más fácil?"*, que preguntaba por la facilidad, no por la disposición. Las tres piezas
+  que no se pierden están escritas en el bloque, y **"a verlo y saber cómo sería" ya es la videollamada, así
+  que encadena sola con F5**.
+- **`LA PREGUNTA HACE PENSAR`** (la pieza que sube la consciencia): *la mayoría llegan con un titular y con
+  la idea de que ya se lo saben; lo que les hace verlo es la pregunta que les obliga a mirarlo, nunca una
+  explicación tuya*. Y la lente expectativa-vs-realidad deja de ser solo lente: es el ángulo (b) de E2.
+- **`⛔ ALTO`** (no lo tenía; lo tienen Alfonso y Ángel): ante impaciencia con las preguntas se deja de
+  preguntar y lo que falte se fusiona en la respuesta. Es el contrapeso que §31 exige por subir un suelo.
+- **Se cierra la puerta trasera**: *"ninguna casilla se cierra en la llamada: lo que no consta en el chat,
+  no consta"*. La `SALIDA POR TOPE` bifurcada desaparece y se sustituye por el router de Alfonso (NO SE ABRE
+  → súper abierta → parada `lead_no_se_abre` · NO LO NECESITA → puerta B).
+- **Gate en la escalera del "voy solo"**: *hay recorrido que espejar?* Si acaba de decir que no ha empezado,
+  no aplica. Es el fallo que salió en el primer test real de Alfonso, importado antes de que pase aquí.
+- **La objeción de tiempo deja de negociar horas** (*"aunque sea un par de horas a la semana"*, fuera): se
+  reconoce la barrera sin darle la razón y se pregunta por la POSIBILIDAD (marcos 3 y 4 de Iván).
+
+### Aritmética del presupuesto (§31 la exige)
+
+**Techo 9**, el mismo número que antes pese a subir el suelo de 5 a 6 elementos, porque los follow-ups dejan
+de contarse aparte: *1) objetivo · 2) recorrido · 3) porqué · 4) contexto · 5) contexto B solo si la primera
+no dio nada · 6) bloqueo · 7) curiosidad · 8) importancia · 9) intención*, más UNA reacción-con-pregunta a
+algo personal. No se suman, porque son la forma que toma la pregunta de su paso: el follow-up del porqué, la
+proyección de E2, los tirones de E5 y E6, mides/pesas, la lente "puedo solo" y la pregunta que reconduce una
+objeción. Lo normal es bastante menos: la mitad las contesta sin que se pregunten.
+
+### Poda — la ronda deja el bloque más corto
+
+Directiva [[feedback_coach_marco_no_prohibiciones]] cumplida, y esta vez con un elemento nuevo dentro:
+
+| | antes | después |
+|---|---|---|
+| Bytes | 99.487 | **99.398** |
+| Líneas | 871 | **809** |
+| Marcadores de prohibición/alerta | 86 | **74** |
+| Topes | 34 | **27** |
+
+De dónde salió: `coach_tone_exemplars` −3,2 KB (la galería de sub-tipos A-F duplicaba
+`coach_tone_openers` literal a literal; se queda la de openers, y exemplars pasa a ser por FASE y por
+ELEMENTO, que es lo que allí no estaba) · fuera el bloque "LO QUE DELATA A UNA IA", cuyos cinco puntos ya
+estaban en voiceprint y variety · las cuatro "reglas mecánicas de alternancia" reenunciaban la lista RELEE
+de encima, y muere la cuota de muletillas por ventana de 5 mensajes (contador entre turnos, inejecutable) ·
+`PUERTA DEL PUENTE` + `COMPROBACIÓN` + `BIDIRECCIONAL` eran tres líneas seguidas diciendo el mismo suelo ·
+la comprobación mental estaba en el gate y otra vez en F4 · el gate no-método vivía en F2 y en el gate, la
+regla del menú cerrado en tres sitios y "toda parada es invisible" en tres. Y fuera los sellos de fecha
+"(12/08)", que son meta-comentario.
+
+### Pasada adversarial — lo que se rompió al aplicar
+
+Cuatro junturas cazadas antes de entregar ([[feedback_coach_ronda_verificacion_adversarial]]):
+
+1. **La puerta B mandaba cerrar sin pasar por el `GATE DE CIERRE`**, que exige una reconducción previa.
+   Resuelto nombrando cuál es la reconducción en cada caso: la lente expectativa-vs-realidad, o la escalera
+   del "voy solo", que va ANTES y es obligatoria.
+2. **`falta de urgencia NO descualifica`** en `coach_qualification_doesnt` chocaba de frente con E5.
+   Reescrito a *"que todavía no te haya dicho cuánta prisa le corre"*: la ausencia no cierra, la negativa
+   verbalizada sí.
+3. **Un exemplar de F1 preguntaba el freno** (*"qué es lo que más se te resiste ahora?"*) antes del contexto,
+   contra la cadena y contra la propia regla dura de F1. Cambiado a recorrido.
+4. **Un arranque de pregunta con "y"** sembrado en F1 (*"y con ese horario, cómo te apañas?"*), el tic que
+   la ronda de julio persiguió.
+
+Más el ejemplo ✅ del voiceprint, que seguía siendo la pregunta de bloqueo desnuda, sin objetivo dentro.
+
+### Colateral, fuera de Frodo
+
+`doctrina-universal.md` §33: la fila *"si se mueve algo y cuántos días"* de la tabla CONTEXTO contradecía la
+corrección de Rubén del 24-ago para este avatar. El párrafo de encima ya trae el test por avatar, pero la
+tabla se leía sola; queda acotada. **Importa porque quedan 7 coaches pendientes de esta ronda y heredan de
+ahí.**
+
+### Batería de pruebas para el simulador
+
+Señales de fallo transversales, invalidan la respuesta salga en el test que salga: **preguntar el freno sin
+contexto delante** · una pregunta con **dos opciones dentro** fuera de las dos instrumentales · preguntar
+**qué entrena, cuántos días o qué come** · **dos preguntas en un mensaje** · repreguntar algo ya contestado ·
+tender el puente **sin E5 o sin E6** · abrir una pregunta con **"y"** · usar **"qué te aportaría"** o la
+escala del 1 al 10 · nombrar la videollamada antes de F5.
+
+**A · El camino bueno.** `buenas! llevo viendo tus vídeos y quiero quitarme la barriga de una vez` → F1
+conexión, nada de objetivo todavía. `pues llevo así desde que nació el peque, 2 años ya` → recorrido
+CONSTA, y el porqué. `me da corte quitarme la camiseta en la playa` → el porqué CONSTA, **toca CONTEXTO**,
+no el freno. ⛔ Falla si le pregunta qué le frena aquí. `trabajo a turnos y llego reventado` → contexto
+CONSTA → el bloqueo **con su objetivo dentro y en lenguaje de progreso**. `la comida, sobre todo` → bloqueo
+CONSTA (categoría amplia, cierra el paso) → curiosidad al PORQUÉ. Después E5 y E6, y puente.
+
+**B · El que pide precio en el mensaje 2.** `cuánto cuesta?` → literal de precio y retoma la cadena por
+donde iba. ⛔ Falla si tiende el puente, si suelta la propuesta, o si da por cubierta E5: *pedir avanzar es
+interés, no prioridad*.
+
+**C · El que va contento.** `entreno 4 días y como bien, te sigo por los vídeos` → lente
+expectativa-vs-realidad, paso 1. `no, voy contento, no cambiaría nada` → puerta B, y **antes de cerrar** se
+comprueba el gate de cierre. ⛔ Falla si le busca un dolor, si le pinta un futuro peor o si le propone la
+llamada.
+
+**D · Lo suelta todo de golpe.** `tengo 41, quiero bajar 12 kilos, llevo dos años diciéndomelo, curro 10h
+sentado y solo ya he visto que no puedo` → constan objetivo, recorrido, contexto, intención y medio porqué.
+⛔ Falla si repregunta cualquiera de esos. Lo que queda: el bloqueo, la curiosidad y **E5**.
+
+**E · El que esquiva el objetivo.** `es que con el curro no me da la vida`, a la pregunta de objetivo →
+recuperación por otro ÁNGULO, una vez. Si sigue sin aterrizarlo, **parada `sin_objetivo_claro`**, nunca el
+puente. ⛔ Falla si agenda.
+
+**F · "Me lo voy a montar yo solo".** → escalera de `coach_objections_solo`, con el **gate de recorrido**
+delante. ⛔ Falla si la abre con un lead que acaba de decir que aún no ha empezado, y falla si le suelta a la
+primera.
+
+### Pendiente
+
+- **Desplegar en Automatía y medir.** Sigue sin confirmarse qué versión está desplegada (arrastrado de la
+  ronda del 13-ago): si es anterior al 03-ago, parte de la queja se cae sola con desplegar.
+- **Decisión de Iván sobre F5.** El literal de la propuesta sigue siendo el del entrenador (un párrafo con
+  mayúsculas y frases largas, la excepción declarada del voiceprint). La propuesta en 4 movimientos
+  ([[feedback_coach_propuesta_cuatro_movimientos]]) es la siguiente palanca obvia para la asistencia a
+  llamada, pero es reescribir el mensaje de Frodo: **no se toca sin su OK**.
+- **Validar con Frodo** los ejemplos del sub-tipo E y F (siguen siendo de cosecha propia, construidos con lo
+  que su bloque declara que él defiende) y los literales nuevos del contexto y del bloqueo.
+- **Los otros 7 coaches de academia**, con la cadena y con el test por avatar de §33.
 
 Recall si vuelve feedback de Frodo o se toca su bloque.

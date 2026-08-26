@@ -182,6 +182,27 @@ y la dirección mal — esto audita la dirección.
 - [ ] Si el coach fija "**una sola pregunta por mensaje**": ¿está declarada la excepción de los mensajes que
   fusionan verificación + propuesta (F4/F5)? ¿Y aclarado que una pregunta de DOS PUERTAS no son dos preguntas?
 
+### El encaje antes de proponer la llamada (§34)
+
+- [ ] ¿Qué promete el **imán de entrada** (lead magnet, bienvenida, primer mensaje)? Escríbelo. ¿Enmarca la
+  oferta entera o solo una mitad? La mitad que NO enmarca es la que hace cancelar la víspera.
+- [ ] ¿La explicación de **cómo trabaja el entrenador** está condicionada a que el lead pregunte? Si sí, es un
+  gate reactivo: el lead con el marco equivocado nunca pregunta, porque para él no hay nada que aclarar.
+- [ ] ¿Existe un movimiento de **ENCAJE obligatorio antes de proponer** (cómo trabajo + pregunta de dos
+  puertas), y está declarado como elemento del suelo, el único que puede salir que NO?
+- [ ] ¿La pregunta de encaje corta por el **EJE que el imán enmarcó mal**, o por acompañamiento-vs-ir-sola?
+  Si es lo segundo, el lead con el marco equivocado contesta puerta A y pasa entero. Hacen falta dos
+  preguntas y una regla de cuál se usa.
+- [ ] ¿El "no" es al **COMPONENTE** o a la logística? No querer pisar un gimnasio no es no querer entrenar:
+  cerrar por eso tira leads del avatar exacto.
+- [ ] ¿Está escrito qué hacer con la **respuesta mixta o tibia**? Es la más frecuente y la que agenda y
+  cancela. Sin ella, el modelo se la inventa.
+- [ ] ¿La frontera con CR3/§26 está escrita? Una vez, corto, sin listar, sin precio, sin nombrar la
+  videollamada, terminando en pregunta — y sin usar la palabra "programa".
+- [ ] ¿La **puerta B** lleva a cierre cálido sin rebatir, y está enlazada con `coach_qualification_doesnt`?
+- [ ] ¿El molde de **APUNTAR** apunta al lado que el imán ya sembró? Si sí, le está confirmando el
+  malentendido al lead mientras el resto del bloque intenta deshacerlo.
+
 ---
 
 ## MODO DE USO
@@ -193,4 +214,6 @@ y la dirección mal — esto audita la dirección.
    - Lead con respuestas vagas/cortas (sin bucles; protocolo lead cerrado §24).
    - Lead que lo tiene todo claro (sin rellenar fases; flujo encadenado §25).
    - Lead positivo sin dolor / ya con solución y contento (expectativa-vs-realidad §23; sin forzar problemas).
+   - Lead que llega con el **marco equivocado** ("yo lo que quiero es que me hagas una dieta") o que solo
+     viene por el regalo: debe disparar el encaje §34, no una propuesta de llamada.
    - Conversación normal (fidelidad de voz — test de indistinguibilidad; anclaje en bloqueo §19).

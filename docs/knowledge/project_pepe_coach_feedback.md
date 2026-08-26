@@ -324,7 +324,7 @@ Primera versión de esta ronda puso 4 "REGLAS DURAS" antes de `<coach_identity>`
 | La llamada la atiende el equipo de admisiones (+ prohibiciones binarias) | `coach_identity_role`, con puntero desde `_core` |
 | Escalera del "voy solo" (+ override de §22) | `coach_objections_solo`, con punteros desde `_core` punto 9, F3, `_phases` (lead frío), `coach_qualification_doesnt` y `coach_wclose_not_now` |
 | Cierre post-agenda literal único | `coach_phase_massage_fase6`, con puntero desde F6 en `_phases` |
-| Respuesta a "la llamada es contigo?" | `coach_structural_modifications_handoff` trigger 4 |
+| Respuesta a "la llamada es contigo?" | `coach_structural_modifications_handoff` trigger 5 (el 4 es el apagado mudo por WhatsApp) |
 | Movimiento de reconocimiento (3 tiempos, anti-eco) | `coach_tone_voiceprint` |
 | Reconocimiento como obligación de flujo | `coach_structural_modifications_phases` F2 + casilla 5 de F5 |
 | Mensaje idéntico / fórmula repetida prohibidos | `coach_tone_variety` dimensiones 5 y 6 |
@@ -431,3 +431,114 @@ admitía HYROX / físico híbrido) y **`coach_program_is`**.
 ⚠️ **`coach_program_is` lo he ampliado a los tres avatares** porque si los criterios cualifican al avatar 3
 y la definición del programa lo excluye, el setter recibe órdenes contradictorias. Es lo único de esta
 tanda que toca la definición de producto y no una regla de conversación: **conviene que lo confirme Pepe.**
+
+---
+
+## RONDA 2026-08-25 — auditoría de cumplimiento y pasada de limpieza
+
+No trae feedback nuevo de Pepe. Es la verificación que pidió Iván antes de poder decirle a Pepe que su
+feedback está cumplido: **56 agentes auditando el bloque contra todo el historial** (rondas 1 a la del
+24/08), con cada gap sometido a refutación adversarial. Resultado: **62 puntos de cumplimiento verificados
+con cita textual, 1 P0 y ~12 P1**. Ninguno era una decisión perdida — todos eran restos del bloque viejo
+que la ronda del 24/08 no barrió aguas abajo de la apertura.
+
+### Lo que quedó confirmado cumplido
+
+Todo el feedback de las rondas 1 a 6 vive en el bloque con regla binaria o literal suyo: equipo de
+admisiones (7 capas), los 3 toques del precio con sus literales, "desde 110€/mes" como única cifra, guion
+largo prohibido con el corpus limpio, "el ancla" retirado, corregir-sin-anular, un solo resumen, gate de 5
+casillas, cierre post-agenda con "decir el día ya es confirmar", escalera del "voy solo" completa, apagado
+mudo anti-IA, y las ~20 paradas emitiendo `manual_attention` + `skip_reply` con motivo.
+
+**La cualificación mínima también**, y aquí los verificadores adversariales tumbaron los tres gaps que los
+auditores habían levantado: la pregunta de disposición es obligatoria en F3 (hard cap del Core §22,
+saltable solo si ya verbalizó ganas), el "por qué ahora" es la casilla 2 del gate, el curioso se filtra en
+el toque 3 y al lead frío está prohibido proponerle llamada. No con el mecanismo de dos puertas de
+[[project_alfonso_coach_feedback]], pero con uno propio equivalente.
+
+### El hallazgo: el Feedback 2 se cumplía en la apertura y se caía en el turno siguiente
+
+El P0 y casi todos los P1 son el mismo fallo repetido: **la regla de apertura abierta del 24/08 se
+autolimita a "el primer turno" y a "esta sección" (fase0), y el resto del bloque siguió asumiendo HYROX.**
+
+| Sitio | Qué decía |
+|---|---|
+| `coach_phase_massage_fase1` (**P0**) | "lanza UNA pregunta ligera hacia su relación con el HYROX", a todo lead |
+| ESCALERA DE RECONDUCCIÓN, peldaños 1-2 | asumían HYROX y competición, y se invocan desde el toque 1 del precio |
+| 4 literales de `coach_wclose` | HYROX hardcodeado en not_now, lesión activa, sin material y menor de edad |
+| `coach_program_info` | "rendimiento en HYROX: mejorar tus tiempos", contra el `program_is` de los tres avatares |
+| 2 exemplars de conexión F1 | "que te enganche el mundo HYROX", sin condición |
+| F2 pasos 1 y 4 | "ya has competido en HYROX", "anclar en algo REAL del HYROX" |
+| Sídney, test anti-invención, ✅ del contraste, ejemplo de signos, ejemplo de variety | HYROX sembrado como modelo de voz |
+
+> **Y es la tercera vez que este loop tropieza con lo mismo** (el "Y" de la ronda 1.3, el "Eso de" de
+> ahora): cuando una ronda mete una regla nueva, hay que **barrer el bloque entero buscando lo que la
+> contradice**, no solo escribirla en su sección. La ronda del 24/08 sí hizo pasada adversarial, pero
+> buscó choques con la DEFINICIÓN de los tres avatares y no con la regla de apertura.
+
+### Las juntas de sincronía que dejó la ronda anterior
+
+- **La entrega de la rutina decía "TRES mensajes" y listaba CUATRO.** Al partir el mensaje 3 para sacar la
+  pregunta abierta del Feedback 2 no se actualizó ni la cuenta, ni el "Los tres van tal cual", ni la marca
+  de excepción de formato, que seguía describiendo el literal viejo ("el emoji EN MEDIO", "cierra con doble
+  interrogación") — propiedades que ya no tenía ninguna burbuja. Con el tope de 3 burbujas vigente, **el
+  modelo tenía licencia textual para descartar justo la burbuja 4**, que es la pregunta abierta del
+  feedback prioritario de Pepe.
+- **"Eso de las molestias en las tibias" seguía sembrado como ejemplo POSITIVO** del MODO A, con "Eso de…"
+  prohibido en tres sitios, dos de ellos veinte líneas más abajo.
+- **"Se nombra el ANCLA en una frase"** sobrevivía en el guardarraíl de la corrección con criterio.
+- **"bienvenido a la comunidad crack"** entró del SOP con "crack" prohibido como apelativo, y el puntero
+  remitía al lexicón, que no lo listaba.
+- **Puntero que miente:** la excepción del artículo del precio remitía al `_core punto 7` cuando la regla
+  vive en el 8. Misma familia que el trigger 4/5 de la ronda 3.
+- El ✅ **huérfano** "Cómo puedo ayudarte con tu preparación?" seguía sin pareja ❌ (la ronda 24/08 lo dejó
+  anotado y no se cerró), el tope de "~12 palabras" era letra muerta (una docena de literales validados lo
+  superaban) y el emoji del Puente vivía en dos redacciones con fuerza distinta.
+
+### Qué se aplicó
+
+**43 inserciones / 41 borrados, 1126 → 1128 líneas.** El bloque no adelgaza esta vez porque casi todo
+fueron reescrituras en el sitio; lo único que se borró es una prohibición redundante de "Eso de…" y el
+puntero de apelativos que mentía.
+
+F1 y F2 anclan en el terreno que ÉL haya nombrado · los peldaños de la escalera llevan sus dos variantes ·
+4 literales de wclose neutralizados · `coach_program_info` reescrito a los tres avatares · la rutina
+declara CUATRO burbujas y el tope del voiceprint declara sus dos excepciones · la excepción de formato
+describe el literal vigente · MODO A con arranques reales · guardarraíl sin "el ancla" · apelativos con
+"crack" y su única excepción · puntero al punto 8 · toque 3 con variante neutra para cuando se llega por la
+escalera y no por el precio · el aplazamiento sostenido continúa la conversación en vez de quedar en el
+aire · el ✅ huérfano recupera su ❌.
+
+### La pasada adversarial se cobró una regresión mía
+
+13 agentes verificando mis propias ediciones: 10 arreglos limpios y dos cosas que arreglar.
+
+1. **Regresión real.** Al hacer binario el "sin emoji" del Puente endurecí de paso *"ninguno en un mensaje
+   serio o sensible"*, lo que **prohibía el 🫂 del exemplar validado de la validación por el menisco** y
+   dejaba sin uso legal la familia entera de emojis de calidez. Corregido: binario solo en Puente y
+   propuesta.
+2. **Tres juntas abiertas por mí.** El paso 1 de F2 duplicaba palabra por palabra el ancla de F0 (y
+   colocaba una pregunta de punto de partida en el paso de ambición); el ejemplo del MODO A fundía en una
+   burbuja un literal que el voiceprint tiene partido en dos; y la cola que añadí al periodo de conexión
+   repetía la regla, la justificación y el ejemplo que ya estaban once líneas más arriba.
+
+> **Confirma [[feedback_coach_ronda_verificacion_adversarial]] con daño medido: una ronda introduce
+> contradicciones también cuando es una ronda de limpieza.** Sin la pasada adversarial, la corrección del
+> emoji habría entrado en producción prohibiendo un exemplar que Pepe validó.
+
+### Lo que NO se tocó, y hay que decirle a Pepe
+
+- **`coach_program_info` y `coach_program_differentiator` ahora describen el producto para los tres
+  avatares**, igual que `program_is` en la ronda anterior. Es definición de PRODUCTO, no regla de
+  conversación: **lo confirma Pepe.**
+- El literal de la cuenta "¿son 660€?" sigue siendo redacción de Iván, **sin validar por Pepe**.
+- El **exemplar del hermano** (*"Ostras de locos y que tal le va?? Tu hermano ha influido en algo…"*) lleva
+  dos preguntas de temas distintos contra la regla de una-cosa-por-mensaje. Validado por Iván el 03/08 y
+  sembrado en tres sitios: **no se toca sin que él lo decida.**
+- El **aplazamiento sostenido** ("empiezo en septiembre" que mantiene) ahora continúa la conversación por
+  defecto. Es la lectura conservadora, pero **el criterio es de Pepe**: puede que le valga agendar hoy una
+  llamada para empezar en septiembre.
+- El literal del CTA (*"Aquí mi versión no robótica, por cierto"*) implica que quien escribe es una
+  persona, y roza el acuerdo anti-IA del 03/08 ([[feedback_coach_no_negar_ia]]). Es literal de su SOP.
+- **El cumplimiento verificado es TEXTUAL.** Sigue abierto el smoke en Automatía de la escalera del "voy
+  solo" (ronda 6), y ahora también el de la apertura por avatar.

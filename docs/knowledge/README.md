@@ -153,6 +153,16 @@ valor, nunca el valor. Escanear antes de commitear.
   sanitario** (*la reacción que valora es el reconocimiento clínico; la energía la da la precisión,
   no el adjetivo*) — candidata a §33. ⚠️ **Compuerta de dominio: es sanitario y el bloque habla en
   su nombre, así que firma los literales antes de desplegar.**
+- [Andrea Oliver — fuerza sin restricción](project_andrea_oliver_coach_feedback.md) — mujeres 35-45
+  sanas; trabaja **sola y se auto-cierra**. Ronda **25-08**: la queja doble que separa dos problemas —
+  *"dolores muy superficiales"* (el bloque tenía cuatro techos y ningún suelo → nace su
+  `<coach_discovery_gate>`) y *"me cancelan a último momento porque piensan que es solo nutrición"*,
+  que NO se arregla cualificando más hondo. Su imán son **recetas** y la explicación de cómo trabaja
+  estaba condicionada a que la lead preguntara — y la que llega con el marco equivocado es justo la
+  que no pregunta. De ahí el **elemento de ENCAJE**, que no existía en ningún coach del corpus y que
+  se destiló a **doctrina §34**. ⚠️ **No es Andrea SOP.** Compuertas abiertas: el literal con el
+  entrenamiento delante (el orden actual es suyo, de julio), el imán, y la métrica a mirar
+  (asistencia, no agendas).
 - [Andrea — Conquista tu SOP](project_andrea_sop_coach_feedback.md) — **avatar nuevo (el 6º) y el
   segundo clínico**: mujeres 18-55 con SOP. Ronda 0 el **2026-08-07**, traducción de su prompt en
   formato antiguo (`coach_v3` + `nicho_v3`) al esquema XML. ⚠️ **No es Andrea Oliver** (`andrea.md`),

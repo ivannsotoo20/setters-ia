@@ -709,7 +709,7 @@ autopsia y opinar sobre lo que hace mal.
 | CONTEXTO — se pregunta | AUTOPSIA — no se pregunta |
 |---|---|
 | a qué se dedica, cómo es su semana | qué plan o dieta siguió |
-| si se mueve algo y cuántos días | por qué lo dejó / por qué no le funcionó |
+| si se mueve algo y cuántos días — **solo en los avatares donde el método no se defiende** (ver el test de arriba) | por qué lo dejó / por qué no le funcionó |
 | qué deporte hace, si compite o es afición | qué probó antes de escribirte |
 | cuánto lleva así y qué ha visto en ese tiempo | qué se le cayó y en qué punto |
 
@@ -748,6 +748,80 @@ Cross-link [[§13]], [[§18]], [[§19]], [[§22]], [[§25]], [[§31]], [[§32]].
 
 ---
 
+## §34 — El encaje se comprueba en el chat: quien no sabe a qué va, no se presenta
+
+Hay dos formas de que una llamada se caiga y solo una se arregla cualificando más hondo. La primera es el
+lead que no tenía problema: para eso está el suelo de §31. La segunda es el lead que sí lo tenía **pero
+venía a otra cosa**, y ésa no la ve ningún criterio de descubrimiento, porque contesta bien a todo — tiene
+objetivo, tiene bloqueo, tiene porqué — y aun así cancela la víspera, cuando entiende qué le van a proponer.
+
+**El imán de entrada enmarca la oferta, y casi nunca la enmarca entera.** Un lead magnet es una promesa
+pequeña y concreta, y el lead extrapola de ella la naturaleza de lo grande. Si el regalo son recetas, la
+conversación entera nace dentro del marco *"esto va de comida"* aunque el entrenador sea, sobre todo,
+entrenador. El caso que abrió esta sección: Andrea Oliver regala *"5 platos rápidos para perder grasa"* y le
+cancelan a último momento *"porque piensan que es solo nutrición"*, cuando la base de su programa es
+entrenar. No es idiotez del lead: es lo único que se le ha dicho.
+
+**Por eso el encaje no puede ser reactivo.** En casi todos los bloques la explicación de cómo trabaja el
+entrenador está condicionada a que el lead pregunte (*"solo si la lead pregunta directamente"*, CR3), y el
+desencaje solo se maneja después, con un cierre cálido, cuando ya se ha ido. Pero **el lead que da por hecho
+el marco equivocado es precisamente el que no pregunta**: para él no hay nada que aclarar. La condición que
+dispara la explicación es justo la que ese lead nunca cumple.
+
+**La regla.** Antes de proponer la llamada tiene que constar que el lead sabe QUÉ es esto y lo quiere. Se
+comprueba, nunca se supone, y se cubre con un solo movimiento en dos burbujas:
+1. cómo trabaja el entrenador, corto y en su voz, con **el componente que el imán NO enmarcó por delante**;
+2. una pregunta de dos puertas que le deje decir que no (*"es ese tipo de ayuda lo que buscas ahora mismo, o
+   más bien algo puntual para seguir por tu cuenta?"*).
+Puerta A → elemento cubierto, sigue. Puerta B → no hay llamada: cierre cálido, y no se rebate.
+
+**⚠️ La pregunta tiene que cortar por el eje que el imán enmarcó mal, y ese casi nunca es
+acompañamiento-vs-ir-sola.** Es el fallo que solo se ve simulando: el lead que llega convencido del marco
+equivocado quiere acompañamiento — solo que del componente equivocado — así que contesta puerta A y pasa
+entero. Por eso hacen falta DOS preguntas: la genérica y la del EJE (*"y entrenar fuerza, sea en el gym o
+en casa.. te ves metiéndolo en tu semana?"*).
+
+**Y cuál se usa lo decide EL CARRIL, no lo que el lead confiese.** Ésta es la corrección fina, y llegó por
+la segunda simulación: atar la pregunta del eje a que el lead verbalice el malentendido la deja sin
+disparar casi siempre, porque el que lo da por hecho no lo menciona. Si el carril de entrada es el imán,
+**todos** llegan con ese marco, así que ahí la pregunta del eje es la de por defecto y la genérica queda
+para quien entra por su cuenta con su tema. Un marco que el bloque reconoce en su prosa pero no conecta a
+ningún disparador no filtra a nadie.
+
+**El "no" tiene que ser al COMPONENTE, no a la logística.** No querer pisar un gimnasio no es no querer
+entrenar, y cerrar por eso tira leads del avatar exacto. Y al revés: una negativa explícita al componente
+MANDA sobre cualquier señal de acompañamiento, aunque vengan en el mismo mensaje — pedir que alguien te
+diga qué comer no es querer acompañamiento, es la puerta B.
+
+**Respuesta mixta o tibia — manda lo que PIDE, no de dónde viene.** Si nombra querer que alguien la
+acompañe u organice, es puerta A aunque haya entrado por el componente equivocado; el reparo que traiga se
+recoge con SU palabra en el puente, para que llegue dicho a la llamada. Si no elige ninguna puerta, cabe
+UNA repregunta en presente sobre el eje — la única excepción al "se dice una vez", y la última red antes de
+gastar una videollamada.
+
+**Dónde vive.** Es un elemento más del suelo de §31 y el único que puede salir que NO. Si ya consta —lo
+verbalizó él y además ha quedado claro que sabe qué incluye— no se pregunta. Y si pregunta antes cómo
+trabajas, esa respuesta ES el movimiento y el elemento queda cubierto ahí: no se repite.
+
+**Frontera con CR3 y §26: comprobar encaje no es vender.** Una vez, corto, sin listar el programa, sin
+precio y sin nombrar la videollamada, terminando en pregunta. La palabra "programa" no hace falta: se dice
+"lo que yo hago" o "cómo trabajo". En cuanto se alarga o enumera, el setter se vuelve educador y pierde la
+llamada.
+
+**La señal temprana está en el contexto (§33).** Lo que el lead hace HOY es el aviso: si sus clases son
+pilates y el programa es fuerza, o si te habla como si esto fuera solo comida, el encaje se comprueba AHÍ y
+no al final. Y cuidado con el molde de APUNTAR: apuntar por defecto al lado que el imán ya sembró le
+confirma el malentendido mientras el resto del bloque intenta deshacerlo.
+
+**Y el aviso al entrenador.** El chat puede corregir el marco en cada conversación, pero lo paga cada vez.
+Si el imán enmarca la mitad equivocada de la oferta, la decisión barata está en el imán, no en el prompt.
+Eso se le devuelve al entrenador como decisión suya, con la cita de su propia bienvenida delante.
+
+Cross-link [[§23]] (expectativa vs realidad), [[§26]] (no nombrar el programa antes de F5), [[§31]] (el
+suelo de descubrimiento), [[§33]] (el contexto presente).
+
+---
+
 ## Referencias
 - Postmortem hombres pérdida peso: [`postmortems/pablo-lopez-fraga.md`](postmortems/pablo-lopez-fraga.md).
 - Canónico hombres: [`avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md`](avatares/hombres-perdida-peso/canonico-pablo-lopez-fraga.md).
@@ -760,4 +834,5 @@ Cross-link [[§13]], [[§18]], [[§19]], [[§22]], [[§25]], [[§31]], [[§32]].
 - Fuente §31: feedback #64 de Alfonso 2026-07-31 ("inducción prematura a videollamada"). Root-cause y reconciliación en [`academia/alfonso.md`](academia/alfonso.md) (`<coach_discovery_gate>`) y en [`docs/knowledge/project_alfonso_coach_feedback.md`](../../docs/knowledge/project_alfonso_coach_feedback.md).
 - Fuente del corolario CUÁNTO-vs-CÓMO de §31: tercera ocurrencia del mismo patrón (Beatriz 28-jul, Miguel 31-jul, Frodo 03-ago). Caso completo y comparativa de los 6 coaches que sí cualifican en [`docs/knowledge/project_frodo_coach_feedback.md`](../../docs/knowledge/project_frodo_coach_feedback.md).
 - Fuente §32: Iván reescribió a mano las 23 preguntas que yo había propuesto para Pepe (03-ago) y me pidió cambiar el marco mental "para todos los entrenadores". Los ❌ de §32 son frases mías reales; los ✅ son suyos, sin tocar. Detonante: dos feedbacks del equipo de Pepe (Héctor, #87) — "la IA no personaliza, se queda en la superficie" y "hace más de 1 pregunta a la vez". Caso completo en [`docs/knowledge/project_pepe_coach_feedback.md`](../../docs/knowledge/project_pepe_coach_feedback.md) §"Ronda 5". Coach con §32 aplicada: [`academia/pepe.md`](academia/pepe.md).
+- Fuente §34: feedback de Andrea Oliver 2026-08-25 ("me cancelan a último momento porque piensan que es solo nutrición… la base de mi programa es entrenar mucho más que la comida"). Mecanismo en [`academia/andrea.md`](academia/andrea.md) (`<coach_discovery_gate>`, elemento 5). Ningún otro coach del corpus tenía verificación proactiva de encaje: Alfonso manda expresamente "el encaje del programa" a valorarse EN la videollamada.
 - Fuente §30: directiva de Iván 2026-07-31 a raíz del feedback de Alfonso ("la IA se debe pausar, REGLA OBLIGATORIA"). Patrón de referencia: [`avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md`](avatares/mujeres-perdida-peso-nutricion/referencia-andrea-oliver.md) (Automatía Pro). Coach migrado: [`academia/alfonso.md`](academia/alfonso.md).
