@@ -497,9 +497,9 @@ autolimita a "el primer turno" y a "esta sección" (fase0), y el resto del bloqu
 
 ### Qué se aplicó
 
-**43 inserciones / 41 borrados, 1126 → 1128 líneas.** El bloque no adelgaza esta vez porque casi todo
-fueron reescrituras en el sitio; lo único que se borró es una prohibición redundante de "Eso de…" y el
-puntero de apelativos que mentía.
+**1126 → 1124 líneas, en tres tandas** (la 2 y la 3 salen de las pasadas adversariales, ver abajo). Casi
+todo son reescrituras en el sitio; lo que se borró es una prohibición redundante de "Eso de…", el puntero de
+apelativos que mentía y la cola duplicada del periodo de conexión.
 
 F1 y F2 anclan en el terreno que ÉL haya nombrado · los peldaños de la escalera llevan sus dos variantes ·
 4 literales de wclose neutralizados · `coach_program_info` reescrito a los tres avatares · la rutina
@@ -542,3 +542,45 @@ aire · el ✅ huérfano recupera su ❌.
   persona, y roza el acuerdo anti-IA del 03/08 ([[feedback_coach_no_negar_ia]]). Es literal de su SOP.
 - **El cumplimiento verificado es TEXTUAL.** Sigue abierto el smoke en Automatía de la escalera del "voy
   solo" (ronda 6), y ahora también el de la apertura por avatar.
+
+### Tres pasadas adversariales, y cada una encontró algo de la anterior
+
+La limpieza necesitó **tres tandas**, y las dos últimas salen de verificar mis propias ediciones:
+
+| Tanda | Qué la disparó |
+|---|---|
+| 1 | Los gaps de la auditoría (1 P0 + ~12 P1) |
+| 2 | La regresión del emoji + tres juntas que abrí yo (F2 duplicaba el ancla de F0, el MODO A fundía dos burbujas, el periodo de conexión se repetía) |
+| 3 | Una mis-cita del literal de Pepe (le quité "objetivo", la palabra que el movimiento 8 ordena), dos siembras de HYROX que sobrevivían en el voiceprint, y el bloque ✅ del "Y" que no contenía ningún "Y" |
+
+> **La lección de método: al endurecer una regla hay que barrer lo que pasa a contradecir.** En la tanda 3
+> cambié el cupo contable del "Y" (*"si ya hay dos, el siguiente se reescribe"*, inejecutable porque el setter
+> no lleva contador entre turnos) por una binaria con excepciones declaradas — y eso convirtió en infracción
+> un literal que antes era tolerable (`coach_objections_avatar` abría burbuja con "Y por curiosidad"). El
+> cambio era bueno; el daño estuvo en no barrer detrás.
+
+### Contradicciones vivas que quedan (ninguna P0, ninguna de la limpieza)
+
+Son costuras del avatar 3 y del 2 **aguas abajo de la conversación**, en sitios que la ronda del 24/08 no tocó
+porque no son reglas de conversación:
+
+- **P1 — `coach_identity_niche` se contradice consigo mismo:** declara *"Es un avatar de OBJETIVO… no de dolor"*
+  seis líneas antes de definir el AVATAR 3 de **motor emocional**. Vive en identidad, que es lo primero que lee
+  el modelo. F2 sí está acotado ("los avatares 1 y 2 son de OBJETIVO"), así que la identidad contradice a la fase.
+- **P1 — la casilla 5 del gate de F5 exige RECONOCIMIENTO**, que el bloque define como canal exclusivo de los
+  avatares 1 y 2. Con un avatar 3 la casilla queda insatisfacible, o satisfecha fingiendo el logro que el canal
+  de COMPRENSIÓN prohíbe fingir.
+- **P1 — los descualificadores 4 y 5 siguen midiendo con vara de HYROX** (material de box, "no encaje físico
+  para la exigencia de HYROX") mientras el criterio 1 de cualificación admite a los tres. El literal que se
+  envía ya es neutro, así que el fallo no se ve por chat: **se ve en la decisión.**
+- **Observación — `coach_program_differentiator`** sigue en clave de competición ("la carga de hidratos para
+  competir") después de que `_info` y `_is` se reescribieran a tres avatares.
+- **Observación — la comunidad gratuita de HYROX es obligatoria en todo cierre sin cita**, así que al lead de
+  oposición y al de cambio físico se les despide con un grupo de HYROX. Se decidió en la ronda 3, cuando solo
+  había un avatar: **conviene que Pepe confirme si lo sigue queriendo así.**
+- **Observación — `coach_phase_massage_fase0` declara "Origen: inbound"** dos líneas después de describir la
+  apertura outbound que entró el 24/08.
+
+🚨 **Deuda ajena al bloque, del mismo P0 de la ronda 1:** [`prompts/source/coach-v5/pepe-jimenez.md`](../../prompts/source/coach-v5/pepe-jimenez.md)
+(la copia del SaaS) sigue con 4 ocurrencias de *"tú y yo"*, sin la regla de precio y sin el equipo de admisiones.
+Si ese tenant se activa, resucita el fallo más caro del loop.
