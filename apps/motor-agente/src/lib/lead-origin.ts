@@ -133,18 +133,16 @@ export function renderFormAnswers(
     // ("¿qué has probado?") aunque la respuesta ya esté aquí, y la lead lo nota
     // ("pensé que eso ya lo teníais"). La regla tiene que resolver ESE choque,
     // no solo declarar los datos.
-    'Si una pregunta de tu guion de fase ya está respondida en estos datos, esa ' +
-    'pregunta SE SALTA y preguntas lo que aún no sabes.\n\n' +
     // 2026-08-26 — antes esta regla decía "confirmas el dato de pasada con tus
     // palabras", y el setter lo leyó como una orden de recitar: a un "venga
     // perfecto" contestó "Más de un año con esa contractura lumbar que vuelve
     // una y otra vez, y encima tantas horas sentado no ayuda…". Datos correctos,
-    // momento absurdo. Estos datos son CONTEXTO para saber qué NO preguntar, no
-    // material que leerle en voz alta.
-    'Estos datos son contexto tuyo, no un guion que recitar. Devolvérselos ' +
-    'resumidos suena a expediente. Se usan de UNA forma: si vas a preguntar por ' +
-    'algo que ya está aquí, cambias de pregunta. Como mucho, un dato concreto ' +
-    'puede anclar UNA pregunta al principio de la conversación, y solo una vez.\n\n' +
+    // momento absurdo. Son CONTEXTO para saber qué NO preguntar, no material que
+    // leerle en voz alta.
+    'Se usan de UNA forma: si ibas a preguntar algo que ya está aquí, cambias de ' +
+    'pregunta y preguntas lo que aún no sabes. No se los devuelves dichos ni ' +
+    'resumidos en ningún momento: repetirle lo que acaba de escribir suena a ' +
+    'expediente, no a interés.\n\n' +
     lines.join('\n')
   );
 }
