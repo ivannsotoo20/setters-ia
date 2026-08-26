@@ -509,13 +509,35 @@ describe('resolveTemplateVariable (unit)', () => {
     expect(resolveTemplateVariable({ name: 'producto', sample: 'Curso A' }, lead)).toBe('Curso A');
   });
 
-  it('si lead no tiene first_name y name=nombre, cae al sample', () => {
+  // 2026-08-25 — antes este caso caía al `sample` de la plantilla. El sample es
+  // el ejemplo que el entrenador puso para la revisión de Meta y suele ser su
+  // PROPIO nombre: en la plantilla de Tania es "Tania", así que un lead sin
+  // nombre recibía "Hola Tania, soy Tânia Matos…" — ella saludándose a sí misma.
+  // Ahora un hueco de nombre sin dato usa un saludo neutro, nunca el sample.
+  const leadSinDatos = { first_name: null, last_name: null, phone: null, external_id: null };
+
+  it('lead sin first_name NO usa el sample de la plantilla (era el nombre del entrenador)', () => {
+    const out = resolveTemplateVariable({ name: 'nombre', sample: 'Tania' }, leadSinDatos);
+    expect(out).not.toBe('Tania');
+    expect(out).toBe('buenas');
+  });
+
+  it('el fallback de nombre no va vacío (Meta no garantiza aceptar parámetros vacíos)', () => {
+    for (const name of ['nombre', 'first_name', '1', 'apellido', 'full_name']) {
+      const out = resolveTemplateVariable({ name, sample: 'Tania' }, leadSinDatos);
+      expect(out.trim().length, name).toBeGreaterThan(0);
+      expect(out, name).not.toBe('Tania');
+    }
+  });
+
+  it('un nombre en blanco cuenta como ausente', () => {
     expect(
-      resolveTemplateVariable(
-        { name: 'nombre', sample: 'Amigo' },
-        { first_name: null, last_name: null, phone: null, external_id: null },
-      ),
-    ).toBe('Amigo');
+      resolveTemplateVariable({ name: 'nombre', sample: 'Tania' }, { ...leadSinDatos, first_name: '   ' }),
+    ).toBe('buenas');
+  });
+
+  it('el teléfono ausente no cae a un número de ejemplo ajeno', () => {
+    expect(resolveTemplateVariable({ name: 'telefono', sample: '+34600000000' }, leadSinDatos)).toBe('');
   });
 
   it('variable sin name → sample', () => {

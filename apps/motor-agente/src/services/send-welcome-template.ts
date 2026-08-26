@@ -515,9 +515,34 @@ function escapeRegex(s: string): string {
 }
 
 /**
+ * Fallback para un hueco de NOMBRE cuando el lead no trae ninguno.
+ *
+ * El `sample` de la plantilla NO sirve aquí: es el valor de ejemplo que el
+ * entrenador puso para que Meta revisara la plantilla, y suele ser su propio
+ * nombre. En la de Tania el sample es "Tania", así que un lead sin nombre
+ * recibía "Hola Tania, soy Tânia Matos de Cuida tu Espalda" — la entrenadora
+ * saludándose a sí misma.
+ *
+ * Tampoco vale la cadena vacía: la documentación de Meta no garantiza que un
+ * parámetro vacío sea válido (sí prohíbe saltos de línea, tabuladores y más de
+ * 4 espacios seguidos), y un envío rechazado pierde el lead entero. Se usa un
+ * saludo neutro que encaja en el patrón "Hola {{nombre}}," de las plantillas de
+ * bienvenida: "Hola buenas, soy Tânia Matos…" se lee natural.
+ *
+ * Si una plantilla usara otro patrón ("Estimado {{nombre}}"), este fallback
+ * quedaría raro — pero solo en el caso ya de por sí anómalo de un formulario
+ * que pide el nombre y llega sin él.
+ */
+const NOMBRE_FALLBACK = 'buenas';
+
+/**
  * Mapea una variable de plantilla (`{name, sample}`) al campo correspondiente
- * del lead. Si la variable no tiene `name` o el campo no existe en el lead,
- * cae al `sample` registrado en la plantilla. Si no hay sample, cadena vacía.
+ * del lead.
+ *
+ * Regla dura (2026-08-25): para las variables que SÍ mapean a un campo del lead,
+ * el `sample` nunca se usa como dato de runtime — es un ejemplo de revisión de
+ * Meta, no información de esta persona. Solo las variables desconocidas (que no
+ * sabemos de dónde sacar) caen al sample.
  *
  * Soporta nombres comunes en español e inglés porque YCloud preserva el
  * placeholder original de Meta — el trainer puede haber escrito `{{nombre}}`
@@ -531,28 +556,40 @@ export function resolveTemplateVariable(
   const sample = v?.sample ?? '';
   if (!name) return sample;
 
+  /** Vacío o solo espacios cuenta como "no hay dato". */
+  const usable = (s: string | null | undefined): string | null => {
+    const t = (s ?? '').trim();
+    return t.length > 0 ? t : null;
+  };
+
   switch (name) {
     case 'first_name':
     case 'firstname':
     case 'nombre':
     case '1': // {{1}} posicional clásico Meta
-      return lead.first_name ?? sample;
+      return usable(lead.first_name) ?? NOMBRE_FALLBACK;
     case 'last_name':
     case 'lastname':
     case 'apellido':
     case 'apellidos':
     case '2':
-      return lead.last_name ?? sample;
+      return usable(lead.last_name) ?? NOMBRE_FALLBACK;
     case 'phone':
     case 'telefono':
     case 'teléfono':
     case 'tel':
-      return lead.phone ?? lead.external_id ?? sample;
+      // El teléfono siempre existe (el endpoint lo exige), pero si faltara, el
+      // sample sería un número de ejemplo ajeno: mejor vacío que el de otro.
+      return usable(lead.phone) ?? usable(lead.external_id) ?? '';
     case 'full_name':
     case 'fullname':
     case 'nombre_completo':
-      return [lead.first_name, lead.last_name].filter(Boolean).join(' ') || sample;
+      return (
+        [usable(lead.first_name), usable(lead.last_name)].filter(Boolean).join(' ') ||
+        NOMBRE_FALLBACK
+      );
     default:
+      // Variable que no sabemos mapear: el sample es lo único que hay.
       return sample;
   }
 }
