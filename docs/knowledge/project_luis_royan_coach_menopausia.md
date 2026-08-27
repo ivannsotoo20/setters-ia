@@ -254,3 +254,77 @@ todavía** el avatar nuevo a `prompts/coach-engineering/avatares/menopausia/`.
 Al cerrar → destilar: avatar nuevo `prompts/coach-engineering/avatares/menopausia/` + enmienda de
 doctrina (recorrido médico ≠ autopsia del método; claridad como canal separado, hoy solo implícita en
 Chema). Baseline de autoría: [[feedback_coach_authoring_baseline]], [[project_coach_authoring_kb]].
+
+---
+
+## §RONDA 27-ago — el suelo de intención (PASADA 1 de 2)
+
+Feedback #82 de Luis, 7 quejas. **Las siete estaban escritas dentro del bloque**, así que el
+diagnóstico no fue "el modelo deriva" sino "el bloque enseña esto". Censo de partida sobre 745 líneas:
+192 marcadores de prohibición (uno cada 3,9 líneas), "Te entiendo" ×14, "es muy habitual" ×8,
+"no es cosa tuya" ×4, "no es culpa tuya" ×5 — las cuatro frases exactas de su queja nº2 —, 89 guiones
+largos en un bloque que los prohíbe, TERCEROS dicho en cuatro sitios y ~44 topes que exigen contador
+entre turnos.
+
+**Las cuatro causas raíz:**
+1. `CTA en cada mensaje` (*"todo mensaje que NO cierra el proceso termina con una pregunta"*). Es el
+   motor del interrogatorio, y hace aritméticamente imposible cualquier tope de preguntas.
+2. No había suelo de suficiencia, había un raíl de fases: el camino mínimo a la llamada eran 15-18
+   turnos, y la pregunta "¿ya puedo proponer?" estaba contestada en seis sitios con umbrales distintos.
+   De ahí el 12,4% de conversaciones que llegan a nombrar la llamada.
+3. La regla dura de Iván **ya existía** — el PUENTE DE INTENCIÓN, *"y es algo que te gustaría cambiar
+   ahora mismo?"* — pero estaba gateada a *"obligatorio SI vienes de una dosis de claridad"*, así que
+   se saltaba en la mitad de las conversaciones.
+4. La conversación de referencia demostraba las cuatro frases denunciadas, no tenía nada de la vida de
+   la lead, y llegaba a la llamada en el turno 13.
+
+**Decisiones de Iván al abrir la ronda:**
+- El **contexto de vida** entra al suelo y **sí se pregunta**; el **objetivo solo se recoge**, nunca se
+  pregunta en frío (se mantiene el argumento del bosque de Rubén y las tres decisiones que Luis revirtió).
+- **La pregunta de disponibilidad se retira del chat.** *"Rubén nos dijo que es un criterio equivocado,
+  nos pasó con Alfonso… eso no se puede preguntar."* Se cualifica por querer resolverlo ahora, no por
+  los minutos. Esto **deroga** la que era una de las reglas duras de nicho de Luis (la línea roja de
+  20-30 min/día como único gate).
+- Automatía **no dispara seguimientos** por su cuenta, así que la queja nº6 se arregla entera en el prompt.
+
+**Lo que entra (arquitectura, apalancada en Alfonso):**
+- **`coach_discovery_gate`** (fuente única del suelo): cuatro elementos que tienen que CONSTAR con sus
+  palabras — el cambio · lo que más le preocupa · **su vida** (nuevo) · que quiere resolverlo ahora.
+  Estándar de prueba, presupuesto único de 4 preguntas que manda sobre todos los topes, anti-bucle,
+  negación aceptada, y un **⛔ ALTO** de rango superior ante pregunta directa o impaciencia.
+- **`coach_commitment_gate`**: el puente de intención ascendido a compuerta obligatoria de dos puertas,
+  y **el único cualificador del chat**. Puerta B → cierre cálido sin rebatir.
+- **Triaje antes de explicar** (información / cómo trabajas / lo que valora un profesional) + banco de
+  claridad reducido a 3 ejemplos formalmente distintos, uno no hormonal, y la regla de que la
+  explicación es la del síntoma que nombró ella. La dosis baja de 2-3 ciclos a **uno**.
+- **La reacción se construye con un dato SUYO**: los tres canales de calidez, el desempate, los cuatro
+  moldes y el banco de beats con "Te entiendo" de primero se fusionan en una sola regla con su test.
+- **Parada comprobable** (las tres piezas de Efra): comprobación antes de enviar, el cierre es el
+  literal de `coach_wclose` tal cual, y la red que mira el último mensaje enviado. Trigger nuevo para
+  "ahora no me lo puedo permitir" (`sin_presupuesto_ahora`) y D-bis ampliado al viaje y al "lo retomo
+  en septiembre".
+
+**Lo que sale:** `CTA en cada mensaje` · toda la línea roja (F3, su `coach_wclose`, el paso 2 del cierre
+temprano, la condición de avance del core, el turno del ejemplar) · los hard caps de fase y la velocidad
+de crucero · las seis familias de preguntas, que duplicaban a los siete movimientos · el aparato de
+CERO OPCIONES con sus tres excepciones, sustituido por la regla binaria de Alfonso (borras la segunda
+puerta y te quedas con la que más abre).
+
+**Resultado de la pasada 1:** 745 → 710 líneas, 109.602 → 99.042 chars. Marcadores de prohibición
+192 → 106. "Te entiendo" 14 → 2. La conversación de referencia demuestra exactamente cuatro preguntas
+de descubrimiento y un mensaje que avanza sin preguntar nada.
+
+**Ojo con el camino a la llamada.** El techo real baja de 15-18 turnos a ~13 (se van el turno de la
+línea roja, dos ciclos de claridad y el relleno que permitían los hard caps de fase), pero el happy
+path del ejemplar sigue siendo de 13 turnos del setter. El desbloqueo de fondo del 12,4% no es el
+número, es que el gate manda sobre el orden de fases y dice explícitamente cuándo hay que dejar de
+profundizar. Los tres "síes" casi seguidos del final siguen ahí y son el siguiente sitio donde mirar.
+
+**Pasada 2, pendiente:** bajar los 106 marcadores a ≤60 escribiendo el positivo · los 74 guiones largos
+· el changelog que queda (8 fechas y las atribuciones) · TERCEROS y los caminos médicos a un solo sitio ·
+y la reescritura completa de la conversación de referencia. Objetivo ≤ 82 KB.
+
+**Abierto para decidir con Iván:** quedan tres "síes" casi seguidos antes de la llamada — gate de
+intención → pregunta-espejo → permiso de 5a. El espejo existe solo para abrir el hueco que 5a rellena,
+así que son candidatos a fusión, pero 5a/5b/5c son literales que Luis ha validado ronda tras ronda y no
+se tocan sin su OK.
