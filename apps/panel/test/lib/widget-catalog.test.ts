@@ -38,10 +38,10 @@ const WINDOW_FROM = '2026-05-08T00:00:00Z';
 const PREV_WINDOW_FROM = '2026-05-01T00:00:00Z';
 
 describe('WIDGET_CATALOG', () => {
-  it('contiene 12 métricas con keys únicas', () => {
-    expect(WIDGET_CATALOG).toHaveLength(12);
+  it('contiene 18 métricas con keys únicas (12 de Lambda.2 + 6 de outbound)', () => {
+    expect(WIDGET_CATALOG).toHaveLength(18);
     const keys = WIDGET_CATALOG.map((m) => m.key);
-    expect(new Set(keys).size).toBe(12);
+    expect(new Set(keys).size).toBe(18);
   });
 
   it('todas categorizadas como volume o rate', () => {

@@ -27,6 +27,24 @@ export interface ConvSnapshot {
   direction: string;
   last_message_at: string | null;
   created_at: string;
+  /**
+   * Origen de la conversación (`conversations.conversation_source`):
+   * 'bienvenida' | 'lm' | 'inbound' | 'manual' | null. Con `direction='outbound'`,
+   * 'bienvenida' es una bienvenida (plantilla WA del formulario o frase de
+   * bienvenida en IG/FB) y 'inbound' es que la entrenadora o su automatización
+   * escribió primero con una palabra clave ("espalda", "información"). Opcional:
+   * lo carga el dashboard; otros callers de este tipo no lo necesitan.
+   */
+  conversation_source?: string | null;
+  /**
+   * La persona ha escrito al menos un mensaje en la conversación. El loader del
+   * dashboard lo calcula desde `conversation_messages`: las columnas
+   * `first_lead_response_at` / `first_ai_message_at` existen en la tabla pero
+   * nada las escribe (verificado 2026-09-02: 0 pobladas de 686 en el tenant 7).
+   * Es lo que convierte en "respondida" una bienvenida o un outbound por palabra
+   * clave. Opcional: solo se rellena donde el dashboard lo necesita.
+   */
+  has_lead_reply?: boolean;
 }
 
 export interface KpiValue {

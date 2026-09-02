@@ -1,6 +1,6 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, X } from 'lucide-react';
@@ -19,6 +19,7 @@ import { formatPercent } from '@/lib/pipeline-metrics';
 import type { ComputedWidgetValue, WidgetMetricDef } from '@/lib/widget-catalog';
 import { deleteWidget } from '@/lib/actions/dashboard-widgets';
 import type { WidgetRow } from '@/lib/actions/dashboard-widgets';
+import { WidgetDrilldownSheet } from './widget-drilldown-sheet';
 
 const CHANNEL_LABELS: Record<string, string> = {
   wa: 'WhatsApp',
@@ -32,14 +33,28 @@ interface Props {
   def: WidgetMetricDef;
   computed: ComputedWidgetValue;
   canEdit: boolean;
+  /** Ventana y filtro global con los que se calculó `computed` — el drill-down lista a los mismos. */
+  channelKey: string;
+  fromIso: string;
+  toIso: string;
 }
 
-export function WidgetCard({ widget, def, computed, canEdit }: Props) {
+export function WidgetCard({
+  widget,
+  def,
+  computed,
+  canEdit,
+  channelKey,
+  fromIso,
+  toIso,
+}: Props) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: widget.id,
     disabled: !canEdit,
   });
   const [isPending, startTransition] = useTransition();
+  // Drill-down (2026-09-02): pulsar el número abre la lista de personas que lo forman.
+  const [drilldownOpen, setDrilldownOpen] = useState(false);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -109,7 +124,15 @@ export function WidgetCard({ widget, def, computed, canEdit }: Props) {
               {channelChip}
             </Badge>
           ) : null}
-          <div className="text-2xl font-semibold tabular-nums leading-none">{displayValue}</div>
+          <button
+            type="button"
+            onClick={() => setDrilldownOpen(true)}
+            className="self-start text-left text-2xl font-semibold tabular-nums leading-none rounded-sm hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer"
+            title="Ver quién está en esta métrica"
+            aria-label={`Ver la lista de personas de ${def.label}`}
+          >
+            {displayValue}
+          </button>
           <div className="flex items-center gap-1 text-[10px] tabular-nums">
             {value.hasInsufficientData ? (
               <span className="text-muted-foreground/70">datos insuficientes</span>
@@ -144,6 +167,16 @@ export function WidgetCard({ widget, def, computed, canEdit }: Props) {
           </div>
         </CardContent>
       </Card>
+      <WidgetDrilldownSheet
+        open={drilldownOpen}
+        onOpenChange={setDrilldownOpen}
+        def={def}
+        filter={widget.filter}
+        channelKey={channelKey}
+        fromIso={fromIso}
+        toIso={toIso}
+        displayValue={displayValue}
+      />
     </TooltipProvider>
   );
 }

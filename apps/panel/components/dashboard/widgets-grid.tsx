@@ -19,9 +19,23 @@ interface Props {
   widgets: WidgetRow[];
   values: Record<number, ComputedWidgetValue>;
   canEdit: boolean;
+  /**
+   * Ventana y filtro global con los que se calcularon `values`. Cada tarjeta los
+   * necesita para que su drill-down liste exactamente a quienes contó.
+   */
+  channelKey: string;
+  fromIso: string;
+  toIso: string;
 }
 
-export function WidgetsGrid({ widgets: initialWidgets, values, canEdit }: Props) {
+export function WidgetsGrid({
+  widgets: initialWidgets,
+  values,
+  canEdit,
+  channelKey,
+  fromIso,
+  toIso,
+}: Props) {
   const [widgets, setWidgets] = useState<WidgetRow[]>(initialWidgets);
   const [, startTransition] = useTransition();
   const sensors = useSensors(
@@ -83,6 +97,9 @@ export function WidgetsGrid({ widgets: initialWidgets, values, canEdit }: Props)
                   def={def}
                   computed={computed}
                   canEdit={canEdit}
+                  channelKey={channelKey}
+                  fromIso={fromIso}
+                  toIso={toIso}
                 />
               </div>
             );

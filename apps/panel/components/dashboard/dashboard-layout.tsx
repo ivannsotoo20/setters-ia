@@ -40,7 +40,14 @@ export function DashboardLayout({ snapshot }: Props) {
           </h2>
           {canEditWidgets ? <AddWidgetDialog /> : null}
         </div>
-        <WidgetsGrid widgets={widgets} values={widgetValues} canEdit={canEditWidgets} />
+        <WidgetsGrid
+          widgets={widgets}
+          values={widgetValues}
+          canEdit={canEditWidgets}
+          channelKey={filters.channelKey}
+          fromIso={filters.fromIso}
+          toIso={filters.toIso}
+        />
 
         <AlertsList alerts={alerts} />
         {isEmpty ? <DashboardEmpty /> : <TrendChart trend={trend} />}

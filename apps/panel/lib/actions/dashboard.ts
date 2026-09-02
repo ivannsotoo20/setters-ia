@@ -28,6 +28,11 @@ import {
 import type { PipelineEvent } from '@/lib/pipeline-metrics';
 import { computeWidget, type ComputedWidgetValue, type WidgetFilter } from '@/lib/widget-catalog';
 import type { WidgetRow } from '@/lib/actions/dashboard-widgets';
+import {
+  CONV_SNAPSHOT_SELECT,
+  enrichWithLeadReplies,
+  resolveChannelFilter,
+} from '@/lib/dashboard-loader';
 
 /**
  * Sprint Lambda — Dashboard global.
@@ -99,28 +104,6 @@ function computeHistoryRange(currentFromIso: string): { from: string; to: string
   };
 }
 
-function maybeChannelFilter(channelKey: ChannelFilter, channelMap: Map<number, ChannelInfo>): {
-  channelIds: number[] | null;
-  direction: 'inbound' | 'outbound' | null;
-} {
-  if (channelKey === 'all') return { channelIds: null, direction: null };
-  const ids: number[] = [];
-  let direction: 'inbound' | 'outbound' | null = null;
-  for (const [id, info] of channelMap.entries()) {
-    if (channelKey === 'wa' && info.kind === 'whatsapp') ids.push(id);
-    else if (channelKey === 'fb' && info.kind === 'facebook_messenger') ids.push(id);
-    else if (
-      (channelKey === 'ig-in' || channelKey === 'ig-out') &&
-      info.kind === 'instagram_dm'
-    ) {
-      ids.push(id);
-    }
-  }
-  if (channelKey === 'ig-in') direction = 'inbound';
-  else if (channelKey === 'ig-out') direction = 'outbound';
-  return { channelIds: ids, direction };
-}
-
 export async function loadDashboardData(input: {
   windowKey: string | null | undefined;
   channelKey: ChannelFilter;
@@ -152,14 +135,14 @@ export async function loadDashboardData(input: {
     channelMap.set(Number(c.id), { kind: String(c.channel_type) });
   }
 
-  const { channelIds, direction } = maybeChannelFilter(input.channelKey, channelMap);
+  // El mismo resolvedor que usa el drill-down: la lista de detrás de una tarjeta
+  // se filtra por canal exactamente igual que el número.
+  const { channelIds, direction } = resolveChannelFilter(input.channelKey, channelMap);
 
   // 2. Queries en paralelo
   let convsQuery = supabase
     .from('conversations')
-    .select(
-      'id, state, is_qualified, phase_number, channel_id, direction, last_message_at, created_at',
-    )
+    .select(CONV_SNAPSHOT_SELECT)
     .eq('tenant_id', tenantId)
     .gte('created_at', range.from)
     .lte('created_at', range.to);
@@ -168,9 +151,7 @@ export async function loadDashboardData(input: {
 
   let prevConvsQuery = supabase
     .from('conversations')
-    .select(
-      'id, state, is_qualified, phase_number, channel_id, direction, last_message_at, created_at',
-    )
+    .select(CONV_SNAPSHOT_SELECT)
     .eq('tenant_id', tenantId)
     .gte('created_at', prevRange.from)
     .lte('created_at', prevRange.to);
@@ -201,9 +182,7 @@ export async function loadDashboardData(input: {
   // Para detección bottleneck necesitamos las convs activas del tenant + sus events recientes (últimos 30d)
   const activeConvsQuery = supabase
     .from('conversations')
-    .select(
-      'id, state, is_qualified, phase_number, channel_id, direction, last_message_at, created_at',
-    )
+    .select(CONV_SNAPSHOT_SELECT)
     .eq('tenant_id', tenantId)
     .eq('state', 'active');
 
@@ -235,6 +214,17 @@ export async function loadDashboardData(input: {
   const historyEvents = (historyEventsRes.data ?? []) as PipelineEvent[];
   const activeConvs = (activeConvsRes.data ?? []) as unknown as ConvSnapshot[];
   const recentEvents = (recentEventsRes.data ?? []) as PipelineEvent[];
+
+  // 2b. ¿Contestó la persona? Solo para las conversaciones que abrió la
+  //     entrenadora (outbound): alimenta "bienvenidas respondidas" y
+  //     "palabra clave respondidos". Ver dashboard-loader.ts para el porqué de
+  //     leerlo de los mensajes y no de conversations.first_lead_response_at.
+  const [replyCur, replyPrev] = await Promise.all([
+    enrichWithLeadReplies(supabase, convs),
+    enrichWithLeadReplies(supabase, prevConvs),
+  ]);
+  if (replyCur.error) return { ok: false, error: replyCur.error };
+  if (replyPrev.error) return { ok: false, error: replyPrev.error };
 
   // 3. KPIs
   const kpis = computeKpis({

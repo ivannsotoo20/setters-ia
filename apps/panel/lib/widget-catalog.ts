@@ -84,23 +84,46 @@ function toRateKpi(
   };
 }
 
-function countActive(convs: ConvSnapshot[], windowFromIso: string): number {
+// Los selectores devuelven las conversaciones (o sus ids), y los conteos se
+// derivan de ellos. Así el número de la tarjeta y la lista de personas del
+// drill-down salen de la MISMA selección y no pueden descuadrar.
+
+function activeConvs(convs: ConvSnapshot[], windowFromIso: string): ConvSnapshot[] {
   const fromMs = Date.parse(windowFromIso);
   return convs.filter((c) => {
     if (c.state !== 'active') return false;
     if (!c.last_message_at) return false;
     return Date.parse(c.last_message_at) >= fromMs;
-  }).length;
+  });
 }
 
-function distinctConvsByPhase(events: PipelineEvent[], targetPhases: string[]): number {
+function countActive(convs: ConvSnapshot[], windowFromIso: string): number {
+  return activeConvs(convs, windowFromIso).length;
+}
+
+function convIdsByPhase(events: PipelineEvent[], targetPhases: string[]): Set<number> {
   const ids = new Set<number>();
   for (const e of events) {
     if (e.event_type !== 'phase_change') continue;
     if (!targetPhases.includes(e.to_value)) continue;
     ids.add(e.conversation_id);
   }
-  return ids.size;
+  return ids;
+}
+
+function distinctConvsByPhase(events: PipelineEvent[], targetPhases: string[]): number {
+  return convIdsByPhase(events, targetPhases).size;
+}
+
+/** Conversaciones con al menos un outcome de los indicados (distintas). */
+function convIdsByOutcome(events: PipelineEvent[], buckets: string[]): Set<number> {
+  const ids = new Set<number>();
+  for (const e of events) {
+    if (e.event_type !== 'outcome_applied') continue;
+    if (!buckets.includes(e.to_value)) continue;
+    ids.add(e.conversation_id);
+  }
+  return ids;
 }
 
 function countOutcome(events: PipelineEvent[], bucket: string): number {
@@ -198,7 +221,106 @@ export const WIDGET_CATALOG: WidgetMetricDef[] = [
     category: 'rate',
     supportsChannel: true,
   },
+  // --------------------------------------------------------------------------
+  // Outbound (2026-09-02, petición de Tania): las conversaciones que abre la
+  // entrenadora o su automatización escribiendo primero, separadas por cómo se
+  // abrieron, y si la persona contestó. Hasta ahora el dashboard solo conocía
+  // "IG outbound" como canal: no distinguía bienvenida de palabra clave ni medía
+  // si hubo respuesta.
+  // --------------------------------------------------------------------------
+  {
+    key: 'outbound_total',
+    label: 'Outbound enviados',
+    description:
+      'Conversaciones que abriste tú (o tu automatización) escribiendo primero en el periodo: bienvenidas y palabra clave juntas.',
+    category: 'volume',
+    supportsChannel: true,
+  },
+  {
+    key: 'outbound_reply_rate',
+    label: 'Outbound respondidos',
+    description:
+      'De las conversaciones que abriste tú, qué % contestó la persona (al menos un mensaje suyo).',
+    category: 'rate',
+    supportsChannel: true,
+  },
+  {
+    key: 'outbound_welcome',
+    label: 'Bienvenidas enviadas',
+    description:
+      'Conversaciones abiertas con una bienvenida: la plantilla de WhatsApp tras el formulario, o tu frase de bienvenida en Instagram/Facebook.',
+    category: 'volume',
+    supportsChannel: true,
+  },
+  {
+    key: 'outbound_welcome_reply_rate',
+    label: 'Bienvenidas respondidas',
+    description: 'De las bienvenidas enviadas, qué % contestó la persona.',
+    category: 'rate',
+    supportsChannel: true,
+  },
+  {
+    key: 'outbound_keyword',
+    label: 'Palabra clave enviados',
+    description:
+      'Conversaciones que abriste tú (o tu automatización) con un mensaje que llevaba una de tus palabras clave activas, como "espalda" o "información".',
+    category: 'volume',
+    supportsChannel: true,
+  },
+  {
+    key: 'outbound_keyword_reply_rate',
+    label: 'Palabra clave respondidos',
+    description: 'De los outbound por palabra clave, qué % contestó la persona.',
+    category: 'rate',
+    supportsChannel: true,
+  },
 ];
+
+// ----------------------------------------------------------------------------
+// Selectores de outbound. Una sola definición sirve al conteo del widget y a la
+// lista de personas del drill-down: si divergieran, el número de la tarjeta y
+// la lista que hay detrás no cuadrarían.
+// ----------------------------------------------------------------------------
+
+/** La entrenadora (o su automatización) escribió primero. */
+export function isOutboundConv(c: ConvSnapshot): boolean {
+  return c.direction === 'outbound';
+}
+
+/** Abierta con bienvenida: plantilla WA del formulario o frase de bienvenida en IG/FB. */
+export function isWelcomeConv(c: ConvSnapshot): boolean {
+  return c.conversation_source === 'bienvenida';
+}
+
+/**
+ * Abierta por la entrenadora con un mensaje que llevaba una palabra clave
+ * (`automation_keywords.type='inbound'`, evaluada también sobre el
+ * OutboundMessage desde el Hito 12.3). Por eso el origen se llama 'inbound'
+ * aunque la dirección sea 'outbound': "inbound" es el tipo de la palabra clave;
+ * quien escribió primero fue ella.
+ */
+export function isKeywordOutboundConv(c: ConvSnapshot): boolean {
+  return c.direction === 'outbound' && c.conversation_source === 'inbound';
+}
+
+export function hasLeadReply(c: ConvSnapshot): boolean {
+  return c.has_lead_reply === true;
+}
+
+function replyRate(
+  cur: ConvSnapshot[],
+  prev: ConvSnapshot[],
+  inDenominator: (c: ConvSnapshot) => boolean,
+): RateKpiValue {
+  const curDen = cur.filter(inDenominator);
+  const prevDen = prev.filter(inDenominator);
+  return toRateKpi(
+    curDen.filter(hasLeadReply).length,
+    curDen.length,
+    prevDen.filter(hasLeadReply).length,
+    prevDen.length,
+  );
+}
 
 export function getWidgetDef(key: string): WidgetMetricDef | undefined {
   return WIDGET_CATALOG.find((m) => m.key === key);
@@ -357,6 +479,36 @@ export function computeWidget(
         value: toRateKpi(cur.numerator, cur.denominator, prev.numerator, prev.denominator),
       };
     }
+    case 'outbound_total':
+      return {
+        category: 'volume',
+        value: toKpi(
+          curConvs.filter(isOutboundConv).length,
+          prevConvs.filter(isOutboundConv).length,
+        ),
+      };
+    case 'outbound_reply_rate':
+      return { category: 'rate', value: replyRate(curConvs, prevConvs, isOutboundConv) };
+    case 'outbound_welcome':
+      return {
+        category: 'volume',
+        value: toKpi(
+          curConvs.filter(isWelcomeConv).length,
+          prevConvs.filter(isWelcomeConv).length,
+        ),
+      };
+    case 'outbound_welcome_reply_rate':
+      return { category: 'rate', value: replyRate(curConvs, prevConvs, isWelcomeConv) };
+    case 'outbound_keyword':
+      return {
+        category: 'volume',
+        value: toKpi(
+          curConvs.filter(isKeywordOutboundConv).length,
+          prevConvs.filter(isKeywordOutboundConv).length,
+        ),
+      };
+    case 'outbound_keyword_reply_rate':
+      return { category: 'rate', value: replyRate(curConvs, prevConvs, isKeywordOutboundConv) };
     default:
       return {
         category: 'volume',
@@ -368,5 +520,102 @@ export function computeWidget(
           hasInsufficientData: true,
         },
       };
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Drill-down: quiénes están detrás del número (2026-09-02).
+//
+// Tania pidió poder pulsar una métrica y ver la lista de personas que la
+// forman, y de ahí saltar a la conversación. Esta función devuelve, para la
+// VENTANA ACTUAL, las conversaciones que componen la métrica: en un volumen son
+// las contadas; en una tasa son el denominador, y `numeratorIds` marca cuáles
+// cuentan también arriba (p. ej. las bienvenidas que sí obtuvieron respuesta).
+//
+// Usa los mismos selectores que `computeWidget`. La única diferencia asumida:
+// show_rate y close_rate cuentan EVENTOS de outcome, y aquí se listan
+// conversaciones distintas — una conversación con dos outcomes aparece una vez.
+// ----------------------------------------------------------------------------
+
+export interface WidgetMembers {
+  /** Conversaciones que forman la métrica en la ventana actual (denominador en las tasas). */
+  conversationIds: number[];
+  /** En las tasas, las conversaciones que cuentan en el numerador. null en volúmenes. */
+  numeratorIds: Set<number> | null;
+}
+
+export function selectWidgetMembers(
+  metricKey: string,
+  filter: WidgetFilter | null | undefined,
+  input: WidgetComputeInput,
+  channelMap: Map<number, ChannelInfo>,
+): WidgetMembers {
+  const curConvs = filterByChannel(input.currentConvs, filter, channelMap);
+  const curEvents = filterEventsByChannel(
+    input.currentEvents,
+    filter,
+    [...input.currentConvs, ...input.prevConvs],
+    channelMap,
+  );
+  const ids = (cs: ConvSnapshot[]): number[] => cs.map((c) => c.id);
+  const volume = (cs: number[]): WidgetMembers => ({ conversationIds: cs, numeratorIds: null });
+  const rate = (den: number[], num: Set<number>): WidgetMembers => ({
+    conversationIds: den,
+    numeratorIds: num,
+  });
+  const repliedOf = (cs: ConvSnapshot[]): Set<number> =>
+    new Set(cs.filter(hasLeadReply).map((c) => c.id));
+
+  switch (metricKey) {
+    case 'leads_total':
+      return volume(ids(curConvs));
+    case 'convs_active':
+      return volume(ids(activeConvs(curConvs, input.currentWindowFromIso)));
+    case 'qualified':
+      return volume([...convIdsByPhase(curEvents, ['5'])]);
+    case 'scheduled':
+      return volume([...convIdsByPhase(curEvents, ['6', '7'])]);
+    case 'won':
+      return volume([...convIdsByOutcome(curEvents, ['bought'])]);
+    case 'lost':
+      return volume([...convIdsByOutcome(curEvents, ['lost'])]);
+    case 'no_show':
+      return volume([...convIdsByOutcome(curEvents, ['no_show'])]);
+    case 'cancelled':
+      return volume([...convIdsByOutcome(curEvents, ['cancelled'])]);
+    case 'recontact':
+      return volume([...convIdsByOutcome(curEvents, ['recontact'])]);
+    case 'qualification_rate':
+      return rate(ids(curConvs), convIdsByPhase(curEvents, ['5']));
+    case 'show_rate':
+      return rate(
+        [...convIdsByOutcome(curEvents, ['bought', 'lost', 'cancelled', 'no_show'])],
+        convIdsByOutcome(curEvents, ['bought', 'lost']),
+      );
+    case 'close_rate':
+      return rate(
+        [...convIdsByOutcome(curEvents, ['bought', 'lost'])],
+        convIdsByOutcome(curEvents, ['bought']),
+      );
+    case 'outbound_total':
+      return volume(ids(curConvs.filter(isOutboundConv)));
+    case 'outbound_reply_rate': {
+      const den = curConvs.filter(isOutboundConv);
+      return rate(ids(den), repliedOf(den));
+    }
+    case 'outbound_welcome':
+      return volume(ids(curConvs.filter(isWelcomeConv)));
+    case 'outbound_welcome_reply_rate': {
+      const den = curConvs.filter(isWelcomeConv);
+      return rate(ids(den), repliedOf(den));
+    }
+    case 'outbound_keyword':
+      return volume(ids(curConvs.filter(isKeywordOutboundConv)));
+    case 'outbound_keyword_reply_rate': {
+      const den = curConvs.filter(isKeywordOutboundConv);
+      return rate(ids(den), repliedOf(den));
+    }
+    default:
+      return volume([]);
   }
 }
