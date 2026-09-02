@@ -646,6 +646,97 @@ Verificado palabra por palabra contra el backup: **22.749 antes, 22.749 después
 chars, un 1,8 %, y casi toda marca reglas duras) y los marcadores `⛔ ⚠️ ✅` (533, caros en tokens
 pero son el sistema semántico del bloque). No hay margen ahí.
 
+### Nivel 1 — el recorte de prosa (APLICADO)
+
+Barrido por regiones con verificación, más pasadas manuales sobre lo que el barrido no llegó a cubrir
+(tres interrupciones por límite de sesión dejaron 2 de 7 regiones hechas; el resto se hizo a mano).
+
+| Sección | Antes | Ahora | | × mediana flota |
+|---|---:|---:|---:|---:|
+| `coach_tone` | 39.756 | 27.454 | −12.302 | 1,4× |
+| `coach_structural_modifications` | 28.273 | 23.867 | −4.406 | 1,1× |
+| `coach_identity` | 9.851 | 8.446 | −1.405 | 2,4× |
+| `coach_special_protocols` | 23.019 | 21.681 | −1.338 | 6,4× |
+| `coach_phase_massage` | 16.438 | 15.345 | −1.093 | 1,0× |
+| `coach_objections` | 13.763 | 12.685 | −1.078 | 1,3× |
+| resto | | | −865 | |
+| **TOTAL** | **146.762** | **124.273** | **−22.489 (−15,3 %)** | **1,34× la media** |
+
+**Los tres recortes estructurales** (lo demás es justificación y meta-comentario, a razón de 40-200 chars):
+
+1. **`coach_tone_contrast` borrada entera** (2.337). Los 8 pares ❌→✅: cuatro ya tenían la mitad ✅
+   reducida a un puntero, y los otros cuatro enseñaban una regla escrita como orden en otro sitio (el
+   test de catálogo, el lexicón de coloquialismos, el guardarraíl de pronóstico, el paso 5 de
+   claridad). Nuestra doctrina pide los pares **pegados a su regla**; esto era una galería suelta a
+   900 líneas de las reglas que ilustraba.
+2. **El BANCO DE ARRANQUES de `coach_tone_openers` reducido** (−895 de 1.395). Cuatro de sus ocho
+   formas eran los movimientos del voiceprint con otro nombre. Se conservan las cuatro que no
+   estaban, la regla de rotación (absorbida por `coach_tone_variety`) y las dos prohibiciones duras.
+3. **Cuatro antipatrones y tres exemplars redundantes** (~1.900), cada uno porque su regla ya estaba
+   escrita completa en su sección y porque el molde lo enseñaba otro exemplar.
+
+**Verificación:** etiquetas XML cuadradas, 12/12 literales clave presentes, **cero punteros huérfanos**
+(auditadas las 53 secciones definidas contra las 32 referenciadas) y cero referencias supervivientes a
+lo borrado.
+
+### La pasada adversarial del adelgazamiento (2026-08-25)
+
+Seis vías atacando el **diff aislado del nivel 1** (669 líneas, −2.567 palabras), con instrucción
+explícita de mirar con lupa las cinco regiones recortadas a mano sin verificador y los tres borrados
+estructurales. Cada hallazgo pasó por un refutador que leía el fichero actual.
+
+**45 hallazgos crudos · 43 refutados · 2 en pie · CERO bloqueantes.**
+
+> Ninguna parada dejó de dispararse, ninguna cifra cambió, ninguna prohibición clínica se ablandó y
+> **ningún literal del entrenador se tocó.** La vía de literales lo verificó extrayendo las **510
+> cadenas entrecomilladas** del fichero anterior y buscándolas en el nuevo: las 42 ausentes son, una a
+> una, prosa interna, ejemplos del banco de arranques y pares del contraste. **Ninguna línea que
+> empiece por `>` cambió en todo el fichero.** Las 8 filas de la tabla de literales siguen idénticas
+> carácter a carácter y sus 8 destinos existen. Las 6 dosis del banco, intactas, con la variante de
+> superviviente y los dos anexos de la CLARIDAD 6. La URL de la guía, intacta. **0 punteros huérfanos.**
+
+**Lo que se repuso (5 cosas, +210 chars).** Tres de ellas estaban *refutadas*, y las repuse igual
+porque el refutador tenía razón en que la regla sobrevive pero el coste de blindarla era de 50-90
+caracteres:
+
+| # | Qué | Por qué se repuso pese a la refutación |
+|---|---|---|
+| 1 | El paréntesis de **cuándo consta el género** ("por su nombre, por cómo se refiera a sí misma, o porque lo diga") | Cuatro sitios del bloque lo consumen como compuerta. Sin él, la única definición viva de "constar" es la del gate ("lo dijo ella y podrías citarla"), mucho más dura: una lead llamada Carmen que dice "estoy agotada" nunca constaría. **Y la concordancia de género es justo el feedback que abrió la ronda 3.** |
+| 2 | El **"sin negarla"** del punto 8 de `_core` | A 528 líneas hay un "⚠️ NUNCA se nombra la entrevista antes de Fase 5". El fusible que impedía leerlo como aplicable cuando la nombra ELLA eran esas cinco palabras. |
+| 3 | Las **tres señales de "llega decidida"** | El recorte desarmó una rama y dejó la otra: "muy cansada" conservaba sus señales y "decidida" quedó como impresión subjetiva. Es el adjetivo que autoriza comprimir el descubrimiento. |
+| 4 | El ✅ del antipatrón de empatía genérica, **reescrito como mensaje bien formado** | Al ascender una frase que iba embebida en prosa a `✅ Setter:`, quedó el único modelo del bloque en minúscula y sin punto final, en el coach cuyo voiceprint exige ambas cosas. (Hallazgo en pie.) |
+| 5 | Errata **"Nada de de dónde es"** | La introduje yo al recortar el verbo. (Hallazgo en pie.) |
+
+**Tres correcciones que los auditores le hicieron a mis premisas**, y que conviene tener anotadas:
+se quitaron **tres** antipatrones, no cuatro (el del teléfono tras un "vale" sigue vivo, solo
+recortado); el exemplar de **neuropatía sobrevive dentro del movimiento 1** del voiceprint; y el de
+**impacto profundizando sin asumir** sobrevive dentro de `impacto_acotando_lo_que_dijo_F2`. El único
+que no sobrevive en ningún sitio es el de pérdida de fuerza, y su molde ("Lo de [lo suyo] +
+normalización + la preocupación que genera") está tres veces en el voiceprint.
+
+**Estado final: 146.762 → 124.483 chars (−15,2 %), verificado y listo para Gonzalo.**
+
+### Por qué no se llegó a los 105.000
+
+Se quedó en **124.273**, a 19.273 del objetivo, y el objetivo estaba mal calibrado por mí. Lo que
+queda no es relleno:
+
+- **~16.000 del BANCO DE CLARIDAD**, material clínico del entrenador, intocable. Ningún otro coach de
+  la flota tiene nada equivalente, y es lo único que impide que el setter improvise medicina.
+- **Tres momentos del avatar** (tratamiento activo, superviviente, recién diagnóstico), cada uno con
+  su carril.
+- **La frontera clínica** con su regla de ambigüedad y sus dos excepciones, y **nueve triggers de
+  apagado**.
+
+Descontando el banco, el bloque queda en ~108.000 frente a una media de flota de 92.500 que no
+incluye banco ninguno. **El suelo honesto de este coach está en torno a 120.000**; bajar de ahí ya no
+es quitar grasa, es quitar reglas.
+
+⚠️ **Diagnóstico corregido:** el objetivo del 24 % salió de comparar con la media de la flota sin
+descontar lo que este coach tiene y los demás no. La comparación útil es por sección, y ahí todo está
+ya en norma (`coach_tone` 1,4× · `structural` 1,1× · `phase_massage` 1,0× · `qualification` 1,0×)
+salvo `special_protocols`, que es el banco.
+
 ### El lever de flota (sin tocar, requiere decisión)
 
 La capa de voz (`voiceprint` + `variety` + `lexicon` + `openers` + `emojis` + `contrast`) suma
@@ -934,9 +1025,15 @@ dar una cifra de precio · afirmar por qué le pasa lo que le pasa sin hedgear �
 - ✅ **Ronda 3 aplicada (2026-08-25)**: el carril de recién diagnóstico + la auto-concordancia del setter,
   con pasada adversarial de 6 vías (71 hallazgos, 17 problemas reales corregidos) y el bloque
   sincronizado al repo, que llevaba dos rondas de retraso.
-- 🔲 **La dieta de justificación y meta-comentario (~6.500 chars), ya localizada**: es el primer punto
-  de la ronda 4, con su propia pasada adversarial detrás. La deuda de "reglas triplicadas" de la ronda 1
-  queda **cerrada por refutación**: no eran recortables.
+- ✅ **Dieta hecha (2026-08-25): 146.762 → 124.483 chars, −15,2 %**, en dos niveles (mecánico + prosa),
+  con pasada adversarial de 6 vías detrás (45 hallazgos, 43 refutados, 0 bloqueantes, 5 reposiciones).
+  La deuda de "reglas triplicadas" de la ronda 1 queda **cerrada por refutación**: no eran recortables.
+  El suelo honesto de este coach está sobre los 120.000; por debajo se quitan reglas, no grasa.
+- 🔲 **Lever de flota, verificado y sin aplicar: 57.393 chars de decoración en los otros 14 coaches**
+  (~14.350 tokens). Los 14 pasan la comprobación palabra por palabra. Es un paso mecánico, pendiente
+  del OK de Iván porque son bloques de producción ajenos a este loop.
+- 🔲 **Coherencia de la flota: 1.064 guiones largos**, 8 coaches sin la regla y 7 que la prohíben y la
+  usan. Ver [[feedback_coach_prosa_contradice_sus_reglas]]. No se arregla subiendo nada al CORE.
 - 🔲 **Firmar con Gonzalo tres cosas de la ronda 3**: (a) el molde de mala noticia con el tratamiento ya
   empezado (*"Vaya, siento mucho que te haya llegado esta noticia. / ¿Y te han dicho ya cómo van a
   seguir?"*), que lo escribimos nosotros; (b) que la frase general del paso 3 dice lo que él diría;

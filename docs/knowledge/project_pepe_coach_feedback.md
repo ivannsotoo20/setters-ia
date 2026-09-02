@@ -584,3 +584,86 @@ porque no son reglas de conversación:
 🚨 **Deuda ajena al bloque, del mismo P0 de la ronda 1:** [`prompts/source/coach-v5/pepe-jimenez.md`](../../prompts/source/coach-v5/pepe-jimenez.md)
 (la copia del SaaS) sigue con 4 ocurrencias de *"tú y yo"*, sin la regla de precio y sin el equipo de admisiones.
 Si ese tenant se activa, resucita el fallo más caro del loop.
+
+---
+
+## RONDA 2026-08-27 — el carril del avatar (Loom + Manual de Teoría)
+
+Feedback nuevo de Pepe: **se pierden leads porque la IA tira siempre por HYROX** y encierra ahí la conversación
+antes de saber a qué viene la persona. Cuatro casos reales en su Loom, dos buenos y dos perdidos:
+
+| Caso | Qué pasó |
+|---|---|
+| **Andrés** | Abre pidiendo precio y en qué consiste. La IA: *"tienes experiencia en HYROX?? buscas iniciarte o mejorar tiempos??"*. Él: *"tu asesoramiento es sobre HYROX o también running, gimnasio y nutrición?"*. Venía a otra cosa. **Perdido.** |
+| **Cleofás** | CTA. Vive en Noruega, entrena mucho, no encuentra el punto con la comida, pasa hambre, quiere bajar grasa. Nunca nombra HYROX. La IA: *"tienes alguna competición o meta HYROX?"*. **Perdido.** |
+| **Patry** | *"después de muchos años necesito preparar una oposición"* → se tiró por oposición. **Agendó.** |
+| **Alba** | CTA, pregunta abierta, habla de fuerzas armadas y de estar estancada en nutrición y deporte. **Coherente.** |
+
+### El diagnóstico: no era de tono, era que faltaba un ESTADO
+
+El bloque escribía el fork *"si él ya nombró su terreno / si no"* en **cuatro sitios** (fase0, fase1, F2 punto 1,
+peldaños de la escalera). Ninguno decía qué hacer cuando **no sabes quién tienes delante**, ninguno prohibía
+soltar el terreno una vez detectado, y la única regla dura se autolimitaba a *"en el PRIMER TURNO"*.
+
+> Por eso Cleofás se cayó **tres mensajes después** de una apertura correcta: la regla ya había caducado.
+
+### Lo que entra: `_core` punto 10, EL CARRIL DEL AVATAR
+
+Va al `_core` porque es la sección que "prevalece sobre cualquier fase", y consolida los cuatro sitios en uno:
+
+- **Se arranca siempre sin identificar, y no caduca con los turnos.**
+- **Mientras dure**: se conecta, se reacciona, se entrega el recurso y se pregunta abierto. HYROX,
+  competiciones, tiempos, marcas, estaciones y el box **no se nombran**; no se entra al foco invertido de F2;
+  no se propone llamada. (Exentos: el nombre del grupo gratuito y el literal de descualificación por material.)
+- **La pregunta de carril, LITERAL de Iván**, si en los dos o tres primeros mensajes no ha dado carril y una
+  sola vez: *"Simplemente por curiosidad, tu objetivo está relacionado con el HYROX, preparar unas oposiciones
+  o es más un cambio físico que quieres hacer?"* Si ya lo dijo, **no se hace**.
+- **En cuanto lo diga, ahí te quedas**, con tabla de tres filas y la regla dura: *del carril que él NO ha puesto
+  no sale ni una pregunta*.
+- **Desempate por PROMINENCIA**: manda el bloqueo en presente, **salvo que la prueba sea a lo que viene**. Quien
+  dice "necesito preparar una oposición" va por oposición aunque le falle la comida (Patry); quien la cuelga de
+  otra cosa ("y de paso hacerme un HYROX") es un extra y manda el bloqueo (Alba, y el caso del Loom a 7:03).
+
+**Las tres opciones dentro de la interrogación** chocaban con la binaria de "máximo 2, NUNCA 3". Se declara como
+excepción única y acotada en el voiceprint: no son partes de un mismo problema entre las que elegir, son tres
+mundos y se le pide que diga a cuál viene. **Iván descartó la alternativa** de sacar los mundos a una burbuja
+declarativa: una sola pregunta lo abarca todo.
+
+Alrededor, 11 cambios más: la apertura pierde "el primer turno" y recoge por nombre las seis redacciones del
+Loom; el **"sí" a la rutina cuenta como cero información** (el carril B es "el punto más importante" según Pepe);
+la casilla 5 del gate de F5 se abre a COMPRENSIÓN (con avatar 3 era insatisfacible); el lexicón separa el
+vocabulario universal del de competición; el objetivo de la propuesta sale de su carril; y el peldaño 1 de la
+escalera deja de ser la puerta por la que se colaba HYROX a Andrés.
+
+### Tres pasadas adversariales, y las tres encontraron algo
+
+| Pasada | Qué encontró |
+|---|---|
+| 1ª | **2 P0**: el banco de correcciones soltaba *"en HYROX el 50% de la carrera es correr"* y *"tienes acceso a un box?"* sin gate, y un exemplar de F1 preguntaba por el box al perfil exacto de Cleofás. Más 8 P1. |
+| 2ª | El literal del 50% vivía en **cuatro sitios** y solo se gateó uno. Y una **regresión propia**: al condicionar el lexicón se bloqueó "el box" y "físico híbrido", que un literal obligatorio de descualificación necesita. |
+| 3ª | **Otro P0 propio**: el desempate recién escrito ("salvo que tenga una prueba POR DELANTE") se tragaba el caso que el Loom nombra como avatar 3. El discriminador no es si la prueba ha pasado, es si viene **a** eso. |
+
+> **La lección, y ya es la quinta vez en este loop:** al meter una regla nueva hay que barrer lo que pasa a
+> contradecir. Aquí además con una vuelta de tuerca — **dos de los tres hallazgos graves se introdujeron
+> arreglando el anterior.** Sin las tres pasadas, el bloque habría salido mandando a Patry al carril equivocado.
+
+**1125 → 1150 líneas (+25).** No cumple el "igual o más corto": el bloque no tenía mecanismo de identificación
+y eso son líneas nuevas de verdad. Lo que sí hace es consolidar cuatro redacciones del mismo fork en una.
+
+### Lo que queda abierto
+
+- 🔴 **El corpus de voz es monocarril.** De ~46 exemplars, ~15 sitúan al lead en carrera/box/competición, **cero
+  en oposición** y prácticamente ninguno en cambio físico. El único Puente de F4 y la única propuesta de F5 son
+  de HYROX. Las reglas compensan, pero **los exemplars enseñan el patrón**: mientras el material que el modelo
+  imita sea de un solo avatar, tirará de ahí. Hay que escribir 2-3 por terreno **y que los firme Pepe**, como se
+  hizo con las 23 preguntas del 03/08.
+- 🟠 **El descualificador 4 pide wall balls a los tres avatares** (una lead de cambio físico que entrena en casa
+  con mancuernas se cae por no tener SKI-erg). Es definición de producto: **lo decide Pepe.** Igual el criterio 2.
+- 🟠 **La comunidad gratuita de HYROX sigue siendo el cierre obligatorio** también para el opositor y el de
+  cambio físico. Se decidió cuando solo había un avatar.
+- 🟠 **La pregunta de carril nombra el HYROX primero.** Va gateada y es literal de Iván, pero en el Loom (3:16)
+  Pepe pedía la pregunta abierta pelada, *"y que él sea el que se abra"*. Conviene que lo sepa.
+- ⚪ **El eje LEAD A/B/C del Manual NO entra**, y no por longitud: el manual dice que quien pregunta precio en el
+  primer mensaje es Lead A y que al Lead A se le va directo — **Andrés preguntó precio en el primer mensaje**.
+  Aplicarlo literal lo habría clasificado como el lead al que acelerar, que es justo lo que le cerró en HYROX. El
+  ritmo ya está resuelto con otros nombres: Lead C = lead frío, Lead A = Fast-Track, Lead B = el caso por defecto.

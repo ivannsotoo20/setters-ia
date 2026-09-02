@@ -129,6 +129,85 @@ particular a los otros coaches con frontera clínica (Gonzalo, Luis Royán).
 
 ---
 
+## Ronda 2 — 2026-08-26 (feedback #2: descarta a mujeres en menopausia)
+
+**Feedback literal:** *"Comentamos de, independientemente de enfocarnos en ayudar a mujeres con SOP, no
+descartar a mujeres en fase de menopausia o premenopausia, y aquí veo que lo ha vuelto a hacer. Trataría de
+no descartar en general a mujeres que busquen un cambio físico, aunque nos enfoquemos en SOP y hagamos esas
+preguntas."* (hilo *Andrea y Jose*, con captura).
+
+**La captura.** La lead responde a la apertura de F1: *"pues no, yo lo que estoy es en menopausia, no creo
+tener síntomas de ovario poliquístico pero me parece muy interesante el tema"*. La IA contesta *"nuestro
+programa está enfocado específicamente en mujeres que lo tienen o sospechan tenerlo, así que en tu caso no
+creo que encajemos bien…"* y remata mandándola a traer una amiga. Cierre en el segundo mensaje, sobre una
+mujer del rango de edad que había abierto la conversación por su cuenta.
+
+### Dónde estaba el fallo
+
+No fue improvisación: **la IA copió un literal del bloque**. `coach_wclose_no_encaja_perfil` decía *"Lo que
+hacemos está pensado específicamente para mujeres con SOP, así que en este caso no sería lo que
+necesitas"*. Es la misma frase con el sustantivo cambiado. Ese cierre estaba declarado **solo para género o
+edad fuera de rango**, pero su literal nombraba el SOP como la puerta, así que para un modelo que busca qué
+decir ante *"yo no tengo SOP"* era una coincidencia de texto perfecta.
+
+Y encontró vía libre porque **el bloque no tenía respuesta para ese caso**. Es exactamente el patrón de la
+ronda 1 con la titulación ([[feedback_coach_limite_negativo_se_dice]]): donde no hay literal escrito, el
+modelo coge el más parecido. Cuatro superficies lo empujaban:
+
+1. `coach_qualification_criteria` → el PERFIL redactado como test de pertenencia (*"mujeres … que tienen
+   SOP diagnosticado O sospechan tenerlo"*), que se lee como puerta.
+2. `coach_qualification_doesnt` → la lista NO DESCUALIFICA cubría *"no tener diagnóstico todavía"* pero no
+   *"no tener SOP"*. El agujero era la ausencia.
+3. `coach_wclose_no_encaja_perfil` → el literal magnético, con su alcance escrito en prosa blanda.
+4. `coach_objections_avatar` → banco con una entrada para cada creencia de la mujer CON SOP, ninguna para
+   la que no lo tiene.
+
+### Lo que se cambió
+
+La regla que de verdad generaliza no es "no descartes menopáusicas", es **el encaje no lo decides tú en el
+chat** — y el bloque ya lo decía dos veces en `coach_identity_role` (*"eres la portera, no la coach"*). No
+hacía falta doctrina nueva: hacía falta que esa regla tuviera dientes en el punto donde se estaba
+incumpliendo, y un literal que decir.
+
+| Dónde | Qué |
+|---|---|
+| `coach_qualification_criteria` | El PERFIL pasa a ser **el FOCO, no la puerta de entrada** + regla binaria: cualquier mujer del rango de edad que busque un cambio en su cuerpo ENTRA, tenga SOP o no. Menopausia, premenopausia, "me interesa el tema" o cero síntomas hormonales NO cierran nada |
+| `coach_qualification_doesnt` | Tres entradas nuevas a la lista NO DESCUALIFICA: **no tener SOP · menopausia o premenopausia · escribir solo por interés** |
+| `coach_wclose_no_encaja_perfil` | El literal deja de nombrar el SOP (*"pensado para mujeres de 18 a 55"*), el alcance pasa a binario (género o edad, no hay un tercer motivo) y entra ⛔ explícito de no usarlo para "no tiene SOP" |
+| `coach_objections_avatar` | **Entrada nueva y primera del banco**: "yo no tengo SOP" / "estoy en menopausia" / "me interesa el tema pero no es mi caso", con literal propio para cada carril + prohibición de las frases exactas de la captura + prohibición de lo contrario (*"claro que es para ti"*) |
+| `coach_structural_modifications_core` | **MODULACIÓN SIN SOP**, pegada al override del mental model: mismos seis movimientos, mismo suelo, misma voz; lo único que cambia es que el primer tramo del eje deja de ser SÍNTOMAS DE SOP y pasa a ser lo que ella nota en su cuerpo. Y el vocabulario del nicho no se le cuelga ("recuperar la ovulación", "tus fases del ciclo") |
+| `coach_discovery_gate`, elemento 1 | "CONTEXTO SOP" → "CONTEXTO", y CONSTA igual sin diagnóstico. Sin esto el gate la habría dejado fuera **en silencio**, que es la segunda forma de descartarla |
+| `coach_phase_massage_fase4` | La plantilla del Puente le ponía en la boca *"y más en nosotras al tener SOP"*. Sustituto para cuando no lo tiene |
+| `coach_phase_massage_fase1` | Un puntero en el turno exacto donde pasó: si responde que esos no son sus síntomas, es modulación, no cierre |
+
+Neto: **+3.1K chars** sobre 120K. Sube, y tiene un fallo real detrás.
+
+### La compuerta 4 se cierra, y al revés de como se leyó
+
+El prompt original ya lo decía. Dentro de la lista de perfil ideal de `andrea_jose.md` §3.2 había un
+bullet suelto: **"Persona que no tiene SOP"**. La ronda 0 lo leyó en corto (*cualifica quien tiene síntomas
+sin diagnóstico*) y lo dejó como compuerta. Significaba lo que parecía: **una mujer sin SOP también entra**.
+Es la segunda vez en este coach que un enunciado del original se interpretó a la baja y el entrenador lo
+corrigió — la anterior fue la titulación.
+
+**Aprendizaje para el corpus:** un bullet suelto y raro en la lista de perfil ideal casi nunca es un
+descuido de redacción del entrenador; suele ser la excepción que él ya tenía clara y no vio necesario
+explicar. Cuando no cuadre, se pregunta antes de traducirlo a la interpretación más conservadora, porque la
+lectura estrecha se despliega y cierra leads de verdad.
+
+### Lo que hay que devolverle al entrenador
+
+El feedback abre el embudo bastante más de lo que dice su titular: *"no descartar en general a mujeres que
+busquen un cambio físico"*. El setter ya no va a cerrar a nadie por no tener SOP — **pero tampoco puede
+afirmar que el programa le sirve**, y eso se ha escrito así a propósito (ni cierra ni promete: decide la
+videollamada). Queda una pregunta que es suya, no del prompt: **¿el programa sirve de verdad a una mujer en
+menopausia?** Los tres pilares se apoyan en las fases del ciclo y el objetivo declarado es recuperar la
+ovulación. Si la respuesta es que sí con adaptaciones, el bloque puede decirlo con más cuerpo; si es que
+no, lo que está pasando es que se van a llenar videollamadas que no cierran, y eso se arregla en la oferta,
+no en el chat.
+
+---
+
 ## Compuertas abiertas (antes de desplegar)
 
 1. ~~**¿Quién atiende la videollamada?**~~ ✅ **CERRADA — Iván, 2026-08-07: la atiende el EQUIPO, no
@@ -151,9 +230,11 @@ particular a los otros coaches con frontera clínica (Gonzalo, Luis Royán).
 3. **Rango de edad**: el perfil ideal decía 18-50 y el descualificador D2 decía "menor de 18 o mayor de
    55". Se resolvió por el descualificador (18-55, que es el que actúa como línea binaria) y se dejó
    coherente en todo el bloque. Confirmar cuál es el bueno.
-4. **"Persona que no tiene SOP"** aparecía suelto dentro de la lista de perfil ideal, sin más contexto. Se
-   interpretó como *cualifica también quien tiene síntomas sin diagnóstico*, que es coherente con el resto
-   del bloque. Confirmar.
+4. ~~**"Persona que no tiene SOP"**~~ ✅ **CERRADA — el entrenador, 2026-08-26, y al revés de como se
+   leyó.** Ese bullet suelto de la lista de perfil ideal significaba literalmente que **una mujer sin SOP
+   también entra**; la ronda 0 lo interpretó en corto (*síntomas sin diagnóstico*). Corregido en la ronda 2.
+   Deja abierto un punto que es del entrenador y no del prompt: si el programa sirve de verdad a una mujer
+   en menopausia, cuando sus tres pilares se apoyan en las fases del ciclo.
 5. ~~**¿Andrea es personalmente nutricionista?**~~ ✅ **CERRADA — Iván, 2026-08-10: SÍ lo es.** El feedback
    vino en plural ("somos") y la regla se escribió primero en plural; con la confirmación pasa a **primera
    persona**, que es lo que da autoridad en la pregunta donde la lead decide si se fía. El título entra

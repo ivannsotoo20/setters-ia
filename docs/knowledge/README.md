@@ -171,7 +171,12 @@ valor, nunca el valor. Escanear antes de commitear.
   de tonificación y la **lista de reconocimiento de F1**, única excepción legítima a CERO OPCIONES del
   corpus. ✅ **La videollamada la atiende el equipo, no Andrea** (confirmado 07-08; era el mismo P0
   que Pepe) y ✅ **la setter es "Andrea" a secas**, sin apellido y sin nombrar al entrenador: por eso
-  el slug va por nicho, única excepción a la convención por entrenador. **Sin compuertas abiertas.**
+  el slug va por nicho, única excepción a la convención por entrenador. **Ronda 2 (26-08): descartaba a
+  mujeres en menopausia** copiando el literal de `coach_wclose_no_encaja_perfil`, que nombraba el SOP como
+  la puerta — el SOP pasa a ser el FOCO y no el requisito de entrada, con **modulación sin SOP** (mismo
+  flujo, el eje deja de ser los síntomas) y literal propio. Cierra la compuerta del *"Persona que no tiene
+  SOP"* del original, **al revés de como la leyó la ronda 0**. Compuerta viva, y es del entrenador: si el
+  programa sirve a una mujer en menopausia cuando sus pilares van por fases del ciclo.
 - [Bea — embarazo y posparto](project_bea_coach_embarazo.md) — **avatar nuevo (el 7º) y el tercero
   clínico**. Entrenadora que llega **quemada de la competencia** (Scalex + la app de un freelance)
   porque le ha caído la **asistencia** a llamada. Ronda 0 el **2026-08-22**: destilado del análisis de
