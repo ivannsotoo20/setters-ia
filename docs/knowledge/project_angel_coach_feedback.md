@@ -38,6 +38,57 @@ eslogan, y además es la estructura *"no es X, es Y"* que la doctrina §17 marca
 
 ## Estado
 
+**Ronda 1 aplicada 2026-09-02** sobre su feedback del 28-08, 31-08 y 01-09 (24 capturas). El bloque
+queda en 102.066 caracteres: **369 menos** que antes de la ronda, que es la regla
+([[feedback_coach_marco_no_prohibiciones]]).
+
+Lo que trae, y ninguna de las tres primeras es un fallo del modelo — son reglas del bloque
+cumpliéndose al pie de la letra:
+
+1. **El reconocimiento se gasta UNA vez por logro.** Valoró la bajada de 15 kilos en 4 de los
+   últimos 5 mensajes con cuatro redacciones distintas, y era legal: el mandato de reconocer no
+   tenía tope, `LA PROPORCIÓN` declaraba al reconocimiento **exento** del único cupo del bloque, los
+   cinco chequeos de `coach_tone_variety` medían FORMA y ninguno el OBJETO, y el corpus valoraba
+   "los dos años" cuatro veces. Se borró el cupo (inejecutable: el modelo no lleva contador entre
+   turnos), se añadió **el objeto del acuse** como 6º chequeo de variedad, y se dedupló el corpus.
+   El sustituto cuando no hay dato nuevo que valorar es **normalizar la dificultad nueva**.
+2. **El eje del descubrimiento gira de "qué falla" a "qué necesitas".** El bloque lo prohibía
+   verbatim en F3 y se lo incumplía a sí mismo dos veces. Se borró la prohibición (lo que protegía
+   de verdad —no auto-diagnosticar el MÉTODO— ya vivía entero en el elemento 3) y el molde de la
+   necesidad se promovió donde el modelo copia: PASO 5 de F2, no solo el gate. El elemento 4 admite
+   ahora **dos formas de constar**: nombra su freno o nombra lo que le falta.
+3. **El microcompromiso: F5 se parte en dos turnos con espera en medio.** Su argumento: *"me ha
+   dicho que está abierto a recibir ayuda, pero no ha confirmado que quiere que esa ayuda sea la
+   mía"*. Turno A = prueba social + *"creo que puedo ayudarte a que lo consigamos"* + *"quieres que
+   te explique como?"*; turno B, solo con su sí, = la videollamada. Vive en F5 pero **antes** de que
+   caiga la veda de nombrar la videollamada, que es lo que impide que el microcompromiso se anule
+   solo. Y **solo el sí al turno B abre F6**, escrito una vez: con dos preguntas en la cadena, un
+   "vale" al microcompromiso saltaba la propuesta entera y le pedía el teléfono.
+4. **El precio, tres momentos.** Entra un caso que no existía —*"¿la videollamada tiene coste?"* es
+   pregunta de información y se contesta que es gratuita, con excepción nominada a la veda de F5—;
+   la justificación pasa de *"no me gusta"* a **"no puedo"** con sus tres factores (tiempo, tipo de
+   programa, método de pago: admite único y fraccionado); y ante la insistencia se retira la prueba
+   social de la inversión y entra **devolverle la libertad de decidir**. Regla nueva: con una
+   objeción sin resolver no se entra en F6.
+5. **El arranque lee el primer mensaje.** La rama outbound estaba escrita como tres literales
+   incondicionales y la excepción vivía en un párrafo aparte, así que el modelo le preguntaba lo que
+   el lead acababa de contarle. Ahora la respuesta del lead elige entre cuatro carriles con una sola
+   salida por turno, y **existe un recurso**: la checklist, que se entrega solo a quien la pide.
+
+Lo que enseñó esta ronda, y vale para cualquier coach: **escribir la regla no basta si el corpus
+sigue demostrando lo contrario**. La pasada adversarial cazó que el exemplar nuevo del movimiento 9
+revalidaba el logro que su propia regla acababa de prohibir, que "faena" seguía viva en el corpus
+mientras "putada" solo estaba en el léxico, que el molde de la necesidad tenía 1 demostración contra
+6 del viejo, y que "tio" había SUBIDO porque los literales nuevos lo llevaban. Ahora: tio 21→16,
+[nombre] 13→20, molde necesidad 0→4, molde margen 5→3.
+
+**Y el hallazgo de proceso**: el fichero que Ángel estaba probando **no era el del repo**. Le
+faltaban 10 líneas (las cuatro reglas duras del final de `coach_tone_lexicon` y el párrafo
+`SEGUIMIENTOS`), y eso explica una de sus quejas del 31-08: sin el veto de *restricción*, la única
+línea viva sobre esa palabra era `coach_program`, que se la ofrece como algo honesto que decir — y
+la IA escribió *"sin restricciones raras"*. Antes de desplegar hay que comprobar que el fichero que
+sube es el fichero entero.
+
 **Ronda 0 cerrada 2026-08-24.** Escrito de cero desde su formulario "Documentación Avatar".
 
 Nace ya con todo lo que a los coaches viejos hubo que retrofitear: la cadena de Rubén, §32 (los
@@ -54,10 +105,40 @@ Pasada adversarial hecha ([[feedback_coach_ronda_verificacion_adversarial]]): pu
 secciones, cero dos-puertas fuera de sus cuatro sitios instrumentales, cero "Y" a pelo abriendo
 burbuja, cero guion largo dentro de un literal, cero mención de la videollamada antes de F5.
 
-## Compuertas abiertas — hay que preguntárselo a Ángel
+## Compuertas — estado tras la ronda 1 (2026-09-02)
 
-Su formulario no las cubre, y ninguna se puede dejar dentro del bloque como pendiente
-([[feedback_coach_blocks_sin_pendientes]]):
+**Cerradas con evidencia suya, no con criterio mío.** Las capturas del 01-09 traen su DM real, y eso
+resolvió tres de las cinco sin tener que preguntarle nada:
+
+- **El corpus dejó de ser corto.** De 5 literales verificados a 11. Entran su saludo cuando escribe
+  él (*"Muy buenas [nombre]! Espero que estes genial tio"*), la secuencia de entrega del recurso con
+  la disculpa dentro (*"Se me habra perdido el comentario y por eso no lo habre visto, perdona 🙏"* ·
+  *"Te lo paso ahora mismo"* · *"Por aqui te dejo la checklist…"* · *"Espero que te sea de mucha
+  ayuda!"*) y la pregunta que va detrás del recurso (*"En que punto te sentiste identificado?"*).
+  Más los que él mismo escribió como setter en el documento de feedback: la validación de dos
+  mitades y la muletilla adulta. El test de indistinguibilidad sigue sin poder cerrarse, pero ya no
+  por falta de material.
+- **Los emojis.** El banco pasa a cinco: entra **🙏**, verificado en su disculpa. Y se corrige un
+  dato que el bloque daba por verificado y era falso: **su bienvenida sí lleva emoji**, un 🙌 al
+  final. Estaba escrito lo contrario.
+- **La frontera del registro adulto.** Lo que rechaza es nombrar SU ESFUERZO en juvenil
+  (*"llevas tiempo metiéndole"*), no el coloquialismo: *"meterle mano"* lo usa él en su propia
+  corrección y *"darle caña"* es literal suyo que va en el primer mensaje. La regla quedó acotada a
+  eso, y se convirtieron los literales que nombraban su esfuerzo con el verbo "meter" en duración.
+- **El microcompromiso en las otras rutas.** Decidido que sí: el remate del "voy solo" y el del "más
+  adelante" también pasan por él, porque el argumento de Ángel (*"no ha confirmado que quiere que
+  esa ayuda sea la mía"*) aplica igual.
+
+**Siguen abiertas, y estas sí hay que preguntárselas:**
+
+1. **La checklist.** El bloque ya la entrega, pero solo a quien la pide o la menciona, que es lo que
+   muestra la evidencia. Falta saber si además hay automatización por comentario en sus posts, y
+   confirmar la URL, que la metí desde su captura.
+2. **La configuración de `notia`** (ver abajo, sin cambios desde la ronda 0).
+3. **El "jaja"** (ver abajo). Nota: en su propio documento de feedback escribe "jajaja" dos veces, lo
+   cual apoya mantenerlo.
+
+Las de abajo se conservan tal cual porque nadie las ha tocado todavía:
 
 1. **La configuración de `notia`.** El formulario no pregunta qué hacer si el lead pregunta si habla
    con una IA, y esa elección es del entrenador (acuerdo 03-08, tres configs válidas). Le he puesto
@@ -67,20 +148,14 @@ Su formulario no las cubre, y ninguna se puede dejar dentro del bloque como pend
 2. **El "jaja".** No aparece en ninguno de sus literales, pero manda un gif de Mr. Bean como
    seguimiento, así que humor tiene. Lo he metido contenido y solo para desdramatizar. Confirmarlo:
    la risa escrita se diseña por coach y **no se hereda** ([[feedback_coach_acuse_corto_y_energia]]).
-3. **Los emojis en contexto.** Dio los cuatro (👌 💪 🙌 😁) pero no dónde los pone. Le he asignado
-   💪/🙌 al reconocimiento del esfuerzo, 👌 al acuse y 😁 a suavizar. Su propia bienvenida no lleva
-   ninguno, y eso sí está verificado.
-4. **La dos-puertas de su primera pregunta.** *"Como vas tio, entrenas actualmente o estas pensando
+3. **La dos-puertas de su primera pregunta.** *"Como vas tio, entrenas actualmente o estas pensando
    en darle caña?"* es literal suyo y es exactamente el tic que Rubén marcó el 24-ago
    ([[feedback_coach_pregunta_dos_puertas]]). La he mantenido y la he declarado como la única
    excepción del bloque, por tres razones: es suya, es el saludo social de F1 (donde el lead todavía
    no ha dicho nada que anclar) y las dos puertas abren igual de bien. **Es una decisión mía, no una
    regla** — si Iván prefiere cortar la segunda puerta, la edición es *"Como vas tio, entrenas
-   actualmente?"* y ningún otro sitio del bloque se toca.
-5. **Corpus de voz corto.** Solo tenemos 5 literales verificados suyos (bienvenida, dos acuses,
-   primera pregunta, seguimiento). El resto del corpus está construido en su registro. **El test de
-   indistinguibilidad no se puede cerrar sin más material suyo**: hacen falta 5-10 conversaciones
-   reales de DM, o que revise los exemplars uno a uno.
+   actualmente?"* y ningún otro sitio del bloque se toca. **La ronda 1 la dejó además condicionada**:
+   solo se envía si su respuesta a la bienvenida no trae contenido.
 
 ## Lo que se decidió y por qué (para no volver a discutirlo)
 
