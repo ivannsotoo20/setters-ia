@@ -38,8 +38,8 @@ eslogan, y además es la estructura *"no es X, es Y"* que la doctrina §17 marca
 
 ## Estado
 
-**Ronda 1 aplicada 2026-09-02** sobre su feedback del 28-08, 31-08 y 01-09 (24 capturas). El bloque
-queda en 102.066 caracteres: **369 menos** que antes de la ronda, que es la regla
+**Ronda 3 aplicada 2026-09-02** sobre su feedback del 28-08, 31-08 y 01-09 (24 capturas). El bloque
+queda en 102.164 caracteres: **271 menos** que antes de la ronda, que es la regla
 ([[feedback_coach_marco_no_prohibiciones]]).
 
 Lo que trae, y ninguna de las tres primeras es un fallo del modelo — son reglas del bloque
@@ -76,8 +76,8 @@ cumpliéndose al pie de la letra:
    salida por turno, y **existe un recurso**: la checklist, que se entrega solo a quien la pide.
 
 Lo que enseñó esta ronda, y vale para cualquier coach: **escribir la regla no basta si el corpus
-sigue demostrando lo contrario**. La pasada adversarial cazó que el exemplar nuevo del movimiento 9
-revalidaba el logro que su propia regla acababa de prohibir, que "faena" seguía viva en el corpus
+sigue demostrando lo contrario**. La pasada adversarial cazó que el exemplar nuevo del movimiento del
+subrayado revalidaba el logro que su propia regla acababa de prohibir, que "faena" seguía viva en el corpus
 mientras "putada" solo estaba en el léxico, que el molde de la necesidad tenía 1 demostración contra
 6 del viejo, y que "tio" había SUBIDO porque los literales nuevos lo llevaban. Ahora: tio 21→16,
 [nombre] 13→20, molde necesidad 0→4, molde margen 5→3.
@@ -105,7 +105,7 @@ Pasada adversarial hecha ([[feedback_coach_ronda_verificacion_adversarial]]): pu
 secciones, cero dos-puertas fuera de sus cuatro sitios instrumentales, cero "Y" a pelo abriendo
 burbuja, cero guion largo dentro de un literal, cero mención de la videollamada antes de F5.
 
-## Compuertas — estado tras la ronda 1 (2026-09-02)
+## Compuertas — estado tras la ronda 3 (2026-09-02)
 
 **Cerradas con evidencia suya, no con criterio mío.** Las capturas del 01-09 traen su DM real, y eso
 resolvió tres de las cinco sin tener que preguntarle nada:
@@ -587,3 +587,175 @@ preguntas de método salvo las dos que son literal suyo.
 
 El **orden acuse/pregunta** que quedó abierto en la ronda 1 era el renderizado del simulador: en estas
 seis capturas el acuse va delante en todas. No hay nada que arreglar.
+
+---
+
+# Batería de pruebas — RONDA 3 (2026-09-02)
+
+Se pega el mensaje del lead en el simulador y se compara con lo esperado. Cada test apunta a **una**
+corrección suya del 28-08 → 01-09: si el bloque viejo pasaba el test, el test no vale.
+
+## Señales de fallo transversales
+
+Se miran ANTES que el contenido, y siguen vigentes las de la ronda 0. Nuevas de esta ronda:
+
+- **Vuelve a valorar un logro que ya valoró**, aunque sea con otras palabras.
+- Dice **"sin que tengas que vivir a dieta ni entrenar el doble"** o **"estarias dispuesto a verlo"**.
+- Nombra la **videollamada en el turno A** de F5, o pide el WhatsApp con una objeción sin resolver.
+- Dice **"entiendeme"** contestando al precio, o **"faena"**, o **"llevas tiempo metiendole"**.
+- Le suelta la **prueba social de la inversión** cuando insiste en el precio.
+- Se disculpa por **un comentario que el lead no ha mencionado**.
+- Su **bienvenida sale sin el 🙌** final.
+
+---
+
+# BLOQUE 1 — Tres conversaciones completas
+
+## GUION D · La sobrevalidación (el fallo del 28-08, reproducido)
+
+1. `gracias a ti tio!`
+2. `pues mira, ya he bajado 15 kilos yo solo, pero quiero terminar de definirme`
+3. `Mas o menos`
+4. `Bueno, me esta costando bajar la grasa del abdomen`
+5. `Seguramente en que no estoy bajando como quiero`
+6. `Unos 3 meses`
+
+**Qué tiene que pasar:** valora los 15 kilos **UNA vez**, en el 2. Del 3 en adelante el acuse cae
+sobre el dato NUEVO, o normaliza la dificultad que acaba de nombrar (*"esa grasa rebelde suele ser de
+las ultimas en irse"*).
+
+⛔ **Falla si** los 15 kilos aparecen valorados en dos mensajes distintos, aunque las palabras cambien
+· si en el 4 abre con *"Que lleves ya 15 kilos menos…"* · si en el 5 abre con *"con 15 kilos bajados,
+lo que llevas hecho es una barbaridad"*.
+
+## GUION E · El microcompromiso (el cambio estructural)
+
+Sigue desde el GUION D:
+
+7. `si, es eso`
+8. `si claro, cuentame`
+9. `venga, vale`
+10. `si, 612345678`
+11. `por las tardes mejor`
+
+**Qué tiene que pasar:** el 7 confirma el puente. Entonces llega el **turno A** — prueba social +
+*"creo que puedo ayudarte a que lo consigamos"* + *"quieres que te explique como?"* — **sin nombrar la
+videollamada**, y espera. El 8 es el sí al microcompromiso y desbloquea el **turno B**, que ya propone
+la videollamada. El 9 es el que abre F6. Termina en `manual_attention` + `skip_reply` tras el 11.
+
+⛔ **Falla si** nombra la videollamada en el turno A · si mete los cuatro movimientos en un solo turno
+· **si el "si claro" del 8 le hace pedir el WhatsApp**, saltándose la propuesta entera · si después
+del 11 escribe algo más.
+
+## GUION F · El primer mensaje que lo trae todo (01-09)
+
+Respuesta a la bienvenida:
+
+1. `Hola! te deje el comentario de CHECKLIST en un post tuyo porque me senti muy identificado. Voy al gimnasio 3 veces por semana, intento comer bastante sano, pero la grasa abdominal no hay manera de bajarla. Si me la puedes pasar te lo agradeceria`
+2. `me gustaria perder grasa sobre todo del abdomen, pero sin perder lo poco que he ganado entrenando`
+
+**Qué tiene que pasar:** en el 1 dispara el **carril del recurso**: le manda la checklist ANTES de
+preguntar nada, con la disculpa delante (aquí sí toca, porque él dice que lo pidió por comentario), y
+pregunta *"En que punto te sentiste identificado?"*. En el 2 **recoge su miedo** a perder músculo, lo
+normaliza y contesta con criterio.
+
+⛔ **Falla si** contesta *"Como vas tio, entrenas actualmente o estas pensando en darle caña?"* — le
+está preguntando lo que acaba de contar · si pregunta el objetivo con dos puertas (*"tienes una cifra
+en mente o mas bien un estado?"*) · **si le pregunta si está avanzando**, que ya ha dicho que no · si
+pasa por encima del miedo al músculo.
+
+---
+
+# BLOQUE 2 — Mensajes sueltos por corrección
+
+### R1 · El acuse cae sobre lo nuevo
+Con un logro suyo ya valorado detrás: `me esta costando bajar la grasa del abdomen`
+→ Normaliza **esa** dificultad. ⛔ Falla si vuelve al logro.
+
+### R2 · El eje de la necesidad, y el subrayado
+`no se, supongo que me falta que alguien me diga exactamente que hacer`
+→ Recoge SU palabra y la deja plantada: *"eso que dices de tener una orientacion mas precisa, ahi esta
+la clave"*. ⛔ Falla si le vuelve a elogiar lo conseguido antes de subrayar · si le pregunta qué
+FALLA en vez de qué NECESITA.
+
+### R3 · El filtro de intención
+Con el descubrimiento cubierto y sin que él haya pedido nada.
+→ *"…consideras que te vendria bien contar con algo de ayuda?"*, anclado a su objetivo con sus
+palabras. ⛔ Falla si dice *"sin que tengas que vivir a dieta"* (le planta una objeción que no puso) ·
+si dice *"estarias dispuesto a verlo"*.
+
+### R4 · La confusión como atajo
+`la verdad es que no se como lograr ese balance, no se si medir calorias o ir por porciones`
+→ Le da **claridad** y va directo a si le vendría bien ayuda. ⛔ Falla si le pregunta por qué es
+importante para él: solo le ha hablado desde la confusión.
+
+### R5 · "Más o menos"
+`mas o menos si`
+→ UNA abierta y espera. ⛔ Falla si mete dos preguntas en el turno · **si le dice él que el resultado
+se le está quedando corto**: esa lectura la pone el lead.
+
+### R6 · La pregunta nombra lo físico
+`porque me gustaria verme mejor al espejo y sentirme bien conmigo mismo`
+→ *"hay algun momento concreto en el que no te veas fisicamente como quieres?"* ⛔ Falla con *"que no
+estas donde quieres estar"*: es abstracto y se pierde.
+
+### R7 · El registro adulto
+`si, sobre todo al quitarme la camiseta en la playa`
+→ *"putada"*, *"intentandolo y esforzandote"*. ⛔ Falla con *"faena"* o con *"llevas tiempo
+metiendole"*.
+
+### R8 · El miedo al músculo (objeción nueva)
+`quiero perder grasa pero sin perder lo poco que he ganado entrenando`
+→ Lo nombra de vuelta, lo normaliza y contesta con criterio general del oficio. ⛔ Falla si pasa por
+encima · si promete sobre SU cuerpo sin el matiz.
+
+### R9 · La brecha ya declarada
+Con `no consigo bajar la grasa abdominal` dicho en el primer mensaje, tres turnos después.
+⛔ Falla si pregunta *"notas que estas avanzando o llevas un tiempo igual?"*. Ahí va
+*"hace mucho que te notas estancado en eso?"*.
+
+### R10 · El objetivo, sin dos puertas
+`quiero perder grasa`
+→ Lo aterriza UNA vez con una sola puerta. ⛔ Falla con *"tienes alguna cifra en mente o mas bien es
+un estado?"*.
+
+### R11 · El coste de la llamada ≠ el precio
+`tiene algun coste?` (después de proponer)
+→ *"No [nombre], la videollamada es completamente gratuita y sirve como primera toma de contacto…"*
+⛔ Falla si le suelta el guion de objeción de precio: no ha objetado, ha preguntado.
+
+### R12 · El precio, la justificación
+`venga, pero cuanto cuesta`
+→ **"no puedo"** darte una cifra + los tres factores (tiempo, tipo de programa, método de pago) +
+*"te parece?"*. ⛔ Falla con *"entiendeme"* · con *"no me gusta darte una cifra"* · si remata con la
+pregunta de dos puertas, que ahora es segunda línea.
+
+### R13 · El precio, insistiendo
+`ya pero dame un rango al menos`
+→ Repite la imposibilidad y **le devuelve la decisión** (*"con toda la informacion en tu mano valoras
+libremente"*), cierra en *"Te parece?"* y **espera**. ⛔ Falla si le argumenta que es una inversión ·
+**si le pide el número de WhatsApp con la objeción abierta**.
+
+### R14 · La recapitulación seria
+Al llegar al puente.
+⛔ Falla si no abre con *"Entonces, segun me has comentado,"* · si le recita datos suyos que no sean
+el freno y el objetivo.
+
+### R15 · La petición del número
+Tras el sí al turno B.
+→ *"De lujo tio 👌"* / *"Si te parece dejame tu numero de whatsapp y lo coordinamos por ahi mas
+comodo"*. ⛔ Falla con *"pasame tu numero"*: es impositivo.
+
+### R16 · La disculpa que no toca
+`oye me pasas la checklist esa?` (sin mencionar ningún comentario)
+→ Le manda el recurso **sin la disculpa**. ⛔ Falla si dice *"se me habra perdido el comentario,
+perdona"*: no ha comentado nada y se lo está inventando.
+
+### R17 · El "tio", transversal
+Se cuenta al final de la conversación entera.
+⛔ Falla si "tio" aparece más veces que el nombre del lead · si abre un mensaje · si sale en dos
+mensajes consecutivos.
+
+### R18 · La bienvenida
+El primer mensaje outbound.
+⛔ Falla si sale sin el **🙌** final.
