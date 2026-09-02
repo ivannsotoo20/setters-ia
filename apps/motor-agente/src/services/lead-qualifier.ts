@@ -14,6 +14,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *      OJO: esto es deliberadamente MÁS permisivo que el evaluador IA — en el
  *      n8n original un lead europeo se aprobaba siempre, sin filtro económico.
  *      Se conserva igual para no cambiar el negocio al cambiar la herramienta.
+ *   2b. REGLA DURA — país de no contacto (2026-09-02): si el país declarado
+ *      casa con `config.country_reject_terms` → rechazado sin IA. Tania: "los
+ *      países que menciono se rechazan sin importar que pasen el filtro
+ *      económico". Va DESPUÉS del Tier A: quien escribe "vivo en Madrid, soy
+ *      colombiana" reside en España y cualifica. La lista vive en la config
+ *      del tenant; el evaluador IA sigue detrás para las ciudades que no
+ *      están en ella.
  *   3. TODO LO DEMÁS → evaluador IA con los criterios del entrenador
  *      (config.ai_criteria): inferencia de país con prefijo telefónico y
  *      ciudades trampa, gate de cronicidad, filtro de ocupación/capacidad.
@@ -33,6 +40,14 @@ export interface LeadQualificationConfig {
   pain_reject_values?: string[];
   /** Regex (i) sobre el LABEL de la respuesta que contiene el país declarado. */
   country_label_regex?: string;
+  /**
+   * Países, gentilicios y ciudades inequívocas que la entrenadora NO contacta
+   * nunca. Se comparan como palabra completa sobre el país declarado,
+   * normalizado (minúsculas, sin acentos). Las ciudades con homónimo en otra
+   * zona (Córdoba, Valencia, Mérida, Cuenca, Santa Cruz, La Paz, Cartagena)
+   * no van aquí: las resuelve el evaluador IA con el prefijo telefónico.
+   */
+  country_reject_terms?: string[];
   /** System prompt del evaluador IA. Sin él, el paso 3 aprueba con aviso. */
   ai_criteria?: string;
 }
@@ -72,6 +87,23 @@ const norm = (s: unknown): string =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .trim();
+
+const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Primer término (normalizado) que aparece como PALABRA COMPLETA en el texto
+ * normalizado, o null. Palabra completa para que "Mosquito Bay" no sea Quito
+ * ni "California" sea Cali.
+ */
+function matchesTerm(textNorm: string, terms: string[]): string | null {
+  for (const raw of terms) {
+    const t = norm(raw);
+    if (!t) continue;
+    const re = new RegExp(`(^|[^a-z0-9])${escapeRegex(t)}(?![a-z0-9])`);
+    if (re.test(textNorm)) return t;
+  }
+  return null;
+}
 
 export async function loadQualificationConfig(
   supabase: SupabaseClient,
@@ -114,6 +146,15 @@ export async function qualifyFormLead(input: QualifyInput): Promise<QualifyResul
       return {
         decision: 'aprobado',
         motivo: 'País en zona de contacto garantizado (Europa / USA / Canadá / AU / NZ).',
+        evaluadoPor: 'reglas',
+      };
+    }
+    // 2b. País de no contacto declarado → rechazado determinista.
+    const hitCountry = paisNorm ? matchesTerm(paisNorm, config.country_reject_terms ?? []) : null;
+    if (hitCountry) {
+      return {
+        decision: 'rechazado',
+        motivo: `País de residencia en la lista de no contacto de la entrenadora ("${String(countryEntry[1]).slice(0, 60)}").`,
         evaluadoPor: 'reglas',
       };
     }

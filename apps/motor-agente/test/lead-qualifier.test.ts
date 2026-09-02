@@ -171,3 +171,97 @@ describe('qualifyFormLead — evaluador IA', () => {
     expect(out.evaluadoPor).toBe('ninguno');
   });
 });
+
+describe('qualifyFormLead — país de no contacto (2026-09-02)', () => {
+  // Tania: "los países que menciono se rechazan sin importar que pasen el
+  // filtro económico". La lista vive en la config del tenant; el código solo
+  // compara palabra completa sobre el país declarado, normalizado.
+  const CFG_C = {
+    ...CONFIG,
+    country_reject_terms: [
+      'Venezuela', 'Colombia', 'colombiana', 'Bogotá', 'Argentina', 'Buenos Aires', 'Quito', 'Cuba',
+    ],
+  };
+
+  it('Colombia con trabajo cualificado se rechaza en seco, sin gastar IA', async () => {
+    const { anthropic, create } = makeAnthropic('aprobado');
+    const out = await qualifyFormLead({
+      supabase: makeSupabase(CFG_C),
+      anthropic,
+      tenantId: 7,
+      answers: { ...KRISTEL, '¿Donde vives actualmente?': 'Bogotá, Colombia', Ocupación: 'Directora de RRHH' },
+      phone: '+573001234567',
+    });
+    expect(out.decision).toBe('rechazado');
+    expect(out.evaluadoPor).toBe('reglas');
+    expect(out.motivo).toContain('no contacto');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('acentos y mayúsculas no importan: "BOGOTA" también', async () => {
+    const { anthropic, create } = makeAnthropic('aprobado');
+    const out = await qualifyFormLead({
+      supabase: makeSupabase(CFG_C),
+      anthropic,
+      tenantId: 7,
+      answers: { ...KRISTEL, '¿Donde vives actualmente?': 'BOGOTA' },
+      phone: '+573001234567',
+    });
+    expect(out.decision).toBe('rechazado');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('el Tier A manda: "vivo en Madrid, soy colombiana" reside en España y se aprueba', async () => {
+    const { anthropic, create } = makeAnthropic('rechazado');
+    const out = await qualifyFormLead({
+      supabase: makeSupabase(CFG_C),
+      anthropic,
+      tenantId: 7,
+      answers: { ...KRISTEL, '¿Donde vives actualmente?': 'Vivo en Madrid, España. Soy colombiana' },
+      phone: '+573001234567',
+    });
+    expect(out.decision).toBe('aprobado');
+    expect(out.evaluadoPor).toBe('reglas');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('palabra completa: "Mosquito Bay" no es Quito, y va a la IA', async () => {
+    const { anthropic, create } = makeAnthropic('aprobado');
+    const out = await qualifyFormLead({
+      supabase: makeSupabase(CFG_C),
+      anthropic,
+      tenantId: 7,
+      answers: { ...KRISTEL, '¿Donde vives actualmente?': 'Mosquito Bay' },
+      phone: '+528116542813',
+    });
+    expect(out.evaluadoPor).toBe('ia');
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('una ciudad fuera de la lista (Bucaramanga) la decide la IA con los criterios', async () => {
+    const { anthropic, create } = makeAnthropic('rechazado');
+    const out = await qualifyFormLead({
+      supabase: makeSupabase(CFG_C),
+      anthropic,
+      tenantId: 7,
+      answers: { ...KRISTEL, '¿Donde vives actualmente?': 'Bucaramanga' },
+      phone: '+573001234567',
+    });
+    expect(out.decision).toBe('rechazado');
+    expect(out.evaluadoPor).toBe('ia');
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin lista configurada no rechaza por país: todo va a la IA como antes', async () => {
+    const { anthropic, create } = makeAnthropic('aprobado');
+    const out = await qualifyFormLead({
+      supabase: makeSupabase(CONFIG),
+      anthropic,
+      tenantId: 7,
+      answers: { ...KRISTEL, '¿Donde vives actualmente?': 'Bogotá, Colombia' },
+      phone: '+573001234567',
+    });
+    expect(out.evaluadoPor).toBe('ia');
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+});
