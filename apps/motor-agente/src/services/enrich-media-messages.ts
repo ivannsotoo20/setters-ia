@@ -67,15 +67,16 @@ export async function enrichMediaMessages(input: EnrichMediaInput): Promise<Enri
   const audioLanguage = input.audioLanguage ?? 'es';
 
   // 1. Cargar rows pendientes — solo del lead (source='lead'), con media_url
-  //    pero content NULL/vacío. Solo del último bloque conversacional reciente
-  //    (orden DESC por sent_at).
+  //    pero content NULL o '' (los adaptadores antiguos guardaban '' para un
+  //    audio sin texto y el filtro `IS NULL` los dejaba sin transcribir).
+  //    Solo del último bloque conversacional reciente (orden DESC por sent_at).
   const { data, error } = await input.supabase
     .from('conversation_messages')
     .select('id, content_type, media_url, content')
     .eq('conversation_id', input.conversationId)
     .eq('source', 'lead')
     .not('media_url', 'is', null)
-    .is('content', null)
+    .or('content.is.null,content.eq.')
     .order('sent_at', { ascending: false })
     .limit(limit);
 

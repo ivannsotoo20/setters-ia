@@ -311,6 +311,12 @@ export async function insertInboundMessage({
 }: InsertInboundMessageParams): Promise<{ messageId: number }> {
   const contentType = mapMediaTypeToContentType(message.mediaType);
 
+  // Un audio o una imagen sin pie llegan con text='' desde el parser de YCloud.
+  // Se guarda NULL, no '': el enriquecedor multimodal busca `content IS NULL`
+  // para transcribir/describir, y con '' pasaba de largo sin dejar rastro
+  // (2026-09-03: 12 audios de WhatsApp del tenant 7 sin transcribir).
+  const content = typeof message.text === 'string' && message.text.trim().length > 0 ? message.text : null;
+
   const { data, error } = await supabase
     .from('conversation_messages')
     .insert({
@@ -318,7 +324,7 @@ export async function insertInboundMessage({
       conversation_id: conversationId,
       source: 'lead',
       content_type: contentType,
-      content: message.text ?? null,
+      content,
       media_url: message.mediaUrl ?? null,
       sent_at: new Date(message.timestampMs).toISOString(),
     })
