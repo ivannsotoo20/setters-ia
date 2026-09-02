@@ -72,6 +72,10 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
               scheduleIds: out.scheduleIds,
               parts: out.parts.length,
               costUsd: out.totalCostUsd,
+              // 2026-09-02: un skip silencioso escondia 6 leads de Facebook sin
+              // respuesta (canal sin integration_account). La razon va al log.
+              skipped: out.skipped ?? false,
+              reason: out.reason ?? null,
             },
             'debounce processed',
           );
