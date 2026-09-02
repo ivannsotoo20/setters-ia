@@ -125,9 +125,12 @@ se le atribuye ninguno**: se pregunta y se usa el que ella nombre.
 Es la espina dorsal de la cualificación en este avatar y sustituye a cualquier intento de convencerla.
 Tres pasos, y el tercero solo existe si el segundo dio negativo:
 
-1. **Conformidad:** "estás contenta con cómo está yendo tu recuperación?"
-   → contenta y sin nada que cambiar = **no encajamos**, cierre digno. No hay problema que resolver.
-2. **Dónde ve ella el problema:** "dónde crees tú que está lo que hace que no vaya como te gustaría?"
+1. **Conformidad:** "estás contenta con cómo va tu recuperación, o hay algo que te gustaría cambiar?"
+   La segunda mitad es la que le da permiso para nombrar algo malo, y sin ella casi todo el mundo
+   contesta que sí → contenta y sin nada que cambiar = **no encajamos**, cierre digno.
+2. **Dónde ve ella el problema:** "eso que me comentas, por qué crees tú que pasa?"
+   El molde es deíctico a propósito: apunta a su mensaje anterior sin traducirle sus palabras. Si se
+   rellena con lo que ella dijo, la pregunta se alarga y sale ilegible.
 3. **Disposición** (P6).
 
 ⛔ Lo que rompe este mecanismo es **adelantarse a nombrar el problema**. La pregunta "lo que estás

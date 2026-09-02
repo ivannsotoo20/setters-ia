@@ -516,8 +516,8 @@ pregunta comprimidas en la misma burbuja.
 | Mensaje | Esperado |
 |---|---|
 | `la verdad es que estoy contenta, voy poco a poco y bien` | **NO ENCAJAMOS** → cierre cálido. ⛔ **falla si le busca un dolor**, si pregunta *"y no te gustaría ir más rápido?"* o si propone igualmente |
-| `no, pensaba que a los 4 meses estaría mejor` | *"dónde crees tú que está…"*. ⛔ falla si lo nombra el setter |
-| `sí, me gustaría ponerme ya` | puente en **su propio turno**, propuesta después. ⛔ falla si los fusiona o si le recita sus datos en vez de referenciarlos |
+| `no, pensaba que a los 4 meses estaría mejor` | *"eso que me comentas, por qué crees tú que pasa?"*. ⛔ falla si lo nombra el setter, y falla si alarga el molde rellenándolo con sus palabras |
+| `sí, me gustaría ponerme ya` | puente en **su propio turno** y **afirmando** (sin "es así?", que ya acaba de decir que sí), propuesta después. ⛔ falla si los fusiona o si le recita sus datos en vez de referenciarlos |
 | `me interesa, mándame el enlace` **en el mensaje 3** | **NO manda el enlace.** Comprime pero cubre los cuatro elementos. ⛔ Este es el test de la asistencia: si lo manda, reproduce el problema por el que Bea nos llama |
 
 ### D · La frontera clínica — el área de más riesgo
@@ -581,6 +581,179 @@ gustaría ponerme ya`
 
 Tiene que llegar a la propuesta **habiendo hecho como mucho 6 preguntas**, con el puente en su propio
 turno y la propuesta nacida de *"que vaya a peor"*, que es lo que dijo ella.
+
+---
+
+## RONDA 6 — el feedback del 31/08 y 01/09, en producción real
+
+Once avisos suyos sobre conversaciones reales. **Cinco son del prompt, cuatro son de Automatía y dos
+están bloqueados esperando un dato suyo.** Lo importante del reparto: de los cinco de prompt, **cuatro
+son reglas que ya existían y no se cumplían** porque estaban en el sitio equivocado, en negativo, o
+con un permiso más laxo en otra sección. Solo el formulario es funcionalidad nueva.
+
+### Las cuatro reglas que existían y no se cumplían
+
+| Lo que hizo el setter | La regla que había | Por qué no la cubrió |
+|---|---|---|
+| *"y los hipopresivos cómo los estás notando?"* | "hipopresivos" en la lista NUNCA del lexicon | Estaba escrita como **palabras que tú no dices**, y la palabra la trajo ella |
+| *"con 10 días encima es más que suficiente para empezar"* | el ⛔⛔ de no dictaminar el alta | El candado hablaba **del alta**; esto es **el momento de empezar**. Misma familia, puerta distinta |
+| *"es el primer embarazo…"* tras ella decir "el anterior" | el ⛔⛔ de no preguntar lo ya dicho | Cubría lo dicho **con sus palabras**, no lo implicado. Y el TEST ANTI-INVENCIÓN decía literalmente *"lo que deduces NO consta"*: era una **licencia escrita** para repreguntar |
+| No contestar lo que la lead pregunta al entrar | *"si ella te pregunta algo, le contestas"* | Vivía **dentro de F2** y los tres fallos ocurren en **F0** |
+
+**La lección de método, que vale para cualquier coach:** cuando una regla existe y falla, antes de
+escribir una regla nueva hay que buscar el permiso más laxo que la está derogando. Cuatro de cinco
+veces estaba escrito en el propio bloque.
+
+### La pregunta enrevesada: el fallo no era el estilo, era el desajuste entre los dos pasos
+
+> *"dónde crees tú que está lo que hace que no lo estés teniendo ahora mismo?"*
+
+El **paso 1 pide un deseo** (*"hay algo que te gustaría cambiar?"*) y el **paso 2 preguntaba la causa
+de un déficit**. El modelo tenía que traducir *"me gustaría más agilidad y energía"* → *"no lo estés
+teniendo"*, y traducir es lo que rompió la frase: dos subordinadas encadenadas y un "lo" sin referente.
+
+→ Molde nuevo **deíctico**, que apunta a su mensaje anterior sin traducirle nada:
+**"eso que me comentas, por qué crees tú que pasa?"** (9 palabras, sirve igual para un miedo, un "va
+lento" o un deseo). El viejo vivía en **seis sitios** — bloque ×4, canon del avatar y batería de
+regresión — y se cambiaron los seis. Y el TEST DE CATÁLOGO gana su segunda excepción, porque es lo
+que empujaba al modelo a rellenarlo con material de la lead.
+
+⚠️ **De paso se descubrió que el canon del avatar tenía la brecha SIN la segunda mitad** (*"estás
+contenta con cómo está yendo tu recuperación?"* a secas), que es exactamente la versión que Rubén dijo
+que mata todas las conversaciones. Cualquier coach futuro de este avatar nacía con ese bug.
+
+### El puente afirma, no vuelve a preguntar
+
+Bea: *"la última pregunta se repite y tendría que haber avanzado"*. Disposición (*"…ponerle solución
+ahora?"* → **"Si"**) y acto seguido el puente (*"…es así?"*): dos confirmaciones de sí/no pegadas.
+
+Se evaluó invertir el orden y **se descartó al simularlo**: la inversión deja las dos confirmaciones
+*adyacentes* y añade un turno. La causa real es otra — **la segunda no sobra por ir detrás, sobra por
+ser pregunta.** Ahora, si ella acaba de decir que sí, el puente AFIRMA (*"genial" / "entonces lo que te
+gustaría es…"*). Se conserva todo lo canónico (puente obligatorio, en su turno, nunca fusionado) y la
+disposición no se toca, que es el KPI de asistencia.
+
+### El precio: la cifra estaba mal desde la ronda 4
+
+**Cerrado por Iván el 02/09: es "desde 150 euros AL MES".** Gana la versión de su equipo, la del
+mensaje manual a @crisv_228 (*"La orientación es del precio mensual. Parte de 150€ al mes, pero
+disponemos de pago único o fraccionado del total de los 6 meses"*). El bloque llevaba desde la ronda 4
+diciendo *"parte de 150 euros"* para 24 semanas — que es exactamente como lo entendió la lead
+(*"me parece demasiado bien de precio"*) — porque en su respuesta de la ronda 4 Bea escribió
+*"parte de 150 euros con opción de pago único o fraccionado **(no mensual)**"* y ese "(no mensual)" se
+leyó como la unidad del precio cuando se refería al **modo de pago**.
+
+> **La lección:** *"(no mensual)"* entre paréntesis, en una respuesta de formulario, decidió una cifra
+> durante cinco rondas. Cuando un dato económico admite dos lecturas, se pregunta antes de escribirlo;
+> el coste de equivocarse lo paga cada conversación.
+
+Y lo detectó la lead, no nosotros: **Bea subió esa captura para preguntar por otra cosa** (el mensaje
+que faltaba en el panel) y el precio estaba dentro.
+
+**El marco que queda escrito** — nació de que el setter se inventó *"el fraccionamiento no lleva
+intereses"* con cero condiciones comerciales en las 1270 líneas (grep verificado). Resultó ser cierto,
+pero era invención igual:
+
+> **Del dinero sabes cuatro cosas y son estas cuatro:** que parte de 150 al mes · que el pago NO es
+> mensual · que es único o fraccionado en dos · que el fraccionado no lleva recargo. Todo lo demás lo
+> concreta el equipo.
+
+Y el movimiento de corrección, que es lo que faltaba para el caso de @nere117: *"ojo que los 150 son
+la referencia al mes, pero el pago es único o en dos veces"* — pegado, antes de reconducir.
+
+### El formulario de recontacto — diseño listo, esperando las URLs
+
+Bea lo pidió dos veces (27/08 y 31/08) y **el bloque mandaba lo contrario**: `coach_wclose_not_now` y
+`coach_wclose_prefiere_esperar_medico` decían las dos **"escríbeme"**.
+
+Aplicado ya, sin esperar a nada: **la que se va se la queda ella, no la lead.** *"lo apunto y te
+escribo yo cuando llegue el momento"*, con motivo `recontacto_programado` para que la bandeja sea
+filtrable. Más el orden en `coach_prudencia_manda`: si en ese mensaje ella preguntó algo, primero se
+le contesta.
+
+🟡 **Pendiente la URL.** `coach_secondary_links` se queda en *"No hay"* a propósito: un hueco de enlace
+en el prompt es un hueco que se derrama. Cuando lleguen los links, el cambio es de una línea, detrás
+del *"te escribo yo"*. **Y el guardarraíl que no puede faltar: el enlace entra DESPUÉS de trabajar la
+objeción, nunca en su lugar** — si no, el setter cambia videollamadas por formularios rellenados y
+empeora justo la métrica por la que Bea nos llamó.
+
+### El "y" volvió, y la causa volvió a ser la misma
+
+Roto en **6 de las 7 conversaciones**, con dos pares en turnos seguidos. La regla era binaria y
+ocupaba 6 líneas de prohibición; los **ejemplos seguían modelando el tic** en siete literales. Iván lo
+zanjó en una frase: *"es tan sencillo como quitarlo de los ejemplos de mensajes"*. Fuera de los siete,
+y la regla baja de 6 líneas a 2. Corolario de [[feedback_coach_tic_repeticion_metodo]]: **subir el tono
+de la prohibición no arregla un tic que los exemplars están enseñando.**
+
+### Lo que Bea NO marcó y salía en sus propias capturas
+
+1. 🔴 El precio (arriba).
+2. El setter **autorizó a entrenar a una mujer de 10 días de posparto**. Reincidencia del peor fallo
+   de la ronda 1 por una puerta que el candado no cubría.
+3. Un **aborto retenido pasado** contestado con *"me alegra mucho que estés bien ahora y que sigas
+   activa, **eso dice mucho de ti**"*. El veto 1 apunta a `coach_qualification_special`, donde solo
+   existía la pérdida **actual**: para una pérdida pasada no había ruta y el setter improvisó, justo
+   en el punto más delicado del nicho. **Arreglado** — entra en la lista B (sí cualifica: *es su
+   historia, no su caso*) con su propia regla: **se acusa en UNA burbuja y ahí muere**, sin preguntar,
+   sin pedir detalle, sin felicitarla por haberlo superado y sin volver a nombrarlo.
+4. Cuatro burbujas en un turno, emoji en 3 de 4, y los literales de F1 cruzándose de carril (el de
+   posparto usado con dos embarazadas). **Sin arreglar.**
+5. F3 se saltó su paso 2 en @ronebot — el paso que hace que el problema lo nombre ella.
+
+### La recitación de datos, y el reverso de la lección del "y"
+
+Volvió en tres conversaciones (*"semana 10 y ya pensando en el suelo pélvico y la diástasis"*,
+*"ay enhorabuena!! siete semanas, qué bonita etapa es"*), y con ella el veredicto sobre la lead
+(*"eso dice mucho de ti"*, dos veces, sin existir en el bloque).
+
+Las dos reglas que lo cubrían — *"no le recites sus datos"* y *"el apunte refleja, no concluye"* — las
+**borró la ronda 5**, con el argumento correcto de la doctrina §8: si el exemplar enseña el patrón, la
+regla que lo describe sobra. Aquí no funcionó, y el contraste con el "y" explica por qué:
+
+> **Un exemplar ENSEÑA un patrón bueno; no SUPRIME uno malo.**
+> Si el tic está *en* los ejemplos (el "y"), se arregla quitándolo de los ejemplos y la regla sobra.
+> Si el tic lo trae el modelo de fábrica (recitar, dictaminar, piropear), los ejemplos buenos no lo
+> desactivan: hace falta la regla, y con el ❌ literal delante.
+
+→ Vuelve **una** línea al voiceprint, con los tres ❌ de las capturas reales:
+*"el acuse se basta solo: ni le recita sus datos, ni la puntúa a ella"*.
+
+### Balance
+
+**1270 → 1269 líneas** con las dos tandas aplicadas. Entró lo nuevo y salió la duplicación que lo
+pagaba: el `ANTI-BUCLE` que copiaba el ⛔⛔, el bloque de F2 que **se declaraba duplicado a sí mismo**,
+la cola de F0, la tercera copia de "no nombrar el programa antes de F5", el aviso de precio que además
+bajaba el suelo de rebatir de 2-3 a 1, y las justificaciones de F3, F4 y del precio.
+
+### Lo que NO es del prompt y hay que llevar al técnico de Automatía
+
+- **Los activadores.** En las 10 conversaciones el panel muestra `Origen: —`, así que todo cae al
+  fallback `Bienvenida -` y la atribución de origen de Bea no cuadra. ⚠️ Ojo: los dos enlaces enviados
+  llevan `?org=instagram&cont=post` y eso **coincide con la ETIQUETA CTA POST, no con un activador
+  vacío** — o el runtime resuelve por etiqueta, o `coach_main_link` está indexado contra un campo
+  muerto. Comprobarlo antes de tocar la tabla.
+- **El sync del panel**: falta al menos un mensaje que el equipo escribió a mano y que en Instagram sí
+  aparece. Hasta que se arregle no se puede auditar una conversación con garantías.
+- **Los seguimientos de 6h/23h** son plantilla del runtime (grep: cero en el bloque) y repiten la misma
+  pregunta pendiente literal en las tres conversaciones. Es **la mitad de lo que Bea percibe como "se
+  repite mucho"**, y no se arregla en el prompt.
+
+### Compuertas abiertas para Bea
+
+1. ✅ **CERRADA 02/09** — el precio es **desde 150 € al mes**.
+2. ✅ **CERRADA 02/09** — el fraccionado **no lleva recargo**. Que solo haya pago único o en dos veces
+   no es por intereses: no los hay.
+3. 🟡 Las URLs de los formularios de recontacto.
+4. 🟡 ¿Se puede nombrar el acompañamiento con matronas y psicólogas perinatales al decir qué entra en
+   el precio? (el modelo ya lo dice, sacándolo de `coach_identity_role`).
+5. 🟡 Su literal real para cuando la lead trae una pauta de su matrona. Hoy hay una apuesta razonada
+   (*"vale, entonces ya te han dado algo para ir haciendo"*), no palabra suya.
+6. 🟡 ¿*"Estoy embarazada y quiero información (cuéntanos un poco tu caso)"* es una automatización suya
+   de Instagram? Si lo es, quiere activador propio.
+
+⚠️ **Y una que no estaba y sale del precio nuevo:** el setter dice *"24 semanas"* y ahora también
+*"150 al mes"*. La lead va a multiplicar. Hay que confirmar que la unidad que usa la closer es la
+misma, porque su equipo escribió *"los 6 meses de programa"* y 24 semanas no son 6 meses.
 
 ---
 
