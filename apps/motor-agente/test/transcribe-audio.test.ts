@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   transcribeAudio,
   TranscribeAudioError,
+  inferFilename,
 } from '../src/lib/transcribe-audio.js';
 
 interface FetchCallSpec {
@@ -174,6 +175,69 @@ describe('transcribeAudio', () => {
     });
     expect(r.text).toBe('');
     expect(r.durationSeconds).toBe(2);
+  });
+});
+
+// 2026-09-03 — YCloud sirve las notas de voz de WhatsApp como
+// /v2/whatsapp/media/download/<id>?sig=… (sin extensión, audio/ogg). Groq
+// decide el formato por la extensión del nombre y con "audio.bin" devolvía
+// HTTP 400: 12 de 12 audios de WhatsApp del tenant 7 sin transcribir.
+describe('inferFilename', () => {
+  it('conserva la extensión cuando la URL la trae', () => {
+    expect(inferFilename('https://cdn/x/42db0de9.mp4')).toBe('42db0de9.mp4');
+    expect(inferFilename('https://cdn/x/voice.ogg?sig=1', 'audio/mpeg')).toBe('voice.ogg');
+  });
+
+  it('sin extensión, la deduce del Content-Type de la descarga', () => {
+    const u = 'https://api.ycloud.com/v2/whatsapp/media/download/2212766606249297?sig=t%3D1%2Cs%3Dabc';
+    expect(inferFilename(u, 'audio/ogg; codecs=opus')).toBe('audio.ogg');
+    expect(inferFilename(u, 'audio/mpeg')).toBe('audio.mp3');
+    expect(inferFilename(u, 'audio/mp4')).toBe('audio.m4a');
+    expect(inferFilename(u, 'audio/webm')).toBe('audio.webm');
+  });
+
+  it('sin extensión ni Content-Type conocido, asume nota de voz ogg (nunca .bin)', () => {
+    expect(inferFilename('https://api.ycloud.com/v2/whatsapp/media/download/1', null)).toBe('audio.ogg');
+    expect(inferFilename('https://api.ycloud.com/v2/whatsapp/media/download/1', 'application/octet-stream')).toBe('audio.ogg');
+  });
+});
+
+describe('transcribeAudio — nombre del fichero en el multipart', () => {
+  it('manda audio.ogg a Groq cuando el enlace firmado de YCloud no trae extensión', async () => {
+    let sentName: string | null = null;
+    const fetchImpl = makeFetch({
+      download: () =>
+        new Response(new Uint8Array([1, 2, 3]), {
+          status: 200,
+          headers: { 'Content-Type': 'audio/ogg; codecs=opus' },
+        }),
+      groq: async (call) => {
+        const fd = call.body as FormData;
+        const file = fd.get('file');
+        sentName = file instanceof File ? file.name : null;
+        return new Response(JSON.stringify({ text: 'hola', duration: 3, language: 'es' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      },
+    });
+    const r = await transcribeAudio({
+      url: 'https://api.ycloud.com/v2/whatsapp/media/download/2212766606249297?sig=t%3D1%2Cs%3Dabc',
+      apiKey: 'k',
+      fetchImpl,
+    });
+    expect(sentName).toBe('audio.ogg');
+    expect(r.text).toBe('hola');
+  });
+
+  it('el error de Groq lleva el nombre enviado y el cuerpo de la respuesta', async () => {
+    const fetchImpl = makeFetch({
+      download: () => new Response(new Uint8Array([1, 2, 3]), { status: 200 }),
+      groq: () => new Response('{"error":{"message":"invalid file format"}}', { status: 400 }),
+    });
+    await expect(
+      transcribeAudio({ url: 'https://api.ycloud.com/v2/whatsapp/media/download/1', apiKey: 'k', fetchImpl }),
+    ).rejects.toThrow(/HTTP 400 \(audio\.ogg\): .*invalid file format/);
   });
 });
 

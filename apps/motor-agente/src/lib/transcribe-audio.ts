@@ -94,17 +94,22 @@ export async function transcribeAudio(input: TranscribeAudioInput): Promise<Tran
   const language = input.language ?? 'auto';
 
   // 1. Descargar audio
-  const audioBuffer = await downloadBuffer(
+  const { buf: audioBuffer, contentType } = await downloadBuffer(
     input.url,
     fetchImpl,
     input.downloadTimeoutMs ?? DEFAULT_DOWNLOAD_TIMEOUT_MS,
     maxBytes,
   );
 
-  // 2. POST multipart a Groq
-  const filename = inferFilename(input.url);
+  // 2. POST multipart a Groq. Groq decide el formato por la EXTENSIÓN del
+  //    nombre de fichero: un enlace sin extensión (YCloud sirve los audios de
+  //    WhatsApp como /media/download/<id>?sig=…, audio/ogg) llegaba como
+  //    "audio.bin" y Groq devolvía 400 (2026-09-03, tenant 7: 12 audios sin
+  //    transcribir). La extensión sale del Content-Type de la descarga cuando
+  //    la URL no la trae.
+  const filename = inferFilename(input.url, contentType);
   const form = new FormData();
-  form.append('file', new Blob([audioBuffer]), filename);
+  form.append('file', new Blob([audioBuffer], contentType ? { type: contentType } : undefined), filename);
   form.append('model', model);
   form.append('response_format', 'verbose_json'); // incluye duration + language
   if (language !== 'auto') {
@@ -124,7 +129,7 @@ export async function transcribeAudio(input: TranscribeAudioInput): Promise<Tran
   if (!res.ok) {
     throw new TranscribeAudioError(
       'groq_http_error',
-      `Groq transcription failed: HTTP ${res.status}`,
+      `Groq transcription failed: HTTP ${res.status} (${filename}): ${text.slice(0, 200)}`,
       { status: res.status, bodySnippet: text.slice(0, 400) },
     );
   }
@@ -159,7 +164,7 @@ async function downloadBuffer(
   fetchImpl: typeof fetch,
   timeoutMs: number,
   maxBytes: number,
-): Promise<Uint8Array> {
+): Promise<{ buf: Uint8Array; contentType: string | null }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -191,17 +196,40 @@ async function downloadBuffer(
       `audio file ${buf.byteLength} bytes exceeds limit ${maxBytes}`,
     );
   }
-  return buf;
+  const contentType = res.headers?.get?.('content-type') ?? null;
+  return { buf, contentType };
 }
 
-function inferFilename(url: string): string {
+/** Extensión que Groq acepta para cada Content-Type de audio habitual. */
+const EXT_BY_MIME: Array<[RegExp, string]> = [
+  [/audio\/ogg|application\/ogg|audio\/opus/i, 'ogg'],
+  [/audio\/mpeg|audio\/mp3|audio\/mpga/i, 'mp3'],
+  [/audio\/mp4|audio\/x-m4a|audio\/m4a|audio\/aac/i, 'm4a'],
+  [/video\/mp4/i, 'mp4'],
+  [/audio\/wav|audio\/x-wav|audio\/wave/i, 'wav'],
+  [/audio\/webm|video\/webm/i, 'webm'],
+  [/audio\/flac|audio\/x-flac/i, 'flac'],
+];
+
+/**
+ * Nombre de fichero para el multipart. Prioridad: extensión en la URL →
+ * extensión deducida del Content-Type → "audio.ogg" (lo que manda WhatsApp
+ * para las notas de voz; mejor una suposición útil que ".bin", que Groq no
+ * sabe abrir).
+ */
+export function inferFilename(url: string, contentType?: string | null): string {
   try {
     const u = new URL(url);
-    const path = u.pathname;
-    const last = path.split('/').filter(Boolean).pop();
-    if (last && last.includes('.')) return last;
+    const last = u.pathname.split('/').filter(Boolean).pop();
+    if (last && /\.[a-z0-9]{2,4}$/i.test(last)) return last;
   } catch {
     // ignore
   }
-  return 'audio.bin';
+  if (contentType) {
+    const mime = contentType.split(';')[0]!.trim();
+    for (const [re, ext] of EXT_BY_MIME) {
+      if (re.test(mime)) return `audio.${ext}`;
+    }
+  }
+  return 'audio.ogg';
 }
