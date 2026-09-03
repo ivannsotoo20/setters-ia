@@ -25,6 +25,7 @@ import {
   User,
   CalendarDays,
   Rocket,
+  FileText,
 } from 'lucide-react';
 import { FyzonLogo } from '@/components/branding/fyzon-logo';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -71,6 +72,8 @@ const NAV_TRAINER_MAIN: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/conversations', label: 'Conversaciones', icon: MessageSquare },
   { href: '/contacts', label: 'Contactos', icon: ContactRound },
+  // 2026-09-03 — formularios recibidos por lead-form + veredicto del filtro.
+  { href: '/leads/formularios', label: 'Formularios', icon: FileText },
   { href: '/pipeline', label: 'Pipeline', icon: Kanban },
   { href: '/calendars', label: 'Calendarios', icon: CalendarDays },
   { href: '/simulador', label: 'Probar asistente', icon: MessagesSquare },

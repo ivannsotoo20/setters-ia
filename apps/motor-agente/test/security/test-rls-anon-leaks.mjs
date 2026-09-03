@@ -58,6 +58,7 @@ const TABLES_TO_PROBE = [
   'calendar_accounts',
   'calendar_appointments',
   'prompt_block_versions',
+  'lead_form_submissions',
 ];
 
 const RPC_FUNCTIONS_DENIED = [

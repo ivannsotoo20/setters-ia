@@ -11,6 +11,12 @@ import Fastify, { type FastifyInstance } from 'fastify';
  *   4. 200 happy path: crea lead WA, conv F1 outbound bienvenida, manda template via YCloud.
  *   5. 200 deduped si la misma combinación (tenant, phone) llega 2 veces en <60s.
  *   6. 401 si LEAD_FORM_VERIFY_MODE=enforce y X-Form-Secret missing/mismatch.
+ *
+ * Registro de formularios (`lead_form_submissions`, migración 077, 2026-09-03):
+ *   7. Tally rechazado por reglas → fila con decision='rechazado' + motivo, sin lead.
+ *   8. Tally aprobado por reglas → fila completada con lead_id/conversation_id/welcome_sent.
+ *   9. Aprobado pero sin plantilla → fila con error, 409 como siempre.
+ *  10. El INSERT del registro falla → el flujo sigue y la bienvenida sale igual.
  */
 
 interface TenantTokenRow {
@@ -23,6 +29,22 @@ interface TenantTokenRow {
 interface TenantConfigRow {
   tenant_id: number;
   welcome_template_id: number | null;
+  /** Config del filtro de cualificación (lead-qualifier.ts). Ausente = sin filtro. */
+  lead_qualification?: Record<string, unknown> | null;
+}
+interface SubmissionRow {
+  id: number;
+  tenant_id: number;
+  phone: string | null;
+  first_name: string | null;
+  answers: Record<string, unknown>;
+  decision: string;
+  motivo: string | null;
+  evaluado_por: string;
+  lead_id: number | null;
+  conversation_id: number | null;
+  welcome_sent: boolean;
+  error: string | null;
 }
 interface IntegrationAccountRow {
   id: number;
@@ -91,11 +113,16 @@ const mocks = vi.hoisted(() => {
       filters: Array<[string, unknown]>;
     }>,
     iaUpdates: [] as Array<{ table: string; payload: Record<string, unknown> }>,
+    submissions: [] as SubmissionRow[],
+    submissionUpdates: [] as Array<{ id: number; payload: Record<string, unknown> }>,
+    /** Simula que la tabla lead_form_submissions no existe / falla el INSERT. */
+    failSubmissionInsert: false,
     dedupClaim: true,
     nextChannelId: 1,
     nextLeadId: 1,
     nextConversationId: 1,
     nextMessageId: 1,
+    nextSubmissionId: 1,
   };
 
   function applyFilters(rows: Array<Record<string, unknown>>, filters: Array<[string, unknown, string?]>): Array<Record<string, unknown>> {
@@ -153,14 +180,24 @@ const mocks = vi.hoisted(() => {
             // Dos formas: insert(payload).select('id').single() — devolvemos thenable chainable.
             const thenableOnly = {
               select(_cols?: string) {
+                // handleInsert puede lanzar (p.ej. failSubmissionInsert): se
+                // devuelve como `error` igual que haría PostgREST.
+                const run = () => {
+                  try {
+                    return { data: handleInsert(table, payload), error: null };
+                  } catch (err) {
+                    return {
+                      data: null,
+                      error: { message: err instanceof Error ? err.message : String(err) },
+                    };
+                  }
+                };
                 return {
                   async single() {
-                    const inserted = handleInsert(table, payload);
-                    return { data: inserted, error: null };
+                    return run();
                   },
                   async maybeSingle() {
-                    const inserted = handleInsert(table, payload);
-                    return { data: inserted, error: null };
+                    return run();
                   },
                 };
               },
@@ -196,6 +233,13 @@ const mocks = vi.hoisted(() => {
                     const lead = state.leads.find((l) => l.id === idFilter[1]);
                     if (lead) Object.assign(lead, payload);
                   }
+                } else if (table === 'lead_form_submissions') {
+                  const idFilter = updateFilters.find((f) => f[0] === 'id');
+                  if (idFilter) {
+                    state.submissionUpdates.push({ id: idFilter[1] as number, payload });
+                    const row = state.submissions.find((s) => s.id === idFilter[1]);
+                    if (row) Object.assign(row, payload);
+                  }
                 }
                 return Promise.resolve({ error: null }).then(resolve);
               },
@@ -224,6 +268,8 @@ const mocks = vi.hoisted(() => {
         return state.leads as unknown as Array<Record<string, unknown>>;
       case 'conversations':
         return state.conversations as unknown as Array<Record<string, unknown>>;
+      case 'lead_form_submissions':
+        return state.submissions as unknown as Array<Record<string, unknown>>;
       default:
         return [];
     }
@@ -274,6 +320,27 @@ const mocks = vi.hoisted(() => {
       state.messageInserts.push({ table, payload });
       return { id: state.nextMessageId++ };
     }
+    if (table === 'lead_form_submissions') {
+      if (state.failSubmissionInsert) {
+        throw new Error('relation "public.lead_form_submissions" does not exist');
+      }
+      const row: SubmissionRow = {
+        id: state.nextSubmissionId++,
+        tenant_id: payload.tenant_id as number,
+        phone: (payload.phone as string | null) ?? null,
+        first_name: (payload.first_name as string | null) ?? null,
+        answers: (payload.answers as Record<string, unknown>) ?? {},
+        decision: payload.decision as string,
+        motivo: (payload.motivo as string | null) ?? null,
+        evaluado_por: payload.evaluado_por as string,
+        lead_id: null,
+        conversation_id: null,
+        welcome_sent: false,
+        error: null,
+      };
+      state.submissions.push(row);
+      return { id: row.id };
+    }
     return {};
   }
 
@@ -292,6 +359,22 @@ vi.mock('../src/lib/redis.js', () => ({
   tryClaimDedupKey: mocks.tryClaimDedupKeyMock,
   getRedis: () => ({}),
 }));
+// El evaluador IA no debe llamarse en estos tests: los casos de cualificación
+// se resuelven por reglas deterministas. Si alguien lo llamara, el qualifier
+// hace fail-open ('aprobado' / 'ninguno') y las aserciones sobre 'reglas' fallan.
+vi.mock('../src/lib/anthropic.js', () => {
+  const stub = {
+    messages: {
+      create: async () => {
+        throw new Error('el evaluador IA no debe invocarse en este test');
+      },
+    },
+  };
+  return {
+    getAnthropicForTenant: async () => stub,
+    getAnthropic: () => stub,
+  };
+});
 
 import { automationLeadFormRoutes } from '../src/routes/automation-lead-form.js';
 
@@ -309,11 +392,15 @@ beforeEach(async () => {
   s.messageInserts.length = 0;
   s.conversationUpdates.length = 0;
   s.iaUpdates.length = 0;
+  s.submissions.length = 0;
+  s.submissionUpdates.length = 0;
+  s.failSubmissionInsert = false;
   s.dedupClaim = true;
   s.nextChannelId = 1;
   s.nextLeadId = 1;
   s.nextConversationId = 1;
   s.nextMessageId = 1;
+  s.nextSubmissionId = 1;
 
   mocks.tryClaimDedupKeyMock.mockReset();
   mocks.tryClaimDedupKeyMock.mockImplementation(() => Promise.resolve(s.dedupClaim));
@@ -584,5 +671,209 @@ describe('POST /automations/lead-form/:tenant_token', () => {
     expect(mocks.fetchMock).not.toHaveBeenCalled();
 
     delete process.env.LEAD_FORM_VERIFY_MODE;
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Registro de formularios — lead_form_submissions (migración 077, 2026-09-03)
+// ----------------------------------------------------------------------------
+
+/** Config de cualificación mínima: rechaza "Menos de 3 meses", aprueba país Tier A. */
+const QUALIFICATION_CONFIG = {
+  enabled: true,
+  pain_reject_values: ['Menos de 3 meses'],
+  country_label_regex: 'vives|pais|país',
+  ai_criteria: 'Eres un evaluador. (no debe llegar a usarse en estos tests)',
+};
+
+/** Tenant listo para enviar bienvenida (token + plantilla + cuenta YCloud). */
+function seedReadyTenant(opts: { welcomeTemplateId: number | null; qualification?: unknown }) {
+  mocks.state.tenantTokens.push({
+    token: 'good-token',
+    tenant_id: 2,
+    purpose: 'lead_form_webhook',
+    is_active: true,
+    revoked_at: null,
+  });
+  mocks.state.tenantConfigs.push({
+    tenant_id: 2,
+    welcome_template_id: opts.welcomeTemplateId,
+    lead_qualification: (opts.qualification as Record<string, unknown> | null | undefined) ?? null,
+  });
+  mocks.state.templates.push({
+    id: 10,
+    tenant_id: 2,
+    name: 'bienvenida_tania',
+    channel_kind: 'whatsapp',
+    provider: 'ycloud',
+    body: 'Hola, gracias por dejar tus datos',
+    provider_template_id: 'bienvenida_tania',
+    language: 'es',
+    variables: [],
+    status: 'approved',
+  });
+  mocks.state.integrationAccounts.push({
+    id: 7,
+    tenant_id: 2,
+    provider: 'ycloud',
+    is_active: true,
+    credentials: { api_key: 'ycloud-test' },
+    credentials_encrypted: null,
+    connection_config: { business_phone: '+34611223344' },
+  });
+}
+
+/** Webhook nativo de Tally (FORM_RESPONSE) con las 4 preguntas que usan las reglas. */
+function tallyBody(opts: { pain: string; country: string }) {
+  return {
+    eventId: 'evt_1',
+    eventType: 'FORM_RESPONSE',
+    data: {
+      responseId: 'resp_1',
+      fields: [
+        { key: 'q_name', label: 'Nombre y apellidos', type: 'INPUT_TEXT', value: 'Ana García' },
+        { key: 'q_phone', label: 'Teléfono', type: 'INPUT_PHONE_NUMBER', value: '+34600123456' },
+        {
+          key: 'q_pain',
+          label: '¿Desde cuándo tienes dolor?',
+          type: 'MULTIPLE_CHOICE',
+          value: ['opt_a'],
+          options: [{ id: 'opt_a', text: opts.pain }],
+        },
+        { key: 'q_country', label: '¿En qué país vives?', type: 'INPUT_TEXT', value: opts.country },
+      ],
+    },
+  };
+}
+
+describe('lead_form_submissions — registro del veredicto para el panel', () => {
+  it('rechazado por reglas → fila con decision/motivo/respuestas, sin lead ni bienvenida', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyBody({ pain: 'Menos de 3 meses', country: 'México' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.qualified).toBe(false);
+    expect(body.decision).toBe('rechazado');
+    expect(body.evaluado_por).toBe('reglas');
+
+    // La fila queda escrita con el veredicto…
+    expect(mocks.state.submissions).toHaveLength(1);
+    const row = mocks.state.submissions[0]!;
+    expect(row.tenant_id).toBe(2);
+    expect(row.phone).toBe('+34600123456');
+    expect(row.first_name).toBe('Ana');
+    expect(row.decision).toBe('rechazado');
+    expect(row.evaluado_por).toBe('reglas');
+    expect(row.motivo).toContain('Menos de 3 meses');
+    expect(row.answers['¿Desde cuándo tienes dolor?']).toBe('Menos de 3 meses');
+    expect(row.answers['¿En qué país vives?']).toBe('México');
+    expect(row.welcome_sent).toBe(false);
+    expect(row.lead_id).toBeNull();
+    expect(row.conversation_id).toBeNull();
+    // …y no hay ningún UPDATE posterior, porque el flujo termina aquí.
+    expect(mocks.state.submissionUpdates).toHaveLength(0);
+    expect(mocks.state.leads).toHaveLength(0);
+    expect(mocks.state.conversations).toHaveLength(0);
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('aprobado por reglas → la fila se completa con lead_id, conversation_id y welcome_sent=true', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyBody({ pain: 'Más de 1 año', country: 'España' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.ok).toBe(true);
+    expect(body.lead_id).toBe(1);
+    expect(body.conversation_id).toBe(1);
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
+
+    expect(mocks.state.submissions).toHaveLength(1);
+    const row = mocks.state.submissions[0]!;
+    expect(row.decision).toBe('aprobado');
+    expect(row.evaluado_por).toBe('reglas');
+    expect(row.motivo).toContain('contacto garantizado');
+    expect(row.lead_id).toBe(1);
+    expect(row.conversation_id).toBe(1);
+    expect(row.welcome_sent).toBe(true);
+    expect(row.error).toBeNull();
+
+    // El UPDATE final lleva exactamente el cierre del flujo.
+    const last = mocks.state.submissionUpdates.at(-1)!;
+    expect(last.id).toBe(1);
+    expect(last.payload).toMatchObject({
+      lead_id: 1,
+      conversation_id: 1,
+      welcome_sent: true,
+      error: null,
+    });
+  });
+
+  it('aprobado pero sin plantilla de bienvenida → 409 y la fila guarda el error', async () => {
+    seedReadyTenant({ welcomeTemplateId: null, qualification: QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyBody({ pain: 'Más de 1 año', country: 'España' }),
+    });
+    expect(res.statusCode).toBe(409);
+    expect(JSON.parse(res.body).error).toBe('no_welcome_template_configured');
+
+    expect(mocks.state.submissions).toHaveLength(1);
+    const row = mocks.state.submissions[0]!;
+    expect(row.decision).toBe('aprobado');
+    expect(row.welcome_sent).toBe(false);
+    expect(row.error).toBe('no_welcome_template_configured');
+    expect(row.lead_id).toBeNull();
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('si el INSERT del registro falla, el lead se crea y la bienvenida sale igual', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: QUALIFICATION_CONFIG });
+    mocks.state.failSubmissionInsert = true;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyBody({ pain: 'Más de 1 año', country: 'España' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).ok).toBe(true);
+    expect(mocks.state.leads).toHaveLength(1);
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
+    // Sin fila no hay id, y los patch posteriores son no-op.
+    expect(mocks.state.submissions).toHaveLength(0);
+    expect(mocks.state.submissionUpdates).toHaveLength(0);
+  });
+
+  it('payload plano sin respuestas (GHL Workflow) → fila sin_filtro/ninguno con la bienvenida enviada', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10 });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: { phone: '+34600123456', first_name: 'Juan' },
+    });
+    expect(res.statusCode).toBe(200);
+
+    expect(mocks.state.submissions).toHaveLength(1);
+    const row = mocks.state.submissions[0]!;
+    expect(row.decision).toBe('sin_filtro');
+    expect(row.evaluado_por).toBe('ninguno');
+    expect(row.motivo).toBeNull();
+    expect(row.answers).toEqual({});
+    expect(row.first_name).toBe('Juan');
+    expect(row.welcome_sent).toBe(true);
+    expect(row.lead_id).toBe(1);
   });
 });

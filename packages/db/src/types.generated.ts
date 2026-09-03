@@ -1127,10 +1127,88 @@ export type Database = {
           },
         ]
       }
+      lead_form_submissions: {
+        Row: {
+          answers: Json
+          conversation_id: number | null
+          decision: string
+          error: string | null
+          evaluado_por: string
+          first_name: string | null
+          id: number
+          lead_id: number | null
+          motivo: string | null
+          phone: string | null
+          received_at: string
+          tenant_id: number
+          welcome_sent: boolean
+        }
+        Insert: {
+          answers?: Json
+          conversation_id?: number | null
+          decision: string
+          error?: string | null
+          evaluado_por: string
+          first_name?: string | null
+          id?: number
+          lead_id?: number | null
+          motivo?: string | null
+          phone?: string | null
+          received_at?: string
+          tenant_id: number
+          welcome_sent?: boolean
+        }
+        Update: {
+          answers?: Json
+          conversation_id?: number | null
+          decision?: string
+          error?: string | null
+          evaluado_por?: string
+          first_name?: string | null
+          id?: number
+          lead_id?: number | null
+          motivo?: string | null
+          phone?: string | null
+          received_at?: string
+          tenant_id?: number
+          welcome_sent?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_form_submissions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_form_submissions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_form_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_form_submissions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           channel_id: number
           created_at: string
+          detected_gender: string | null
           email: string | null
           external_id: string
           first_name: string | null
@@ -1138,7 +1216,10 @@ export type Database = {
           last_message_at: string | null
           last_name: string | null
           location: string | null
+          name_gender_detected_at: string | null
           notes: string | null
+          parsed_name: string | null
+          parsed_name_status: string | null
           phone: string | null
           source_channel: string | null
           tenant_id: number
@@ -1150,6 +1231,7 @@ export type Database = {
         Insert: {
           channel_id: number
           created_at?: string
+          detected_gender?: string | null
           email?: string | null
           external_id: string
           first_name?: string | null
@@ -1157,7 +1239,10 @@ export type Database = {
           last_message_at?: string | null
           last_name?: string | null
           location?: string | null
+          name_gender_detected_at?: string | null
           notes?: string | null
+          parsed_name?: string | null
+          parsed_name_status?: string | null
           phone?: string | null
           source_channel?: string | null
           tenant_id: number
@@ -1169,6 +1254,7 @@ export type Database = {
         Update: {
           channel_id?: number
           created_at?: string
+          detected_gender?: string | null
           email?: string | null
           external_id?: string
           first_name?: string | null
@@ -1176,7 +1262,10 @@ export type Database = {
           last_message_at?: string | null
           last_name?: string | null
           location?: string | null
+          name_gender_detected_at?: string | null
           notes?: string | null
+          parsed_name?: string | null
+          parsed_name_status?: string | null
           phone?: string | null
           source_channel?: string | null
           tenant_id?: number
@@ -2109,6 +2198,9 @@ export type Database = {
       tenant_configs: {
         Row: {
           active_conversation_delay: string
+          ai_enabled: boolean
+          anthropic_api_key_encrypted: Json | null
+          anthropic_api_key_hint: string | null
           created_at: string
           debounce_window_seconds: number
           default_audio_language: string
@@ -2117,6 +2209,7 @@ export type Database = {
           health_threshold_hours_amber: number
           health_threshold_hours_red: number
           idle_conversation_delay: string
+          lead_qualification: Json | null
           manychat_inbound_mode: string
           max_messages_per_conversation: number
           tenant_id: number
@@ -2127,6 +2220,9 @@ export type Database = {
         }
         Insert: {
           active_conversation_delay?: string
+          ai_enabled?: boolean
+          anthropic_api_key_encrypted?: Json | null
+          anthropic_api_key_hint?: string | null
           created_at?: string
           debounce_window_seconds?: number
           default_audio_language?: string
@@ -2135,6 +2231,7 @@ export type Database = {
           health_threshold_hours_amber?: number
           health_threshold_hours_red?: number
           idle_conversation_delay?: string
+          lead_qualification?: Json | null
           manychat_inbound_mode?: string
           max_messages_per_conversation?: number
           tenant_id: number
@@ -2145,6 +2242,9 @@ export type Database = {
         }
         Update: {
           active_conversation_delay?: string
+          ai_enabled?: boolean
+          anthropic_api_key_encrypted?: Json | null
+          anthropic_api_key_hint?: string | null
           created_at?: string
           debounce_window_seconds?: number
           default_audio_language?: string
@@ -2153,6 +2253,7 @@ export type Database = {
           health_threshold_hours_amber?: number
           health_threshold_hours_red?: number
           idle_conversation_delay?: string
+          lead_qualification?: Json | null
           manychat_inbound_mode?: string
           max_messages_per_conversation?: number
           tenant_id?: number
@@ -2618,7 +2719,13 @@ export type Database = {
         | "google"
         | "azure_openai"
         | "custom"
-      llm_role: "generator" | "judge" | "splitter" | "transcriber" | "embedder"
+      llm_role:
+        | "generator"
+        | "judge"
+        | "splitter"
+        | "transcriber"
+        | "embedder"
+        | "qualifier"
       message_content_type:
         | "text"
         | "audio"
@@ -2658,12 +2765,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2687,11 +2794,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2712,11 +2819,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2737,11 +2844,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2754,11 +2861,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -2784,7 +2891,14 @@ export const Constants = {
       ],
       llm_call_status: ["success", "error", "fallback"],
       llm_provider: ["anthropic", "openai", "google", "azure_openai", "custom"],
-      llm_role: ["generator", "judge", "splitter", "transcriber", "embedder"],
+      llm_role: [
+        "generator",
+        "judge",
+        "splitter",
+        "transcriber",
+        "embedder",
+        "qualifier",
+      ],
       message_content_type: [
         "text",
         "audio",

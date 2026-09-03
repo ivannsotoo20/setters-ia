@@ -20,6 +20,13 @@
  *  10. Best-effort UPDATE integration_accounts.last_webhook_at (Sprint 9 dashboard).
  *  11. 200 con {ok, lead_id, conversation_id, provider_message_id}.
  *
+ * Registro para el panel (2026-09-03): cada formulario que llega a cualificarse
+ * deja una fila en `lead_form_submissions` (veredicto, quién decidió, motivo) y,
+ * si se aprueba, la fila se completa con lead_id / conversation_id /
+ * welcome_sent o con el error que impidió la bienvenida. Best-effort: un fallo
+ * al escribir el registro NUNCA tumba el flujo. El panel lo lista en
+ * /leads/formularios.
+ *
  * Errores:
  *   404 invalid token, 401 secret mismatch (enforce), 400 invalid payload,
  *   409 no welcome template configured, 422 lead/template/account inválido,
@@ -40,7 +47,7 @@ import {
   resolveTenantByToken,
   upsertLead,
 } from '../services/lead-ingest.js';
-import { qualifyFormLead } from '../services/lead-qualifier.js';
+import { qualifyFormLead, type QualifyResult } from '../services/lead-qualifier.js';
 import {
   sendWelcomeTemplate,
   WelcomeTemplateError,
@@ -323,9 +330,10 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
       //      nada que cualificar y pasa directo, como siempre.
       //      Rechazado → NO se crea lead ni se envía nada; queda en el log y en
       //      llm_calls (role='qualifier') si decidió la IA.
+      let veredicto: QualifyResult = { decision: 'sin_filtro', motivo: null, evaluadoPor: 'ninguno' };
       if (tallyFlattened && payload.answers && Object.keys(payload.answers).length > 0) {
         const anthropic = await getAnthropicForTenant(supabase, tenantId);
-        const veredicto = await qualifyFormLead({
+        veredicto = await qualifyFormLead({
           supabase,
           anthropic: anthropic as never,
           tenantId,
@@ -341,15 +349,29 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           },
           'lead-form: cualificación evaluada',
         );
-        if (veredicto.decision === 'rechazado') {
-          return reply.code(200).send({
-            ok: true,
-            qualified: false,
-            decision: 'rechazado',
-            evaluado_por: veredicto.evaluadoPor,
-            tenant_id: tenantId,
-          });
-        }
+      }
+
+      // 5.3) Registro del formulario para el panel (/leads/formularios). Se
+      //      escribe SIEMPRE que un formulario llega hasta aquí, tenga filtro
+      //      o no (un payload plano sin respuestas queda como sin_filtro): la
+      //      entrenadora ve todo lo que entró y qué se hizo con cada uno.
+      //      Best-effort — si la tabla falla, el lead se procesa igual.
+      const submissionId = await recordSubmission(request, supabase, {
+        tenantId,
+        phone: phoneNormalized,
+        firstName: payload.first_name ?? null,
+        answers: payload.answers ?? {},
+        veredicto,
+      });
+
+      if (veredicto.decision === 'rechazado') {
+        return reply.code(200).send({
+          ok: true,
+          qualified: false,
+          decision: 'rechazado',
+          evaluado_por: veredicto.evaluadoPor,
+          tenant_id: tenantId,
+        });
       }
 
       // 6) welcome_template_id requerido
@@ -368,6 +390,9 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
       const welcomeTemplateId =
         cfg?.welcome_template_id != null ? Number(cfg.welcome_template_id) : null;
       if (!welcomeTemplateId) {
+        await patchSubmission(request, supabase, submissionId, {
+          error: 'no_welcome_template_configured',
+        });
         return reply.code(409).send({
           error: 'no_welcome_template_configured',
           message:
@@ -390,6 +415,9 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           { tenantId, err: err instanceof Error ? err.message : String(err) },
           'lead-form: channel resolution failed',
         );
+        await patchSubmission(request, supabase, submissionId, {
+          error: shortError('channel_resolution_failed', err),
+        });
         return reply.code(500).send({ error: 'channel_resolution_failed' });
       }
 
@@ -450,6 +478,14 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           );
         });
 
+        // 10b) Cerrar el registro del formulario: bienvenida enviada.
+        await patchSubmission(request, supabase, submissionId, {
+          lead_id: leadId,
+          conversation_id: conversationId,
+          welcome_sent: true,
+          error: null,
+        });
+
         return reply.code(200).send({
           ok: true,
           tenant_id: tenantId,
@@ -460,6 +496,18 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           source: payload.source ?? null,
         });
       } catch (err) {
+        // El lead y la conversación ya existen aunque la bienvenida no saliera:
+        // se enlazan en el registro junto al error para que la entrenadora
+        // pueda ir a la conversación y mandarla a mano.
+        await patchSubmission(request, supabase, submissionId, {
+          lead_id: leadId,
+          conversation_id: conversationId,
+          welcome_sent: false,
+          error:
+            err instanceof WelcomeTemplateError
+              ? shortError(err.reason, err)
+              : shortError('welcome_failed', err),
+        });
         if (err instanceof WelcomeTemplateError) {
           request.log.warn(
             {
@@ -538,6 +586,110 @@ async function persistFormAnswers(
     })
     .eq('id', conversationId);
   if (updErr) throw new Error(`update custom_fields: ${updErr.message}`);
+}
+
+// ----------------------------------------------------------------------------
+// Registro de formularios (lead_form_submissions) — migración 077
+// ----------------------------------------------------------------------------
+
+// TODO regenerar tipos tras aplicar la migración 077 (packages/db/src/types.generated.ts).
+// `getSupabase()` devuelve un SupabaseClient sin generic `Database`, así que
+// `.from('lead_form_submissions')` compila sin cast; cuando se regeneren los
+// tipos, estas dos funciones quedan cubiertas por el schema.
+const LEAD_FORM_SUBMISSIONS_TABLE = 'lead_form_submissions';
+
+interface RecordSubmissionInput {
+  tenantId: number;
+  phone: string;
+  firstName: string | null;
+  /** Respuestas aplanadas label → valor. PII: se guardan, no se loguean. */
+  answers: Record<string, unknown>;
+  veredicto: QualifyResult;
+}
+
+interface SubmissionPatch {
+  lead_id?: number;
+  conversation_id?: number;
+  welcome_sent?: boolean;
+  error?: string | null;
+}
+
+/**
+ * INSERT best-effort de la fila del formulario. Devuelve el id (para los
+ * UPDATE posteriores) o null si no se pudo escribir — en ese caso los patch
+ * son no-op y el flujo sigue: perder el registro es un warn, no un fallo.
+ *
+ * `answers` se guardan tal cual: son las respuestas de la persona al
+ * formulario de la entrenadora, no hay tokens ni secretos posibles. No se pasa
+ * por `safeLogBody` a propósito — redacta por substring ('secret', 'token'…) y
+ * una pregunta en castellano con "secreto" en el label acabaría con la
+ * respuesta sustituida por '<REDACTED>' en el panel.
+ */
+async function recordSubmission(
+  request: FastifyRequest,
+  supabase: ReturnType<typeof getSupabase>,
+  input: RecordSubmissionInput,
+): Promise<number | null> {
+  try {
+    const { data, error } = await supabase
+      .from(LEAD_FORM_SUBMISSIONS_TABLE)
+      .insert({
+        tenant_id: input.tenantId,
+        phone: input.phone,
+        first_name: input.firstName,
+        answers: input.answers,
+        decision: input.veredicto.decision,
+        motivo: input.veredicto.motivo,
+        evaluado_por: input.veredicto.evaluadoPor,
+      })
+      .select('id')
+      .single();
+    if (error) throw new Error(error.message);
+    const id = (data as { id?: unknown } | null)?.id;
+    return typeof id === 'number' || typeof id === 'string' ? Number(id) : null;
+  } catch (err) {
+    request.log.warn(
+      {
+        tenantId: input.tenantId,
+        decision: input.veredicto.decision,
+        err: err instanceof Error ? err.message : String(err),
+      },
+      'lead-form: insert lead_form_submissions failed (no fatal)',
+    );
+    return null;
+  }
+}
+
+/** UPDATE best-effort de la fila del formulario. No-op si no hay id. */
+async function patchSubmission(
+  request: FastifyRequest,
+  supabase: ReturnType<typeof getSupabase>,
+  submissionId: number | null,
+  patch: SubmissionPatch,
+): Promise<void> {
+  if (submissionId == null) return;
+  try {
+    const { error } = await supabase
+      .from(LEAD_FORM_SUBMISSIONS_TABLE)
+      .update(patch)
+      .eq('id', submissionId);
+    if (error) throw new Error(error.message);
+  } catch (err) {
+    request.log.warn(
+      {
+        submissionId,
+        patchKeys: Object.keys(patch),
+        err: err instanceof Error ? err.message : String(err),
+      },
+      'lead-form: update lead_form_submissions failed (no fatal)',
+    );
+  }
+}
+
+/** "reason: mensaje" recortado para la columna `error` (legible en el panel). */
+function shortError(reason: string, err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return `${reason}: ${msg}`.slice(0, 200);
 }
 
 async function touchLastWebhookAt(
