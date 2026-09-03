@@ -108,14 +108,18 @@ jobs:
 
       - name: Smoke check /health
         run: |
-          for i in 1 2 3 4 5; do
+          # El motor tarda 15-25 s en arrancar (carga prompt_blocks y abre
+          # Supabase/Redis) y el tunel devuelve 502 mientras tanto. Cinco
+          # intentos en 17 s marcaban en rojo deploys correctos (2026-09-03,
+          # run 33773120077). Ahora hasta 12 intentos en ~60 s.
+          for i in $(seq 1 12); do
             if curl -fsS --max-time 10 https://setter.fyzon.es/health; then
               echo ""
-              echo "✅ Health OK on attempt $i"
+              echo "Health OK on attempt $i"
               exit 0
             fi
-            echo "Attempt $i failed, retrying in 3s..."
-            sleep 3
+            echo "Attempt $i failed, retrying in 5s..."
+            sleep 5
           done
-          echo "❌ ERROR: motor /health did not return 200 after 5 attempts"
+          echo "ERROR: motor /health did not return 200 after 12 attempts (~60s)"
           exit 1
