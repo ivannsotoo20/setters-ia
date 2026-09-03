@@ -40,14 +40,23 @@ export type ConvState = {
  * Aplica a CUALQUIER tipo de schedule outbound (follow_up, message, resource).
  * Antes solo se evaluaba en inbound (pipeline Generator); los FUs programados
  * salían aunque el trainer hubiera pausado la IA.
+ *
+ * `skipPauseCheck` marca las partes del turno actual del bot ('ai_turn') y las
+ * manuales del trainer. Esas partes tampoco se cancelan por `state='closed'`
+ * (2026-09-03): el turno que cierra la conversación (handoff, cita reservada,
+ * cierre digno) es justo el que lleva el mensaje de cierre, y el gate lo
+ * tumbaba antes de que saliera. En el tenant 7, en una semana: 3 "ya está
+ * reservada", 1 enlace de contacto que la persona había pedido y el aviso de
+ * handoff "le paso tu caso", todos cancelados. Un follow-up programado sobre
+ * una conversación cerrada sigue cancelándose, y `is_blocked` manda siempre.
  */
 export function outboundGateSkipReason(
   cv: ConvState | undefined,
   opts?: { skipPauseCheck?: boolean },
 ): string | null {
   if (!cv) return 'conv not found';
-  if (cv.state === 'closed') return 'conv state=closed';
   if (cv.is_blocked) return 'conv is_blocked';
+  if (!opts?.skipPauseCheck && cv.state === 'closed') return 'conv state=closed';
   // Hito 10.6.1 — si el schedule pertenece al turno actual del bot ('ai_turn')
   // o es manual del trainer, NO bloquear por ai_paused_until. Esto permite que
   // las partes ya generadas se envíen aunque la IA se haya pausado durante el

@@ -62,15 +62,15 @@ describe('outboundGateSkipReason', () => {
     expect(outboundGateSkipReason(cv({ ai_paused_until: past }))).toBeNull();
   });
 
-  it('orden de precedencia: closed antes que is_blocked y antes que pause', () => {
-    // Si conv está cerrada Y bloqueada Y pausada, devolver razón de "closed"
-    // (es el estado más informativo para el log).
+  it('orden de precedencia: is_blocked antes que closed y antes que pause', () => {
+    // Si conv está bloqueada Y cerrada Y pausada, devolver razón de "is_blocked":
+    // es la única que se aplica también a las partes del turno del bot.
     const all = cv({
       state: 'closed',
       is_blocked: true,
       ai_paused_until: 'infinity',
     });
-    expect(outboundGateSkipReason(all)).toBe('conv state=closed');
+    expect(outboundGateSkipReason(all)).toBe('conv is_blocked');
   });
 
   it('orden: is_blocked antes que pause si state=active', () => {
@@ -81,5 +81,35 @@ describe('outboundGateSkipReason', () => {
   it('fail-safe: ai_paused_until con valor no parseable → "ai paused"', () => {
     // isAiPausedFromDb es fail-safe: si no entiende el valor, asume pausa.
     expect(outboundGateSkipReason(cv({ ai_paused_until: 'not-a-date' }))).toBe('ai paused');
+  });
+});
+
+// =============================================================================
+// 2026-09-03 — las partes del propio turno del bot (triggered_by='ai_turn') y
+// las manuales del trainer salen aunque la conversación acabe de cerrarse.
+//
+// Bug confirmado en prod (tenant 7, una semana): el turno que hace handoff o
+// confirma la cita pone state='closed' y el gate cancelaba sus propias partes:
+// "Pues ya está reservada 🙌" (x3), el enlace de contacto que la persona pidió,
+// y "Soy la asistente virtual de Tania. Le paso tu caso" (la persona preguntó
+// si hablaba con una IA y se quedó sin respuesta 6 días).
+// =============================================================================
+describe('outboundGateSkipReason — partes del turno actual (skipPauseCheck)', () => {
+  const own = { skipPauseCheck: true };
+
+  it('state=closed → sale: es el mensaje de cierre del propio turno', () => {
+    expect(outboundGateSkipReason(cv({ state: 'closed' }), own)).toBeNull();
+  });
+
+  it('closed + IA pausada infinity (handoff) → sale igualmente', () => {
+    expect(outboundGateSkipReason(cv({ state: 'closed', ai_paused_until: 'infinity' }), own)).toBeNull();
+  });
+
+  it('is_blocked manda siempre, también para el turno actual', () => {
+    expect(outboundGateSkipReason(cv({ state: 'closed', is_blocked: true }), own)).toBe('conv is_blocked');
+  });
+
+  it('un follow-up programado (sin skipPauseCheck) sobre una conv cerrada se sigue cancelando', () => {
+    expect(outboundGateSkipReason(cv({ state: 'closed' }), { skipPauseCheck: false })).toBe('conv state=closed');
   });
 });
