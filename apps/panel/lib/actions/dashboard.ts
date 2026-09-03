@@ -9,7 +9,9 @@ import {
   type KpiSnapshot,
 } from '@/lib/dashboard-metrics';
 import {
-  detectBottlenecks,
+  detectAwaitingReply,
+  detectStalls,
+  detectUnattendedHandoffs,
   type ChannelInfo,
   type ChannelKey,
 } from '@/lib/dashboard-query';
@@ -19,7 +21,7 @@ import {
   type Granularity,
   type TrendPoint,
 } from '@/lib/dashboard-trend';
-import { computeAlerts, type Alert } from '@/lib/dashboard-alerts';
+import { ALERT_THRESHOLDS, computeAlerts, type Alert } from '@/lib/dashboard-alerts';
 import {
   parseWindowKey,
   resolveWindowRange,
@@ -31,6 +33,8 @@ import type { WidgetRow } from '@/lib/actions/dashboard-widgets';
 import {
   CONV_SNAPSHOT_SELECT,
   enrichWithLeadReplies,
+  loadLastMessageBySource,
+  loadTestLeadIds,
   resolveChannelFilter,
 } from '@/lib/dashboard-loader';
 
@@ -179,31 +183,60 @@ export async function loadDashboardData(input: {
     .gte('occurred_at', historyRange.from)
     .lte('occurred_at', historyRange.to);
 
-  // Para detección bottleneck necesitamos las convs activas del tenant + sus events recientes (últimos 30d)
+  // Para las alertas de conversación (dashboard-query.ts) hacen falta, del
+  // tenant entero y no solo de la ventana: las conversaciones activas, las
+  // pasadas a la entrenadora (el motor las deja en state='closed' al hacer el
+  // handoff, así que van por el flag y no por el estado) y los outcomes
+  // aplicados en los últimos 30d, para dejar fuera a quien ya salió del embudo.
   const activeConvsQuery = supabase
     .from('conversations')
     .select(CONV_SNAPSHOT_SELECT)
     .eq('tenant_id', tenantId)
     .eq('state', 'active');
 
-  const recentEventsQuery = supabase
+  const handoffConvsQuery = supabase
+    .from('conversations')
+    .select(CONV_SNAPSHOT_SELECT)
+    .eq('tenant_id', tenantId)
+    .eq('is_handoff_to_human', true);
+
+  const recentOutcomesQuery = supabase
     .from('pipeline_events')
     .select('event_type, from_value, to_value, source, occurred_at, conversation_id')
     .eq('tenant_id', tenantId)
+    .eq('event_type', 'outcome_applied')
     .gte('occurred_at', new Date(Date.now() - 30 * 86400000).toISOString());
 
-  const [convsRes, prevConvsRes, eventsRes, prevEventsRes, historyEventsRes, activeConvsRes, recentEventsRes] =
-    await Promise.all([
-      convsQuery,
-      prevConvsQuery,
-      eventsQuery,
-      prevEventsQuery,
-      historyEventsQuery,
-      activeConvsQuery,
-      recentEventsQuery,
-    ]);
+  const [
+    convsRes,
+    prevConvsRes,
+    eventsRes,
+    prevEventsRes,
+    historyEventsRes,
+    activeConvsRes,
+    handoffConvsRes,
+    recentOutcomesRes,
+  ] = await Promise.all([
+    convsQuery,
+    prevConvsQuery,
+    eventsQuery,
+    prevEventsQuery,
+    historyEventsQuery,
+    activeConvsQuery,
+    handoffConvsQuery,
+    recentOutcomesQuery,
+  ]);
 
-  for (const res of [convsRes, prevConvsRes, eventsRes, prevEventsRes, historyEventsRes, activeConvsRes, recentEventsRes]) {
+  for (const res of [
+    convsRes,
+    prevConvsRes,
+    eventsRes,
+    prevEventsRes,
+    historyEventsRes,
+    activeConvsRes,
+    handoffConvsRes,
+    recentOutcomesRes,
+  ]) {
     if (res.error) return { ok: false, error: res.error.message };
   }
 
@@ -213,18 +246,26 @@ export async function loadDashboardData(input: {
   const prevEvents = (prevEventsRes.data ?? []) as PipelineEvent[];
   const historyEvents = (historyEventsRes.data ?? []) as PipelineEvent[];
   const activeConvs = (activeConvsRes.data ?? []) as unknown as ConvSnapshot[];
-  const recentEvents = (recentEventsRes.data ?? []) as PipelineEvent[];
+  const handoffConvs = (handoffConvsRes.data ?? []) as unknown as ConvSnapshot[];
+  const recentOutcomes = (recentOutcomesRes.data ?? []) as PipelineEvent[];
 
   // 2b. ¿Contestó la persona? Solo para las conversaciones que abrió la
   //     entrenadora (outbound): alimenta "bienvenidas respondidas" y
   //     "palabra clave respondidos". Ver dashboard-loader.ts para el porqué de
   //     leerlo de los mensajes y no de conversations.first_lead_response_at.
-  const [replyCur, replyPrev] = await Promise.all([
+  //     En el mismo viaje, para las alertas de conversación: el último mensaje
+  //     de cada conversación vigilada (activas + handoffs) y los leads de prueba.
+  const monitoredIds = Array.from(new Set([...activeConvs, ...handoffConvs].map((c) => c.id)));
+  const [replyCur, replyPrev, lastMsgRes, testLeadsRes] = await Promise.all([
     enrichWithLeadReplies(supabase, convs),
     enrichWithLeadReplies(supabase, prevConvs),
+    loadLastMessageBySource(supabase, monitoredIds),
+    loadTestLeadIds(supabase, tenantId),
   ]);
   if (replyCur.error) return { ok: false, error: replyCur.error };
   if (replyPrev.error) return { ok: false, error: replyPrev.error };
+  if (lastMsgRes.error) return { ok: false, error: lastMsgRes.error };
+  if (testLeadsRes.error) return { ok: false, error: testLeadsRes.error };
 
   // 3. KPIs
   const kpis = computeKpis({
@@ -247,12 +288,27 @@ export async function loadDashboardData(input: {
   });
 
   // 6. Alerts
-  const bottlenecks = detectBottlenecks({
-    allRecentEvents: recentEvents,
+  const outcomeConvIds = new Set(recentOutcomes.map((e) => e.conversation_id));
+  const stalls = detectStalls({
     convs: activeConvs,
+    lastMessages: lastMsgRes.lastMessages,
     channelMap,
-    daysThreshold: 5,
-    countThreshold: 5,
+    daysThreshold: ALERT_THRESHOLDS.bottleneckMinDays,
+    countThreshold: ALERT_THRESHOLDS.bottleneckMinCount,
+    outcomeConvIds,
+    testLeadIds: testLeadsRes.testLeadIds,
+  });
+  const awaitingReply = detectAwaitingReply({
+    convs: activeConvs,
+    lastMessages: lastMsgRes.lastMessages,
+    hoursThreshold: ALERT_THRESHOLDS.awaitingReplyMinHours,
+    testLeadIds: testLeadsRes.testLeadIds,
+  });
+  const unattendedHandoffs = detectUnattendedHandoffs({
+    convs: handoffConvs,
+    lastMessages: lastMsgRes.lastMessages,
+    hoursThreshold: ALERT_THRESHOLDS.handoffUnattendedMinHours,
+    testLeadIds: testLeadsRes.testLeadIds,
   });
   const closeRateBaseline = computeHistoricCloseRate(historyEvents);
   const noShowCount = events.filter(
@@ -260,7 +316,9 @@ export async function loadDashboardData(input: {
   ).length;
   const alerts = computeAlerts({
     kpis,
-    bottlenecks,
+    stalls,
+    awaitingReply,
+    unattendedHandoffs,
     closeRateBaseline,
     noShowCurrentCount: noShowCount,
     noShowWindowDays: windowDays,

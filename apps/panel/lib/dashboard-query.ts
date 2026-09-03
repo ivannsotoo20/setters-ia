@@ -255,65 +255,119 @@ export function aggregateMatrix(input: {
 }
 
 /**
- * Detecta bottlenecks (stuck leads) por (channel × phase).
- * Devuelve {channel, phase, count, daysStuckMin} para cada combo con count >= threshold.
+ * Alertas de conversación (2026-09-03).
  *
- * Lógica: por cada conv activa cuya última `phase_change` event sea hace > daysThreshold,
- * agruparla por (channel, last_phase) y contar.
+ * Las tres detecciones de abajo miden desde el ÚLTIMO MENSAJE de la
+ * conversación y quién lo escribió, no desde el último cambio de fase. La
+ * versión anterior ("bottleneck") agrupaba por la fecha del último
+ * `phase_change`, y como F1→F2 salta con el primer mensaje de la persona, F2
+ * acumulaba a todo el que había contestado una vez: la alerta del tenant 7
+ * decía 31 cuando las atribuibles eran 3.
+ *
+ * Son funciones puras: el caller carga `lastMessages` con
+ * `loadLastMessageBySource` (dashboard-loader.ts) y pasa `now` en los tests.
  */
-export interface BottleneckInput {
+
+export type MessageSource = 'lead' | 'ai' | 'human' | 'system';
+
+export interface LastMessageInfo {
+  /** Quién escribió el último mensaje de la conversación. */
+  source: MessageSource;
+  sentAt: string;
+  /** Último mensaje de la entrenadora (`source='human'`), o null si nunca escribió. */
+  lastHumanAt: string | null;
+}
+
+/**
+ * Conversaciones de prueba: las de Iván. Se identifican por el `first_name`
+ * del lead ('Ivan' / 'Iván', sin distinguir mayúsculas ni acentos). La otra
+ * marca posible —que el primer mensaje contenga 'fyzontest'— exigiría cargar
+ * el contenido de los mensajes de todas las conversaciones vigiladas, así que
+ * no se aplica.
+ */
+export function isTestLeadName(firstName: string | null | undefined): boolean {
+  if (!firstName) return false;
+  const normalized = firstName
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .trim()
+    .toLowerCase();
+  return normalized === 'ivan';
+}
+
+function hoursSince(iso: string, now: Date): number {
+  return (now.getTime() - Date.parse(iso)) / 3600000;
+}
+
+function isTestConv(conv: ConvSnapshot, testLeadIds: Set<number> | undefined): boolean {
+  return testLeadIds != null && conv.lead_id != null && testLeadIds.has(conv.lead_id);
+}
+
+/**
+ * Conversación en la que el setter sigue al mando: activa, sin handoff a la
+ * entrenadora y sin la IA pausada. Base común de "sin respuesta de la persona"
+ * y de "esperando respuesta".
+ */
+function isSetterOwned(conv: ConvSnapshot): boolean {
+  if (conv.state !== 'active') return false;
+  if (conv.is_handoff_to_human) return false;
+  if (conv.ai_paused_until != null) return false;
+  return true;
+}
+
+export interface StallInput {
   channel: ChannelKey;
   phase: number;
   count: number;
+  /**
+   * Días del que menos lleva sin contestar dentro del grupo: "llevan más de N
+   * días" es cierto para todos los contados.
+   */
+  daysStuckMin: number;
   daysStuckMax: number;
 }
 
-export function detectBottlenecks(input: {
-  allRecentEvents: PipelineEvent[];
+/**
+ * "Sin respuesta de la persona": conversaciones activas, sin outcome, sin
+ * handoff ni pausa, cuyo último mensaje es del setter (`source='ai'`) y lleva
+ * ≥ `daysThreshold` días sin contestación. Agrupadas por (canal × fase actual
+ * `phase_number`, F1–F6); solo salen los grupos con ≥ `countThreshold`.
+ */
+export function detectStalls(input: {
   convs: ConvSnapshot[];
+  lastMessages: Map<number, LastMessageInfo>;
   channelMap: Map<number, ChannelInfo>;
   daysThreshold: number;
   countThreshold: number;
+  /** Conversaciones con un outcome aplicado (etiqueta de bucket): ya salieron del embudo. */
+  outcomeConvIds?: Set<number>;
+  testLeadIds?: Set<number>;
   now?: Date;
-}): BottleneckInput[] {
+}): StallInput[] {
   const now = input.now ?? new Date();
-  // last phase_change event por conv
-  const lastEventByConv = new Map<number, PipelineEvent>();
-  for (const e of input.allRecentEvents) {
-    if (e.event_type !== 'phase_change') continue;
-    const prev = lastEventByConv.get(e.conversation_id);
-    if (!prev || Date.parse(e.occurred_at) > Date.parse(prev.occurred_at)) {
-      lastEventByConv.set(e.conversation_id, e);
-    }
-  }
-
-  // outcomes (cualquier outcome) → excluir conv (ya no está estancada, salió)
-  const convsWithOutcome = new Set<number>();
-  for (const e of input.allRecentEvents) {
-    if (e.event_type === 'outcome_applied') convsWithOutcome.add(e.conversation_id);
-  }
-
-  const buckets = new Map<string, { count: number; daysMax: number }>();
+  const buckets = new Map<string, { count: number; daysMin: number; daysMax: number }>();
   for (const conv of input.convs) {
-    if (conv.state !== 'active') continue;
-    if (convsWithOutcome.has(conv.id)) continue;
-    const lastEvent = lastEventByConv.get(conv.id);
-    if (!lastEvent) continue;
-    const phase = parseInt(lastEvent.to_value, 10);
+    if (!isSetterOwned(conv)) continue;
+    if (input.outcomeConvIds?.has(conv.id)) continue;
+    if (isTestConv(conv, input.testLeadIds)) continue;
+    const last = input.lastMessages.get(conv.id);
+    if (!last || last.source !== 'ai') continue;
+    const days = Math.floor(hoursSince(last.sentAt, now) / 24);
+    if (days < input.daysThreshold) continue;
+    const phase = conv.phase_number;
     if (!Number.isFinite(phase) || phase < 1 || phase > 6) continue;
-    const daysStuck = Math.floor((now.getTime() - Date.parse(lastEvent.occurred_at)) / 86400000);
-    if (daysStuck < input.daysThreshold) continue;
     const channelKey = classifyChannel(input.channelMap.get(conv.channel_id), conv.direction);
     if (!channelKey) continue;
     const k = `${channelKey}:${phase}`;
-    const existing = buckets.get(k) ?? { count: 0, daysMax: 0 };
+    const existing = buckets.get(k);
     buckets.set(k, {
-      count: existing.count + 1,
-      daysMax: Math.max(existing.daysMax, daysStuck),
+      count: (existing?.count ?? 0) + 1,
+      daysMin: Math.min(existing?.daysMin ?? Infinity, days),
+      daysMax: Math.max(existing?.daysMax ?? 0, days),
     });
   }
 
-  const out: BottleneckInput[] = [];
+  const out: StallInput[] = [];
   for (const [k, v] of buckets.entries()) {
     if (v.count < input.countThreshold) continue;
     const [channel, phaseStr] = k.split(':');
@@ -321,8 +375,80 @@ export function detectBottlenecks(input: {
       channel: channel as ChannelKey,
       phase: parseInt(phaseStr!, 10),
       count: v.count,
+      daysStuckMin: v.daysMin,
       daysStuckMax: v.daysMax,
     });
   }
   return out;
+}
+
+export interface WaitingResult {
+  count: number;
+  /** Horas que lleva esperando la que más lleva (0 si no hay ninguna). */
+  hoursWaitingMax: number;
+  convIds: number[];
+}
+
+/**
+ * "Esperando respuesta": conversaciones en manos del setter cuyo último
+ * mensaje es de la persona y nadie —ni la IA ni la entrenadora— ha contestado
+ * en más de `hoursThreshold` horas. Que el último mensaje sea de la persona ya
+ * implica que no hay ninguno de `ai` ni de `human` detrás.
+ */
+export function detectAwaitingReply(input: {
+  convs: ConvSnapshot[];
+  lastMessages: Map<number, LastMessageInfo>;
+  hoursThreshold: number;
+  testLeadIds?: Set<number>;
+  now?: Date;
+}): WaitingResult {
+  const now = input.now ?? new Date();
+  const convIds: number[] = [];
+  let hoursMax = 0;
+  for (const conv of input.convs) {
+    if (!isSetterOwned(conv)) continue;
+    if (isTestConv(conv, input.testLeadIds)) continue;
+    const last = input.lastMessages.get(conv.id);
+    if (!last || last.source !== 'lead') continue;
+    const hours = hoursSince(last.sentAt, now);
+    if (hours <= input.hoursThreshold) continue;
+    convIds.push(conv.id);
+    hoursMax = Math.max(hoursMax, hours);
+  }
+  return { count: convIds.length, hoursWaitingMax: hoursMax, convIds };
+}
+
+/**
+ * "Handoffs sin atender": conversaciones pasadas a la entrenadora
+ * (`is_handoff_to_human=true`) cuyo último mensaje es de la persona o del
+ * setter y llevan más de `hoursThreshold` horas sin un mensaje suyo detrás.
+ *
+ * No se filtra por `state`: el motor cierra la conversación para el bot al
+ * hacer el handoff (`state='closed'`) y sigue abierta para la entrenadora, así
+ * que el caller las carga por el flag y no por el estado. Se excluye F7 (cita
+ * agendada): ese handoff no espera ninguna respuesta por chat.
+ */
+export function detectUnattendedHandoffs(input: {
+  convs: ConvSnapshot[];
+  lastMessages: Map<number, LastMessageInfo>;
+  hoursThreshold: number;
+  testLeadIds?: Set<number>;
+  now?: Date;
+}): WaitingResult {
+  const now = input.now ?? new Date();
+  const convIds: number[] = [];
+  let hoursMax = 0;
+  for (const conv of input.convs) {
+    if (!conv.is_handoff_to_human) continue;
+    if (conv.phase_number === 7) continue;
+    if (isTestConv(conv, input.testLeadIds)) continue;
+    const last = input.lastMessages.get(conv.id);
+    if (!last || (last.source !== 'lead' && last.source !== 'ai')) continue;
+    if (last.lastHumanAt && Date.parse(last.lastHumanAt) >= Date.parse(last.sentAt)) continue;
+    const hours = hoursSince(last.sentAt, now);
+    if (hours <= input.hoursThreshold) continue;
+    convIds.push(conv.id);
+    hoursMax = Math.max(hoursMax, hours);
+  }
+  return { count: convIds.length, hoursWaitingMax: hoursMax, convIds };
 }

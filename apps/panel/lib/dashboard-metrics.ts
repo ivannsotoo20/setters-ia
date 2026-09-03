@@ -45,6 +45,20 @@ export interface ConvSnapshot {
    * clave. Opcional: solo se rellena donde el dashboard lo necesita.
    */
   has_lead_reply?: boolean;
+  /**
+   * Lead detrás de la conversación (`conversations.lead_id`). Opcional: el
+   * dashboard lo usa para dejar fuera de las alertas las conversaciones de
+   * prueba (las de Iván).
+   */
+  lead_id?: number;
+  /**
+   * `conversations.ai_paused_until`: no nulo (incluida la cadena 'infinity')
+   * significa IA parada, la conversación está en manos de la entrenadora.
+   * Opcional: lo cargan las alertas del dashboard.
+   */
+  ai_paused_until?: string | null;
+  /** `conversations.is_handoff_to_human`. Opcional: lo cargan las alertas del dashboard. */
+  is_handoff_to_human?: boolean;
 }
 
 export interface KpiValue {

@@ -1,6 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { ConvSnapshot } from './dashboard-metrics';
-import type { ChannelInfo, ChannelKey } from './dashboard-query';
+import {
+  isTestLeadName,
+  type ChannelInfo,
+  type ChannelKey,
+  type LastMessageInfo,
+  type MessageSource,
+} from './dashboard-query';
 import type { PipelineEvent } from './pipeline-metrics';
 
 /**
@@ -17,10 +23,12 @@ export type ChannelFilter = 'all' | ChannelKey;
 /**
  * Columnas de `conversations` que forman un `ConvSnapshot`. Incluye
  * `conversation_source` desde 2026-09-02: las métricas de outbound distinguen
- * bienvenida de palabra clave por ese campo.
+ * bienvenida de palabra clave por ese campo. Y desde 2026-09-03 `lead_id`,
+ * `ai_paused_until` e `is_handoff_to_human`: las alertas de conversación
+ * dejan fuera lo pausado, lo pasado a la entrenadora y las pruebas de Iván.
  */
 export const CONV_SNAPSHOT_SELECT =
-  'id, state, is_qualified, phase_number, channel_id, direction, last_message_at, created_at, conversation_source';
+  'id, state, is_qualified, phase_number, channel_id, direction, last_message_at, created_at, conversation_source, lead_id, ai_paused_until, is_handoff_to_human';
 
 export async function loadChannelMap(
   supabase: SupabaseClient,
@@ -131,4 +139,83 @@ export async function enrichWithLeadReplies(
   }
   for (const c of outbound) c.has_lead_reply = replied.has(c.id);
   return { error: null };
+}
+
+const MESSAGE_PAGE_SIZE = 1000;
+
+/**
+ * Último mensaje de cada conversación (quién lo escribió y cuándo) más la
+ * fecha del último mensaje de la entrenadora. Alimenta las tres alertas de
+ * conversación de `dashboard-query.ts`.
+ *
+ * Se leen `conversation_messages` por lotes de 200 conversaciones (límite de
+ * URL de PostgREST) y, dentro de cada lote, por páginas de 1000 filas:
+ * Supabase corta cada respuesta en 1000 (max-rows) y 200 conversaciones con
+ * todos sus mensajes lo superan de sobra. El "último" se calcula en JS; el
+ * orden solo hace estable la paginación. Las conversaciones sin mensajes no
+ * aparecen en el mapa.
+ */
+export async function loadLastMessageBySource(
+  supabase: SupabaseClient,
+  convIds: number[],
+): Promise<{ lastMessages: Map<number, LastMessageInfo>; error: string | null }> {
+  const lastMessages = new Map<number, LastMessageInfo>();
+  const ids = Array.from(new Set(convIds));
+  for (let i = 0; i < ids.length; i += REPLY_LOOKUP_CHUNK) {
+    const chunk = ids.slice(i, i + REPLY_LOOKUP_CHUNK);
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await supabase
+        .from('conversation_messages')
+        .select('conversation_id, source, sent_at')
+        .in('conversation_id', chunk)
+        .order('sent_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(offset, offset + MESSAGE_PAGE_SIZE - 1);
+      if (error) return { lastMessages, error: error.message };
+      const rows = data ?? [];
+      for (const row of rows) {
+        const convId = Number(row.conversation_id);
+        const source = String(row.source) as MessageSource;
+        const sentAt = String(row.sent_at);
+        const prev = lastMessages.get(convId);
+        const lastHumanAt =
+          source === 'human' &&
+          (!prev?.lastHumanAt || Date.parse(sentAt) >= Date.parse(prev.lastHumanAt))
+            ? sentAt
+            : (prev?.lastHumanAt ?? null);
+        if (!prev || Date.parse(sentAt) >= Date.parse(prev.sentAt)) {
+          lastMessages.set(convId, { source, sentAt, lastHumanAt });
+        } else {
+          lastMessages.set(convId, { ...prev, lastHumanAt });
+        }
+      }
+      if (rows.length < MESSAGE_PAGE_SIZE) break;
+      offset += rows.length;
+    }
+  }
+  return { lastMessages, error: null };
+}
+
+/**
+ * Ids de los leads de prueba del tenant (los de Iván), para dejar sus
+ * conversaciones fuera de las alertas. El filtro va en la consulta
+ * (`first_name` = ivan / iván sin distinguir mayúsculas) y se repasa en JS
+ * con `isTestLeadName`, que es quien fija el criterio.
+ */
+export async function loadTestLeadIds(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<{ testLeadIds: Set<number>; error: string | null }> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id, first_name')
+    .eq('tenant_id', tenantId)
+    .or('first_name.ilike.ivan,first_name.ilike.iván');
+  if (error) return { testLeadIds: new Set(), error: error.message };
+  const testLeadIds = new Set<number>();
+  for (const row of data ?? []) {
+    if (isTestLeadName(row.first_name as string | null)) testLeadIds.add(Number(row.id));
+  }
+  return { testLeadIds, error: null };
 }

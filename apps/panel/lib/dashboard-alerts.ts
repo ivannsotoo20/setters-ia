@@ -1,24 +1,31 @@
 /**
  * Sprint Lambda — Alertas inteligentes del dashboard.
  *
- * Evalúa 4 reglas:
+ * Evalúa 6 reglas:
  *   1. WoW change ≥15% en KPIs core (con min 10 events por lado)
- *   2. Bottleneck por (canal × fase) — ≥5 leads >5d estancados
- *   3. Tasa cierre baja vs histórico (<50% del promedio 60d)
- *   4. Surge de no-shows (≥3× media diaria, count abs ≥3)
+ *   2. Sin respuesta de la persona, por (canal × fase) — ≥5 conversaciones
+ *      cuyo último mensaje es del setter y lleva ≥3 días sin contestación
+ *   3. Esperando respuesta — ≥1 persona cuyo último mensaje lleva >2 h sin
+ *      que nadie le conteste (critical)
+ *   4. Handoffs sin atender — ≥1 conversación en manos de la entrenadora con
+ *      >24 h sin mensaje suyo (warning)
+ *   5. Tasa cierre baja vs histórico (<50% del promedio 60d)
+ *   6. Surge de no-shows (≥3× media diaria, count abs ≥3)
  *
  * Devuelve max 5 alertas ordenadas por severity weight.
  */
 
 import type { KpiSnapshot } from './dashboard-metrics';
-import type { BottleneckInput, ChannelKey } from './dashboard-query';
+import type { ChannelKey, StallInput, WaitingResult } from './dashboard-query';
 import type { PipelineEvent } from './pipeline-metrics';
 
 export const ALERT_THRESHOLDS = {
   wowMinEvents: 10,
   wowMinChangePct: 0.15,
   bottleneckMinCount: 5,
-  bottleneckMinDays: 5,
+  bottleneckMinDays: 3,
+  awaitingReplyMinHours: 2,
+  handoffUnattendedMinHours: 24,
   closeRateBaselineDropFraction: 0.5, // 50% caída vs histórico
   closeRateMinOutcomes: 10,
   noShowMinAbsolute: 3,
@@ -29,7 +36,13 @@ export type AlertSeverity = 'critical' | 'warning' | 'info';
 
 export interface Alert {
   id: string;
-  type: 'wow_change' | 'bottleneck' | 'low_close_rate' | 'noshow_surge';
+  type:
+    | 'wow_change'
+    | 'bottleneck'
+    | 'awaiting_reply'
+    | 'handoff_unattended'
+    | 'low_close_rate'
+    | 'noshow_surge';
   severity: AlertSeverity;
   message: string;
   channel?: ChannelKey;
@@ -93,16 +106,56 @@ function wowChangeAlert(
   };
 }
 
-function bottleneckAlert(b: BottleneckInput): Alert | null {
-  if (b.count < ALERT_THRESHOLDS.bottleneckMinCount) return null;
-  if (b.daysStuckMax < ALERT_THRESHOLDS.bottleneckMinDays) return null;
+/**
+ * "Sin respuesta de la persona" (sustituye al bottleneck por fecha de cambio
+ * de fase, 2026-09-03). El grupo ya viene filtrado por `detectStalls`; aquí
+ * solo se aplican los umbrales y se redacta.
+ */
+function stallAlert(s: StallInput): Alert | null {
+  if (s.count < ALERT_THRESHOLDS.bottleneckMinCount) return null;
+  if (s.daysStuckMin < ALERT_THRESHOLDS.bottleneckMinDays) return null;
+  const severity: AlertSeverity = s.count >= 10 ? 'warning' : 'info';
   return {
-    id: `bottleneck_${b.channel}_${b.phase}`,
+    id: `bottleneck_${s.channel}_${s.phase}`,
     type: 'bottleneck',
-    severity: b.count >= 10 ? 'warning' : 'info',
-    message: `${b.count} leads de ${CHANNEL_LABELS_ES[b.channel]} llevan >${b.daysStuckMax} días estancados en ${PHASE_LABELS[b.phase] ?? `F${b.phase}`}`,
-    channel: b.channel,
-    weight: SEVERITY_WEIGHT[b.count >= 10 ? 'warning' : 'info'] + b.count,
+    severity,
+    message: `${s.count} personas de ${CHANNEL_LABELS_ES[s.channel]} llevan más de ${s.daysStuckMin} días sin contestar en ${PHASE_LABELS[s.phase] ?? `F${s.phase}`}`,
+    channel: s.channel,
+    weight: SEVERITY_WEIGHT[severity] + s.count,
+  };
+}
+
+/** Una sola persona sin atender ya es critical: es un lead esperando. */
+function awaitingReplyAlert(r: WaitingResult): Alert | null {
+  if (r.count < 1) return null;
+  const message =
+    r.count === 1
+      ? '1 persona está esperando respuesta y nadie le ha contestado'
+      : `${r.count} personas están esperando respuesta y nadie les ha contestado`;
+  return {
+    id: 'awaiting_reply',
+    type: 'awaiting_reply',
+    severity: 'critical',
+    message,
+    metric: 'awaitingReply',
+    weight: SEVERITY_WEIGHT.critical + r.count,
+  };
+}
+
+function handoffUnattendedAlert(r: WaitingResult): Alert | null {
+  if (r.count < 1) return null;
+  const hours = ALERT_THRESHOLDS.handoffUnattendedMinHours;
+  const message =
+    r.count === 1
+      ? `1 conversación lleva más de ${hours} h en manos de la entrenadora sin respuesta`
+      : `${r.count} conversaciones llevan más de ${hours} h en manos de la entrenadora sin respuesta`;
+  return {
+    id: 'handoff_unattended',
+    type: 'handoff_unattended',
+    severity: 'warning',
+    message,
+    metric: 'handoffUnattended',
+    weight: SEVERITY_WEIGHT.warning + r.count,
   };
 }
 
@@ -166,7 +219,9 @@ function noShowSurgeAlert(input: {
 
 export function computeAlerts(input: {
   kpis: KpiSnapshot;
-  bottlenecks: BottleneckInput[];
+  stalls: StallInput[];
+  awaitingReply?: WaitingResult;
+  unattendedHandoffs?: WaitingResult;
   closeRateBaseline: number | null;
   noShowCurrentCount: number;
   noShowWindowDays: number;
@@ -188,13 +243,25 @@ export function computeAlerts(input: {
     if (a) out.push(a);
   }
 
-  // 2. Bottlenecks
-  for (const b of input.bottlenecks) {
-    const a = bottleneckAlert(b);
+  // 2. Sin respuesta de la persona, por (canal × fase)
+  for (const s of input.stalls) {
+    const a = stallAlert(s);
     if (a) out.push(a);
   }
 
-  // 3. Tasa cierre baja
+  // 3. Esperando respuesta
+  if (input.awaitingReply) {
+    const a = awaitingReplyAlert(input.awaitingReply);
+    if (a) out.push(a);
+  }
+
+  // 4. Handoffs sin atender
+  if (input.unattendedHandoffs) {
+    const a = handoffUnattendedAlert(input.unattendedHandoffs);
+    if (a) out.push(a);
+  }
+
+  // 5. Tasa cierre baja
   const closeAlert = lowCloseRateAlert({
     currentRate: input.kpis.closeRate.current,
     currentDenom: input.kpis.closeRate.denominator,
@@ -202,7 +269,7 @@ export function computeAlerts(input: {
   });
   if (closeAlert) out.push(closeAlert);
 
-  // 4. Surge no-shows
+  // 6. Surge no-shows
   const noShowAlert = noShowSurgeAlert({
     currentCount: input.noShowCurrentCount,
     windowDays: input.noShowWindowDays,

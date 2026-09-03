@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { computeAlerts, ALERT_THRESHOLDS } from '../../lib/dashboard-alerts';
 import type { KpiSnapshot } from '../../lib/dashboard-metrics';
-import type { BottleneckInput } from '../../lib/dashboard-query';
+import type { StallInput, WaitingResult } from '../../lib/dashboard-query';
 import type { PipelineEvent } from '../../lib/pipeline-metrics';
 
 function emptyKpis(): KpiSnapshot {
@@ -24,7 +24,7 @@ describe('computeAlerts — WoW change', () => {
     k.leads = { current: 11, previous: 12, deltaPct: -0.083, deltaSign: 'down', hasInsufficientData: false };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -38,7 +38,7 @@ describe('computeAlerts — WoW change', () => {
     k.scheduled = { current: 5, previous: 8, deltaPct: -0.375, deltaSign: 'down', hasInsufficientData: true };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -52,7 +52,7 @@ describe('computeAlerts — WoW change', () => {
     k.scheduled = { current: 12, previous: 18, deltaPct: -0.333, deltaSign: 'down', hasInsufficientData: false };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -69,7 +69,7 @@ describe('computeAlerts — WoW change', () => {
     k.won = { current: 15, previous: 10, deltaPct: 0.5, deltaSign: 'up', hasInsufficientData: false };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -85,7 +85,7 @@ describe('computeAlerts — WoW change', () => {
     k.leads = { current: 20, previous: 0, deltaPct: null, deltaSign: 'up', hasInsufficientData: false };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -95,14 +95,14 @@ describe('computeAlerts — WoW change', () => {
   });
 });
 
-describe('computeAlerts — bottlenecks', () => {
-  it('5 leads >5d en F3 → alerta info', () => {
-    const b: BottleneckInput[] = [
-      { channel: 'fb', phase: 3, count: 5, daysStuckMax: 7 },
+describe('computeAlerts — sin respuesta de la persona', () => {
+  it('5 personas ≥3d sin contestar en F3 → alerta info', () => {
+    const b: StallInput[] = [
+      { channel: 'fb', phase: 3, count: 5, daysStuckMin: 7, daysStuckMax: 7 },
     ];
     const a = computeAlerts({
       kpis: emptyKpis(),
-      bottlenecks: b,
+      stalls: b,
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -111,17 +111,18 @@ describe('computeAlerts — bottlenecks', () => {
     expect(a).toHaveLength(1);
     expect(a[0]!.type).toBe('bottleneck');
     expect(a[0]!.severity).toBe('info');
-    expect(a[0]!.message).toMatch(/Facebook/);
-    expect(a[0]!.message).toMatch(/F3/);
+    expect(a[0]!.message).toBe(
+      '5 personas de Facebook llevan más de 7 días sin contestar en F3 (cualificación)',
+    );
   });
 
-  it('10+ leads → severity warning', () => {
-    const b: BottleneckInput[] = [
-      { channel: 'wa', phase: 4, count: 14, daysStuckMax: 8 },
+  it('10+ personas → severity warning', () => {
+    const b: StallInput[] = [
+      { channel: 'wa', phase: 4, count: 14, daysStuckMin: 8, daysStuckMax: 8 },
     ];
     const a = computeAlerts({
       kpis: emptyKpis(),
-      bottlenecks: b,
+      stalls: b,
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -130,13 +131,13 @@ describe('computeAlerts — bottlenecks', () => {
     expect(a[0]!.severity).toBe('warning');
   });
 
-  it('< 5 leads → no alerta', () => {
-    const b: BottleneckInput[] = [
-      { channel: 'wa', phase: 4, count: 3, daysStuckMax: 8 },
+  it('< 5 personas → no alerta', () => {
+    const b: StallInput[] = [
+      { channel: 'wa', phase: 4, count: 3, daysStuckMin: 8, daysStuckMax: 8 },
     ];
     const a = computeAlerts({
       kpis: emptyKpis(),
-      bottlenecks: b,
+      stalls: b,
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -160,7 +161,7 @@ describe('computeAlerts — low close rate', () => {
     };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: 0.28,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -185,7 +186,7 @@ describe('computeAlerts — low close rate', () => {
     };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: 0.28,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -207,7 +208,7 @@ describe('computeAlerts — low close rate', () => {
     };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: 0.5,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -229,7 +230,7 @@ describe('computeAlerts — low close rate', () => {
     };
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 0,
       noShowWindowDays: 7,
@@ -254,7 +255,7 @@ describe('computeAlerts — no-show surge', () => {
   it('count <3 → no alerta', () => {
     const a = computeAlerts({
       kpis: emptyKpis(),
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 2,
       noShowWindowDays: 7,
@@ -266,7 +267,7 @@ describe('computeAlerts — no-show surge', () => {
   it('count >=3 sin baseline (0 historic) Y >=5 abs → alerta warning', () => {
     const a = computeAlerts({
       kpis: emptyKpis(),
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 6,
       noShowWindowDays: 7,
@@ -282,7 +283,7 @@ describe('computeAlerts — no-show surge', () => {
     const histEv = Array.from({ length: 12 }, () => noShowEv('2026-04-15T10:00:00Z'));
     const a = computeAlerts({
       kpis: emptyKpis(),
-      bottlenecks: [],
+      stalls: [],
       closeRateBaseline: null,
       noShowCurrentCount: 6,
       noShowWindowDays: 7,
@@ -303,13 +304,13 @@ describe('computeAlerts — sort + max 5', () => {
     k.qualified = { current: 25, previous: 12, deltaPct: 1.08, deltaSign: 'up', hasInsufficientData: false };
     k.scheduled = { current: 30, previous: 15, deltaPct: 1, deltaSign: 'up', hasInsufficientData: false };
     k.won = { current: 50, previous: 25, deltaPct: 1, deltaSign: 'up', hasInsufficientData: false };
-    const b: BottleneckInput[] = [
-      { channel: 'wa', phase: 3, count: 14, daysStuckMax: 8 },
-      { channel: 'fb', phase: 4, count: 7, daysStuckMax: 6 },
+    const b: StallInput[] = [
+      { channel: 'wa', phase: 3, count: 14, daysStuckMin: 8, daysStuckMax: 8 },
+      { channel: 'fb', phase: 4, count: 7, daysStuckMin: 6, daysStuckMax: 6 },
     ];
     const a = computeAlerts({
       kpis: k,
-      bottlenecks: b,
+      stalls: b,
       closeRateBaseline: null,
       noShowCurrentCount: 5,
       noShowWindowDays: 7,
@@ -328,6 +329,88 @@ describe('ALERT_THRESHOLDS exported', () => {
     expect(ALERT_THRESHOLDS.wowMinEvents).toBe(10);
     expect(ALERT_THRESHOLDS.wowMinChangePct).toBe(0.15);
     expect(ALERT_THRESHOLDS.bottleneckMinCount).toBe(5);
-    expect(ALERT_THRESHOLDS.bottleneckMinDays).toBe(5);
+    expect(ALERT_THRESHOLDS.bottleneckMinDays).toBe(3);
+    expect(ALERT_THRESHOLDS.awaitingReplyMinHours).toBe(2);
+    expect(ALERT_THRESHOLDS.handoffUnattendedMinHours).toBe(24);
+  });
+});
+
+function none(): WaitingResult {
+  return { count: 0, hoursWaitingMax: 0, convIds: [] };
+}
+
+function baseInput() {
+  return {
+    kpis: emptyKpis(),
+    stalls: [] as StallInput[],
+    awaitingReply: none(),
+    unattendedHandoffs: none(),
+    closeRateBaseline: null,
+    noShowCurrentCount: 0,
+    noShowWindowDays: 7,
+    historicEvents: [] as PipelineEvent[],
+  };
+}
+
+describe('computeAlerts — esperando respuesta', () => {
+  it('1 persona esperando → alerta critical, en singular', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      awaitingReply: { count: 1, hoursWaitingMax: 3, convIds: [7] },
+    });
+    expect(a).toHaveLength(1);
+    expect(a[0]!.type).toBe('awaiting_reply');
+    expect(a[0]!.severity).toBe('critical');
+    expect(a[0]!.message).toBe('1 persona está esperando respuesta y nadie le ha contestado');
+  });
+
+  it('varias → plural', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      awaitingReply: { count: 4, hoursWaitingMax: 30, convIds: [1, 2, 3, 4] },
+    });
+    expect(a[0]!.message).toBe('4 personas están esperando respuesta y nadie les ha contestado');
+  });
+
+  it('0 → sin alerta', () => {
+    expect(computeAlerts(baseInput())).toEqual([]);
+  });
+
+  it('va por delante de un warning de sin-respuesta: critical pesa más', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      stalls: [{ channel: 'wa', phase: 2, count: 14, daysStuckMin: 3, daysStuckMax: 9 }],
+      awaitingReply: { count: 1, hoursWaitingMax: 3, convIds: [7] },
+    });
+    expect(a.map((x) => x.type)).toEqual(['awaiting_reply', 'bottleneck']);
+  });
+});
+
+describe('computeAlerts — handoffs sin atender', () => {
+  it('1 conversación → warning, en singular', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      unattendedHandoffs: { count: 1, hoursWaitingMax: 30, convIds: [9] },
+    });
+    expect(a).toHaveLength(1);
+    expect(a[0]!.type).toBe('handoff_unattended');
+    expect(a[0]!.severity).toBe('warning');
+    expect(a[0]!.message).toBe(
+      '1 conversación lleva más de 24 h en manos de la entrenadora sin respuesta',
+    );
+  });
+
+  it('varias → plural', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      unattendedHandoffs: { count: 3, hoursWaitingMax: 50, convIds: [1, 2, 3] },
+    });
+    expect(a[0]!.message).toBe(
+      '3 conversaciones llevan más de 24 h en manos de la entrenadora sin respuesta',
+    );
+  });
+
+  it('0 → sin alerta', () => {
+    expect(computeAlerts({ ...baseInput(), unattendedHandoffs: none() })).toEqual([]);
   });
 });
