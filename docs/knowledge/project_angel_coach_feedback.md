@@ -38,6 +38,51 @@ eslogan, y además es la estructura *"no es X, es Y"* que la doctrina §17 marca
 
 ## Estado
 
+**Ronda 4 aplicada 2026-09-05** sobre su feedback del 03-09 y 04-09 (13 capturas). 102.279 caracteres,
++77 tras cortar ~2.900. Las capturas corrían ya con la ronda 3 y sirvieron de test de regresión: cero
+"Y" abriendo burbuja, la petición del número sale tal cual, el microcompromiso aguanta (critica el
+turno B, no el A) y del literal del precio dice *"me gusta mucho la contestación"*.
+
+**Lo que trae, y el cuello que obligó a replantear.** Cuatro de sus diez peticiones caían sobre las
+mismas cinco líneas —los carriles de F1— y como cuatro parches habrían dejado ocho salidas sobre una
+regla que dice *"solo hay una salida por turno"* sin precedencia. Se reescribió F1 una vez con el
+criterio real: **qué te pide y cuánto te ha dado**. Tres salidas —te pide / te da / no te da— con
+precedencia declarada, y las cuatro peticiones caben dentro.
+
+1. **El puente antes de la primera pregunta.** Sus dos acuses estaban clavados a "te da las gracias"
+   y "solo reacciona con un emoji"; un "Buenas tio" no tocaba ninguno y la pregunta salía a pelo.
+   Vuelve el literal *"Espero que estes genial señor"* — que la ronda 3 había escrito y borrado por
+   huérfano, correctamente entonces— y **"señor" entra al léxico**.
+2. **El acuse toma posición** cuando el lead pide el servicio, en vez de agradecer el interés. Y **dos
+   acuses distintos**, no uno: el que dice QUÉ quiere se lleva los deícticos, el que solo pide "INFO"
+   no, porque todavía no hay antecedente al que apunten.
+3. **La validación se ancla en SU resultado, nunca en la frecuencia.** Su queja, dos veces: *"nunca
+   las enfoco como yéndome a lo que hacen los demás"*. Normalizar una emoción sí puede apelar a que
+   le pasa a más gente; validar su objetivo o su bloqueo, no.
+4. **La propuesta lleva su objetivo dentro**, con sus palabras. **No se rebautizó la videollamada**:
+   Iván lo dejó a decisión de Ángel (compuerta abierta).
+5. **Precio**: caso 0b cuando la pregunta es ambigua —se contestan las dos variables—, acotado al
+   turno B de F5 en adelante. Y *"sin ningun tipo de compromiso"* en la rama de insistencia.
+6. **El que no da el número no se suelta**: se fija el canal, se le pide la franja, y **nunca apagado
+   mudo detrás de un sí**. Obligó a acotar la prohibición de preguntar disponibilidad, que era global:
+   la de ENTRENAR sigue vetada, la franja de la llamada se pregunta.
+7. **El turno muerto.** Regresión de la ronda 3: borré *"nunca dos validaciones seguidas sin avanzar"*
+   pegada a otra media línea que sí sobraba. Vuelve como test sobre el texto escrito.
+
+**Y un fallo de seguridad que destapó la simulación, no el entrenador**: una restricción alimentaria
+("por salud tengo que seguir una dieta específica") caía en el primer bullet del trigger C y apagaba
+mudo a un lead perfecto justo en el turno en que había volcado su caso entero. Ahora está nombrada en
+el NO PARAS, y el bullet de PARAS se acotó a lo que condiciona hoy si puede entrenar.
+
+**Lo que dejé fuera, y por qué.** La lista de edad/peso/altura de su literal real deroga la frontera
+"su vida sí, su método no" que él mismo pidió el 31-08 → compuerta. Y la segunda burbuja del mensaje
+largo obliga a mover el trigger clínico como efecto colateral de una corrección de tono.
+
+**La lección de la ronda, y es nueva**: el literal verificado de un entrenador **no es portable a otro
+disparador**. El acuse que toma posición se verificó sobre un lead que ya había dicho qué quería, y
+reutilizarlo con un "INFO" pelado deja dos deícticos sin antecedente prometiéndole conseguir algo que
+él no ha nombrado. Verificado ≠ universal: hay que mirar sobre qué input se verificó.
+
 **Ronda 3 aplicada 2026-09-02** sobre su feedback del 28-08, 31-08 y 01-09 (24 capturas). El bloque
 queda en 102.164 caracteres: **271 menos** que antes de la ronda, que es la regla
 ([[feedback_coach_marco_no_prohibiciones]]).
@@ -501,8 +546,9 @@ resto repartido entre *Entonces · Así que · Pues · Por eso mismo · Aunque*.
 ### T27 · Dos opciones (regresión de la ronda 1)
 Recorrer el **GUION A entero** y contar las preguntas que ofrecen dos respuestas.
 ⛔ Falla si aparece **alguna** en el descubrimiento (objetivo, recorrido, contexto, porqué, bloqueo).
-Las dos únicas permitidas son el saludo de F1 y el filtro de intención de F3, y las dos ya vienen
-escritas.
+Las únicas permitidas son la **primera pregunta literal** de F1, la variante del filtro para el que
+va por su cuenta y la verificación del puente de F4, y las tres ya vienen escritas. (Ojo: desde la
+ronda 4 el saludo de F1 es otra burbuja distinta, así que "el saludo" ya no nombra a esa pregunta.)
 → Vigilar en especial la del **aterrizaje del objetivo** (turno 3) y la de la **causa del bloqueo**
 (turno 8): son las dos donde se coló.
 
@@ -725,21 +771,29 @@ un estado?"*.
 ⛔ Falla si le suelta el guion de objeción de precio: no ha objetado, ha preguntado.
 
 ### R12 · El precio, la justificación
-`venga, pero cuanto cuesta`
-→ **"no puedo"** darte una cifra + los tres factores (tiempo, tipo de programa, método de pago) +
-*"te parece?"*. ⛔ Falla con *"entiendeme"* · con *"no me gusta darte una cifra"* · si remata con la
-pregunta de dos puertas, que ahora es segunda línea.
+`venga, pero cuanto cuesta` (pegado a la propuesta, sin decir de qué)
+→ **Contesta las DOS variables**: que la videollamada es gratuita, y que del programa no puede dar
+cifra + los tres factores (tiempo, tipo de programa, método de pago) + *"te parece?"*.
+⛔ Falla si asume que pregunta por el programa y contesta solo eso · con *"entiendeme"* · con *"no me
+gusta darte una cifra"* · si remata con la pregunta de dos puertas, que es segunda línea.
 
 ### R13 · El precio, insistiendo
 `ya pero dame un rango al menos`
-→ Repite la imposibilidad y **le devuelve la decisión** (*"con toda la informacion en tu mano valoras
-libremente"*), cierra en *"Te parece?"* y **espera**. ⛔ Falla si le argumenta que es una inversión ·
+→ Repite la imposibilidad, dice **"sin ningun tipo de compromiso"** y le devuelve la decisión
+(*"con toda la informacion en tu mano valoras libremente"*), cierra en *"Te parece?"* y **espera**.
+⛔ Falla si le argumenta que es una inversión · si se come el "sin compromiso" ·
 **si le pide el número de WhatsApp con la objeción abierta**.
 
 ### R14 · La recapitulación seria
 Al llegar al puente.
 ⛔ Falla si no abre con *"Entonces, segun me has comentado,"* · si le recita datos suyos que no sean
 el freno y el objetivo.
+
+### R15b · El que no da el número
+`prefiero no dar mi numero` (tras el sí a la propuesta)
+→ **No lo suelta**: fija el canal (*"lo agendamos por aqui entonces"*) y le pide la franja igual.
+⛔ Falla con *"escribeme tu por aqui cuando quieras"*: le pone a disposición del lead y se apaga sin
+tener lo que Ángel necesita para agendar.
 
 ### R15 · La petición del número
 Tras el sí al turno B.
