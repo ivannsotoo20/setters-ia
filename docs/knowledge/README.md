@@ -141,10 +141,16 @@ valor, nunca el valor. Escanear antes de commitear.
   2026-07-28. **Reclamó el bloque de método que la doctrina §19 le había quitado** y se le
   devolvió con 5 blindajes: hay que enseñárselo a Rubén antes de desplegar, porque desde fuera
   parece la regresión de lo que se corrigió en Frodo.
-- [Miguel Aguado — mujeres 35-70 sin dietas](project_miguel_coach_feedback.md) — ronda 1 aplicada
-  **2026-07-31**. Las conversaciones morían en el tramo final porque **el bloque tenía escrito el
-  techo** (tope de 2 preguntas de cambio, F3 y F4 compartiéndolo, y la pregunta de necesidad gastada
-  dentro del literal de handoff). Trae la **ESCALERA DE CAMBIO** de 4 escalones en F4 (impacto →
+- [Miguel Aguado — mujeres 35-70 sin dietas](project_miguel_coach_feedback.md) — última ronda
+  **2026-09-05, LOS HITOS** (reunión de Rubén del 03-09). ⚠️ **Esta ronda DESMONTA la escalera de
+  cambio que le añadimos en julio**: las cuatro preguntas que Rubén mandó eliminar eran, una por una,
+  sus cuatro escalones. Colapsa a UNA pregunta (la de necesidad) con **dos puertas** para el handoff
+  —que nombre la necesidad, o que diga qué espera—, porque en Miguel el handoff ES el producto y sin
+  la segunda puerta se secaba. Las 7 casillas de CSM-06 pasan a 4 hitos, la conexión adopta el literal
+  que dictó Rubén, y la parada se migra por fin a `manual_attention` + `skip_reply` (§30).
+  ⚠️ **El permiso para repetir preguntas estaba escrito**: la escalera autorizaba «una variante del
+  mismo escalón reformulada», y el anti-bucle se medía por etapa y no por dato. Contexto de la ronda 1
+  (por qué nació la escalera):
   importancia → urgencia → necesidad), candidata a doctrina si mide bien. Su banco de objeciones ya
   es la referencia externa de §27.
 - [Gonzalo Camacho — oncología](project_gonzalo_coach_feedback.md) — **avatar nuevo (el 5º) y el
@@ -199,6 +205,18 @@ valor, nunca el valor. Escanear antes de commitear.
   de un extra. Es también el bloque con la densidad de prohibiciones más baja del corpus, escrito ya
   bajo la directiva del 24-ago. ⚠️ **Compuertas: notia, "jaja", emojis en contexto, la dos-puertas de
   su primera pregunta, y corpus de voz corto (5 literales verificados).**
+- [Irene Esteve — clínica dental estética](project_irene_esteve_clinica_dental.md) — **avatar nuevo
+  (el 8º), el cuarto clínico y el primero que NO es un entrenador**: quien habla es una CLÍNICA con
+  equipo, en 1ª del plural, y la doctora va en 3ª. Carillas de porcelana sin tallado, Madrid /
+  Barcelona / Elda-Petrer. Ronda 0 el **2026-09-06**, escrita de cero desde su formulario más
+  investigación de cinco frentes. Seis inversiones respecto al corpus: el objetivo ya viene dicho, el
+  freno es la decisión y no la conducta, la zona prohibida es la **valoración clínica**, el precio
+  **se da entero** (650 €/pieza y el mínimo de 10 en la misma frase, o es señuelo sancionable), el
+  cierre es una **visita presencial** sin señal (el KPI es la asistencia), y los terceros se atienden.
+  **Cualificar aquí no es filtrar**: quien no es caso de carillas es caso de ortodoncia. Y el setter
+  **declara que es una IA en el primer mensaje** por el art. 50 del AI Act, no por doctrina. Pasada
+  adversarial de 5 lentes: 94 hallazgos crudos, 22 confirmados, todos aplicados. Principios en
+  [`avatares/clinica-dental-estetica/principios.md`](../../prompts/coach-engineering/avatares/clinica-dental-estetica/principios.md).
 - [Alex — escaladores (Alejandro Padilla)](project_alex_coach_feedback.md) — **primer coach de
   rendimiento deportivo** de la flota, y el último que quedaba en el formato antiguo `BLOQUE 0…11`.
   Su freno no es la ignorancia ni la constancia: es el **conformismo**, y por eso el objetivo se
