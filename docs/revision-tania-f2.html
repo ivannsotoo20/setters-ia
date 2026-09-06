@@ -1,0 +1,268 @@
+<title>Literales de Tania, F2</title>
+<style>
+:root{--navy:#0F1B2D;--navy2:#1B2C46;--azul:#2563EB;--azul-soft:#EFF4FF;--naranja:#F97316;--naranja-soft:#FFF3E9;
+--verde:#0F9D58;--verde-soft:#EAF7EF;--rojo:#D93025;--rojo-soft:#FDEDEC;
+--bg:#F7F9FC;--card:#FFF;--line:#E3E9F2;--txt:#16233A;--mut:#63718A}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:0 20px 110px}
+header{background:var(--navy);color:#fff;padding:42px 0 34px;margin-bottom:26px}
+header .wrap{padding-bottom:0}
+h1{margin:0 0 10px;font-size:29px;letter-spacing:-.4px;line-height:1.2}
+h1 b{color:#7FB0FF}
+.sub{color:#A9BAD4;font-size:15px;max-width:72ch;margin:0}
+.kpis{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.kpi{background:var(--navy2);border:1px solid #2C4166;border-radius:9px;padding:9px 14px;font-size:13px;color:#C9D8EE}
+.kpi b{color:#fff;font-size:17px;display:block;line-height:1.3}
+.lead{color:var(--mut);font-size:15px;max-width:82ch;margin:0 0 8px}
+.lead b{color:var(--txt)}
+.callout{background:var(--azul-soft);border:1px solid #C9DBFF;border-radius:10px;padding:14px 16px;
+margin:16px 0 22px;font-size:14.5px;color:#1B3A73}
+.callout b{color:var(--azul)}
+h4.sec{font-size:12.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--mut);
+margin:30px 0 10px;font-weight:800;display:flex;align-items:center;gap:9px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:17px 19px;margin:13px 0}
+.card.ok{border-color:var(--verde);background:var(--verde-soft)}
+.card.no{border-color:var(--rojo);background:var(--rojo-soft)}
+.card.ivan{box-shadow:0 0 0 2px var(--naranja) inset}
+.chead{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:6px}
+.tagname{font:700 12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--navy)}
+.chip{font-size:10.5px;font-weight:800;letter-spacing:.6px;padding:3px 8px;border-radius:5px;
+background:#EEF1F6;color:var(--mut)}
+.chip.ivan{background:var(--naranja);color:#fff}
+.chip.dec{background:#FDE8D6;color:#9A4A10}
+.when{font-size:13px;color:var(--mut);margin:2px 0 12px;padding-left:11px;border-left:2px solid var(--line)}
+.msg{margin:5px 0}
+.bub{background:var(--azul-soft);border-radius:12px 12px 12px 3px;padding:8px 13px;margin:5px 0;
+display:table;max-width:92%;font-size:14.5px;color:#14203A}
+.bub.persona{background:#F1F3F6;color:#4A5A72;border-radius:12px 12px 3px 12px;margin-left:auto;font-style:italic}
+.bub.persona::before{content:"la persona: ";font-style:normal;font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:#8E9BB0;display:block;margin-bottom:2px}
+.bub.marco{max-width:100%;display:block;background:#FBF8EF;color:#3F3A2A;border-radius:8px}
+.note{font-size:13.5px;color:var(--mut);margin-top:11px;padding-left:11px;border-left:2px solid var(--line)}
+.acts{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.b{border:1px solid var(--line);background:var(--card);border-radius:7px;padding:6px 13px;
+font-size:13px;font-weight:600;cursor:pointer;color:var(--mut)}
+.b.y.on{background:var(--verde);border-color:var(--verde);color:#fff}
+.b.n.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
+textarea{width:100%;margin-top:9px;border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+font:inherit;font-size:14px;resize:vertical;min-height:56px;background:var(--card);color:var(--txt)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--navy);color:#fff;padding:12px 0;z-index:20}
+.bar .wrap{padding-bottom:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar .st{font-size:14px;color:#B9C9E2}.bar .st b{color:#fff}
+.bar .go{margin-left:auto;background:var(--naranja);color:#fff;border:none;border-radius:8px;
+padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer}
+#out{white-space:pre-wrap;background:var(--navy);color:#D7E4F6;border-radius:10px;padding:16px;
+font:13px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;margin-top:14px;display:none;
+max-height:52vh;overflow:auto}
+</style>
+
+<header><div class="wrap">
+<h1>Tania — los literales de la <b>F2 nueva</b></h1>
+<p class="sub">20 turnos del setter más el marco mental del descubrimiento. Cada tarjeta lleva lo que escribió la persona y, debajo, las burbujas del setter tal cual saldrían. Marca los que te valen, reescribe los que no, y al final copia las decisiones para que las aplique al bloque.</p>
+<div class="kpis">
+<div class="kpi"><b>21</b>tarjetas</div>
+<div class="kpi"><b>1</b>tuyo, de referencia</div>
+<div class="kpi"><b>5</b>con decisión pendiente</div>
+<div class="kpi"><b id="k">0</b>revisadas</div>
+</div>
+</div></header>
+
+<div class="wrap">
+<p class="lead">Voz de Tania tal como la fija el bloque: tuteo, sin "¿", sin exclamación, burbujas cortas, una sola pregunta por turno y en la última burbuja, registro de profesional en consulta. Los literales van con "?" simple: el "??" de energía es de Alfonso y de Pepe, no de ella. <b>Cada línea es una burbuja.</b></p>
+<div class="callout"><b>Lo que intento aplicar de tu corrección:</b> el acuse es una frase completa que toma posición y le quita la etiqueta de normal a lo que ella ha aceptado como normal; después un giro y una sola pregunta en presente sobre su día, que pide lo que siente o diría, con la referencia cerrada en la espalda. Cero hipotéticas, cero eco de sus palabras, cero dos puertas en el descubrimiento, cero emoción que ella no haya nombrado. El tuyo (E) va marcado en naranja y no lo he tocado. Las cinco tarjetas con chip <b>decisión</b> chocan con algo que hoy está escrito en el bloque y te toca decidir.</div>
+<div id="cards"></div>
+</div>
+
+<div class="bar"><div class="wrap">
+<span class="st"><b id="s1">0</b> me valen · <b id="s2">0</b> a cambiar · <b id="s3">21</b> sin ver</span>
+<button class="go" onclick="salida()">Copiar decisiones</button>
+</div></div>
+<div class="wrap"><pre id="out"></pre></div>
+
+<script>
+const D=[
+{tag:"MARCO_descubrimiento",fase:"El marco — cómo se piensa la F2",
+when:"Texto para el bloque, no es un mensaje. Sustituye a la ficha de tres casillas en orden.",
+msgs:[["marco","Aquí entiendes la situación de una persona y haces que lo note. Qué le pasa, qué ha dejado de hacer por la espalda y si quiere cambiarlo te lo va soltando en su orden, si cada turno tuyo le da motivo para seguir contando."],
+["marco","Cuando su mensaje trae algo, tu turno tiene dos partes. Primero tu lectura, una frase completa con tu criterio de profesional encima, casi siempre para quitarle la etiqueta de normal a lo que ya ha aceptado, sin devolverle sus datos ni ponerle una emoción que no nombró. Si esa lectura valdría para cualquiera, sobra. Después un giro y una sola pregunta sobre su día, en presente, nombrando la espalda y no \"esto\"."],
+["marco","Si su mensaje es una palabra o un emoji, no hay nada que leer: acuse de una palabra y la pregunta más pequeña y concreta que tengas, nunca la que acaba de esquivar."],
+["marco","Su vida se pregunta (a qué se dedica, cuántas horas pasa en una silla, si conduce, desde cuándo). Lo que probó se recoge y se sigue, eso lo valora Tania con su caso delante."],
+["marco","Cualificas mientras conversas, no después."]]},
+
+{tag:"A_F1_abrio_Tania",fase:"F1 — quién abrió",
+when:"Tania abrió con su bienvenida a una seguidora y la persona contesta sin contenido.",
+lead:"Hola no para nada / Saludos",
+msgs:[["setter","Encantada de tenerte por aquí"],["setter","Qué fue lo que te hizo empezar a seguirme?"]]},
+
+{tag:"B_F1_abrio_la_persona",fase:"F1 — quién abrió",
+when:"La persona escribe ella primero, sin plantilla delante.",
+lead:"Hola espalda / Espalda / quién eres?",
+msgs:[["setter","Hola, soy Tania, acompaño a personas que llevan tiempo con dolor de espalda"],["setter","Me escribes por algo que te está pasando a ti con la espalda?"]],
+n:"Choca con Q: aquí dice soy Tania y allí asistente virtual de Tania. Decide cuál de las dos identidades manda."},
+
+{tag:"C_F1_viene_del_formulario",fase:"F1 — quién abrió",
+when:"Viene del formulario, recibió la plantilla de WhatsApp y contesta dando paso. Todo lo del formulario está leído y no se recita.",
+lead:"Si claro",
+msgs:[["setter","Genial"],["setter","Cómo te está afectando la espalda en tu día a día?"]]},
+
+{tag:"D_F2_el_par",fase:"F2 — el par: lectura con posición + pregunta en presente",
+when:"Trae diagnóstico, tiempo y dos cosas que ya no puede hacer.",
+lead:"hernia L5-S1 desde hace 4 años, vuelvo con síntomas, no me deja dormir ni estar sentada para comer",
+msgs:[["setter","Que después de 4 años vuelva y te quite hasta el sueño no es algo que tengas que dar por normal"],["setter","Así que por saber cómo es tu día, cuántas horas te toca pasar en una silla?"]],
+n:"Pregunta de contexto de su vida (horas sentada) en vez de pedirle renuncias que no ha contado."},
+
+{tag:"E_F2_tu_literal",fase:"F2 — el par: lectura con posición + pregunta en presente",esIvan:true,
+when:"Tu literal de referencia. No lo he tocado.",
+lead:"Pues ya no salgo como antes por miedo al dolor, ya no hago el quehacer de la casa como antes",
+msgs:[["setter","Al final reducir las salidas y el hacer cosas por casa por miedo al dolor es algo que no deberíamos de tener normalizado"],["setter","Pero por ejemplo, qué es lo que sientes que más te ha limitado a hacer en tu día a día el dolor de espalda?"]]},
+
+{tag:"F_F2_sentada_y_manejando",fase:"F2 — el par: lectura con posición + pregunta en presente",
+when:"Conversación real 10767. Contesta a dónde le duele más.",
+lead:"Cuando estoy sentada y manejando",
+msgs:[["setter","Sentada y manejando son justo los ratos que el día no te deja esquivar, y ahí no es un dolor con el que haya que convivir"],["setter","Pues por hacerme una idea, a qué te dedicas?"]],
+n:"Se respeta su palabra, manejando. Si el formulario ya trae a qué se dedica, la pregunta es la de horas de D."},
+
+{tag:"G_F2_nombra_lo_que_ha_hecho",fase:"F2 — el par: lectura con posición + pregunta en presente",
+when:"Cuenta ella lo que ha hecho. No se pregunta, se reconoce sin autopsia y se sigue en presente.",
+lead:"10 sesiones de fisio y ahí sigue",
+msgs:[["setter","Diez sesiones son un recorrido, y que el dolor siga igual después de eso no es para conformarse"],["setter","Entonces en qué parte de tu día dirías que te está frenando más la espalda?"]]},
+
+{tag:"H_F2_objetivo_en_sus_palabras",fase:"F2 — el par: lectura con posición + pregunta en presente",
+when:"Da el objetivo con sus palabras. Se recoge sin cifra ni plazo, y la pregunta decide la rama de F3 (con o sin profesional).",
+lead:"Poder moverme sin dolor y hacer mi vida normal",
+msgs:[["setter","Moverte sin dolor y hacer tu vida no es pedir mucho, es lo mínimo"],["setter","Ahora bien, quién te está viendo la espalda?"]]},
+
+{tag:"I_caudal_bajo_nada",fase:"Caudal bajo — una palabra o una esquiva",
+when:"Le preguntaste qué ha dejado de hacer y contesta con una palabra. La pregunta esquivada se da por gastada.",
+lead:"Nada 😵‍💫",
+msgs:[["setter","Seguir con todo a pesar del dolor no quiere decir que no te esté limitando"],["setter","En un día cualquiera, qué es lo que haces distinto por la espalda?"]]},
+
+{tag:"J_caudal_bajo_todo",fase:"Caudal bajo — una palabra o una esquiva",
+when:"Contesta con un todo que no concreta nada.",
+lead:"Pues todo",
+msgs:[["setter","Cuando dices todo, es que el dolor ha dejado de ser un rato malo y se ha hecho con el día entero, y eso no tendría que ser lo normal"],["setter","Pues elige una sola, la que más notas que ya no haces como antes"]],
+n:"La segunda burbuja es una petición en imperativo, sin interrogación, para que una persona de caudal bajo pueda contestar con una sola cosa."},
+
+{tag:"K_caudal_bajo_si_claro",fase:"Caudal bajo — una palabra o una esquiva",
+when:"Contesta Si o Claro sin responder a lo que preguntaste. Un turno de una sola burbuja, con una pregunta más pequeña.",
+lead:"Si / Claro",
+msgs:[["setter","Para entender mejor tu situación, en qué momento del día notas más la espalda?"]]},
+
+{tag:"L_peticion_hay_cura",fase:"Peticiones directas — se contesta primero, se sigue después",
+when:"Pregunta directa en mitad del descubrimiento.",
+lead:"Hay cura o no hay cura?",
+msgs:[["setter","Decirte que sí sin conocer tu caso no sería honesta contigo, y decirte que no tampoco"],["setter","La gente que acompaño no viene buscando una cura, viene a volver a hacer lo que había dejado, y eso sí lo veo"],["setter","Pero dime, qué te ha hecho plantearte si tiene cura?"]]},
+
+{tag:"M_peticion_que_me_recomiendas",fase:"Peticiones directas — se contesta primero, se sigue después",
+when:"Pide una recomendación por chat. Se le da la única honesta sin conocerla.",
+lead:"Tú qué me recomiendas?",
+msgs:[["setter","Lo único que te puedo recomendar en serio sin conocerte es que no le des a la espalda más meses así"],["setter","Por eso mismo, qué has dejado de hacer ya por la espalda?"]]},
+
+{tag:"N_peticion_ciudad",fase:"Peticiones directas — se contesta primero, se sigue después",esDec:true,
+when:"Pregunta de persona. Se contesta breve y se devuelve; el país llega sin preguntarlo de frente.",
+lead:"En qué ciudad estás? / de dónde eres?",
+msgs:[["setter","En España, aunque trabajo online con gente de varios países"],["setter","Tú desde dónde me escribes?"]],
+n:"DECISIÓN: que Tania está en España no lo tengo confirmado por ella. Sale de una respuesta del modelo."},
+
+{tag:"O_precio_primera_vez",fase:"Precio temprano — sustituye a las respuestas 1ª y 2ª del bloque",esDec:true,
+when:"Pregunta el precio en conexión o descubrimiento, primera vez.",
+lead:"Cuánto cuesta?",
+msgs:[["setter","Prefiero no darte una cifra que luego no sea la real, y a ciegas lo sería"],["setter","Antes de eso, qué te ha hecho escribirme justo ahora?"]],
+n:"DECISIÓN: sustituye a la 1ª respuesta de coach_objections_price (la que hoy aparca con no te preocupes por eso ahora). Si el disparador ya se conoce, se retoma la pregunta que estaba pendiente."},
+
+{tag:"P_precio_segunda_vez",fase:"Precio temprano — sustituye a las respuestas 1ª y 2ª del bloque",esDec:true,
+when:"Insiste con el precio. A la tercera sigue siendo el handoff del bloque.",
+lead:"Ya, pero más o menos cuánto?",
+msgs:[["setter","No te lo voy a esquivar dos veces, la cifra te la doy con tu caso delante, y hoy de ti sé muy poco"],["setter","Así que empecemos por ahí, qué es lo que más te está costando hacer con la espalda?"]],
+n:"DECISIÓN: sustituye a la 2ª respuesta de coach_objections_price."},
+
+{tag:"Q_eres_una_IA",fase:"Eres una IA — responde y sigue",esDec:true,
+when:"Pregunta si habla con una IA. Hoy el bloque manda parar con handoff y la persona de la conversación 10118 se quedó seis días sin respuesta.",
+lead:"Eres una IA? / Hablo con Tania o con un bot?",
+msgs:[["setter","Soy la asistente virtual de Tania y le hago llegar lo que hablamos"],["setter","Volviendo a lo tuyo, [la pregunta que tocaba, con otro arranque]"]],
+n:"DECISIÓN: contradice coach_identity_notia (parar con handoff D_espera) y choca con B (soy Tania). Si se acepta, se borra el literal de parada; si no, hay que arreglar que el mensaje del handoff llegue y que alguien lo atienda."},
+
+{tag:"R_F3_sin_profesional",fase:"F3 — disposición, una sola puerta",esDec:true,
+when:"Ya hay problema e impacto y no tiene a nadie viéndole la espalda.",
+lead:"(ha contado qué le pasa y qué ha dejado de hacer)",
+msgs:[["setter","Con lo que me cuentas, el dolor de espalda lleva demasiado tiempo decidiendo lo que haces y lo que no"],["setter","Estás buscando ya una solución para la espalda?"]],
+n:"DECISIÓN: hay que borrar del bloque la versión con la salida dentro (o por ahora vas tirando?), o el modelo la copia."},
+
+{tag:"S_F3_con_fisio",fase:"F3 — disposición, una sola puerta",
+when:"Tiene fisio o tratamiento en marcha. La pregunta es la tuya de siempre; lo que faltaba era el acuse delante.",
+lead:"Estoy yendo al fisio",
+msgs:[["setter","Que sigas yendo al fisio dice que la espalda no la has dejado estar"],["setter","Estás avanzando al ritmo que esperabas?"]]},
+
+{tag:"T_F4_recap",fase:"F4 — recap con casillas opcionales",
+when:"Molde. Cada casilla existe solo si ella lo escribió en el chat (nunca lo del formulario); si falta, se salta sin hueco.",
+lead:"(antes de proponer)",
+msgs:[["setter","Si te he entendido bien, llevas [tiempo] con [su dolor, en sus palabras], [su camino y su resultado, como lo contó] y eso te está afectando sobre todo en [impacto concreto]"],["setter","Es así o me dejo algo?"]],
+n:"Pendiente tuyo: mantener o quitar la casilla del camino (lo que probó) del recap."}
+];
+let ST={};
+try{ ST=JSON.parse(localStorage.getItem("rev-tania-f2")||"{}"); }catch(e){ ST={}; }
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+function save(){ try{ localStorage.setItem("rev-tania-f2",JSON.stringify(ST)); }catch(e){} }
+function render(){
+  const h=document.getElementById("cards"); h.innerHTML="";
+  let faseAnt=null;
+  D.forEach((d,i)=>{
+    if(d.fase!==faseAnt){
+      const hh=document.createElement("h4"); hh.className="sec";
+      hh.innerHTML=esc(d.fase);
+      h.appendChild(hh);
+      faseAnt=d.fase;
+    }
+    const st=ST[d.tag]||{};
+    const c=document.createElement("div");
+    c.className="card"+(st.v==="ok"?" ok":st.v==="no"?" no":"")+(d.esIvan?" ivan":"");
+    c.innerHTML='<div class="chead"><span class="tagname">&lt;'+d.tag+'&gt;</span>'+
+      (d.esIvan?'<span class="chip ivan">TU LITERAL</span>':'')+
+      (d.esDec?'<span class="chip dec">DECISIÓN</span>':'')+'</div>'+
+      '<div class="when">'+esc(d.when)+'</div>'+
+      '<div class="msg">'+
+      (d.lead?'<div class="bub persona">'+esc(d.lead)+'</div>':'')+
+      d.msgs.map(m=> m[0]==="marco" ? '<div class="bub marco">'+esc(m[1])+'</div>' : '<div class="bub">'+esc(m[1])+'</div>').join("")+
+      '</div>'+
+      (d.n?'<div class="note">'+esc(d.n)+'</div>':'')+
+      '<div class="acts">'+
+      '<button class="b y'+(st.v==="ok"?" on":"")+'" data-k="'+d.tag+'" data-v="ok">Me vale</button>'+
+      '<button class="b n'+(st.v==="no"?" on":"")+'" data-k="'+d.tag+'" data-v="no">Lo cambio</button></div>'+
+      '<textarea data-k="'+d.tag+'" placeholder="Cómo lo escribirías tú, o qué le falta">'+'</textarea>';
+    c.querySelector("textarea").value=st.c||"";
+    h.appendChild(c);
+  });
+  let ok=0,no=0;
+  D.forEach(d=>{const v=(ST[d.tag]||{}).v; if(v==="ok")ok++; if(v==="no")no++;});
+  document.getElementById("s1").textContent=ok;
+  document.getElementById("s2").textContent=no;
+  document.getElementById("s3").textContent=D.length-ok-no;
+  document.getElementById("k").textContent=ok+no;
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".b[data-k]");
+  if(b){const k=b.dataset.k;ST[k]=ST[k]||{};
+    ST[k].v = ST[k].v===b.dataset.v ? null : b.dataset.v; save(); render();}
+});
+document.addEventListener("input",e=>{
+  const t=e.target.closest("textarea[data-k]");
+  if(t){const k=t.dataset.k;ST[k]=ST[k]||{};ST[k].c=t.value;save();}
+});
+function salida(){
+  const ok=[],no=[],p=[];
+  D.forEach(d=>{const st=ST[d.tag]||{};
+    if(st.v==="ok") ok.push(d.tag);
+    else if(st.v==="no") no.push(d.tag+"\n   -> "+(st.c||"(sin indicar)"));
+    else p.push(d.tag);});
+  const t="DECISIONES - literales de Tania, F2\n"+
+    "===================================\n\n"+
+    "ME VALEN ("+ok.length+")\n"+(ok.join("\n")||"-")+"\n\n"+
+    "A CAMBIAR ("+no.length+")\n"+(no.join("\n\n")||"-")+"\n\n"+
+    "SIN DECIDIR ("+p.length+")\n"+(p.join("\n")||"-");
+  const o=document.getElementById("out");o.style.display="block";o.textContent=t;
+  if(navigator.clipboard) navigator.clipboard.writeText(t).catch(()=>{});
+  o.scrollIntoView({behavior:"smooth",block:"start"});
+}
+render();
+</script>
