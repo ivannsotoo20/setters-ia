@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Literales de Alex · ronda 4</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--line:#252a34;--tx:#e6e8ec;--mut:#8b93a1;--ac:#5b8cff;--ok:#3ddc97;--warn:#ffb020;--bad:#ff6b6b}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+header.top{position:sticky;top:0;z-index:5;background:#0f1115ee;backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:16px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+h1{font-size:17px;margin:0;font-weight:650}
+.meta{color:var(--mut);font-size:13px}
+button{background:var(--ac);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer}
+button.sec2{background:transparent;color:var(--mut);border:1px solid var(--line)}
+main{max-width:820px;margin:0 auto;padding:24px}
+article.t{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+article.t.ok{border-color:#2a4a3a}article.t.corregir{border-color:#5a4620}article.t.quitar{border-color:#5a2a2a;opacity:.62}
+article.t header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.sec{font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--ac)}
+.n{color:var(--mut);font-size:12px}
+.b{background:#222733;border-radius:14px;padding:9px 13px;margin:0 0 6px;max-width:88%;white-space:pre-wrap}
+.acciones{display:flex;gap:14px;margin:10px 0 8px;font-size:13px;color:var(--mut)}
+.acciones label{cursor:pointer;user-select:none}
+textarea{width:100%;min-height:0;height:38px;background:#11141a;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:9px 11px;font:14px inherit;resize:vertical;display:none}
+article.t.corregir textarea{display:block}
+#salida{white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;background:#11141a;border:1px solid var(--line);border-radius:10px;padding:16px;margin-top:20px;display:none}
+</style></head><body>
+<header class="top">
+  <h1>Literales de Alex · ronda 4</h1>
+  <span class="meta" id="prog">0 de 62 revisados</span>
+  <span style="flex:1"></span>
+  <button id="copiar">Copiar correcciones</button>
+  <button class="sec2" id="ver">Ver texto</button>
+</header>
+<main>
+<p class="meta" style="margin:0 0 20px">Cada tarjeta es <strong>un turno</strong>: cada línea es una burbuja distinta. Marca lo que no te suene y escribe cómo lo dirías tú. De tus correcciones salen las reglas, así que no hace falta que las expliques.</p>
+
+<article class="t" data-i="0">
+  <header><span class="sec">coach_identity_notia</span><span class="n">#1</span></header>
+  <div class="burbujas"><p class="b">Soy Lara, asistente digital de Alejandro</p><p class="b">He sido formada para charlar con escaladores, identificar posibles dificultades que tengan en su escalada y dar alguna recomendación o algún recurso específico para ayudarles a mejorar</p><p class="b">Quieres que sigamos o prefieres hablar directamente con alguien del equipo, [NOMBRE DEL LEAD]?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v0" value="ok"> vale</label>
+    <label><input type="radio" name="v0" value="corregir"> corregir</label>
+    <label><input type="radio" name="v0" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="0"></textarea>
+</article>
+<article class="t" data-i="1">
+  <header><span class="sec">coach_tone_voiceprint</span><span class="n">#2</span></header>
+  <div class="burbujas"><p class="b">Asi que dime una cosa, crees que tendría sentido para ti tener un plan con el que saber qué hacer en cada momento</p><p class="b">y poder ir mejorando de forma constante sin comprometer tu salud?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v1" value="ok"> vale</label>
+    <label><input type="radio" name="v1" value="corregir"> corregir</label>
+    <label><input type="radio" name="v1" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="1"></textarea>
+</article>
+<article class="t" data-i="2">
+  <header><span class="sec">coach_tone_voiceprint</span><span class="n">#3</span></header>
+  <div class="burbujas"><p class="b">"Pero por ejemplo, qué es lo que sientes que te pasa justo ahí?"</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v2" value="ok"> vale</label>
+    <label><input type="radio" name="v2" value="corregir"> corregir</label>
+    <label><input type="radio" name="v2" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="2"></textarea>
+</article>
+<article class="t" data-i="3">
+  <header><span class="sec">coach_tone_voiceprint</span><span class="n">#4</span></header>
+  <div class="burbujas"><p class="b">"Qué pasó con la operación?"</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v3" value="ok"> vale</label>
+    <label><input type="radio" name="v3" value="corregir"> corregir</label>
+    <label><input type="radio" name="v3" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="3"></textarea>
+</article>
+<article class="t" data-i="4">
+  <header><span class="sec">coach_tone_voiceprint</span><span class="n">#5</span></header>
+  <div class="burbujas"><p class="b">Pero cuéntame mejor cómo te organizas la semana de escalada</p><p class="b">Es decir cuántos días acabas yendo y dónde sueles ir</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v4" value="ok"> vale</label>
+    <label><input type="radio" name="v4" value="corregir"> corregir</label>
+    <label><input type="radio" name="v4" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="4"></textarea>
+</article>
+<article class="t" data-i="5">
+  <header><span class="sec">coach_tone_voiceprint</span><span class="n">#6</span></header>
+  <div class="burbujas"><p class="b">Al final tener poco tiempo entre semana no es incompatible con progresar eh</p><p class="b">Trabajamos con escaladores que van dos días al roco y suben de grado igual</p><p class="b">Pero dirías que es ahí donde más se te complica?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v5" value="ok"> vale</label>
+    <label><input type="radio" name="v5" value="corregir"> corregir</label>
+    <label><input type="radio" name="v5" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="5"></textarea>
+</article>
+<article class="t" data-i="6">
+  <header><span class="sec">coach_tone_openers</span><span class="n">#7</span></header>
+  <div class="burbujas"><p class="b">A mí me pasaba algo parecido con los desplomes, hasta que me puse a trabajar una cosa concreta</p><p class="b">Buah, yo la primera vez que fui a roca iba con el corazón a mil jajaja</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v6" value="ok"> vale</label>
+    <label><input type="radio" name="v6" value="corregir"> corregir</label>
+    <label><input type="radio" name="v6" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="6"></textarea>
+</article>
+<article class="t" data-i="7">
+  <header><span class="sec">coach_tone_openers</span><span class="n">#8</span></header>
+  <div class="burbujas"><p class="b">Dos días de roco a la semana da margen de sobra para trabajar bien</p><p class="b">Pero dónde dirías que se te queda corto ahora mismo?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v7" value="ok"> vale</label>
+    <label><input type="radio" name="v7" value="corregir"> corregir</label>
+    <label><input type="radio" name="v7" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="7"></textarea>
+</article>
+<article class="t" data-i="8">
+  <header><span class="sec">coach_structural_modifications_core</span><span class="n">#9</span></header>
+  <div class="burbujas"><p class="b">Si dice que se lesionó: "Qué lesión fue?" o "Ahora estás bien?"</p><p class="b">Si dice que le da miedo caerse: "En qué momentos te pasa más?"</p><p class="b">Si dice que probó con un entrenador y no funcionó: "Qué pasó?"</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v8" value="ok"> vale</label>
+    <label><input type="radio" name="v8" value="corregir"> corregir</label>
+    <label><input type="radio" name="v8" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="8"></textarea>
+</article>
+<article class="t" data-i="9">
+  <header><span class="sec">coach_structural_modifications_core</span><span class="n">#10</span></header>
+  <div class="burbujas"><p class="b">El médico o el fisio te ha dado el visto bueno para volver a entrenar?</p><p class="b">Ya te mueves con normalidad?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v9" value="ok"> vale</label>
+    <label><input type="radio" name="v9" value="corregir"> corregir</label>
+    <label><input type="radio" name="v9" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="9"></textarea>
+</article>
+<article class="t" data-i="10">
+  <header><span class="sec">coach_phase_massage_fase0</span><span class="n">#11</span></header>
+  <div class="burbujas"><p class="b">Muy buenas Javi, soy Alex de Escalada Inteligente!</p><p class="b">Me ha llegado lo que nos contabas y por lo que veo lo que más te está pesando es el miedo a volar en vías largas</p><p class="b">Voy bien encaminado?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v10" value="ok"> vale</label>
+    <label><input type="radio" name="v10" value="corregir"> corregir</label>
+    <label><input type="radio" name="v10" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="10"></textarea>
+</article>
+<article class="t" data-i="11">
+  <header><span class="sec">coach_phase_massage_fase1</span><span class="n">#12</span></header>
+  <div class="burbujas"><p class="b">Cuánto hace que practicas escalada?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v11" value="ok"> vale</label>
+    <label><input type="radio" name="v11" value="corregir"> corregir</label>
+    <label><input type="radio" name="v11" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="11"></textarea>
+</article>
+<article class="t" data-i="12">
+  <header><span class="sec">coach_phase_massage_fase2</span><span class="n">#13</span></header>
+  <div class="burbujas"><p class="b">Pero cuéntame una cosa, hasta qué grado te gustaría llegar?</p><p class="b">Qué te haría más ilusión conseguir de aquí a un tiempo con la escalada?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v12" value="ok"> vale</label>
+    <label><input type="radio" name="v12" value="corregir"> corregir</label>
+    <label><input type="radio" name="v12" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="12"></textarea>
+</article>
+<article class="t" data-i="13">
+  <header><span class="sec">coach_phase_massage_fase2</span><span class="n">#14</span></header>
+  <div class="burbujas"><p class="b">Pero dónde dirías que tienes más margen de mejora para llegar ahí?</p><p class="b">Cuál sientes que es el mayor obstáculo que estás viendo ahora mismo?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v13" value="ok"> vale</label>
+    <label><input type="radio" name="v13" value="corregir"> corregir</label>
+    <label><input type="radio" name="v13" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="13"></textarea>
+</article>
+<article class="t" data-i="14">
+  <header><span class="sec">coach_phase_massage_fase2</span><span class="n">#15</span></header>
+  <div class="burbujas"><p class="b">Aparte de esto, hay algo más que te preocupe?</p><p class="b">El tema de los dedos es lo que más te preocupa ahora mismo?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v14" value="ok"> vale</label>
+    <label><input type="radio" name="v14" value="corregir"> corregir</label>
+    <label><input type="radio" name="v14" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="14"></textarea>
+</article>
+<article class="t" data-i="15">
+  <header><span class="sec">coach_phase_massage_fase2</span><span class="n">#16</span></header>
+  <div class="burbujas"><p class="b">Buah, y a dónde te vas?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v15" value="ok"> vale</label>
+    <label><input type="radio" name="v15" value="corregir"> corregir</label>
+    <label><input type="radio" name="v15" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="15"></textarea>
+</article>
+<article class="t" data-i="16">
+  <header><span class="sec">coach_phase_massage_fase3</span><span class="n">#17</span></header>
+  <div class="burbujas"><p class="b">Pero cuánto de importante es para ti resolver esto ahora mismo?</p><p class="b">Qué peso tiene la escalada en tu vida ahora?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v16" value="ok"> vale</label>
+    <label><input type="radio" name="v16" value="corregir"> corregir</label>
+    <label><input type="radio" name="v16" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="16"></textarea>
+</article>
+<article class="t" data-i="17">
+  <header><span class="sec">coach_phase_massage_fase3</span><span class="n">#18</span></header>
+  <div class="burbujas"><p class="b">"me tiene muy tocado" → importancia</p><p class="b">"necesito hacer algo ya" → urgencia</p><p class="b">"estoy harto de seguir igual" → las dos</p><p class="b">"no sé qué más hacer por mi cuenta" → disposición al cambio</p><p class="b">"ojalá encontrar a alguien que sepa de esto" → busca solución</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v17" value="ok"> vale</label>
+    <label><input type="radio" name="v17" value="corregir"> corregir</label>
+    <label><input type="radio" name="v17" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="17"></textarea>
+</article>
+<article class="t" data-i="18">
+  <header><span class="sec">coach_phase_massage_fase3</span><span class="n">#19</span></header>
+  <div class="burbujas"><p class="b">Para que te hagas una idea, nosotros solemos trabajar con 2 sesiones a la semana de rocódromo de 1 hora, más 1 sesión de entrenamiento específico de 40-50 minutos que puede hacerse en casa o en el gym</p><p class="b">Crees que llegado el caso es un tiempo que podrías dedicarle?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v18" value="ok"> vale</label>
+    <label><input type="radio" name="v18" value="corregir"> corregir</label>
+    <label><input type="radio" name="v18" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="18"></textarea>
+</article>
+<article class="t" data-i="19">
+  <header><span class="sec">coach_phase_massage_fase4</span><span class="n">#20</span></header>
+  <div class="burbujas"><p class="b">Entonces, según me has comentado, lo que más te está frenando ahora es el miedo a volar en las vías que te piden compromiso, y por eso no acabas de dar el paso a la roca, voy bien encaminado o me dejo algo?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v19" value="ok"> vale</label>
+    <label><input type="radio" name="v19" value="corregir"> corregir</label>
+    <label><input type="radio" name="v19" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="19"></textarea>
+</article>
+<article class="t" data-i="20">
+  <header><span class="sec">coach_phase_massage_fase5</span><span class="n">#21</span></header>
+  <div class="burbujas"><p class="b">Genial!</p><p class="b">Pues justo por eso te lo comento, porque cada semana hablamos con escaladores que estaban en tu mismo punto, yendo al roco y entrenando sin ver que el grado se mueva, y lo que les cambió la cosa fue tener un plan de acción hecho para su caso</p><p class="b">Porque honestamente, manejar todo esto por tu cuenta es complicado, entre el miedo y saber qué tocar cada día</p><p class="b">Así que dime una cosa, crees que tendría sentido para ti tener un plan de acción con el que saber qué hacer en cada momento</p><p class="b">y poder mantener una mejora constante en tu escalada sin comprometer tu salud, dedicándole el tiempo que ya le dedicas?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v20" value="ok"> vale</label>
+    <label><input type="radio" name="v20" value="corregir"> corregir</label>
+    <label><input type="radio" name="v20" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="20"></textarea>
+</article>
+<article class="t" data-i="21">
+  <header><span class="sec">coach_phase_massage_fase5</span><span class="n">#22</span></header>
+  <div class="burbujas"><p class="b">Claro, pues justo por eso te lo comento</p><p class="b">Porque después de sentarnos con muchos escaladores que estaban en tu mismo punto, lo que les cambiaba la cosa era tener un plan hecho para su caso</p><p class="b">Crees que tendría sentido para ti tener algo así, con el que saber qué hacer en cada momento y seguir mejorando sin comprometer tu salud?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v21" value="ok"> vale</label>
+    <label><input type="radio" name="v21" value="corregir"> corregir</label>
+    <label><input type="radio" name="v21" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="21"></textarea>
+</article>
+<article class="t" data-i="22">
+  <header><span class="sec">coach_phase_massage_fase5</span><span class="n">#23</span></header>
+  <div class="burbujas"><p class="b">Pues lo que solemos hacer llegados a este punto es organizar una videollamada con el equipo, para ver tu caso con mucha más calma y explicarte cómo sería la hoja de ruta para tu caso concreto</p><p class="b">Si al final ves que tiene sentido que lo trabajemos juntos, te contamos cómo sería todo el plan para que puedas decidir con toda la información</p><p class="b">Aunque si no te encaja ningún problema, al menos sales con claridad de qué hacer</p><p class="b">Te parece que la organicemos?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v22" value="ok"> vale</label>
+    <label><input type="radio" name="v22" value="corregir"> corregir</label>
+    <label><input type="radio" name="v22" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="22"></textarea>
+</article>
+<article class="t" data-i="23">
+  <header><span class="sec">coach_phase_massage_fase6</span><span class="n">#24</span></header>
+  <div class="burbujas"><p class="b">Perfecto!! Pues voy a buscarte el enlace, por fa dame 2 segundos y lo busco</p><p class="b">Ya lo tengo! He visto que nos quedan poquitos huecos esta semana porque estamos un poco a tope, puedes echarle un ojo? Si no te viene bien ninguno, me dices y buscamos otra solución</p><p class="b">https://links.alejandropadillacrespo.com/widget/bookings/llamada-de-admisin-al-programa</p><p class="b">A veces la app nos da error, para asegurarme de que todo está ok, te importa avisarme cuando hayas agendado?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v23" value="ok"> vale</label>
+    <label><input type="radio" name="v23" value="corregir"> corregir</label>
+    <label><input type="radio" name="v23" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="23"></textarea>
+</article>
+<article class="t" data-i="24">
+  <header><span class="sec">coach_phase_massage_fase6</span><span class="n">#25</span></header>
+  <div class="burbujas"><p class="b">Vale no te preocupes, te dejo por aquí un enlace para que me hables por whatsapp y lo concretamos mejor por ahí</p><p class="b">https://wa.me/34604862826</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v24" value="ok"> vale</label>
+    <label><input type="radio" name="v24" value="corregir"> corregir</label>
+    <label><input type="radio" name="v24" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="24"></textarea>
+</article>
+<article class="t" data-i="25">
+  <header><span class="sec">coach_phase_massage_fase6</span><span class="n">#26</span></header>
+  <div class="burbujas"><p class="b">Pues todo listo Javi! Muchísimas gracias por lo amable que has sido</p><p class="b">Están deseando conocerte en la videollamada y ver bien tu caso, vas a salir de ahí con mucha claridad</p><p class="b">Te mando un abrazo y que tengas un súper día, nos vemos!</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v25" value="ok"> vale</label>
+    <label><input type="radio" name="v25" value="corregir"> corregir</label>
+    <label><input type="radio" name="v25" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="25"></textarea>
+</article>
+<article class="t" data-i="26">
+  <header><span class="sec">coach_program_info</span><span class="n">#27</span></header>
+  <div class="burbujas"><p class="b">De manera muy resumida, Escalada Inteligente es un programa en el que te ayudamos a saber exactamente qué trabajar cada día para que cada sesión en el roco cuente, y para que vuelvas a disfrutar escalando, subiendo de grado, sin lesiones que te frenen y sin la frustración de entrenar sin ver resultados</p><p class="b">Lo que no te sabría decir ahora mismo es el precio exacto, porque depende de tu situación, de lo que necesites trabajar y de la duración que tenga más sentido para tu caso</p><p class="b">Crees que podría serte de ayuda tener algo así diseñado exactamente para ti?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v26" value="ok"> vale</label>
+    <label><input type="radio" name="v26" value="corregir"> corregir</label>
+    <label><input type="radio" name="v26" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="26"></textarea>
+</article>
+<article class="t" data-i="27">
+  <header><span class="sec">coach_wclose</span><span class="n">#28</span></header>
+  <div class="burbujas"><p class="b">Te dejo esto que va justo sobre lo que me cuentas, creo que te va a venir de lujo</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v27" value="ok"> vale</label>
+    <label><input type="radio" name="v27" value="corregir"> corregir</label>
+    <label><input type="radio" name="v27" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="27"></textarea>
+</article>
+<article class="t" data-i="28">
+  <header><span class="sec">coach_wclose_generic</span><span class="n">#29</span></header>
+  <div class="burbujas"><p class="b">Te entiendo perfectamente, y con el momento que me cuentas es normal</p><p class="b">Te dejo esto que va justo sobre lo que me comentas, creo que te va a venir muy bien</p><p class="b">[enlace de coach_links]</p><p class="b">Mucho ánimo con la escalada y disfruta un montón, que para eso estamos!</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v28" value="ok"> vale</label>
+    <label><input type="radio" name="v28" value="corregir"> corregir</label>
+    <label><input type="radio" name="v28" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="28"></textarea>
+</article>
+<article class="t" data-i="29">
+  <header><span class="sec">coach_wclose_not_now</span><span class="n">#30</span></header>
+  <div class="burbujas"><p class="b">Lo respeto totalmente, y si ahora lo ves así es porque tendrás tus motivos</p><p class="b">Te dejo esto que creo que te va a venir de lujo para lo que me cuentas</p><p class="b">[enlace de coach_links]</p><p class="b">Cualquier cosa aquí estamos, y mucha suerte con lo que venga!</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v29" value="ok"> vale</label>
+    <label><input type="radio" name="v29" value="corregir"> corregir</label>
+    <label><input type="radio" name="v29" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="29"></textarea>
+</article>
+<article class="t" data-i="30">
+  <header><span class="sec">coach_wclose_recontacto</span><span class="n">#31</span></header>
+  <div class="burbujas"><p class="b">Entiendo! Con eso encima es normal que quieras esperar</p><p class="b">Cuándo lo tienes por cierto?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v30" value="ok"> vale</label>
+    <label><input type="radio" name="v30" value="corregir"> corregir</label>
+    <label><input type="radio" name="v30" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="30"></textarea>
+</article>
+<article class="t" data-i="31">
+  <header><span class="sec">coach_wclose_recontacto</span><span class="n">#32</span></header>
+  <div class="burbujas"><p class="b">Pues hacemos una cosa</p><p class="b">Te escribo yo justo después para que me cuentes qué tal fue y lo vemos con calma</p><p class="b">Te parece?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v31" value="ok"> vale</label>
+    <label><input type="radio" name="v31" value="corregir"> corregir</label>
+    <label><input type="radio" name="v31" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="31"></textarea>
+</article>
+<article class="t" data-i="32">
+  <header><span class="sec">coach_objections_price</span><span class="n">#33</span></header>
+  <div class="burbujas"><p class="b">El precio depende bastante de cada caso, del tiempo de trabajo y de lo que necesite cada escalador</p><p class="b">Antes de entrar en eso me ayudaría saber un poco de ti para poder orientarte bien, te hago un par de preguntas y así te conozco mejor?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v32" value="ok"> vale</label>
+    <label><input type="radio" name="v32" value="corregir"> corregir</label>
+    <label><input type="radio" name="v32" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="32"></textarea>
+</article>
+<article class="t" data-i="33">
+  <header><span class="sec">coach_objections_price</span><span class="n">#34</span></header>
+  <div class="burbujas"><p class="b">Eso depende mucho del caso de cada persona Javi, y justo por eso me interesa entender bien qué está pasando con lo de los dedos</p><p class="b">Desde cuándo te viene molestando?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v33" value="ok"> vale</label>
+    <label><input type="radio" name="v33" value="corregir"> corregir</label>
+    <label><input type="radio" name="v33" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="33"></textarea>
+</article>
+<article class="t" data-i="34">
+  <header><span class="sec">coach_objections_price</span><span class="n">#35</span></header>
+  <div class="burbujas"><p class="b">Es totalmente lógico que quieras saber sobre una inversión que harías en ti</p><p class="b">Pero déjame preguntarte una cosa, si en la videollamada vierais que el plan encaja de verdad con lo que buscas resolver</p><p class="b">sería la inversión un problema para ti?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v34" value="ok"> vale</label>
+    <label><input type="radio" name="v34" value="corregir"> corregir</label>
+    <label><input type="radio" name="v34" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="34"></textarea>
+</article>
+<article class="t" data-i="35">
+  <header><span class="sec">coach_objections_price</span><span class="n">#36</span></header>
+  <div class="burbujas"><p class="b">Tranquilo Javi, valoramos mucho el tiempo de las personas y no queremos hacerte perder el tuyo</p><p class="b">Lo que pasa es que hablar de cifras sin conocer tu caso no tendría sentido, porque el precio varía según lo que necesites y el plan que se arme para ti, y muchas veces sale por menos de lo que la gente se imagina</p><p class="b">En la videollamada lo veis todo con detalle y si no encaja, ningún problema</p><p class="b">Lo verías así?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v35" value="ok"> vale</label>
+    <label><input type="radio" name="v35" value="corregir"> corregir</label>
+    <label><input type="radio" name="v35" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="35"></textarea>
+</article>
+<article class="t" data-i="36">
+  <header><span class="sec">coach_objections_price</span><span class="n">#37</span></header>
+  <div class="burbujas"><p class="b">La videollamada es gratuita, y si veis que tiene sentido formar equipo entonces ya se vería el tema números</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v36" value="ok"> vale</label>
+    <label><input type="radio" name="v36" value="corregir"> corregir</label>
+    <label><input type="radio" name="v36" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="36"></textarea>
+</article>
+<article class="t" data-i="37">
+  <header><span class="sec">coach_objections_solo</span><span class="n">#38</span></header>
+  <div class="burbujas"><p class="b">Totalmente comprensible!</p><p class="b">Pero por curiosidad mía simplemente, cómo lo estás llevando ahora mismo por tu cuenta?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v37" value="ok"> vale</label>
+    <label><input type="radio" name="v37" value="corregir"> corregir</label>
+    <label><input type="radio" name="v37" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="37"></textarea>
+</article>
+<article class="t" data-i="38">
+  <header><span class="sec">coach_objections_solo</span><span class="n">#39</span></header>
+  <div class="burbujas"><p class="b">Vale genial, gracias por decírmelo</p><p class="b">Pero cuánto tiempo llevas trabajando así?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v38" value="ok"> vale</label>
+    <label><input type="radio" name="v38" value="corregir"> corregir</label>
+    <label><input type="radio" name="v38" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="38"></textarea>
+</article>
+<article class="t" data-i="39">
+  <header><span class="sec">coach_objections_solo</span><span class="n">#40</span></header>
+  <div class="burbujas"><p class="b">Entonces honestamente, en todo este tiempo qué has notado que haya cambiado de verdad en tu escalada?</p><p class="b">Sientes que son resultados que un profesional no te aportaría?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v39" value="ok"> vale</label>
+    <label><input type="radio" name="v39" value="corregir"> corregir</label>
+    <label><input type="radio" name="v39" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="39"></textarea>
+</article>
+<article class="t" data-i="40">
+  <header><span class="sec">coach_objections_solo</span><span class="n">#41</span></header>
+  <div class="burbujas"><p class="b">Entonces con todo lo que me has contado, sientes que siguiendo por tu cuenta los próximos seis meses por ejemplo</p><p class="b">vas a notar algún cambio real respecto a lo que has conseguido hasta ahora?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v40" value="ok"> vale</label>
+    <label><input type="radio" name="v40" value="corregir"> corregir</label>
+    <label><input type="radio" name="v40" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="40"></textarea>
+</article>
+<article class="t" data-i="41">
+  <header><span class="sec">coach_objections_mas_adelante</span><span class="n">#42</span></header>
+  <div class="burbujas"><p class="b">Entiendo perfectamente, a veces el contexto no acompaña y es así</p><p class="b">Aunque te digo una cosa, tanto los escaladores con los que trabajamos como yo mismo hemos visto los mejores cambios justo cuando dejamos de medirnos por una fecha concreta</p><p class="b">Qué crees que cambia entre empezar en enero o empezar a mirarlo desde ya?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v41" value="ok"> vale</label>
+    <label><input type="radio" name="v41" value="corregir"> corregir</label>
+    <label><input type="radio" name="v41" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="41"></textarea>
+</article>
+<article class="t" data-i="42">
+  <header><span class="sec">coach_objections_lo_pienso</span><span class="n">#43</span></header>
+  <div class="burbujas"><p class="b">Dale, sin problema</p><p class="b">Te dejo el enlace de WhatsApp por si en algún momento quieres retomarlo, así lo gestionáis directamente por ahí y no se pierde el hilo</p><p class="b">https://wa.me/34604862826</p><p class="b">Que estés muy bien y mucho ánimo con la escalada!</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v42" value="ok"> vale</label>
+    <label><input type="radio" name="v42" value="corregir"> corregir</label>
+    <label><input type="radio" name="v42" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="42"></textarea>
+</article>
+<article class="t" data-i="43">
+  <header><span class="sec">coach_objections_avatar</span><span class="n">#44</span></header>
+  <div class="burbujas"><p class="b">Pues con eso hay margen de sobra para trabajar bien</p><p class="b">De hecho trabajamos con escaladores que están en una situación parecida a la tuya</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v43" value="ok"> vale</label>
+    <label><input type="radio" name="v43" value="corregir"> corregir</label>
+    <label><input type="radio" name="v43" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="43"></textarea>
+</article>
+<article class="t" data-i="44">
+  <header><span class="sec">coach_objections_avatar</span><span class="n">#45</span></header>
+  <div class="burbujas"><p class="b">Al final eso que dices lo escucho mucho, y casi nunca es cuestión de genética eh</p><p class="b">Trabajamos con escaladores de más de cincuenta que siguen subiendo de grado</p><p class="b">Pero dirías que es eso lo que más te está frenando, o hay algo más?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v44" value="ok"> vale</label>
+    <label><input type="radio" name="v44" value="corregir"> corregir</label>
+    <label><input type="radio" name="v44" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="44"></textarea>
+</article>
+<article class="t" data-i="45">
+  <header><span class="sec">coach_objections_avatar</span><span class="n">#46</span></header>
+  <div class="burbujas"><p class="b">Qué pasó?</p><p class="b">Pero ahora mismo cómo lo estás llevando?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v45" value="ok"> vale</label>
+    <label><input type="radio" name="v45" value="corregir"> corregir</label>
+    <label><input type="radio" name="v45" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="45"></textarea>
+</article>
+<article class="t" data-i="46">
+  <header><span class="sec">exemplar · conexion_F1_primer_turno</span><span class="n">#47</span></header>
+  <div class="burbujas"><p class="b">Muy buenas Javi!</p><p class="b">Me alegro un montón de tenerte por aquí</p><p class="b">Cuánto hace que practicas escalada?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v46" value="ok"> vale</label>
+    <label><input type="radio" name="v46" value="corregir"> corregir</label>
+    <label><input type="radio" name="v46" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="46"></textarea>
+</article>
+<article class="t" data-i="47">
+  <header><span class="sec">exemplar · conexion_F1_reaccion_a_los_anos</span><span class="n">#48</span></header>
+  <div class="burbujas"><p class="b">Tres años ya es una base de sobra para meterle mano a lo que quieras</p><p class="b">Pero cuéntame, qué es lo que más te engancha ahora mismo de escalar?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v47" value="ok"> vale</label>
+    <label><input type="radio" name="v47" value="corregir"> corregir</label>
+    <label><input type="radio" name="v47" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="47"></textarea>
+</article>
+<article class="t" data-i="48">
+  <header><span class="sec">exemplar · contexto_frecuencia_con_desambiguador</span><span class="n">#49</span></header>
+  <div class="burbujas"><p class="b">Vale genial</p><p class="b">Pero cuéntame mejor cómo llevas la semana de escalada</p><p class="b">Es decir cuántos días acabas yendo y dónde sueles ir</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v48" value="ok"> vale</label>
+    <label><input type="radio" name="v48" value="corregir"> corregir</label>
+    <label><input type="radio" name="v48" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="48"></textarea>
+</article>
+<article class="t" data-i="49">
+  <header><span class="sec">exemplar · no_asumir_disciplina</span><span class="n">#50</span></header>
+  <div class="burbujas"><p class="b">Mola eso</p><p class="b">Y tú a qué le das más, bloque o vías?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v49" value="ok"> vale</label>
+    <label><input type="radio" name="v49" value="corregir"> corregir</label>
+    <label><input type="radio" name="v49" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="49"></textarea>
+</article>
+<article class="t" data-i="50">
+  <header><span class="sec">exemplar · reflejo_puro_desmotivacion</span><span class="n">#51</span></header>
+  <div class="burbujas"><p class="b">Lead: "ya no sé ni para qué sigo yendo al roco"</p><p class="b">Ir sin saber si merece la pena es de lo más cansino que hay</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v50" value="ok"> vale</label>
+    <label><input type="radio" name="v50" value="corregir"> corregir</label>
+    <label><input type="radio" name="v50" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="50"></textarea>
+</article>
+<article class="t" data-i="51">
+  <header><span class="sec">exemplar · reflejo_puro_lesiones_repetidas</span><span class="n">#52</span></header>
+  <div class="burbujas"><p class="b">Lead: "me lesioné tres veces este año"</p><p class="b">Tres veces en un año ya es demasiado para cualquiera</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v51" value="ok"> vale</label>
+    <label><input type="radio" name="v51" value="corregir"> corregir</label>
+    <label><input type="radio" name="v51" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="51"></textarea>
+</article>
+<article class="t" data-i="52">
+  <header><span class="sec">exemplar · reflejo_puro_comparacion_con_companeros</span><span class="n">#53</span></header>
+  <div class="burbujas"><p class="b">Lead: "veo a mis compañeros mejorando y yo sigo igual"</p><p class="b">Quedarte mirando cómo suben los demás mientras tú estás en el mismo punto es muy duro, yo he pasado por esa situación</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v52" value="ok"> vale</label>
+    <label><input type="radio" name="v52" value="corregir"> corregir</label>
+    <label><input type="radio" name="v52" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="52"></textarea>
+</article>
+<article class="t" data-i="53">
+  <header><span class="sec">exemplar · reflejo_puro_miedo_a_recaer</span><span class="n">#54</span></header>
+  <div class="burbujas"><p class="b">Lead: "tengo miedo de que si me lesiono otra vez lo deje para siempre"</p><p class="b">No te mereces que tu cabeza te limite por algo que ya pasó, muchos hemos estado ahí</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v53" value="ok"> vale</label>
+    <label><input type="radio" name="v53" value="corregir"> corregir</label>
+    <label><input type="radio" name="v53" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="53"></textarea>
+</article>
+<article class="t" data-i="54">
+  <header><span class="sec">exemplar · reflejo_puro_nada_funciona</span><span class="n">#55</span></header>
+  <div class="burbujas"><p class="b">Lead: "llevo meses intentando cosas y nada funciona"</p><p class="b">Cuando pruebas cosas y ninguna cambia nada, llega un punto en que dejas de creer que va a mejorar, es totalmente comprensible</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v54" value="ok"> vale</label>
+    <label><input type="radio" name="v54" value="corregir"> corregir</label>
+    <label><input type="radio" name="v54" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="54"></textarea>
+</article>
+<article class="t" data-i="55">
+  <header><span class="sec">exemplar · acuse_con_posicion_y_pregunta_del_bloqueo</span><span class="n">#56</span></header>
+  <div class="burbujas"><p class="b">Lead: "escalo pero cada vez que llego al paso duro me bloqueo y me acabo bajando"</p><p class="b">Al final bajarte justo en el paso que te importa no es algo que debamos dar por normal</p><p class="b">Pero por ejemplo, qué es lo que sientes que te pasa justo ahí?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v55" value="ok"> vale</label>
+    <label><input type="radio" name="v55" value="corregir"> corregir</label>
+    <label><input type="radio" name="v55" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="55"></textarea>
+</article>
+<article class="t" data-i="56">
+  <header><span class="sec">exemplar · senal_emocional_lesion_pausa_obligatoria</span><span class="n">#57</span></header>
+  <div class="burbujas"><p class="b">Lead: "sí, bastante importante, sobre todo porque me lesioné dos veces y no quiero que vuelva a pasar"</p><p class="b">Uf, dos veces es para tenerle respeto</p><p class="b">Qué lesión fue?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v56" value="ok"> vale</label>
+    <label><input type="radio" name="v56" value="corregir"> corregir</label>
+    <label><input type="radio" name="v56" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="56"></textarea>
+</article>
+<article class="t" data-i="57">
+  <header><span class="sec">exemplar · micro_aporte_de_complicidad</span><span class="n">#58</span></header>
+  <div class="burbujas"><p class="b">Lead: "en los desplomes me quedo sin nada de fuerza enseguida"</p><p class="b">A mí me pasaba algo parecido con los desplomes, hasta que me puse a trabajar una cosa concreta</p><p class="b">Pero a ti dónde se te va antes, en los dedos o en el bloqueo?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v57" value="ok"> vale</label>
+    <label><input type="radio" name="v57" value="corregir"> corregir</label>
+    <label><input type="radio" name="v57" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="57"></textarea>
+</article>
+<article class="t" data-i="58">
+  <header><span class="sec">exemplar · criterio_antes_de_preguntar</span><span class="n">#59</span></header>
+  <div class="burbujas"><p class="b">Dos días de roco a la semana da margen de sobra para trabajar bien</p><p class="b">Pero dónde dirías que tienes más margen de mejora ahora mismo para subir de grado?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v58" value="ok"> vale</label>
+    <label><input type="radio" name="v58" value="corregir"> corregir</label>
+    <label><input type="radio" name="v58" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="58"></textarea>
+</article>
+<article class="t" data-i="59">
+  <header><span class="sec">exemplar · mensaje_que_avanza_sin_preguntar</span><span class="n">#60</span></header>
+  <div class="burbujas"><p class="b">Lead: "es que este verano con el calor he ido poquísimo"</p><p class="b">Buah, en verano el roco es un horno y se nota en todo, no eres el único que se descuelga esos meses</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v59" value="ok"> vale</label>
+    <label><input type="radio" name="v59" value="corregir"> corregir</label>
+    <label><input type="radio" name="v59" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="59"></textarea>
+</article>
+<article class="t" data-i="60">
+  <header><span class="sec">exemplar · lead_cerrado_super_abierta</span><span class="n">#61</span></header>
+  <div class="burbujas"><p class="b">Me encantaría echarte un cable pero con lo que me cuentas me falta contexto para saber qué decirte</p><p class="b">Cuéntame un poco mejor cómo está siendo tu escalada ahora mismo</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v60" value="ok"> vale</label>
+    <label><input type="radio" name="v60" value="corregir"> corregir</label>
+    <label><input type="radio" name="v60" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="60"></textarea>
+</article>
+<article class="t" data-i="61">
+  <header><span class="sec">exemplar · el_lead_se_desvia_y_se_reconduce</span><span class="n">#62</span></header>
+  <div class="burbujas"><p class="b">Lead: "jaja pues nada, este finde me voy de boda y adiós entrenar"</p><p class="b">Jajaja las bodas son incompatibles con todo, eso está claro</p><p class="b">Pero volviendo a lo de los dedos, desde cuándo te viene molestando?</p></div>
+  <div class="acciones">
+    <label><input type="radio" name="v61" value="ok"> vale</label>
+    <label><input type="radio" name="v61" value="corregir"> corregir</label>
+    <label><input type="radio" name="v61" value="quitar"> quitar</label>
+  </div>
+  <textarea placeholder="Cómo lo dirías tú" data-c="61"></textarea>
+</article>
+<pre id="salida"></pre>
+</main>
+<script>
+const K='alex-ronda4';
+let st={};try{st=JSON.parse(localStorage.getItem(K)||'{}');}catch(e){}
+const arts=[...document.querySelectorAll('article.t')];
+function pinta(){
+  arts.forEach(a=>{const i=a.dataset.i,s=st[i];a.className='t'+(s&&s.v?' '+s.v:'');
+    if(s&&s.v){const r=a.querySelector('input[value="'+s.v+'"]');if(r)r.checked=true;}
+    if(s&&s.c){a.querySelector('textarea').value=s.c;}});
+  document.getElementById('prog').textContent=Object.values(st).filter(s=>s.v).length+' de '+arts.length+' revisados';
+}
+document.addEventListener('change',e=>{
+  if(e.target.type==='radio'){const i=e.target.closest('article').dataset.i;st[i]={...(st[i]||{}),v:e.target.value};save();}
+});
+document.addEventListener('input',e=>{
+  if(e.target.tagName==='TEXTAREA'){const i=e.target.dataset.c;st[i]={...(st[i]||{}),c:e.target.value};save();}
+});
+function save(){try{localStorage.setItem(K,JSON.stringify(st));}catch(e){}pinta();}
+function texto(){
+  return arts.map(a=>{const i=a.dataset.i,s=st[i];if(!s||!s.v||s.v==='ok')return null;
+    const sec=a.querySelector('.sec').textContent;
+    const orig=[...a.querySelectorAll('.b')].map(b=>b.textContent).join('\n');
+    return '### #'+(+i+1)+' · '+sec+' · '+s.v.toUpperCase()+'\n--- original ---\n'+orig+(s.c?'\n--- de Ivan ---\n'+s.c:'');
+  }).filter(Boolean).join('\n\n')||'(nada marcado todavia)';
+}
+document.getElementById('copiar').onclick=function(){const b=this;const t=texto();
+  try{navigator.clipboard.writeText(t);}catch(e){const s=document.getElementById('salida');s.style.display='block';s.textContent=t;}
+  b.textContent='Copiado';setTimeout(()=>b.textContent='Copiar correcciones',1400);};
+document.getElementById('ver').onclick=()=>{const s=document.getElementById('salida');s.style.display=s.style.display==='block'?'none':'block';s.textContent=texto();};
+pinta();
+</script>
+</body></html>

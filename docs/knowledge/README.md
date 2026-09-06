@@ -107,10 +107,13 @@ valor, nunca el valor. Escanear antes de commitear.
 > [README de academia](../../prompts/coach-engineering/academia/README.md).
 
 - [Alfonso](project_alfonso_coach_feedback.md) — hombres pérdida de peso. Última ronda
-  **2026-07-31b** (feedback #64: `<coach_discovery_gate>` como suelo vinculante de 4 elementos antes
-  de proponer F5, cierre de las 4 puertas traseras, una pregunta por mensaje, y el preámbulo suelto
-  repartido dentro del esquema XML → doctrina §31). Antes ese mismo día: mecanismo de parada →
-  `manual_attention` + `skip_reply`. **La copia del repo va por delante del `.rtf` de origen.**
+  **2026-09-05, LOS HITOS** (reunión de Rubén del 03-09): el `<coach_discovery_gate>` deja de ser 5
+  elementos con un presupuesto numerado de 6 preguntas EN ORDEN y pasa a **4 hitos sin orden**, con
+  la regla de que un hito CERRADO no se vuelve a preguntar y de que un «no lo sé» lo cierra igual
+  que si constara. Muere el elemento IMPACTO; el H3 gana una **segunda puerta, la expectativa**.
+  ⚠️ **El bucle de preguntas repetidas no era de Alfonso, era de la arquitectura**: la misma está en
+  `angel-martinez`, `frodo`, `alex` y `luis-royan`. ⚠️ **Se mide shows/agendas, no agendas.**
+  Rondas anteriores relevantes: 2026-08-24 (el ritmo) y 2026-07-31b (nace el gate → doctrina §31).
 - [Roberto](project_roberto_coach_feedback.md) — hombres +100kg. Ronda 2026-07-13, número de
   Rober **pendiente**. Ojo: hay **dos ficheros del mismo Rober** (una persona, dos sistemas) —
   el vivo en `academia/roberto.md` y el draft del SaaS `source/coach-v5/roberto-cordobilla.md`,
@@ -196,6 +199,15 @@ valor, nunca el valor. Escanear antes de commitear.
   de un extra. Es también el bloque con la densidad de prohibiciones más baja del corpus, escrito ya
   bajo la directiva del 24-ago. ⚠️ **Compuertas: notia, "jaja", emojis en contexto, la dos-puertas de
   su primera pregunta, y corpus de voz corto (5 literales verificados).**
+- [Alex — escaladores (Alejandro Padilla)](project_alex_coach_feedback.md) — **primer coach de
+  rendimiento deportivo** de la flota, y el último que quedaba en el formato antiguo `BLOQUE 0…11`.
+  Su freno no es la ignorancia ni la constancia: es el **conformismo**, y por eso el objetivo se
+  pregunta antes que el freno y el miedo a lesionarse sí mueve a la acción. Su escalada se pregunta
+  (§33 cae del lado de Bea, no del de los hombres); su plan de entrenamiento no. Ronda 4 el
+  **2026-09-04**: **la F5 se parte en microcompromiso y propuesta** con espera en medio, que es la
+  petición literal de Alejandro y a la vez cierra una contradicción viva de su propio bloque (su
+  Fase 4 pedía el auto-diagnóstico que su Fase 3 prohibía). De 136.869 a 72.146 chars.
+  ⚠️ **Compuerta abierta: quién atiende la videollamada, el equipo o Alejandro.**
 - [Roadmap academia: validar Roberto → overhaul CORE](project_academia_core_overhaul.md) —
   **ojo: sistema Automatía/n8n+Anthropic, NO este repo.** Despliega Iván.
 

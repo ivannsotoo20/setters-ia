@@ -328,3 +328,69 @@ y la reescritura completa de la conversación de referencia. Objetivo ≤ 82 KB.
 intención → pregunta-espejo → permiso de 5a. El espejo existe solo para abrir el hueco que 5a rellena,
 así que son candidatos a fusión, pero 5a/5b/5c son literales que Luis ha validado ronda tras ronda y no
 se tocan sin su OK.
+
+## §RONDA 5-sep (feedback #82 — "La IA no pide datos después de la fase videollamada")
+
+**Lo que pidió Luis** (ticket con captura del 2-09): una vez la lead confirme la videollamada, enviar
+*"Perfecto!! Pues si te parece mándame tu número de teléfono y dime, te viene mejor por las mañanas o
+por las tardes? 😊"*, y **después** pausar la IA permanentemente, sin afirmar horarios ni escribir nada
+más. En su captura la lead contestó al 5c *"Ok pero hoy imposible / Porq me marcho / Ahora"* y la IA no
+respondió: estaba apagada desde el 5c.
+
+**Lo que revierte.** La regla binaria ⛔ APAGADO EN 5c (decisión de Iván del 18-ago) y las tres
+prohibiciones que colgaban de ella: no pedir el teléfono, no proponer días ni franjas, no esperar su
+respuesta. El apagado se muda a un paso nuevo, **5d**.
+
+**El censo, que es la mitad del trabajo.** El apagado en 5c estaba afirmado en ~20 sitios repartidos por
+identidad, exemplars, índice de fases, zonas, las tres comprobaciones, los triggers, links, objeciones,
+cualificación y dirección. Seis lentes en paralelo lo barrieron; 28 ediciones en la primera pasada y 10
+más tras la verificación adversarial.
+
+**Diseño (binario a propósito, para no reabrir lo que cerró el 18-ago):**
+- Al enviar el **5c** se emite `manual_attention` **SOLO y sin motivo** — no es una parada, es una marca.
+  Deja la conversación en la bandeja de Luis y a la IA viva un turno. Sin esto, **la lead que no contesta
+  desaparecía**: hoy el apagado en 5c marca el 100% de las propuestas, y mover el apagado al 5d sin más
+  habría dejado sin marcar el desenlace más frecuente de una propuesta por DM. Lo cazó la pasada
+  adversarial, no el diseño.
+- **SALIDAS DE 5c**, cuatro y escritas una sola vez: confirma → 5d y apagado con motivo nuevo
+  `datos_para_agendar` · lo que tenga trigger propio → su trigger, que prevalece también aquí ·
+  cualquier otra cosa → apagado MUDO con `propuesta_videollamada` (el motivo viejo, que se muda intacto
+  a la rama donde la conversación sí murió en la propuesta) · silencio → nada, ya quedó marcada.
+- **La frontera de la confirmación**: lo que habla de CUÁNDO es un sí, lo que habla de SI es un no.
+  *"Hoy imposible que me marcho ahora"* pone una hora mala y no retira nada; *"me lo pienso"* retira el
+  paso entero. Se acota en el trigger D (*vale hasta 5c*) y en el D-bis (*un evento que la deja fuera
+  SEMANAS, no que hoy le venga mal*), porque si viviera solo en fase5 nunca llegaría a ejecutarse.
+- **5d**: el literal de Luis verbatim en una burbuja (dos si confirmó preguntando algo), más tres
+  variantes cerradas por si al confirmar ya dio el teléfono, la franja o ambos — sin ellas el "literal
+  cerrado menos lo que ya te dio" se quedaba sin mensaje y sin apagado.
+- El corpus demuestra **las dos ramas** pegadas: *"ok pero hoy imposible"* → 5d, y justo debajo
+  *"uf, no sé, me lo tengo que pensar"* → trigger D, `coach_wclose_not_now` y apagado. Con un solo
+  ejemplar el modelo habría pedido el teléfono a quien se estaba echando atrás: las dos respuestas son
+  idénticas por fuera (una duda y un motivo).
+
+**Lo que la verificación adversarial corrigió del diseño inicial**, y es la lección de la ronda: la
+primera versión enumeraba qué triggers prevalecían dentro de la ventana y a la línea siguiente prohibía
+sacar ningún `coach_wclose` — dos viñetas consecutivas contradiciéndose, porque el trigger B *escribe*
+un cierre. Se resolvió **borrando la enumeración**: los triggers prevalecen y punto, como en cualquier
+otra fase. Más corto y sin frontera que mantener. Igual con los cuatro handlers de ZONA 3 (precio,
+kilos, casos sensibles, pruebas): decían "En 5c" y la ventana los resucitaba justo donde manda callar;
+se re-anclaron a "dentro del propio 5c".
+
+**Compuertas para Iván:**
+1. `manual_attention` sin `skip_reply` en el 5c — hay que confirmar que Automatía lo admite. El bloque ya
+   describía esa semántica (*"marca la conversación pero el modelo sigue escribiendo"*), pero como
+   antipatrón; ahora es deliberada y está nombrada (MARCAR NO ES PARAR).
+2. El literal pide **dos cosas** en el mismo mensaje (número *y* franja) y el bloque avisa de que a eso
+   se contesta a medias. Va verbatim porque es suyo. Lo esperable es que muchas manden el número y se
+   dejen la franja; ese dato lo tendrá que pedir Luis a mano.
+3. *"Perfecto!!"* estrena el signo doble: cero ocurrencias de `!!` en el resto del bloque.
+
+**Deuda preexistente vista de paso, NO tocada:** el 5c declara "2 burbujas" en dos sitios y su literal
+tiene cuatro líneas · el camino de TERCEROS no tiene variante de 5c · en el carril de lead caliente el
+5a corto promete contar el enfoque y luego se omite el 5b · `coach_wclose_recontacto` pregunta una fecha
+y se apaga antes de poder recibirla · siguen 67 guiones largos.
+
+**Tamaño:** 709 → 723 líneas, 99,0 → 103,7 KB. Crece, contra la regla de que cada ronda acorte: paga un
+paso nuevo con su corpus y sus variantes. Lo que sí se fue: tres prohibiciones muertas, tres
+justificaciones falsas, dos copias del motivo y nueve declaraciones repetidas de dónde acaba la
+conversación, que ahora vive escrita una vez.

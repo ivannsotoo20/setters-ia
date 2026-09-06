@@ -1,6 +1,6 @@
 ---
 name: project_pepe_coach_feedback
-description: "Loop del bloque COACH Pepe Jiménez (academia/Automatía, HYROX y rendimiento híbrido — el primer avatar de OBJETIVO puro). Estado tras la ronda 6 (2026-08-13): la ESCALERA DEL 'VOY SOLO' (el 'lo intento por mi cuenta' deja de cerrar la conversación y pasa a trabajarse subiendo el nivel de consciencia) + cierre post-agenda literal único donde el que gestiona con el equipo es la IA, no el lead. Antes, ronda 4.1: precio 'desde 110€/mes', bienvenida en 3 mensajes, guion largo prohibido, 'el ancla' retirado. Hallazgos transferibles: las reglas que viven solo en la doctrina universal NO llegan al prompt, y las copias de Downloads se regeneran, nunca se editan a mano. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento/competición."
+description: "Loop del bloque COACH Pepe Jimenez (academia/Automatia, HYROX y rendimiento hibrido, el primer avatar de OBJETIVO puro). Estado tras la ronda del 2026-09-02: EL COLCHON, cuatro peldanos de conexion (de donde me sigues / tirar del hilo / hace cuanto en la comunidad / que te trajo) antes de que se hable de entrenamiento, con quien te sigue y lo haya abierto quien lo haya abierto; el peldano 3 es el termometro y nutrir es una decision que va despues del 4. Antes: el carril del avatar (27/08, deja de tirar siempre por HYROX) y la limpieza del 25/08. Hallazgos transferibles: la regla se escribe como movimiento con exemplars y no como prohibicion; al meter una regla nueva hay que barrer el VERBO OPERATIVO de las reglas de rango superior; y una excepcion se declara donde se EJECUTA, no donde se decide. Recall si vuelve feedback de Pepe o entra cualquier coach de rendimiento."
 metadata:
   node_type: memory
   type: project
@@ -667,3 +667,133 @@ y eso son líneas nuevas de verdad. Lo que sí hace es consolidar cuatro redacci
   primer mensaje es Lead A y que al Lead A se le va directo — **Andrés preguntó precio en el primer mensaje**.
   Aplicarlo literal lo habría clasificado como el lead al que acelerar, que es justo lo que le cerró en HYROX. El
   ritmo ya está resuelto con otros nombres: Lead C = lead frío, Lead A = Fast-Track, Lead B = el caso por defecto.
+
+---
+
+## RONDA 2026-09-02 — el colchón de conexión (Feedback 5 de Héctor, #87)
+
+Feedback nuevo del equipo: **se entra demasiado rápido en setting con leads fríos.** Con seguidores y nuevos
+seguidores la conversación va de apertura → recurso → setting, y el resultado es que dejan en visto, o agendan y
+llegan a la llamada sin contexto. La cadena que pide Héctor: apertura → conexión natural → *"desde dónde me
+sigues?"* → tirar del hilo → descubrir qué le llevó a la comunidad → detectar avatar → **nutrir si corresponde** →
+setting. Los leads de CTA traen intención y pueden ir más rápido. Fuente: Loom + esquema del equipo,
+`Downloads/transcripcion_feedback_pepe.md`.
+
+### El diagnóstico: la regla ya estaba, escrita como prohibición
+
+`coach_phase_massage_fase0` llevaba desde el 24/08 *"EL PERIODO DE CONEXIÓN ES OBLIGATORIO CUANDO ESCRIBES TÚ
+PRIMERO: antes de tu primera pregunta sobre su objetivo o su entrenamiento tiene que haber habido al menos UN
+intercambio sobre algo que NO sea fitness"*. Dos fallos, y los dos ya diagnosticados antes en este mismo loop:
+
+1. **Era una prohibición sin movimiento ni exemplars.** La ronda 1.2 dejó medido que *donde se da un movimiento
+   POSITIVO con exemplars el modelo generaliza; donde se da una PROHIBICIÓN, falla*. El colchón no tenía ni
+   secuencia, ni literales, ni un solo ejemplar: no existía para el modelo.
+2. **Se autolimitaba a "cuando escribes tú primero"**, y el caso que Héctor nombra explícitamente (un setter abre a
+   mano y la IA toma el relevo) es el contrario: carriles A, B y C, donde el último que ha escrito es siempre el
+   lead. Misma familia que el *"en el PRIMER TURNO"* que caducaba en la ronda del 27/08.
+
+### Lo que entra: EL COLCHÓN, cuatro peldaños
+
+Sustituye a la prohibición, no se le suma. Un peldaño por turno, cada uno con su reacción delante:
+
+| # | Peldaño | La pregunta |
+|---|---|---|
+| 1 | De dónde te sigue | "desde dónde me sigues?" |
+| 2 | Tirar del hilo (1-2 turnos) | algo de SU sitio: dónde se come bien, qué ver, cómo se vive ahí |
+| 3 | Cuánto tiempo lleva | "hace cuánto que andas por la comunidad??" — se SALTA con el nuevo seguidor |
+| 4 | Qué le trajo | "qué fue lo que te llevó a seguirme?" — **abre el carril** (punto 10) |
+
+Alrededor: **el 3 y el 4 van uno detrás del otro y en ese orden** (se parecen, y por eso no se refunden; como el 3
+ya ha dicho "la comunidad", el 4 usa la otra forma de Pepe, y la condición vive dentro de la celda) · el peldaño 2
+es el que hace el trabajo y ahí no hay una palabra de entrenamiento · **el peldaño 3 es el termómetro** y alimenta
+la vía de LEAD FRÍO RECIÉN LLEGADO, que hasta ahora se disparaba con señales vagas · **nutrir es una decisión y va
+después del peldaño 4**, nunca en lugar de él · no suben el colchón el CTA, el carril D ni el Fast-Track ·
+**tener el carril no adelanta el colchón** (saber a qué viene no es lo mismo que estar en confianza para que le
+preguntes).
+
+Piezas tocadas fuera de fase0: `_core` punto 10 (la cadena, el verbo operativo de "mientras esté sin identificar" y
+el disparador de la pregunta de carril), `_phases` F1 y `coach_phase_massage_fase1`, LEAD FRÍO, la ESCALERA DE
+RECONDUCCIÓN, `coach_secondary_links`, el voiceprint y el corpus de voz (8 exemplars nuevos + un ANTIPATRÓN).
+
+### Tres decisiones que hay que contarle a Pepe
+
+- **La burbuja 4 de la entrega de la rutina cambia** de *"qué fue lo que te trajo por la comunidad?"* a *"desde
+  dónde me sigues?"*. Esa burbuja se añadió el 24/08 como respuesta a su feedback prioritario (no asumir el
+  objetivo). Sigue cumpliéndolo — la pregunta nueva asume todavía menos —, pero **el avatar se identifica tres
+  turnos más tarde**. Es el precio del colchón y conviene que él lo sepa. Efecto colateral: si el lead pide la
+  rutina más tarde, con el colchón ya subido, la entrega pasa a ser de **3 burbujas**.
+- **Pepe es de Málaga** (confirmado por Iván, 02/09) y el dato entra a `coach_identity_role`. El *"yo de Málaga"*
+  del Loom es de **Héctor**, en su propia conversación, no de Pepe: sin el dato en la biografía, el test
+  anti-invención lo prohibía y el peldaño 2 se quedaba sin reciprocidad, o sea en interrogatorio.
+- **La variante *"le metes caña al Hyrox o nada que ver?"* del esquema NO entra sin gate.** Solo puede salir si él
+  ya ha nombrado el HYROX, que es justo lo que pasa en el ejemplo del propio esquema (la lead lo dice al contestar
+  el peldaño 3). Nombrarlo antes es lo que perdió a Andrés y a Cleofás seis días antes (ronda 27/08).
+
+### Dos pasadas adversariales: 15 + 18 hallazgos, ninguno dentro de la pieza nueva
+
+**Primera pasada** (6 lentes + verificador escéptico, 59 hallazgos brutos → 15 confirmados, 2 P0):
+
+| Sev | Qué |
+|---|---|
+| P0 | El preámbulo de la tabla de apertura mandaba ir *"directo a la pregunta abierta"* a todo el que escribe él. En los carriles A, B y C el último que escribe es SIEMPRE el lead → el colchón quedaba cancelado en la mayoría de conversaciones reales, y justo en el caso que Héctor pide cubrir. |
+| P0 | `_core` punto 10 seguía ordenando *"se pregunta ABIERTO por lo que busca ahora mismo"* mientras el avatar está sin identificar, que es por definición el tramo 1-3 del colchón. Y `_core` **prevalece sobre cualquier fase**: la binaria vieja ganaba. Yo había parcheado dos frases vecinas de ese mismo punto y dejado intacto el verbo. |
+| P1 | La compuerta de la pregunta de carril quedó **insatisfacible para el CTA y el carril D**: la até al peldaño 4, que a ellos no se les sube. Reescrita sobre el estado ("si ya le has preguntado por lo que busca"), no sobre el peldaño. |
+| P1 | La ESCALERA DE RECONDUCCIÓN rompía el colchón **a la primera esquiva**: el punto 2 enruta ahí cualquier pregunta esquivada, y esquivar es lo más probable justo en el peldaño 1. |
+| P1 | *"El colchón dura 3 o 4 turnos y se acaba. Con la recomendación suya en la mano ya es suficiente"* — mala transcripción mía del *"aquí ya es suficiente"* de Héctor, que se refería al hilo y seguía hasta el 4. Leída literal **declaraba el colchón terminado en el peldaño 2**, y se llevaba por delante el termómetro y la identificación del avatar. |
+| P1 | La PERSONALIZACIÓN metía *"dónde vive"* del perfil **una línea antes** de preguntarle de dónde te sigue. |
+| P1 | El carril A daba por contestado el peldaño 4 **sin condición**, contra la Fase 0 que prohíbe dar por hecho que respondió a la bienvenida. |
+| P1 | La señal de LEAD FRÍO salta en el peldaño 3 y su primera orden era **entregar el grupo**: un turno antes de que nutrir estuviera permitido. O sea el "nutrir automáticamente" que Héctor pide quitar, autorizado por el propio colchón. |
+| P1 | Dos exemplars aprobados con etiqueta `conexion_F1_...` enseñaban literalmente el ANTIPATRÓN nuevo. Se renombraron; el literal no se tocó. |
+| P1 | El exemplar del peldaño 4 abría burbuja con **"Y" pelado**, fuera de las tres excepciones declaradas. |
+| P2 | ×5: `movimientos 1 a 4` metía en el colchón el movimiento 3 (criterio de entrenamiento) · "los cuatro peldaños" era insatisfacible con el nuevo seguidor · el bullet que añadí a `coach_secondary_links` duplicaba la regla **sin el carve-out del carril B** (se borró) · "la rutina no caduca" obligaba a repetir el peldaño 1 y la fórmula "Y ya por curiosidad" ya gastados · la queja de Héctor sobre la repetición del peldaño 2 es **ENTRE conversaciones**, y toda la maquinaria de no-repetición del bloque está declarada dentro de una. |
+
+**Segunda pasada** (3 lentes sobre mis propias correcciones, 18 hallazgos, 9 reales tras dedup). Como estaba
+previsto, **la mayoría los había introducido la pasada que arreglaba**:
+
+- La excepción de la burbuja 4 la contradecían **tres binarias nueve líneas más abajo** ("los mensajes 3 y 4 son
+  obligatorios", "los cuatro van tal cual", "son 4 burbujas… no se refunden para caber en 3") más la del
+  voiceprint. Cuatro afirmaciones sin condición contra una condicionada: gana la mayoría. La condición se movió a
+  donde se ejecuta y se borró de arriba.
+- **El nuevo seguidor se quedaba sin ninguna lectura de temperatura**: la definición de LEAD FRÍO exigía que
+  *"escribe por primera vez"* (aquí escribes tú) y la señal era el peldaño 3, que con él se salta. El lead más frío
+  que existe caía por las dos puertas. Ahora la fila del 3 dice por qué se salta y LEAD FRÍO dice *"lo haya abierto
+  él o lo hayas abierto tú"*.
+- El peldaño 2 mandaba **rotar tres ángulos y a la vez prohibía variar dentro de la conversación**: el segundo
+  turno se quedaba sin salida legal. Ahora el ángulo se elige una vez y el segundo turno tira del hilo de SU
+  respuesta.
+- La ESCALERA quemaba la **pregunta de carril en el segundo mensaje**, derogando la compuerta de dos-tres turnos
+  que el punto 10 acababa de poner.
+- `"solo en CTA y en el carril D"` dejaba fuera al **Fast-Track**, que la sección del colchón sí exime.
+- El exemplar nuevo del peldaño 2 quedó **detrás del peldaño 4**, así que el corpus enseñaba 4 → 2: abrir el carril
+  y volver a la charla del sitio. Movido.
+- Tres literales míos eran de catálogo o inventaban: el del país hardcodeaba *"ya somos dos"* (con un lead de
+  México el molde hace que el setter se diga mexicano), la reciprocidad de origen salía **dos veces** en dos turnos
+  seguidos, y la reacción del peldaño 3 (*"me lo apunto que voy tomando nota de todo"*) no nombraba nada suyo.
+- La apertura al nuevo seguidor **con** personalización se iba a 6 burbujas: esa línea pasa a ir dentro de la
+  burbuja del porqué.
+
+> **Sexta vez que este loop tropieza con lo mismo, y la lección se afina dos veces.** Primero: no basta con escribir
+> la regla nueva en su sección y barrer lo que la contradice, hay que barrer **el verbo operativo** de las reglas de
+> rango superior — en los dos P0 la contradicción estaba en el mismo punto 10 y en la misma tabla que yo acababa de
+> editar, en la frase de al lado de la que sí toqué. Y segundo: **una excepción nueva no se declara donde se decide,
+> se declara donde se ejecuta.** La de la burbuja 4 la puse en la lista de desempates y perdió contra tres binarias
+> que estaban nueve líneas más abajo, que es lo que el modelo lee cuando va a mandar la rutina.
+
+### Lo que queda abierto
+
+- 🔴 **Smoke en Automatía del colchón.** Qué mirar: (a) que reparte los peldaños en turnos y no los comprime en un
+  mensaje; (b) que con el nuevo seguidor SALTA el peldaño 3 y aun así lo trata como recién llegado; (c) que el
+  peldaño 2 no acaba siempre pidiendo un sitio para comer; (d) que con el carril A, donde ya hay carril desde el
+  primer mensaje, NO se salta al descubrimiento; (e) que al CTA no se le mete colchón; (f) que el lead que pide la
+  rutina tarde recibe 3 burbujas y no 4.
+- 🟠 **El corpus del peldaño 2 son tres moldes** (comida, turismo, ambiente) y la queja de Héctor es de repetición
+  entre conversaciones. Si vuelve la queja, la salida no es un cupo — el setter no lleva contador entre
+  conversaciones — sino más moldes escritos por Pepe.
+- 🟠 **La pregunta del carril CTA perdió su anclaje en la palabra clave** en la ronda del 27/08 (de *"qué fue lo que
+  te llevó a responder [palabra]"* a *"qué es lo que estás buscando ahora mismo"*), y ahora es idéntica al exemplar
+  genérico de conexión. No es de esta ronda y no se ha revertido: **conviene decidirlo con Iván.**
+- 🟠 **`conexion_carril_prueba_con_el_colchon_ya_hecho` duplica el arranque de un exemplar de F2** (*"De locos que
+  quieras darle (más) en serio"*) y deja el objeto implícito en *"a esto"*, contra el movimiento 5 del voiceprint.
+  Es anterior a esta ronda y reescribirlo toca un literal validado: no se ha tocado.
+- Sigue abierto todo lo de la ronda del 27/08 (corpus de voz monocarril, descualificador 4, la comunidad de HYROX
+  como cierre obligatorio para los tres avatares) y la deuda de `prompts/source/coach-v5/pepe-jimenez.md`.

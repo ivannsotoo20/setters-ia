@@ -513,3 +513,209 @@ Las dos secciones sumaban el 60 % del bloque. La duplicación aquí no era entre
 Verificado tras cada pase: 48 secciones XML balanceadas, cero líneas huérfanas, el bloque abre y cierra bien.
 
 **Dónde queda el techo.** Los +823 caracteres que sobran son contenido que Rubén pidió: la fase de contexto entera, el paso 4b y los cuatro movimientos. Bajar de ahí ya no es podar duplicados, es recortar lo que se acaba de añadir. Los 32 topes que quedan son mayoritariamente **verificables mirando el mensaje que se escribe** (una pregunta por mensaje, máximo 3 líneas, no dos muletillas seguidas); los que exigían memoria de la conversación han caído.
+
+## Ronda 2026-09-05 — LOS HITOS (reunión de Rubén del 03-09)
+
+Fuente: `Downloads/Sala de reuniones personales.txt`, reunión del 3 de septiembre con Rubén y
+Sergio, en la que se revisaron Pablo López, Miguel Aguado y Juan Gil. Iván confirmó que Alfonso
+tenía el mismo fallo. **130.368 → 123.247 chars (−5,5%)**, por debajo también de la copia del
+repo (128.119), que iba divergida.
+
+### La queja: repite preguntas. Y no era de Alfonso, era de la arquitectura
+
+Rubén, sobre Pablo: *«esta es la misma pregunta pero hecha de una forma diferente»*. Y pidió que
+se investigara: *«revísame eso para ver qué puede provocar que repitan las mismas preguntas y que
+busque otra vez el mismo dato que ya tiene»*. La respuesta, y **el hallazgo de la ronda: el bloque
+dejaba al modelo sin ninguna jugada legal.**
+
+Con un lead que habla pero no sabe qué le frena, tres reglas binarias componían un punto muerto:
+el elemento 3 decía que un «no sé» NO cuenta, la PUERTA DE F5 prohibía proponer sin ese elemento,
+y NEGACIÓN ACEPTADA prohibía repreguntar. Y las dos únicas salidas previstas eran «no se abre»
+(monosílabos) y «no lo necesita» (dice que va bien): **no existía rama para "habla bien pero no
+sabe"**, que es justo el caso más frecuente del avatar. El modelo rompía el punto muerto
+repreguntando, porque era lo único que hacía avanzar la puerta de máxima prioridad. **El bucle no
+era una violación del bloque: era el bloque funcionando como estaba escrito.**
+
+Tres agravantes: (1) `NEGACIÓN ACEPTADA` estaba acotada a *«ESE mismo elemento»*, y el 3
+(bloqueo), el 3b (curiosidad) y el ángulo (a) del 4 (impacto) eran **elementos formalmente
+distintos sobre el mismo terreno** — tres turnos legales preguntando lo mismo. (2) El corpus
+enseñaba **22 moldes** de la familia «freno» para una pregunta que se hace una vez. (3) El
+`PRESUPUESTO ÚNICO` era una lista numerada de 6 preguntas *«y van en este orden»*: el raíl lineal
+que Rubén quería matar, y la línea que decía que era un límite y no un guion era prosa contra una
+lista numerada.
+
+> ⚠️ Esto **no es de Alfonso**. `angel-martinez.md` lleva la arquitectura idéntica y `frodo.md`
+> una peor (6 elementos, 9 preguntas). Miguel Aguado, que no tiene gate, repite por la razón
+> contraria: nada le dice qué lleva cubierto. Por eso Rubén lo veía «con todos».
+
+### Qué entra: LA REGLA DE HITOS
+
+Los 5 elementos y el presupuesto numerado pasan a **4 HITOS SIN ORDEN**: H1 qué quiere (resultado
++ recorrido + el porqué), H2 de dónde parte, H3 la brecha, H4 si está dispuesto. 4 preguntas, y 5
+solo cuando el freno se cierra en falso.
+
+**Las tres piezas que hacen que funcione**, y sin las cuales el bucle vuelve por la puerta de atrás:
+
+1. **La PUERTA DE F5 mide CERRADO, no CONSTA.** Un hito se cierra de tres maneras y las tres
+   valen igual: CONSTA (lo dijo él), **CERRADO EN FALSO** (dice que no lo sabe o niega la premisa)
+   y **GASTADO** (ya le hiciste esa pregunta). *«Faltar significa ABIERTO, no vacío.»* Si el gate
+   siguiera midiendo «constan los cuatro», un hito cerrado en falso no constaría y el punto muerto
+   volvería intacto.
+2. **GASTADO** cubre el caso que el bloque no contemplaba: le preguntas el objetivo y contesta
+   otra cosa. `frodo.md` ya lo tenía bien escrito; Alfonso no.
+3. **«Sin orden» necesita un desempate** o el orden vuelve implícito por el orden en que están
+   escritos los hitos. El desempate que no es un orden: *el hito que toca es el que nace de su
+   última palabra*. Sobrevive **una sola** restricción: H2 antes de la puerta A del H3 (doctrina §33).
+
+**El H3 tiene DOS PUERTAS.** La A es su freno, y por defecto se cobra **APUNTANDO** (tu criterio
+con el remate pegado), no preguntando abierto: con el contexto delante, la abierta desperdicia lo
+que acabas de recoger. La B es **la expectativa**, y entra cuando no nombra su freno o dice que no
+lo sabe: *«si no soy capaz de sacar el principal problema, al menos tengo que entender una
+expectativa sobre el tipo de solución que necesita»* (Rubén). Con recorrido detrás, expectativa vs
+realidad; sin recorrido, expectativa de ayuda **guiada** con tres carriles.
+
+⚠️ **La puerta B obligó a acotar dos reglas vivas, no a borrarlas**: el auto-diagnóstico («qué
+crees que necesitas») sigue prohibido sobre SU PROBLEMA, pero preguntar por ayuda en el PROCESO
+que tiene por delante sí se hace; y el CARRIL de tres opciones se declara **cuarto sitio
+autorizado** de la dos-puertas, o el TEST binario del voiceprint lo habría reescrito solo.
+
+### Qué muere
+
+- **El elemento IMPACTO**, con sus 3 ángulos, su follow-up hilado obligatorio y su banco de 5
+  micro-confirmaciones. Con **derogación explícita** dentro del gate, porque `sumar sí, rebajar
+  nunca` lo habría resucitado por diseño, y porque tres sitios lo nombraban **por su nombre y no
+  por su número** (la comprobación pre-propuesta de F5 era la peor: anulaba el cambio ella sola).
+  ⚠️ **Esto no baja el CUÁNTO de §31**: la expectativa vs realidad *es* el impacto obtenido con
+  otro instrumento (*«ahí le hemos tocado el dolor»*, Rubén). Muere la casilla con su pregunta
+  propia; el contenido se absorbe en el H3.
+- **El 3b** (la curiosidad encima del bloqueo) y **el contexto B** (la segunda pregunta de contexto).
+- **La duplicación de F2**: los PUNTOS 1-4b reescribían los elementos aunque dijeran «fuente única».
+- **La pregunta blanda de disposición**, y con ella su razonamiento escrito (*«no le pides que se
+  comprometa a cambiar, le pides que esté ABIERTO A VERLO»*), que si se dejaba mantenía en el
+  prompt la razón para no usar el literal nuevo.
+
+### Qué se decidió, y por qué así
+
+- **La cualificación pasa a la DURA de Rubén**, que la pide por el show-up: *«¿estarías dispuesto
+  a cambiar un poco tu rutina si supieras que vas a conseguir el resultado?»*. Conserva las dos
+  piezas de suavizado que ya funcionaban («algunos puntos de», «sin nada drástico»). ⚠️ El
+  condicional del resultado va como **hipótesis, no como garantía**, y lleva su carve-out escrito
+  contra el «promesas no» de F5.
+- **El «por qué ahora» se acota, no se levanta**: es *por qué quiere cambiar su situación*, nunca
+  *por qué te ha escrito* (Alfonso escribe primero). Sigue valiendo solo si es él quien dice que
+  el objetivo es nuevo.
+- **El CONTEXTO sobrevive pero se recoge**, no se pregunta salvo que no haya salido nada. Iván
+  acotó su propio veto: muere la familia del impacto («cómo te afecta en el día a día», «qué
+  cambiaría para ti»), no la pregunta de contexto que el propio Rubén metió en agosto.
+- **El hecho de su vida que trae el lead en F1** (una oposición, una mudanza) se pregunta y **no
+  consume presupuesto**: *«¿qué pasó con la oposición? Esa es la pregunta, para conectar con el
+  tío»* (Rubén). ⚠️ Con carve-out de seguridad: si el hecho es MÉDICO, no se pregunta, manda el
+  trigger I.
+- **Nace el BANCO DE RETIRADAS** en `coach_tone_lexicon` como fuente única. Las ~14 frases
+  retiradas vivían repartidas en 11 sitios con listas parciales, y podar el elemento 4 habría
+  matado 6 en silencio.
+
+### Fallos que ya existían y se han cerrado de paso
+
+- **La verificación de F4 estaba indeterminada**: cuatro instrucciones incompatibles (dos decían
+  «en su propio turno, PROHIBIDO fusionarla», dos decían «fusionada por defecto», y el voiceprint
+  tenía una excepción que presuponía la fusión). No hacía falta decidir nada: **Iván ya lo había
+  decidido el 24-ago** y la derogación nunca se aplicó. Ahora va en su propio turno en todos los
+  sitios, y tiene **un molde de verificación por cada puerta del H3** (sin él, con la puerta B no
+  había freno que nombrar y el bucle se mudaba de F2 a F4).
+- **`activa el protocolo de menores`** apuntaba a un protocolo inexistente, en una rama con
+  implicación legal. Ahora tiene mecanismo real.
+- **Seis reglas incompatibles ante «qué ofreces»**: el bullet suelto que ordenaba «no vuelvas a
+  preguntar hasta haber explicado el servicio» chocaba con el veto binario de nombrar «el
+  programa» antes de F5 y con el ⛔ALTO. Borrado.
+- **La frase retirada `"has recibido consejos profesionales alguna vez"` seguía viva como exemplar
+  canónico**, tercera ocurrencia del patrón «regla binaria contra literal» en este bloque.
+- **La disponibilidad** se prohibía en tres sitios y se demostraba en dos exemplars, y figuraba
+  como objetivo de F3 en el índice de fases.
+- **`coach_objections_solo` se contradecía consigo mismo a tres líneas**: un ⛔ prohibía preguntar
+  por sus resultados y el literal de debajo preguntaba exactamente eso — y ese literal es el molde
+  de la expectativa que ahora sube al H3. Se acotó el ⛔, que era el que estaba mal.
+
+### El feedback de la setter, filtrado
+
+Rubén y Sergio ya dijeron que su método no es fiable (*«se descarga las transcripciones, las mete
+en la IA, y eso lo pasa»*), y Rubén lo revisa con Iván el lunes. De sus 8 puntos: **4 se aceptan**
+(repetición de info, adaptación a la intención, exceso de confirmaciones, cualificación agresiva
+como síntoma), **2 se acotan** (las validaciones repetitivas son un problema de corpus, no de
+regla; y responder a «qué ofreces» ya existía), **1 estaba ya hecho** (las dos puertas se purgaron
+el 24-ago) y **1 se rechaza**: acortar la propuesta de F5, porque Rubén elogió en esa misma
+reunión una propuesta larga (*«esto es tope, si yo fuera José esto lo subiría por redes»*) e Iván
+decidió el 24-ago que el cierre no se toca. ⚠️ **El plural editorial se queda**: es decisión de
+Iván del 24-ago, y lo prohibido es dar a entender que hay otra persona atendiendo.
+Lo único suyo directamente aprovechable fue su ejemplo del punto 2, que es una verificación sobre
+la **expectativa de ayuda** y sirvió de molde para la F4 de la puerta B.
+
+### La pasada adversarial encontró tres bloqueantes, y dos eran de la propia ronda
+
+Aplicada la ronda, la verificación adversarial sobre el resultado la declaró **no desplegable**.
+Vale la pena dejar los tres escritos, porque los tres son la misma clase de fallo que este bloque
+ya ha sufrido tres veces: **una regla nueva contra una regla vieja que nadie derogó.**
+
+1. **El modo POR DEFECTO del H3 estaba invalidado por la definición de CONSTA.** La ronda ascendió
+   el APUNTADO a modo por defecto (doctrina §33: *«el contexto se cobra apuntando, no volviendo a
+   preguntar abierto»*) y a la vez borró el candado del elemento 3 (*«un freno que has puesto tú y
+   él solo ha aceptado NO cuenta»*). Pero CONSTA seguía diciendo que *«lo que le has puesto en la
+   boca NO consta»*: el camino más frecuente producía un hito que no cerraba. Arreglado con una
+   excepción explícita dentro de CONSTA — **una hipótesis con el remate pegado que él CONFIRMA sí
+   consta, porque el remate le deja la última palabra**; lo que no vale es darlo por hecho sin que
+   confirme.
+2. **`coach_objections_mas_adelante` tenía una puerta trasera a F5.** Su movimiento 4 remataba en
+   el MOLDE 2 de la propuesta, y el MOLDE 2 declara que *«aquí la verificación ya la ha hecho la
+   propia secuencia»* — cierto para `coach_objections_solo`, que pregunta por sus resultados, y
+   falso para `mas_adelante`, que solo pregunta por la FECHA. Un lead que soltaba «empiezo en
+   septiembre» de pasada en el mensaje 3 llegaba a la propuesta **sin verificación y con los
+   cuatro hitos abiertos**, en la objeción que el propio bloque llama la más frecuente del avatar.
+   La ronda derogó la fusión de F4 en cinco sitios y dejó viva justo la única puerta que la
+   practicaba. Arreglado: `mas_adelante` pasa por la verificación en su propio turno y usa el
+   MOLDE 1; el MOLDE 2 queda acotado a `objections_solo`.
+3. **El doble «no lo sé» mudaba el punto muerto de F2 a F4.** Si el H3 se cerraba en falso por sus
+   DOS puertas, la verificación de F4 se quedaba sin contenido legal: exige *«la palabra literal
+   del lead»* y sus dos ramas eran el freno o la brecha, ninguna de las cuales existe. Y sin F4 no
+   hay F5. **Era exactamente el mismo punto muerto que la ronda venía a arreglar, reaparecido un
+   nivel más arriba.** Arreglado con una tercera rama que verifica sobre lo que sí dio: su objetivo
+   y lo que quiere.
+
+Además salieron dos regresiones propias que conviene recordar como patrón: al endurecer la
+pregunta de disposición en tres sitios, **la versión blanda sobrevivió dentro de
+`coach_objections_avatar`** (*«estarías dispuesto a saber cómo se trabajaría»*), que es la
+objeción de «no tengo tiempo»; y al quitar el «tío» de dos literales, el corpus se quedó
+enseñando el *«Vale,»* seco que el propio bloque llama *«la muletilla más delatora»*.
+
+Y tres cosas se habían perdido sin sustituto al borrar secciones: **«NUNCA el peso actual»**,
+**«el estancamiento se PREGUNTA, nunca se afirma»** y el enganche a `<phase2>` del `<core_block>`.
+Restituidas.
+
+**La lección de método**: la poda no borra solo lo que sobra, se lleva por delante candados que
+vivían dentro de la sección borrada. Antes de dar por buena una ronda que elimina una sección
+entera, hay que preguntarse qué reglas la usaban como percha. Esta es la tercera vez que le pasa
+a este bloque.
+
+⚠️ **Queda una compuerta abierta**: no existe un `coach_wclose` para el lead que dice que NO a la
+pregunta dura. Hoy cae en `coach_wclose_prefiere_solo`, que le contesta *«tiene todo el sentido
+que sigas por tu cuenta»* a alguien que no ha dicho eso, sino que no está dispuesto a cambiar
+nada. Es un non sequitur en el último mensaje de la conversación, y lo lógico es que el literal lo
+escriba Iván.
+
+### Pendiente
+
+- **La batería de 5 conversaciones no se ha corrido**: la despliega Iván en Automatía. Casos
+  obligatorios en el plan de la ronda, y el que decide es el primero: lead que dice «no lo sé» al
+  freno → debe girar a la expectativa, **falla si vuelve a preguntar el freno con otras palabras**.
+- **Se mide shows/agendas, no agendas.** Bajar el número de preguntas sube los síes por sí solo:
+  si solo se miran agendas, esta ronda parecerá un éxito durante dos semanas.
+- **El transplante a los otros cuatro** (`angel-martinez`, `frodo`, `alex`, `luis-royan`), que
+  llevan la misma arquitectura. La regla de hitos es avatar-agnóstica y se copia literal; los
+  **moldes de la puerta B no**, porque el objeto de la expectativa cambia con el avatar. ⚠️ En
+  Luis Royán las dos piezas nuevas están **contraindicadas**: pedirle a una mujer en menopausia
+  que cambie su rutina a cambio del resultado le devuelve la culpa que su bloque trabaja para
+  quitarle, y *«¿esperabas estar así?»* tiene una respuesta honesta —«no, y no es culpa mía»— que
+  se lee como reproche.
+- **Doctrina**: §11.15 prescribe como sustituto de la «pregunta muerta» justamente *«cómo te
+  sentirías el día que lo hayas conseguido»*, que cae dentro de la familia aspiracional que esta
+  ronda mata: se queda sin recambio. Y el modelo de hitos es **candidato a §35** — Rubén lo dio
+  para todos los nichos —, pero se escribe cuando esté medido en Alfonso, no antes.
