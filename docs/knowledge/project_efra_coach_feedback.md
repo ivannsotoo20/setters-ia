@@ -121,6 +121,153 @@ umbral · `coach_wclose_postop` pone el literal y el motivo · el trigger K solo
 - Objeción trabajada + `pues igual tienes razón` → avanza hacia el cierre. ⛔ Falla si vuelve a una
   pregunta de descubrimiento que ya estaba cubierta.
 
+## Ronda 3 — 05-09-2026 (feedback #89, tres puntos, sobre tres conversaciones de producción)
+
+Sus tres quejas —propone la videollamada demasiado rápido en bienvenidas, insiste con ella, y no
+comprueba antes si el lead está abierto— **son el mismo agujero visto desde tres sitios**: el bloque
+tenía un suelo de INFORMACIÓN (los 5 elementos) y ninguno de DEMANDA. Comprobaba *«¿sé lo suficiente
+de él?»* y nunca *«¿me está pidiendo ayuda?»*. Los tres leads de los pantallazos **cubrían los 5**: el
+gate se abrió correctamente. Por eso el arreglo fue un elemento 6, no endurecer los cinco.
+
+Y el criterio ya lo había escrito él en su formulario. Vivía en `coach_qualification_criteria`
+(*«aunque no le haya funcionado nada, no ha dejado de buscar soluciones»*) y era el único de los
+cuatro **sin pregunta, sin fase y sin veredicto**. No pedía un criterio nuevo: pedía que se cableara
+el suyo.
+
+### Sus dos literales no se aplicaron, y hay que decírselo
+
+Él propuso *«Y si existiera una opción de entrenamiento adaptada a ti…»* y *«Y si pudieras valorar
+una opción…»*. Las dos son **hipotéticas**, que están prohibidas desde la corrección de Iván del
+03-09 sobre Tania (mismo avatar de dolor crónico): *«moldes de catálogo: se le pueden mandar a
+cualquiera y proyectan un futuro en vez de leer su presente»*. Y las dos fallan el test E del propio
+bloque. Su **movimiento** era correcto y se aplicó entero; sus **frases** se reescribieron en
+presente, con el acuse que toma posición y los conectores que Iván fijó ese mismo día.
+
+Su tercera propuesta, *«¿qué crees que necesitarías para volver a estar sin dolor?»*, tampoco entró:
+encuadra por el **dolor eliminado**, que es justo lo que su bloque prohíbe prometer, y le pide que se
+moje a quien su propia ficha de nicho describe como alguien que *«llega sin saber qué hacer»*.
+
+### Lo que se cambió
+
+- **Elemento 6 del gate — LA INTENCIÓN.** *Que quiere que alguien le ayude con esto, dicho por él.*
+  Es el único que puede salir que NO, y el único que se cubre preguntando de frente. Consta desde su
+  primer mensaje si con eso escribió, lo que resuelve el carril inbound sin escribirlo: **lo que ya
+  consta no se vuelve a preguntar**. El techo sube de 11 a 13 turnos.
+- **F3 pasa a dos peldaños.** El 1 es la satisfacción de siempre; el 2 es la intención. Y la respuesta
+  ambigua —*«no sé si podría hacerlo mejor, pero peor estaría sin esto»*, que es la que da la
+  mayoría— deja de ser una excepción opcional y pasa a ser la rama por defecto. Antes no tenía
+  veredicto: el bloque solo contemplaba «estoy contento» y «no del todo».
+- **El puente vuelve a ser un puente.** El exemplar etiquetado *«F4, puente antes de proponer»* no lo
+  era: no citaba nada suyo, no tenía el hueco expectativa-realidad y **no terminaba en pregunta**.
+  Salió idéntico, palabra por palabra, a los tres leads. Ahora va con huecos, termina en *«¿tú lo
+  veías así?»*, va en su propio turno y **espera respuesta**. Ésa es la mecánica del «muy rápido»: sin
+  pregunta no había dónde parar y la propuesta caía en la misma respiración. También explica el
+  puente duplicado de Marta.
+- **La propuesta se comprueba mirando atrás, no recordando.** La regla de «una sola vez» ya estaba
+  escrita cuatro veces y falló igual, porque vivía dentro de F5 y días después el modelo ya no se lee
+  «en F5». Ahora se comprueba como la parada: *mira tus mensajes anteriores*.
+- **Estado nuevo: VIVO Y SIN PROPONER.** El bloque tenía 16 salidas documentadas y las 16 apagaban;
+  «seguirle el rollo y dejar las puertas abiertas» no existía como estado. Lleva su literal, la
+  aclaración de que **no lleva apagado**, la frontera con `coach_wclose_not_now` (que sí apaga y se
+  distingue porque se despide) y el recordatorio de que los triggers de seguridad siguen prevaleciendo.
+- **El literal de reenganche se retiró.** *«¿Te sigue apeteciendo que veamos tu caso con calma?»* era
+  literal real suyo y era **exactamente la re-propuesta que él ahora prohíbe**, viviendo en la sección
+  declarada fuente única de la voz. Era la causa raíz de su queja 2, no una consecuencia.
+- **El plural del literal de F5.** La ronda 2 pasó la valoración de un equipo a Efra en persona y
+  barrió la regla en sus diez sitios, pero no barrió los literales: *«podemos escucharte»*, *«te
+  explicamos»*. Dos de las tres conversaciones lo mandaron en plural y las tres lo parchearon
+  distinto. Corregido aquí y en `coach_objections_price` y `coach_wclose_presupuesto`.
+- **Recontacto por fecha médica.** Había dos versiones del mismo trigger (una salta si *aplaza*, otra
+  si *da la fecha*). Se mantiene el disparador en el aplazamiento y se añade que **si la fecha ya
+  salió antes, se recoge**. Es lo que se saltó con Marta.
+- **Higiene:** el puntero muerto a un «protocolo de decisión quirúrgica» que no existía, y el gate de
+  post-operado atado al **tiempo verbal** (una operación futura ya no dispara «¿cuánto hace de la
+  intervención?»).
+- **Recortes que pagan la ronda:** el sangrado XML, los patrones de voz que los exemplars ya enseñan,
+  los topes parciales de fase, el segundo ciclo de claridad y las justificaciones de regla. La ronda
+  cierra **más corta** que como empezó.
+
+### Lo que Efra no vio y pesa más que lo que sí vio
+
+- **A Marta nunca se le hizo la pregunta de cualificación**, que es la única obligatoria. La causa es
+  exacta: la comprobación previa a proponer decía *«repasa mentalmente los 5»* y el gate de
+  cualificación no era uno de los 5. Recibió la propuesta sin haber sido cualificada nunca. Arreglado
+  al meter la intención DENTRO del gate, que es donde el modelo mira.
+- **El cierre de Javier se lo inventó el modelo.** *«Cuando lo tengas pensado me dices»* no coincidía
+  con ningún `coach_wclose`, así que ese turno nunca emitió los dos criterios. Era la regresión del
+  arreglo de la ronda 2 — y el mensaje era correcto, lo que faltaba era cobertura. Hoy es literal.
+- **«Me lo tengo que pensar» tenía cuatro instrucciones incompatibles** y ninguna regla de
+  precedencia. Un modelo ante instrucciones incompatibles produce el promedio: un mensaje que suena a
+  despedida y no cierra nada, que es literalmente lo que salió.
+
+### Pruebas nuevas que trae esta ronda
+
+- **Peldaño 1 ambiguo.** `No sé si podría hacerlo mejor, pero si no fuera por el ejercicio que hago
+  estaría peor` → **NO cierra y NO propone**: va al peldaño 2. ⛔ Falla si lo lee como un "estoy
+  contento", y falla si salta al puente.
+- **El que viene a aprender.** `Al ver tu perfil pensé, anda mira, tal vez pueda aprender algo por
+  aquí` → la pregunta de intención lo caza. ⛔ Falla si lo cuenta como intención.
+- **La puerta B no cierra a la primera.** `De momento voy tirando yo solo` → una pasada por la regla
+  de diferenciación. Solo si lo mantiene, `coach_wclose_generic`. ⛔ Falla si cierra al primer no.
+- **Los tres "no" que no son este no.** `Ahora mismo no estoy para gastar` →
+  `coach_objections_price`. `Prefiero esperar a ver qué me dice el traumatólogo el día 20` →
+  recontacto. `Estoy a gusto con mi fisio` → `coach_wclose_contento`. ⛔ Falla si alguno acaba en
+  `no_busca_ayuda`.
+- **El puente espera.** Tras el peldaño 2, el puente sale SOLO y no lleva propuesta detrás. ⛔ Falla si
+  el mismo turno acaba en "¿qué te parecería que hiciéramos una valoración?".
+- **No se repite la propuesta.** Propuesta → silencio → seguimiento → él contesta cualquier cosa. ⛔
+  Falla si aparece la valoración otra vez, con las palabras que sean.
+- **El seguimiento pregunta por él, y por algo suyo.** Días de silencio → *"¿qué tal llevas estos días lo
+  de [SU LIMITACIÓN]?"*. ⛔ Falla si menciona la valoración, si da por pasada una fecha suya que aún no ha
+  llegado, o si pide un parte de síntomas genérico.
+- **La puerta abierta no apaga.** `Le doy unas vueltas y te digo` → *"Claro [nombre], sin prisa." / "Tú
+  tómate el tiempo que te haga falta, que yo por aquí sigo"*, **sin** `manual_attention` + `skip_reply`.
+  Si él vuelve dos días después, se le contesta. ⛔ Falla si apaga, y falla si sale el molde de los cierres
+  que sí apagan (*"me escribes y lo vemos/miramos"* + despedida).
+- **Y la seguridad sigue mandando en ese estado.** En "vivo y sin proponer", `¿esto es un bot?` →
+  apagado mudo. Una bandera roja → apagado mudo. ⛔ Falla si la conversación viva desactiva un trigger.
+- **La creencia se trabaja.** `Es lo que hay, hay que aceptarlo` → se cuestiona la premisa una vez,
+  cerrando en pregunta. ⛔ Falla si se calla o si lo trata como una despedida.
+- **La operación futura no dispara el gate de post-operado.** `Me operan el día 15` → nadie le pregunta
+  cuánto hace de la intervención, y va el protocolo de recontacto.
+
+### Lo que corrigió la pasada adversarial sobre la propia ronda
+
+Tres bloqueantes que introdujo el arreglo, y que son la razón por la que esta pasada no es opcional:
+
+- **"con alguien detrás corrigiéndote"** en el literal de intención. `coach_identity_role` es fuente única
+  y dice que ninguna otra parte del bloque nombra a un compañero delante del lead: era el bug de la ronda 2
+  reintroducido por la puerta de atrás, y encima Efra no tendría respuesta si le preguntan quién es ese
+  alguien. Ahora es *"te voy corrigiendo yo sobre la marcha"*.
+- **La puerta abierta compartía molde con los tres `coach_wclose` que sí apagan** (*"me escribes y lo
+  vemos/miramos con calma/sin problema"*). Tres de cuatro literales del mismo molde apagaban, así que el
+  modelo habría copiado el apagado. Se rompió el molde por léxico, no por explicación. Y la
+  `COMPROBACIÓN ANTES DE ENVIAR` del handoff se la tragaba igual: la excepción se escribió **donde se
+  ejecuta**, no donde se decide.
+- **`coach_wclose_not_now` seguía reclamando "me lo tengo que pensar"**, que ahora va a la puerta abierta.
+  Su trigger se reescribió por conducta del lead: solo cuando es él quien cierra la puerta.
+
+Y dos que la simulación cazó: el peldaño 1 se le hacía **al lead que acababa de pedir ayuda** (ahora tiene
+la misma exención de «ya consta» que el 6), y el acuse desnormalizaba el esfuerzo **del lead que ya se
+está moviendo** — el caso de Ángel — cuando a ése se le reconoce primero y se desnormaliza que siga con
+dolor a pesar de él.
+
+### Abierto, y son decisiones de Efra
+
+- **El lead con cirugía en el calendario.** Jose Antonio se opera en 11 días y el setter le prometió
+  acompañarle en la recuperación, cuando el bloque cierra a los post-operados de menos de tres meses.
+  ¿Lo quiere ahora o dentro de tres meses? Afecta a 2 de los 3 pantallazos y no es decisión de prompt.
+- **El filtro de la bienvenida A** (*«No quiero quitarte más tiempo, solo por si puedo ayudarte…»*) es
+  literal suyo y le está diciendo al setter que sea breve justo con el lead del que se queja.
+
+### Fuera de esta ronda
+
+- **Gramática de burbujas.** Efra es el único bloque grande de la academia sin ella (0 menciones,
+  frente a 8-20 en los demás). Nada regula cuántos movimientos caben en un turno ni en qué orden
+  salen, y de ahí sale el turno de Marta con el puente antes que la reacción.
+- **Los cupos que exigen contar entre turnos** (*ostras 1 de cada 3*, *4 emojis en toda la
+  conversación*, *el nombre 1 de cada 4*). Los tres pantallazos los revientan. Transversal a la flota.
+
 ---
 
 # Batería de pruebas — FASE 1 (18 pruebas, 2026-08-14)
@@ -142,6 +289,10 @@ Invalidan la respuesta salga en el test que salga:
 - Pone **corazones** (❤️ y variantes), dice **"entiendo perfectamente"**, le pone **fecha a la llamada** ("la semana que viene") o **reenvía el enlace** ya enviado.
 - **Emoji sobre una expresión de dolor** (única excepción: 😔 pegado a una validación).
 - **"ostras"** dos mensajes seguidos, o en más de 1 de cada 3.
+- **Una hipotética**: "si pudieras…", "si existiera…", "imagina que…". Añadido en la ronda 3.
+- **Demostrativo + sustantivo abstracto** abriendo mensaje, con las palabras que sean: "Esa
+  incertidumbre de…", "Ese miedo a…". No es una lista de cuatro literales, es el molde.
+- **Habla en plural de equipo** ("podemos escucharte", "te explicamos"): la valoración la atiende él.
 
 ---
 
@@ -192,13 +343,13 @@ Es lo que preguntó la única lead real del corpus, y llega en F1-F2. → el fon
 `Es que llevo un año con dolor en la ingle y no sé qué hacer` (no elige) → **no insiste con el menú**: recoge y entra en F1.
 ⛔ Falla si repite el menú al tercero, o si no manda ningún enlace.
 
-### T11 · Cualificación, la rama que no tenía veredicto
-`No, ahora mismo no estoy haciendo nada, lo voy llevando` → **CUALIFICA y avanza**. No tener camino ES el criterio.
+### T11 · Cualificación, peldaño 1 (⚠️ reescrito en la ronda 3: ahora el peldaño 1 no cierra salvo el "estoy contento")
+`No, ahora mismo no estoy haciendo nada, lo voy llevando` → **pasa al peldaño 2**. No tener camino ES el criterio, no cierra nada.
 `Voy al fisio y la verdad es que estoy contento, voy mejorando` → `coach_wclose_contento` y apagado, sin forzar.
-⛔ Falla si cierra al primero por parecerse al segundo.
+⛔ Falla si cierra al primero por parecerse al segundo, o si le propone la valoración sin pasar por el peldaño 2.
 
 ### T12 · El discovery gate contra un lead caliente
-Turno 3, sin haber cubierto los 5 elementos: `Me interesa, mándame el enlace y lo reservo ya` → **NO manda el enlace**. Sigue descubriendo.
+Turno 3, sin haber cubierto los 6 elementos: `Me interesa, mándame el enlace y lo reservo ya` → **NO manda el enlace**. Sigue descubriendo.
 ⛔ Falla si propone. Ninguna señal de compra levanta el suelo.
 
 ### T13 · Lead cerrado
