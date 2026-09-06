@@ -261,6 +261,147 @@ en la numeración CSM (06 → 08): es deliberado**, renumerar solo habría añad
 - El bloque queda en **528 líneas / 81,8 KB**: −1,6 KB frente al repo, +0,7 KB frente a lo desplegado
   (los 13 ejemplos en `>` de los carriles cuestan más de lo que ahorró borrar CSM-07 y el martillo).
 
+## Ronda 4 — 2026-09-05 (reunión de Rubén del 03-09: LOS HITOS, y la escalera se desmonta)
+
+Fuente: `Downloads/Sala de reuniones personales.txt`, reunión del 3 de septiembre. Se revisaron
+Pablo López, Miguel y Juan Gil. **83.761 → 82.421 chars.**
+
+### Lo que Rubén dijo de Miguel, y por qué desmonta la ronda 1
+
+Miguel pidió **alargar** las conversaciones. Rubén, viéndolas: *«más largo, ni de coña. Otra vez,
+más que alargarla hay que acortarla»*. Y su resumen: *«no lo alargaría. **Cambiaría la conexión y
+eliminaría**. Eso sería para Miguel»*.
+
+Lo que pidió eliminar, textual: *«La fase de cualificación también me parece larga. **Son tres
+preguntas siempre** y esto ya lo he visto más veces. Pregunta ¿cómo de importante es para ti?
+Después pregunta si le gustaría cambiar ahora o más adelante y luego pregunta también ¿qué crees
+que te está faltando?»*. Más, aparte: *«muy emocional, todo el rato con el cómo te está
+afectando»*.
+
+⚠️ **Esas cuatro preguntas son, una por una, los cuatro escalones de la ESCALERA DE CAMBIO** que
+le añadimos en la ronda 1 del 31-jul. Correspondencia 1 a 1: impacto, importancia, urgencia,
+necesidad. La escalera nació para que las conversaciones no murieran cortas en el tramo final;
+nueve meses después, es lo que las alarga. **Esta ronda la desmonta**, y eso es una reversión de
+una decisión nuestra, no un capricho de Rubén.
+
+### El permiso para repetir estaba escrito
+
+Rubén preguntó *«qué puede provocar que repitan las mismas preguntas»*. En Miguel no había que
+deducirlo: **estaba autorizado por escrito**. La escalera decía que una respuesta que no cuenta
+*«OBLIGA a seguir subiendo la escalera — el escalón siguiente, **o una variante del mismo escalón
+reformulada**»*. Ocho líneas antes decía lo contrario: *«repetir una pregunta que ya respondió es
+el peor fallo de esta etapa»*.
+
+Y el segundo mecanismo, más fino: **el anti-bucle se medía por ETAPA, no por dato** (*«una vez
+avanzo de etapa no vuelvo a hacer preguntas de esa etapa»*). Como `"qué es lo que más te pesa"`
+vivía en los exemplars de la etapa 2 **y** en el escalón 1 de la etapa 4, preguntarlo dos veces
+era legal. Es exactamente lo que Rubén vio en pantalla. La regla nueva lo dice explícito: **la
+lead no ve mis etapas, ve la pregunta.**
+
+### Qué entra
+
+- **Los 4 HITOS** (H1 qué quiere · H2 de dónde parte · H3 el bloqueo · H4 qué necesita) sustituyen
+  a las **siete casillas** de CSM-06, que era peor que el gate de Alfonso.
+- **LA REGLA DE HITOS** con los tres modos de cierre —CONSTA / CERRADO EN FALSO / GASTADO—,
+  portada de la ronda de Alfonso del día anterior. Un «no lo sé» cierra el hito en vez de dejarlo
+  abierto.
+- **La pregunta de necesidad, una sola vez y cuando enlace.** Es el matiz que Rubén sí compró:
+  primero dijo *«yo esa la quitaría»* y al ver un caso donde encajaba se corrigió — *«aquí te la
+  compro, sí, en estos casos, **porque no sea un patrón común**»*. Sobrevive como respuesta a lo
+  que ella acaba de decir, nunca como paso de guion.
+- **Las DOS PUERTAS del handoff** (decisión de Iván): la A es que nombre la necesidad; la B es que
+  diga qué espera. Con cualquiera basta. Es el traslado a Miguel de lo que Rubén dijo sobre Pablo
+  (*«si no soy capaz de sacar el principal problema, al menos tengo que entender una expectativa
+  sobre el tipo de solución que necesita»*) y de lo aplicado en Alfonso. **Sin esta puerta, colapsar
+  la escalera a una pregunta habría secado el handoff, que en Miguel ES el producto.**
+- **La conexión de Rubén**, dictada por él en la reunión: el enlace del listado y, pegada,
+  *«¿tú sueles cuidar la alimentación o es algo que estás empezando ahora?»* → reacción → *«¿y con
+  qué objetivo?»*. Sustituye a los dos literales «inviolables» que él llamó **intrascendentes**
+  (de qué parte de España me escribes / qué te ha motivado a seguirme): *«eso no es una fase de
+  conexión»*. De tres turnos a dos, y los dos con sentido.
+- **La parada migrada a `manual_attention` + `skip_reply` + `motivo:`** (doctrina §30, pendiente
+  desde julio). Estaba a medias, 10 contra 3; ahora 17/17. ⚠️ Ojo a la colisión de nombres del
+  bloque: **«Tipo A/B/C/D» significa TIPOS DE PREGUNTA** en `<coach_message_types>` y significaba
+  tipos de handoff en la parada. Al migrar el handoff la colisión desaparece; los tipos de pregunta
+  no se han tocado.
+
+### Qué muere
+
+El escalón 1 (impacto), el 2 (importancia) y el 3 (urgencia) como pasos obligatorios. La
+proyección aspiracional de F3 (*«cómo te imaginas sintiéndote el día que lo hayas conseguido»*).
+El anti-bucle por etapa. Y la longitud escrita como objetivo: de *«18-24 mensajes del bot, soft cap
+30»* y *«el tramo final necesita 7-9 mensajes propios y es lo que NO se puede recortar»* a **12-16,
+soft cap 20**.
+
+### Lo que se arregló de paso
+
+La longitud estaba declarada en **dos sitios** (CSM-01 y el mapeo de fases) y al cambiar uno se
+contradecían. Fuente única ahora. Y el par de contraste de la escala numérica enseñaba como ✅ una
+pregunta que esta ronda retira: fuera.
+
+### La pasada adversarial la declaró NO desplegable, y tenía razón
+
+Aplicada la ronda, la verificación sobre el resultado encontró **dos bloqueantes**, y el primero
+es un fallo de alcance mío:
+
+1. **`coach_preflight_check` no se había migrado.** Es una sección que corre **antes de cada
+   mensaje** y seguía preguntando *«¿ha verbalizado ELLA qué cree que necesita (escalón 4)? Si NO
+   → me falta escalera: vuelvo a la Fase 4»*. Efecto: **mataba la puerta B en todos los turnos**
+   (una lead que dice qué espera no ha verbalizado qué necesita → check falla) y devolvía el
+   control a una Fase 4 cuyo único movimiento estaba prohibido por GASTADO. Deadlock, y sobre la
+   funcionalidad nueva de la ronda. La lección: **al colapsar un mecanismo hay que buscar todos
+   los sitios que lo invocan, no solo los que lo describen** — un checklist que corre en cada
+   turno pesa más que la sección que define la regla.
+2. **«Cierra el H4» significaba dos cosas.** CSM-06 dice que los tres modos de cierre «valen
+   igual», y la parada dispara con «cierra el H4 por cualquiera de sus dos puertas». Un modelo
+   coherente concluía: *«no sé» → CERRADO EN FALSO → H4 cerrado → lead madura → handoff*. Handoff
+   de una lead que acaba de decir que no sabe qué necesita. Arreglado declarando que **el H4 es el
+   único hito que NO se cierra en falso**.
+
+Y tres regresiones que la ronda había introducido sin verlas:
+
+- **Se perdió el «retomar tras objeción».** La escalera tenía escrito que una objeción a mitad se
+  trabajaba y luego se retomaba. Al colapsarla, eso desapareció: con la pregunta GASTADA y una
+  objeción de por medio, el handoff quedaba **imposible para siempre**. Y la objeción es el caso
+  más frecuente en un avatar con la confianza tocada. Ahora **una objeción reabre el H4**, y es la
+  única excepción declarada a GASTADO.
+- **Se perdió el gate de energía**: la pregunta de necesidad podía lanzarse en modo ligero, que es
+  justo cuando garantiza un «no sé» y quema el hito.
+- **La frontera de la puerta B era indecidible**, y el ejemplo que la rompía lo había puesto yo:
+  *«quiero quitármelo ya de encima»* como puerta B es indistinguible de *«necesito bajar ya»*, que
+  el bloque rechaza como objetivo a secas. Con un lado con salida escrita y el otro sin ella, el
+  modelo habría clasificado todo hacia la puerta B. Criterio nuevo: **la puerta B se abre cuando
+  habla de la SOLUCIÓN, no cuando repite con más ganas lo que quiere.**
+
+Además, `<coach_message_types>` seguía dando el arma: **TIPO B era una categoría declarada
+dominante y sus dos ejemplos eran clones del escalón 1 muerto** (*«qué es lo que más te pesa de
+esa situación»*). Se mató la pregunta en la sección de cualificación y se dejó viva como tipo
+reutilizable. Los TIPO B pasan a ser **reacciones, no preguntas**.
+
+### Sobre el tamaño, sin maquillaje
+
+**83.761 → 83.888 chars: +127, un 0,2%.** Esta ronda NO deja el bloque más corto, contra la
+directiva. La razón honesta: la escalera pesaba menos de lo que parecía (~3.500 chars) y a cambio
+han entrado dos mecanismos que antes no existían —la máquina de hitos con sus tres modos de cierre
+y el protocolo de parada de §30 completo— más los seis arreglos de la pasada adversarial. Se podó
+todo lo que era duplicación real (el changelog, los hitos repetidos en F2, la regla de «no propongo
+la llamada» que estaba en tres sitios, las justificaciones largas). Lo que queda por podar ya es
+contenido útil: el banco de objeciones de Miguel, que la doctrina §27 cita como referencia externa.
+
+### Pendiente
+
+- **La batería no se ha corrido**: la despliega Iván en Automatía. El caso que decide: lead a la
+  que se le lanza la pregunta de necesidad y contesta «no sé» → debe cerrar el hito y no
+  reformularse.
+- **Hay que decírselo a Miguel**, y Rubén dictó cómo: *«hemos estado analizando las conversaciones
+  con Rubén; me ha dicho que no las alargaría, que alargarlas va a ser más negativo que positivo
+  porque ya se hacen bastantes preguntas a nivel emocional, y que lo único que cambiaría sería la
+  forma en que inicia»*.
+- **La métrica es shows/agendas, no agendas** — y en Miguel, la calidad de lo que le llega tras el
+  handoff.
+- La **escalera de cambio** era candidata a doctrina y no se propagó nunca. Con esta ronda queda
+  descartada como mecanismo: lo que sobrevive de ella es una sola pregunta.
+
 ## Candidato a doctrina (NO propagado, a decisión de Iván)
 
 La escalera de cambio es el primer mecanismo del corpus que convierte el discurso de cambio de "una
