@@ -8,6 +8,9 @@ academia: `<coach_block>`, `manual_attention` + `skip_reply`, despliega Iván.
 **Dónde vive.** Bloque: [`prompts/coach-engineering/academia/irene-esteve.md`](../../prompts/coach-engineering/academia/irene-esteve.md).
 Principios del avatar: [`prompts/coach-engineering/avatares/clinica-dental-estetica/principios.md`](../../prompts/coach-engineering/avatares/clinica-dental-estetica/principios.md).
 Borrador de literales pendiente de validar: `avatares/clinica-dental-estetica/literales-borrador.md`.
+Batería de prueba: [`prompts/coach-engineering/academia/irene-esteve-bateria.md`](../../prompts/coach-engineering/academia/irene-esteve-bateria.md)
+— 45 escenarios con los mensajes exactos que se pegan, el criterio de aprobado observable en pantalla
+y la frase tipo que delata el suspenso. Diez de ellos marcados como ruta rápida.
 
 ---
 
