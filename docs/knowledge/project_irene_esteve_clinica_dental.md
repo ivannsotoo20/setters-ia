@@ -97,6 +97,46 @@ y apagaba la conversación cuando preguntaban por ella; y no había respuesta pa
 
 ---
 
+## Ronda 1 — 2026-09-06, tres simulaciones reales de Iván
+
+Primer contacto con producción. Cinco cosas, y una no es del bloque.
+
+**1. La pregunta que no venía a cuento, y el literal que hay que matar.** El setter contestaba a lo
+que ella preguntaba y le enganchaba detrás una pregunta de descubrimiento. Ella preguntaba por
+plazos y recibía *"Dime, qué es lo que no te gusta cuando te ves en una foto?"*. Dos causas mías:
+el paso 4 de `coach_objections_price` decía literalmente *"Una pregunta detrás. Ningún mensaje de
+precio termina en seco"*, y el corpus entero remataba en pregunta.
+
+La regla nueva, en palabras de Iván: **cuando ella pregunta, se contesta y ahí se acaba el turno**.
+La pregunta de descubrimiento solo entra en un turno donde ella ha puesto material. Y cuando encadena
+preguntas sin contar nada, no se la interroga: se le **ofrece** (*"si quieres te cuento cómo se hace
+aquí y me vas diciendo"*), que es lo que hace una persona detrás de un mostrador.
+
+**2. La misma pregunta, tres veces.** *"Qué es lo que no te gusta cuando te ves en una foto"* salía
+turno tras turno porque ella nunca la contestaba: seguía preguntando lo suyo, y el H1 seguía ABIERTO.
+GASTADO ya decía que una pregunta hecha cierra el hito, pero no cubría el caso de que ella la
+ignorase. Ahora sí, y explícito. El literal en sí lo retiró Iván (*"esa pregunta me parece
+malísima"*): era de catálogo, se le podía mandar igual a cualquiera. El H1 pasa a anclarse siempre
+en la frase que ella acaba de escribir, y si no hay frase donde agarrarse, no toca preguntarlo.
+
+**3. El punto en medio de la frase.** Mi voiceprint decía *"entre frases, el punto va suelto y
+poco"*. La doctrina dice **cero**, y yo lo escribí como "poco". Ocho literales míos lo llevaban y
+salían por pantalla. Corregidos los ocho: dos burbujas o una coma.
+
+**4. La presentación sonaba a máquina anunciándose.** Iba sola, en su propia burbuja, y encima
+descolocada. Sigue siendo obligatoria y literal (art. 50 del AI Act), pero ahora va **pegada dentro
+del primer mensaje** con un salto de línea, no como anuncio aparte.
+
+**5. Y la que NO es del bloque: las burbujas salen desordenadas.** En la simulación del precio, el
+turno se lee en pantalla como pregunta → financiación → mínimo → cifra, que es **exactamente el
+orden inverso** al que dicta el literal CERRADO del MOMENTO 2. Pasa en casi todos los turnos de dos
+burbujas y explica la mitad de la queja 1: la pregunta aparece ANTES de la respuesta, así que parece
+que no la ha escuchado. **Pendiente de comprobar en Automatía** si es el render o la emisión. El
+bloque se ha endurecido por si acaso (orden de burbujas explícito, y tope de dos burbujas por turno
+fuera de F5), pero si es el render no se arregla desde el prompt.
+
+---
+
 ## Compuertas abiertas
 
 **Bloquean la calidad de la voz:**
