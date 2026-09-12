@@ -205,6 +205,9 @@ valor, nunca el valor. Escanear antes de commitear.
 
 ### Cómo trabajar en este proyecto
 
+- [SOPs del proyecto](../../sops/README.md) — queja de producción sobre el setter, cargar un
+  `coach_v5` desde su `.md` (con regresión en el simulador), volcar y vigilar las citas GHL de
+  un tenant. Nacen de la ronda de Tania del 2026-09-12.
 - [Proactividad al detectar bugs colaterales](feedback_proactive_bug_detection.md) — levantar
   bugs fuera del scope durante smokes y auditorías.
 - ["Actualizar todo" = commit + push](feedback_actualizar_todo_significa_push.md).

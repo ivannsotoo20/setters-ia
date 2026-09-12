@@ -212,6 +212,8 @@ Bloque `coach_v5` con `tenant_id` específico. Monolítico inline con sub-seccio
 
 NUNCA editar coach directo en BD sin pasar por la UI o el script — pierdes el versionado y no hay snapshot.
 
+- **Edición de un coach ya cargado** (ronda de feedback, caso real): SOP [`sops/cargar-coach-v5-desde-md.md`](sops/cargar-coach-v5-desde-md.md) — editar el `.md`, cargar con `scripts/load-coach-v5-version.mjs` (UPDATE + snapshot verificados por md5) y pasar la regresión en el simulador de producción antes de dar la versión por buena. Los SOPs del proyecto están en [`sops/`](sops/README.md).
+
 ### Capa 3 — admin_overrides_v1 (por tenant, opcional)
 
 Capa que SOLO el agency admin (Iván) puede meter por tenant. Instrucciones extra que el trainer no ve. Va al cache window (sort=6, después del coach). Si no existe, se omite silenciosamente.
