@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 import { getServiceRoleClient } from '@/lib/supabase/service-role';
 import { computeLabelSideEffects, hasSideEffects } from '@/lib/labels-side-effects';
+import { parseOriginFilterValue } from '@/lib/conversation-origin';
 import type {
   LeadListRow,
   LeadListConv,
@@ -107,6 +108,7 @@ interface RawConvRow {
   handoff_reason: string | null;
   handoff_at: string | null;
   conversation_source: string | null;
+  direction: string | null;
   call_scheduled_at: string | null;
   is_call_scheduling_link_sent: boolean;
   last_message_at: string | null;
@@ -133,6 +135,7 @@ function mapConv(raw: RawConvRow, labels: LeadListLabel[]): LeadListConv {
     handoff_reason: raw.handoff_reason,
     handoff_at: raw.handoff_at,
     conversation_source: raw.conversation_source,
+    direction: raw.direction ?? null,
     call_scheduled_at: raw.call_scheduled_at,
     is_call_scheduling_link_sent: Boolean(raw.is_call_scheduling_link_sent),
     last_message_at: raw.last_message_at,
@@ -191,6 +194,39 @@ async function fetchLabelsByConvId(
  * matches accidentales. La coma es metacarácter en `.or()` de PostgREST,
  * así que también la quitamos.
  */
+/**
+ * Traduce el filtro de origen (lib/conversation-origin.ts) a cláusulas PostgREST
+ * sobre la tabla embebida `conversations`. Mismo criterio que `originKeyOf`:
+ * quien escribió primero es inbound diga lo que diga `conversation_source`; el
+ * resto se decide por la etiqueta cuando la dirección no es inbound.
+ */
+function originFilterToPostgrest(values: string[]): string[] {
+  const clauses = new Set<string>();
+  for (const raw of values) {
+    const key = parseOriginFilterValue(raw);
+    switch (key) {
+      case 'inbound':
+        clauses.add('direction.eq.inbound');
+        break;
+      case 'welcome':
+        clauses.add('and(conversation_source.eq.bienvenida,direction.neq.inbound)');
+        break;
+      case 'keyword':
+        clauses.add('and(conversation_source.eq.inbound,direction.neq.inbound)');
+        break;
+      case 'lead_magnet':
+        clauses.add('and(conversation_source.eq.lm,direction.neq.inbound)');
+        break;
+      case 'manual':
+        clauses.add('and(conversation_source.eq.manual,direction.neq.inbound)');
+        break;
+      default:
+        break;
+    }
+  }
+  return Array.from(clauses);
+}
+
 function sanitizeIlike(value: string): string {
   return value.replace(/[,()%_]/g, '');
 }
@@ -267,7 +303,7 @@ export async function listContactsPage(
 
   const convSelect = `
     id, channel_id, state, phase_number, is_qualified, is_handoff_to_human, is_blocked,
-    ai_paused_until, handoff_cause, handoff_reason, handoff_at, conversation_source,
+    ai_paused_until, handoff_cause, handoff_reason, handoff_at, conversation_source, direction,
     call_scheduled_at, is_call_scheduling_link_sent, last_message_at, created_at, updated_at,
     assigned_user_id,
     channels(channel_type, via_provider)
@@ -332,7 +368,14 @@ export async function listContactsPage(
     q = q.in('conversations.handoff_cause', filters.handoffCauses as string[]);
   }
   if ((filters.triggers ?? []).length > 0) {
-    q = q.in('conversations.conversation_source', filters.triggers as string[]);
+    // Origen derivado (2026-09-12): "Inbound" es que escribió la persona
+    // (direction), no la etiqueta 'inbound' de la palabra clave. Se traduce a
+    // condiciones sobre la tabla embebida; `matchesOriginFilter` repasa en JS
+    // con el mismo criterio (lib/conversation-origin.ts).
+    const clauses = originFilterToPostgrest(filters.triggers as string[]);
+    if (clauses.length > 0) {
+      q = q.or(clauses.join(','), { referencedTable: 'conversations' });
+    }
   }
   if (filters.assignee && filters.assignee !== 'any') {
     if (filters.assignee === 'unassigned') {
@@ -497,7 +540,7 @@ export async function getContactDetail(leadId: number): Promise<ActionResult<Con
     .select(
       `id, channel_id, state, phase_number, is_qualified, is_handoff_to_human,
        is_blocked, ai_paused_until, handoff_cause, handoff_reason, handoff_at,
-       conversation_source, call_scheduled_at, is_call_scheduling_link_sent,
+       conversation_source, direction, call_scheduled_at, is_call_scheduling_link_sent,
        last_message_at, created_at, updated_at, assigned_user_id,
        channels(channel_type, via_provider)`,
     )

@@ -12,6 +12,11 @@ import type {
   LeadFilterParams,
   LeadTabKey,
 } from '@/lib/lead-list-query';
+import {
+  ORIGIN_FILTER_ORDER,
+  originKeyOf,
+  parseOriginFilterValue,
+} from '@/lib/conversation-origin';
 import { ContactsListFilters } from './contacts-list-filters';
 import { ContactsListPane } from './contacts-list-pane';
 import { ContactDetailSheet } from './contact-detail-sheet';
@@ -71,19 +76,26 @@ export async function ContactsLayout({ selectedId, activeTab, filters }: Props) 
     assigneeMap[m.userId] = m.fullName ?? m.email;
   }
 
-  // Triggers únicos extraídos de la primera página (best-effort — para más
+  // Orígenes presentes en la primera página (best-effort — para más
   // exhaustividad necesitaríamos query DISTINCT separada). Acepto la
-  // limitación: si un trigger raro no aparece en primera página, el filtro
-  // tampoco lo ofrece.
+  // limitación: si un origen raro no aparece en primera página, el filtro
+  // tampoco lo ofrece. Los que ya están seleccionados se ofrecen siempre para
+  // poder quitarlos.
+  //
+  // 2026-09-12: son claves derivadas (lib/conversation-origin.ts), no valores
+  // crudos de conversation_source. "Inbound" = escribió la persona.
   const triggerSet = new Set<string>();
   for (const r of initialRows) {
     for (const c of r.conversations) {
-      if (c.conversation_source && c.conversation_source.length > 0) {
-        triggerSet.add(c.conversation_source);
-      }
+      const key = originKeyOf(c);
+      if (key !== 'unknown') triggerSet.add(key);
     }
   }
-  const triggers = Array.from(triggerSet).sort();
+  for (const t of filters.triggers ?? []) {
+    const key = parseOriginFilterValue(t);
+    if (key) triggerSet.add(key);
+  }
+  const triggers = ORIGIN_FILTER_ORDER.filter((k) => triggerSet.has(k));
 
   return (
     <div className="flex h-full min-h-0 w-full overflow-hidden bg-background">

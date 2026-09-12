@@ -140,6 +140,9 @@ export async function runPipeline(
     locale: input.validationContext?.locale,
     // Hito 12.1 — V17 usa esta lista para detectar vocabulario prohibido.
     forbiddenPhrases: input.validationContext?.forbiddenPhrases,
+    // 2026-09-12 — V20: la persona no cualifica por residencia (zona); ningún
+    // turno puede llevar una URL.
+    zoneRejected: input.validationContext?.zoneRejected,
   };
   let validatorOut = validateMessage(textAfterJudge, validatorCtx);
 
@@ -257,6 +260,58 @@ export async function runPipeline(
     }
   }
 
+  // V20 — enlace a una persona que NO cualifica por residencia. El motor ya se lo
+  // dijo al setter como hecho (prefijo telefónico en la lista de países a los que
+  // la entrenadora no lleva) y aun así el turno trae una URL. Se reintenta UNA vez
+  // pidiendo el cierre sin enlace; si vuelve con URL, el turno se tumba por
+  // `hasErrors`: mandar el enlace es exactamente el fallo que esto evita.
+  //
+  // Caso que lo motivó (tenant 7, 2026-09-11): +502 (Guatemala) recibió el enlace.
+  if (validatorCtx.zoneRejected === true) {
+    const v20Violations = validateMessage(textForSplitter, validatorCtx, { only: ['V20'] }).violations;
+    if (v20Violations.length > 0) {
+      const retryUserMessage =
+        `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] ` +
+        `Tu respuesta anterior contiene un enlace, y esta persona NO cualifica por residencia ` +
+        `(su teléfono es de un país al que la entrenadora no lleva; el motor te lo ha indicado ` +
+        `en la sección "Zona geográfica"). Reescribe TU ÚLTIMA respuesta como el cierre de ` +
+        `residencia fuera de zona que define tu bloque (coach_qualification_doesnt): sin ninguna ` +
+        `URL, sin propuesta de videollamada, sin nombrar el país ni el motivo, y sin preguntas ` +
+        `nuevas. Devuelve conversation_status="disqualified". NO menciones esta corrección al lead.`;
+      try {
+        const retryGen = await runGenerator(deps, {
+          ...input,
+          userMessage: retryUserMessage,
+          history: [
+            ...input.history,
+            { role: 'user' as const, content: input.userMessage },
+            { role: 'assistant' as const, content: textForSplitter },
+          ],
+          model: input.models?.generator,
+        });
+        stages.push({
+          role: 'generator',
+          model: retryGen.model,
+          usage: retryGen.usage,
+          llmCallId: retryGen.llmCallId,
+          notes: 'V20_retry',
+        });
+        textForSplitter = retryGen.setterOutput.message_raw;
+        generatorOut.setterOutput.message_raw = textForSplitter;
+        // El reintento decide también estado y fase: si cerró, que conste.
+        generatorOut.setterOutput.conversation_status = retryGen.setterOutput.conversation_status;
+        generatorOut.setterOutput.phase_decision = retryGen.setterOutput.phase_decision;
+        generatorOut.setterOutput.handoff_cause = retryGen.setterOutput.handoff_cause;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          `[pipeline] V20 retry threw (tenant=${input.tenantId}, conv=${input.conversationId}): ${err instanceof Error ? err.message : String(err)}. ` +
+            `Se mantiene el texto original y el turno se tumbará por V20.`,
+        );
+      }
+    }
+  }
+
   // Si algún retry reescribió el mensaje, el veredicto de arriba describe un texto
   // que ya no es el que va a salir. Se revalida sobre el final.
   if (textForSplitter !== textAfterJudge) {
@@ -268,7 +323,7 @@ export async function runPipeline(
       .filter((v) => v.severity === 'error')
       .map((v) => `${v.ruleId}: ${v.description}`)
       .join('; ');
-    throw new Error(`Validator V0-V19 found unrecoverable errors after Judge: ${errs}`);
+    throw new Error(`Validator V0-V20 found unrecoverable errors after Judge: ${errs}`);
   }
 
   // === 4. Splitter ===

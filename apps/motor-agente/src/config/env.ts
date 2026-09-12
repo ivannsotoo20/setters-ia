@@ -136,6 +136,16 @@ const envSchema = z.object({
     .default('false'),
   /** Project ref de Trigger.dev (formato proj_xxxxx). Solo necesario si TRIGGER_OUTBOUND_ENABLED=true. */
   TRIGGER_PROJECT_REF: z.string().optional(),
+  /**
+   * 2026-09-12 — sondeo periódico de citas GHL (services/calendar-sync.ts) para
+   * los calendarios vinculados de cada tenant. Es la única vía por la que llegan
+   * las citas de cuentas PIT (sin webhook del app Marketplace). Default `true`;
+   * `false` lo apaga sin desplegar.
+   */
+  CALENDAR_SYNC_ENABLED: z
+    .string()
+    .transform((v) => v !== 'false' && v !== '0')
+    .default('true'),
 });
 
 const parsed = envSchema.safeParse(process.env);

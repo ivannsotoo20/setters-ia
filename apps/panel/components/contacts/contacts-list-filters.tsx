@@ -12,6 +12,7 @@ import {
   countActiveFilters,
   type LeadFilterParams,
 } from '@/lib/lead-list-query';
+import { originLabel, parseOriginFilterValue } from '@/lib/conversation-origin';
 
 interface Props {
   filters: LeadFilterParams;
@@ -319,14 +320,17 @@ export function ContactsListFilters({
             <>
               <FilterSubLabel>Origen</FilterSubLabel>
               <ChipRow>
-                {triggers.map((t) => (
-                  <FilterChip
-                    key={t}
-                    label={t}
-                    active={triggersFilter.includes(t)}
-                    onClick={() => toggleMulti('triggers', t, triggersFilter)}
-                  />
-                ))}
+                {triggers.map((t) => {
+                  const key = parseOriginFilterValue(t);
+                  return (
+                    <FilterChip
+                      key={t}
+                      label={key ? originLabel(key) : t}
+                      active={triggersFilter.includes(t)}
+                      onClick={() => toggleMulti('triggers', t, triggersFilter)}
+                    />
+                  );
+                })}
               </ChipRow>
             </>
           ) : null}

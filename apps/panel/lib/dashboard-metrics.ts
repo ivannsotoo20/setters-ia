@@ -1,12 +1,22 @@
 /**
  * Sprint Lambda — KPIs del dashboard global.
  *
- * Calcula 7 cards top: Leads / Activas / Cualificados / Agendados / Ganados +
- * Show% / Close%. Cada KPI lleva valor actual + previo (mismo tamaño window
- * inmediatamente anterior) + delta en %.
+ * Calcula 8 cards top: Leads / Activas / Cualificados / Enlaces enviados /
+ * Citas agendadas / Ganados + Show% / Close%. Cada KPI lleva valor actual +
+ * previo (mismo tamaño window inmediatamente anterior) + delta en %.
  *
- * Sin deps de DB; el caller pasa eventos + snapshots de conversations ya
- * filtrados por window y por canal (si aplica).
+ * 2026-09-12 — "Agendados" se parte en dos (Tania: "las llamadas agendadas
+ * siguen siendo los enlaces enviados, no realmente las llamadas agendadas"):
+ *   - `linkSent`  = el proxy de siempre: conversaciones que llegaron a F6/F7.
+ *   - `scheduled` = citas REALES: filas de `calendar_appointments` (el espejo
+ *     del calendario GHL vinculado, alimentado por webhook o por el
+ *     calendar-sync del motor) reservadas en el periodo, vivas (ni canceladas
+ *     ni inválidas) y casadas con una conversación. Las que no casan con
+ *     ninguna conversación se cuentan aparte (`meta.unmatchedAppointments`)
+ *     para que el número de la tarjeta y la lista del drill-down coincidan.
+ *
+ * Sin deps de DB; el caller pasa eventos + snapshots de conversations y de
+ * citas ya filtrados por window y por canal (si aplica).
  */
 
 import {
@@ -61,6 +71,47 @@ export interface ConvSnapshot {
   is_handoff_to_human?: boolean;
 }
 
+/**
+ * Cita del calendario vinculado (`calendar_appointments`), tal y como la carga
+ * el dashboard: lo justo para contarla, situarla en el tiempo y en un canal.
+ */
+export interface AppointmentSnapshot {
+  id: number;
+  conversation_id: number | null;
+  lead_id: number | null;
+  /** 'new' | 'confirmed' | 'showed' | 'noshow' | 'cancelled' | 'invalid'. */
+  appointment_status: string;
+  /** Cuándo se reservó (calendar_appointments.booked_at). */
+  booked_at: string;
+  /** Cuándo es la llamada. */
+  start_at: string;
+  /** Canal y dirección de la conversación casada; null si la cita no casó con ninguna. */
+  channel_id?: number | null;
+  direction?: string | null;
+}
+
+/** Una cita cuenta como agendada mientras no esté cancelada ni sea inválida. */
+export function isBookedAppointment(a: Pick<AppointmentSnapshot, 'appointment_status'>): boolean {
+  const s = String(a.appointment_status ?? '').toLowerCase();
+  return s !== 'cancelled' && s !== 'canceled' && s !== 'invalid';
+}
+
+/** Conversaciones distintas con al menos una cita viva. */
+export function scheduledConversationIds(appointments: AppointmentSnapshot[]): Set<number> {
+  const ids = new Set<number>();
+  for (const a of appointments) {
+    if (!isBookedAppointment(a)) continue;
+    if (a.conversation_id == null) continue;
+    ids.add(Number(a.conversation_id));
+  }
+  return ids;
+}
+
+/** Citas vivas que no casaron con ninguna conversación del SaaS. */
+export function countUnmatchedAppointments(appointments: AppointmentSnapshot[]): number {
+  return appointments.filter((a) => isBookedAppointment(a) && a.conversation_id == null).length;
+}
+
 export interface KpiValue {
   current: number;
   previous: number;
@@ -83,6 +134,9 @@ export interface KpiSnapshot {
   leads: KpiValue;
   active: KpiValue;
   qualified: KpiValue;
+  /** Conversaciones que llegaron a F6 (enlace enviado) o F7 en el periodo. El antiguo "Agendados". */
+  linkSent: KpiValue;
+  /** Citas reales del calendario vinculado reservadas en el periodo (por conversación). */
   scheduled: KpiValue;
   won: KpiValue;
   showRate: RateKpiValue;
@@ -147,8 +201,8 @@ function countQualifiedFromEvents(events: PipelineEvent[]): number {
   return ids.size;
 }
 
-function countScheduledFromEvents(events: PipelineEvent[]): number {
-  // Agendado proxy = phase_change to F6 o F7
+function countLinkSentFromEvents(events: PipelineEvent[]): number {
+  // Enlace enviado = phase_change to F6 o F7 (el proxy que antes se llamaba "Agendados").
   const ids = new Set<number>();
   for (const e of events) {
     if (e.event_type === 'phase_change' && (e.to_value === '6' || e.to_value === '7')) {
@@ -156,6 +210,10 @@ function countScheduledFromEvents(events: PipelineEvent[]): number {
     }
   }
   return ids.size;
+}
+
+function countScheduledFromAppointments(appointments: AppointmentSnapshot[]): number {
+  return scheduledConversationIds(appointments).size;
 }
 
 function countWonFromEvents(events: PipelineEvent[]): number {
@@ -171,6 +229,9 @@ export function computeKpis(input: {
   prevConvs: ConvSnapshot[];
   currentWindowFromIso: string;
   prevWindowFromIso: string;
+  /** Citas del calendario vinculado reservadas en cada ventana. Sin ellas, "Citas agendadas" es 0. */
+  currentAppointments?: AppointmentSnapshot[];
+  prevAppointments?: AppointmentSnapshot[];
 }): KpiSnapshot {
   return {
     leads: toKpi(countLeads(input.currentConvs), countLeads(input.prevConvs)),
@@ -182,9 +243,13 @@ export function computeKpis(input: {
       countQualifiedFromEvents(input.currentEvents),
       countQualifiedFromEvents(input.prevEvents),
     ),
+    linkSent: toKpi(
+      countLinkSentFromEvents(input.currentEvents),
+      countLinkSentFromEvents(input.prevEvents),
+    ),
     scheduled: toKpi(
-      countScheduledFromEvents(input.currentEvents),
-      countScheduledFromEvents(input.prevEvents),
+      countScheduledFromAppointments(input.currentAppointments ?? []),
+      countScheduledFromAppointments(input.prevAppointments ?? []),
     ),
     won: toKpi(countWonFromEvents(input.currentEvents), countWonFromEvents(input.prevEvents)),
     showRate: toRateKpi(

@@ -8,6 +8,7 @@ import { processNotificationQueue } from '../services/notify-trainer.js';
 import { evaluateInactivityRules } from '../services/labels/index.js';
 import { runAutoFollowupCron } from '../services/auto-followup-cron.js';
 import { checkIntegrationsHealth } from '../services/integration-health-check.js';
+import { syncCalendarAppointments } from '../services/calendar-sync.js';
 import { env } from '../config/env.js';
 
 const DEBOUNCE_TICK_MS = 5_000;
@@ -16,6 +17,13 @@ const NOTIFY_TICK_MS = 10_000;
 const INACTIVITY_TICK_MS = 60 * 60 * 1_000; // 1h
 const AUTO_FOLLOWUP_TICK_MS = 15 * 60 * 1_000; // 15min
 const INTEGRATION_HEALTH_TICK_MS = 30 * 60 * 1_000; // 30min (Sprint Iota.5 PR-D)
+/**
+ * 2026-09-12 — sondeo de citas GHL. Diez minutos es el tope que tarda una
+ * reserva en aparecer como F7 en el panel para las cuentas sin webhook (PIT).
+ * El primer tick va a los 45s del arranque para no competir con el warm-up.
+ */
+const CALENDAR_SYNC_TICK_MS = 10 * 60 * 1_000;
+const CALENDAR_SYNC_FIRST_DELAY_MS = 45 * 1_000;
 /**
  * Si processDebounced lanza, re-encolamos la conversacion con este delay.
  * Suficientemente corto para reintentar pronto, suficientemente largo para
@@ -30,6 +38,9 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let inactivityTimer: NodeJS.Timeout | null = null;
   let autoFollowupTimer: NodeJS.Timeout | null = null;
   let integrationHealthTimer: NodeJS.Timeout | null = null;
+  let calendarSyncTimer: NodeJS.Timeout | null = null;
+  let calendarSyncFirstTimer: NodeJS.Timeout | null = null;
+  let calendarSyncRunning = false;
   let stopping = false;
 
   const tickDebounce = async () => {
@@ -215,6 +226,52 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  const tickCalendarSync = async () => {
+    if (stopping || calendarSyncRunning) return;
+    calendarSyncRunning = true;
+    try {
+      const supabase = getSupabase();
+      const result = await syncCalendarAppointments({
+        supabase,
+        log: app.log as unknown as {
+          info: (obj: unknown, msg?: string) => void;
+          warn: (obj: unknown, msg?: string) => void;
+          error: (obj: unknown, msg?: string) => void;
+        },
+      });
+      if (
+        result.created > 0 ||
+        result.updated > 0 ||
+        result.rematched > 0 ||
+        result.cancelled > 0 ||
+        result.errors.length > 0
+      ) {
+        app.log.info(
+          {
+            tenantsScanned: result.tenantsScanned,
+            tenantsWithoutClient: result.tenantsWithoutClient,
+            calendarsScanned: result.calendarsScanned,
+            fetched: result.fetched,
+            created: result.created,
+            updated: result.updated,
+            rematched: result.rematched,
+            cancelled: result.cancelled,
+            unmatched: result.unmatched,
+            errors: result.errors.length,
+          },
+          'calendar-sync completed',
+        );
+      }
+      if (result.errors.length > 0) {
+        app.log.warn({ errors: result.errors.slice(0, 5) }, 'calendar-sync: errors');
+      }
+    } catch (err) {
+      app.log.error({ err }, 'tickCalendarSync error');
+    } finally {
+      calendarSyncRunning = false;
+    }
+  };
+
   app.addHook('onReady', async () => {
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
     // SPIKE Trigger.dev (2026-05-19): si TRIGGER_OUTBOUND_ENABLED=true, el envío
@@ -227,6 +284,12 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     inactivityTimer = setInterval(tickInactivity, INACTIVITY_TICK_MS);
     autoFollowupTimer = setInterval(tickAutoFollowup, AUTO_FOLLOWUP_TICK_MS);
     integrationHealthTimer = setInterval(tickIntegrationHealth, INTEGRATION_HEALTH_TICK_MS);
+    if (env.CALENDAR_SYNC_ENABLED) {
+      calendarSyncFirstTimer = setTimeout(() => {
+        void tickCalendarSync();
+      }, CALENDAR_SYNC_FIRST_DELAY_MS);
+      calendarSyncTimer = setInterval(tickCalendarSync, CALENDAR_SYNC_TICK_MS);
+    }
     app.log.info(
       {
         debounceMs: DEBOUNCE_TICK_MS,
@@ -235,6 +298,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
         inactivityMs: INACTIVITY_TICK_MS,
         autoFollowupMs: AUTO_FOLLOWUP_TICK_MS,
         integrationHealthMs: INTEGRATION_HEALTH_TICK_MS,
+        calendarSyncMs: env.CALENDAR_SYNC_ENABLED ? CALENDAR_SYNC_TICK_MS : 'disabled',
       },
       'cron-scheduler started',
     );
@@ -248,6 +312,8 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     if (inactivityTimer) clearInterval(inactivityTimer);
     if (autoFollowupTimer) clearInterval(autoFollowupTimer);
     if (integrationHealthTimer) clearInterval(integrationHealthTimer);
+    if (calendarSyncFirstTimer) clearTimeout(calendarSyncFirstTimer);
+    if (calendarSyncTimer) clearInterval(calendarSyncTimer);
     app.log.info('cron-scheduler stopped');
   });
 }

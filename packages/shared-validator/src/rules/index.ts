@@ -19,9 +19,10 @@ import { V16_memoryContamination } from './V16-memory-contamination.js';
 import { V17_forbiddenPhrases } from './V17-forbidden-phrases.js';
 import { V18_addressingConsistency } from './V18-addressing.js';
 import { V19_placeholderLeak } from './V19-placeholder-leak.js';
+import { V20_zoneRejectLink } from './V20-zone-reject-link.js';
 
 /**
- * Lista canónica de reglas V0-V19 en orden.
+ * Lista canónica de reglas V0-V20 en orden.
  * Las reglas con `stub: true` se ejecutan pero no devuelven violaciones todavía.
  *
  * Hito 12.1 — V17/V18 añadidas al final:
@@ -31,6 +32,10 @@ import { V19_placeholderLeak } from './V19-placeholder-leak.js';
  * 2026-08-25 — V19 añadida:
  * - V19: marcador sin resolver ([ENLACE], {{...}}, SIN_CALENDARIO). Severidad
  *   `error`, con un reintento en el orquestador antes de tumbar el turno.
+ *
+ * 2026-09-12 — V20 añadida:
+ * - V20: enlace a una persona que no cualifica por residencia (`ctx.zoneRejected`).
+ *   Severidad `error`, con un reintento en el orquestador antes de tumbar el turno.
  */
 export const DEFAULT_RULES: ValidationRule[] = [
   V00_empty,
@@ -53,6 +58,7 @@ export const DEFAULT_RULES: ValidationRule[] = [
   V17_forbiddenPhrases,
   V18_addressingConsistency,
   V19_placeholderLeak,
+  V20_zoneRejectLink,
 ];
 
 export {
@@ -76,4 +82,5 @@ export {
   V17_forbiddenPhrases,
   V18_addressingConsistency,
   V19_placeholderLeak,
+  V20_zoneRejectLink,
 };

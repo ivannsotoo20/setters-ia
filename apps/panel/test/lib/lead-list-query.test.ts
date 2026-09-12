@@ -54,6 +54,7 @@ function makeConv(overrides: Partial<LeadListConv> = {}): LeadListConv {
     handoff_reason: null,
     handoff_at: null,
     conversation_source: 'inbound',
+    direction: 'inbound',
     call_scheduled_at: null,
     is_call_scheduling_link_sent: false,
     last_message_at: '2026-05-08T10:00:00.000Z',
@@ -374,12 +375,29 @@ describe('applyFilters — channel/provider/triggers', () => {
     expect(applyFilters(rows, { providers: ['ycloud'] }).map((r) => r.id)).toEqual([2]);
   });
 
-  it('triggers filtra por conversation_source', () => {
+  it('triggers filtra por origen derivado (2026-09-12): inbound = escribió la persona', () => {
     const rows = [
-      makeLead({ id: 1, conversations: [makeConv({ conversation_source: 'BIENVENIDA' })] }),
-      makeLead({ id: 2, conversations: [makeConv({ conversation_source: 'organic' })] }),
+      // Bienvenida enviada por la automatización.
+      makeLead({
+        id: 1,
+        conversations: [makeConv({ conversation_source: 'bienvenida', direction: 'outbound' })],
+      }),
+      // Palabra clave: etiqueta 'inbound' pero abrió la automatización.
+      makeLead({
+        id: 2,
+        conversations: [makeConv({ conversation_source: 'inbound', direction: 'outbound' })],
+      }),
+      // Escribió ella primero.
+      makeLead({
+        id: 3,
+        conversations: [makeConv({ conversation_source: null, direction: 'inbound' })],
+      }),
     ];
-    expect(applyFilters(rows, { triggers: ['BIENVENIDA'] }).map((r) => r.id)).toEqual([1]);
+    expect(applyFilters(rows, { triggers: ['welcome'] }).map((r) => r.id)).toEqual([1]);
+    expect(applyFilters(rows, { triggers: ['keyword'] }).map((r) => r.id)).toEqual([2]);
+    expect(applyFilters(rows, { triggers: ['inbound'] }).map((r) => r.id)).toEqual([3]);
+    // Valor crudo antiguo en un enlace guardado: sigue funcionando.
+    expect(applyFilters(rows, { triggers: ['bienvenida'] }).map((r) => r.id)).toEqual([1]);
   });
 });
 

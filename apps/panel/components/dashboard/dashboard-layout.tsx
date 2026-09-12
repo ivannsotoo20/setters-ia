@@ -48,6 +48,17 @@ export function DashboardLayout({ snapshot }: Props) {
           fromIso={filters.fromIso}
           toIso={filters.toIso}
         />
+        {/* 2026-09-12: "Citas agendadas" cuenta reservas reales por conversación.
+            Las que no casan con ninguna (reservas directas, o personas que no
+            pasaron por el setter) se dicen aquí para que el número no parezca
+            menor que el calendario. */}
+        {meta.unmatchedAppointmentsCurrent > 0 ? (
+          <p className="text-xs text-muted-foreground -mt-1">
+            Además hay {meta.unmatchedAppointmentsCurrent}{' '}
+            {meta.unmatchedAppointmentsCurrent === 1 ? 'cita reservada' : 'citas reservadas'} en tu
+            calendario en este periodo sin conversación asociada. No entran en “Citas agendadas”.
+          </p>
+        ) : null}
 
         <AlertsList alerts={alerts} />
         {isEmpty ? <DashboardEmpty /> : <TrendChart trend={trend} />}

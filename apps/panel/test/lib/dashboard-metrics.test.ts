@@ -2,8 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   computeKpis,
   computeHistoricCloseRate,
+  countUnmatchedAppointments,
   formatDelta,
+  isBookedAppointment,
   KPI_MIN_EVENTS,
+  type AppointmentSnapshot,
   type ConvSnapshot,
 } from '../../lib/dashboard-metrics';
 import type { PipelineEvent } from '../../lib/pipeline-metrics';
@@ -125,7 +128,7 @@ describe('computeKpis — qualified (phase_change to_value=5)', () => {
   });
 });
 
-describe('computeKpis — scheduled (phase_change to F6/F7)', () => {
+describe('computeKpis — linkSent (phase_change to F6/F7, el antiguo "Agendados")', () => {
   it('distinct convs con to=6 o to=7', () => {
     const events: PipelineEvent[] = [
       ev({ to_value: '6', conversation_id: 1 }),
@@ -141,7 +144,54 @@ describe('computeKpis — scheduled (phase_change to F6/F7)', () => {
       currentWindowFromIso: '2026-05-10T00:00:00Z',
       prevWindowFromIso: '2026-05-10T00:00:00Z',
     });
+    expect(k.linkSent.current).toBe(2);
+    // Sin citas del calendario, "Citas agendadas" es 0 aunque haya F6/F7:
+    // enviar el enlace no es reservar (Tania, 2026-09-12).
+    expect(k.scheduled.current).toBe(0);
+  });
+});
+
+describe('computeKpis — scheduled (citas reales del calendario vinculado)', () => {
+  function appt(overrides: Partial<AppointmentSnapshot> = {}): AppointmentSnapshot {
+    return {
+      id: 1,
+      conversation_id: 1,
+      lead_id: 10,
+      appointment_status: 'confirmed',
+      booked_at: '2026-05-10T10:00:00Z',
+      start_at: '2026-05-12T10:00:00Z',
+      ...overrides,
+    };
+  }
+
+  it('cuenta conversaciones distintas con cita viva; canceladas, inválidas y huérfanas no', () => {
+    const k = computeKpis({
+      currentEvents: [ev({ to_value: '6', conversation_id: 1 })],
+      prevEvents: [],
+      currentConvs: [],
+      prevConvs: [],
+      currentWindowFromIso: '2026-05-10T00:00:00Z',
+      prevWindowFromIso: '2026-05-10T00:00:00Z',
+      currentAppointments: [
+        appt({ id: 1, conversation_id: 1 }),
+        appt({ id: 2, conversation_id: 1, appointment_status: 'new' }), // misma conv, reagendó
+        appt({ id: 3, conversation_id: 2, appointment_status: 'noshow' }), // reservó y no vino: reservó
+        appt({ id: 4, conversation_id: 3, appointment_status: 'cancelled' }),
+        appt({ id: 5, conversation_id: 4, appointment_status: 'invalid' }),
+        appt({ id: 6, conversation_id: null }), // sin conversación: aparte
+      ],
+      prevAppointments: [appt({ id: 7, conversation_id: 9 })],
+    });
     expect(k.scheduled.current).toBe(2);
+    expect(k.scheduled.previous).toBe(1);
+    expect(
+      countUnmatchedAppointments([appt({ id: 6, conversation_id: null }), appt({ id: 8, conversation_id: null, appointment_status: 'cancelled' })]),
+    ).toBe(1);
+  });
+
+  it('isBookedAppointment acepta la variante US "canceled"', () => {
+    expect(isBookedAppointment({ appointment_status: 'canceled' })).toBe(false);
+    expect(isBookedAppointment({ appointment_status: 'confirmed' })).toBe(true);
   });
 });
 

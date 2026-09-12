@@ -26,7 +26,9 @@
  *   - q             búsqueda CI en first/last/username/phone/email/external_id/location
  *   - channels      multi: 'wa' | 'ig' | 'fb' (match cualquier conv del lead)
  *   - providers     multi: 'manychat' | 'ycloud' | 'meta_cloud' | 'ghl' | 'other'
- *   - triggers      multi: valores distintos de conversation_source
+ *   - triggers      multi: origen derivado (lib/conversation-origin.ts): 'inbound'
+ *                   (escribió ella), 'welcome', 'keyword', 'lead_magnet', 'manual'.
+ *                   Acepta también los valores crudos antiguos de conversation_source.
  *   - phases        multi 0..7 sobre phase_number de cualquier conv
  *   - states        multi: 'active' | 'paused' | 'stopped' | 'closed'
  *   - qualified     'yes' | 'no' | 'undecided' | 'all'
@@ -40,6 +42,8 @@
  *   - blocked       'yes' | 'no' | 'all'
  *   - scheduled     'yes' | 'no' | 'all' (call_scheduled_at NOT NULL en alguna conv)
  */
+
+import { matchesOriginFilter } from './conversation-origin';
 
 export type LeadTabKey = 'all' | 'active' | 'hot' | 'bought' | 'cancelled' | 'lost';
 
@@ -75,6 +79,8 @@ export interface LeadListConv {
   handoff_reason: string | null;
   handoff_at: string | null;
   conversation_source: string | null;
+  /** Quién escribió el primer mensaje ('inbound' = la persona). Fija el origen junto a conversation_source. */
+  direction: string | null;
   call_scheduled_at: string | null;
   is_call_scheduling_link_sent: boolean;
   last_message_at: string | null;
@@ -370,9 +376,7 @@ export function applyFilters(rows: LeadListRow[], filters: LeadFilterParams): Le
     }
 
     if (triggers.length > 0) {
-      const has = convs.some(
-        (c) => c.conversation_source != null && triggers.includes(c.conversation_source),
-      );
+      const has = convs.some((c) => matchesOriginFilter(c, triggers));
       if (!has) return false;
     }
 

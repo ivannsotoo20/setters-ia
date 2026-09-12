@@ -139,6 +139,7 @@ export type Database = {
         Row: {
           appointment_status: string
           assigned_user_external_id: string | null
+          booked_at: string
           calendar_account_id: number
           conversation_id: number | null
           end_at: string
@@ -160,6 +161,7 @@ export type Database = {
         Insert: {
           appointment_status?: string
           assigned_user_external_id?: string | null
+          booked_at?: string
           calendar_account_id: number
           conversation_id?: number | null
           end_at: string
@@ -181,6 +183,7 @@ export type Database = {
         Update: {
           appointment_status?: string
           assigned_user_external_id?: string | null
+          booked_at?: string
           calendar_account_id?: number
           conversation_id?: number | null
           end_at?: string

@@ -536,6 +536,12 @@ Severidad `error` con **un reintento** en `runPipeline` (bloque paralelo al de V
 
 Efecto colateral corregido en el mismo cambio: `runPipeline` evaluaba `hasErrors` sobre el veredicto del texto **pre-retry**. Ahora, si algún reintento reescribió el mensaje, se revalida sobre el texto final.
 
+### V20 — enlace a una persona fuera de zona (2026-09-12)
+
+[`packages/shared-validator/src/rules/V20-zone-reject-link.ts`](packages/shared-validator/src/rules/V20-zone-reject-link.ts). Con `ctx.zoneRejected=true` (el motor lo enciende cuando el prefijo del teléfono es de un país de `tenant_configs.lead_qualification.no_contact_countries`), un turno con una URL es error. Solo mira la URL: es lo único que produce una reserva; el cierre y su tono los fija el coach.
+
+Caso real: un +502 (Guatemala) del tenant 7 llegó a F6, recibió el enlace y reservó. Severidad `error` con **un reintento** (bloque paralelo a V19) pidiendo el cierre de fuera de zona sin enlace; el reintento decide también estado y fase. Si vuelve con URL, el turno se tumba.
+
 ### Helper `detectAddressing` compartido
 
 Vive en `@fyzon/shared-validator` (`packages/shared-validator/src/lib/detect-addressing.ts`) porque V18 lo necesita. El motor lo importa de ahí para `mirror_lead`. Heurística: pronombres fuertes (tú/te/ti/contigo/usted/ustedes/consigo = 2pts) + conjugaciones débiles (tienes/eres/cuéntame/cuénteme = 1pt). Decisión: si ambos lados puntúan se desempata solo si diferencia ≥2x con markers fuertes; si no, `ambiguous`.
@@ -596,6 +602,20 @@ No hay `useLeadNameMode` ni `targetClientGender`. Ojo con el número: el 12.2 di
 - Tenant con conv ya pausada manualmente + keyword inbound: mandar "info" → la conv sigue pausada (no despausa).
 
 **Deploy**: el cambio vive en código local. Para aplicar a Pablo en producción VPS hace falta deploy del motor (bloqueo SSH residual del Hito 9 — `project_hito_9_oauth_pending`).
+
+## Hito 12.4 — Zona por prefijo, citas reales e inbound por dirección (2026-09-12)
+
+Cuatro quejas de Tania (tenant 7) medidas en su BD; el detalle y el porqué en [`docs/knowledge/project_tania_ronda_2026-09-12.md`](docs/knowledge/project_tania_ronda_2026-09-12.md).
+
+**Zona geográfica la decide el motor, no solo el coach.** `apps/motor-agente/src/lib/phone-country.ts` (prefijo → país) + `zone-policy.ts` (política por tenant: `tenant_configs.lead_qualification.no_contact_countries` en ISO-2, más los `country_reject_terms` del formulario para las menciones en el chat). `process-debounced` evalúa por turno y lo declara al setter como HECHO en la directiva runtime (`lead-origin.ts`, sección "Zona geográfica"): `reject_by_prefix` (no cualifica, sin preguntar; V20 impide el enlace y la fase no pasa de F4), `in_zone_by_prefix` (no se pregunta el país), `mention` (una pregunta de residencia antes de proponer). El cierre (literal, tono) sigue en `coach_v5`. Un tenant sin esas claves no tiene política y nada cambia.
+
+**Origen de la conversación = `conversation_source` + `direction`.** `conversation_source='inbound'` es el TIPO de la palabra clave: con `direction='outbound'` fue la automatización quien abrió. `mapConversationSourceToOrigin(source, { direction, hasFormAnswers })` distingue `form` / `welcome` / `lead_magnet` / `keyword_outbound` / `inbound`; el Caso B de `routeGhlOutbound` ya no pisa un origen existente. En el panel, `apps/panel/lib/conversation-origin.ts` es el único traductor a "Inbound (escribió ella) / Bienvenida / Palabra clave / Lead magnet / Manual" y el filtro de origen de contactos usa esas claves.
+
+**Citas reales.** `apps/motor-agente/src/services/calendar-sync.ts` sondea GHL cada 10 min (`CALENDAR_SYNC_ENABLED`, default on) para cada `calendar_accounts` activo con el cliente del tenant (PIT → OAuth) y aplica las citas con el applier de siempre (F7 + handoff A + email). Es la única vía para cuentas PIT sin webhook del app Marketplace. `calendar_appointments.booked_at` (migration 078) es cuándo se reservó; el CHECK de `match_method` admite `ghl_contact_id` (migration 079, bug del Hito 10.5). Cuando el tenant tiene calendario vinculado, **F7 solo lo pone el calendario**: el motor deja en F6 la decisión del modelo. El applier ya no inserta `pipeline_events` a mano: lo hace el trigger `trg_log_phase_change` (to_value `'7'`). Volcado inicial: `apps/motor-agente/scripts/calendar-sync-once.ts --tenant <id> [--dry-run]`.
+
+**Dashboard.** "Agendados" se parte en **Enlaces enviados** (`linkSent` / widget `link_sent`: F6/F7, el proxy de siempre) y **Citas agendadas** (`scheduled`: reservas reales por conversación desde `calendar_appointments`, cargadas por `loadWindowAppointments`; las que no casan con ninguna conversación van a `meta.unmatchedAppointmentsCurrent`).
+
+**Coach de Tania v22**: la validación del tiempo es una y abierta; un "sí" a una pregunta que lleva la respuesta dentro no es antecedente; caída reciente sin episodio anterior descrito es dolor agudo (cierre 1); "quiere cambiarlo" se verbaliza. Carga versionada desde el `.md` con `node scripts/load-coach-v5-version.mjs --tenant 7 --file prompts/source/coach-v5/tania-duarte-matos.md --version <n+1> --expect-md5 <md5 actual>` (UPDATE + snapshot, verificado por md5).
 
 ## Qué NO hacer
 

@@ -64,7 +64,7 @@ describe('classifyChannel', () => {
 });
 
 describe('aggregateMatrix — estructura', () => {
-  it('5 rows en orden Leads/Activas/Cualificados/Agendados/Ganados', () => {
+  it('6 rows en orden Leads/Activas/Cualificados/Enlaces enviados/Citas agendadas/Ganados', () => {
     const m = aggregateMatrix({
       events: [],
       convs: [],
@@ -78,9 +78,38 @@ describe('aggregateMatrix — estructura', () => {
       'leads',
       'active',
       'qualified',
+      'link_sent',
       'scheduled',
       'won',
     ]);
+  });
+
+  it('scheduled se llena con citas reales situadas en el canal de su conversación', () => {
+    const channelMap = new Map<number, ChannelInfo>([
+      [1, { kind: 'whatsapp' }],
+      [2, { kind: 'instagram_dm' }],
+    ]);
+    const m = aggregateMatrix({
+      events: [ev({ to_value: '6', conversation_id: 1 })],
+      convs: [conv({ id: 1, channel_id: 1 })],
+      prevEvents: [],
+      prevConvs: [],
+      channelMap,
+      windowFromIso: '2026-05-10T00:00:00Z',
+      prevWindowFromIso: '2026-05-10T00:00:00Z',
+      appointments: [
+        { id: 1, conversation_id: 1, lead_id: 1, appointment_status: 'confirmed', booked_at: '2026-05-10T10:00:00Z', start_at: '2026-05-12T10:00:00Z', channel_id: 1, direction: 'inbound' },
+        { id: 2, conversation_id: 2, lead_id: 2, appointment_status: 'confirmed', booked_at: '2026-05-10T10:00:00Z', start_at: '2026-05-12T10:00:00Z', channel_id: 2, direction: 'outbound' },
+        { id: 3, conversation_id: 3, lead_id: 3, appointment_status: 'cancelled', booked_at: '2026-05-10T10:00:00Z', start_at: '2026-05-12T10:00:00Z', channel_id: 1, direction: 'inbound' },
+      ],
+    });
+    const linkSent = m.rows.find((r) => r.key === 'link_sent')!;
+    const scheduled = m.rows.find((r) => r.key === 'scheduled')!;
+    expect(linkSent.cells.wa.count).toBe(1);
+    expect(scheduled.cells.wa.count).toBe(1);
+    expect(scheduled.cells['ig-out'].count).toBe(1);
+    expect(scheduled.cells['ig-in'].count).toBe(0);
+    expect(scheduled.cells.total.count).toBe(2);
   });
 
   it('cada row tiene las 5 columnas (4 canales + total)', () => {

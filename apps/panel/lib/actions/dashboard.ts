@@ -5,6 +5,7 @@ import { getEffectiveTenant } from '@/lib/effective-tenant';
 import {
   computeKpis,
   computeHistoricCloseRate,
+  countUnmatchedAppointments,
   type ConvSnapshot,
   type KpiSnapshot,
 } from '@/lib/dashboard-metrics';
@@ -35,6 +36,7 @@ import {
   enrichWithLeadReplies,
   loadLastMessageBySource,
   loadTestLeadIds,
+  loadWindowAppointments,
   resolveChannelFilter,
 } from '@/lib/dashboard-loader';
 
@@ -81,6 +83,13 @@ export interface DashboardSnapshot {
     totalConvsCurrent: number;
     totalConvsPrev: number;
     historicCloseRate: number | null;
+    /**
+     * Citas vivas del calendario reservadas en el periodo que no casaron con
+     * ninguna conversación del SaaS (reservas directas, o leads que aún no
+     * existían). No entran en "Citas agendadas" para que la tarjeta y su lista
+     * cuadren; se avisa de ellas aparte.
+     */
+    unmatchedAppointmentsCurrent: number;
   };
 }
 
@@ -255,17 +264,37 @@ export async function loadDashboardData(input: {
   //     leerlo de los mensajes y no de conversations.first_lead_response_at.
   //     En el mismo viaje, para las alertas de conversación: el último mensaje
   //     de cada conversación vigilada (activas + handoffs) y los leads de prueba.
+  //     Y las citas reales del calendario vinculado (2026-09-12): "Citas
+  //     agendadas" sale de `calendar_appointments`, no del proxy F6/F7.
   const monitoredIds = Array.from(new Set([...activeConvs, ...handoffConvs].map((c) => c.id)));
-  const [replyCur, replyPrev, lastMsgRes, testLeadsRes] = await Promise.all([
+  const [replyCur, replyPrev, lastMsgRes, testLeadsRes, apptCur, apptPrev] = await Promise.all([
     enrichWithLeadReplies(supabase, convs),
     enrichWithLeadReplies(supabase, prevConvs),
     loadLastMessageBySource(supabase, monitoredIds),
     loadTestLeadIds(supabase, tenantId),
+    loadWindowAppointments(supabase, {
+      tenantId,
+      fromIso: range.from,
+      toIso: range.to,
+      channelIds,
+      direction,
+    }),
+    loadWindowAppointments(supabase, {
+      tenantId,
+      fromIso: prevRange.from,
+      toIso: prevRange.to,
+      channelIds,
+      direction,
+    }),
   ]);
   if (replyCur.error) return { ok: false, error: replyCur.error };
   if (replyPrev.error) return { ok: false, error: replyPrev.error };
   if (lastMsgRes.error) return { ok: false, error: lastMsgRes.error };
   if (testLeadsRes.error) return { ok: false, error: testLeadsRes.error };
+  if (apptCur.error) return { ok: false, error: apptCur.error };
+  if (apptPrev.error) return { ok: false, error: apptPrev.error };
+  const appointments = apptCur.appointments;
+  const prevAppointments = apptPrev.appointments;
 
   // 3. KPIs
   const kpis = computeKpis({
@@ -275,6 +304,8 @@ export async function loadDashboardData(input: {
     prevConvs,
     currentWindowFromIso: range.from,
     prevWindowFromIso: prevRange.from,
+    currentAppointments: appointments,
+    prevAppointments,
   });
 
   // 5. Trend
@@ -364,6 +395,8 @@ export async function loadDashboardData(input: {
         prevConvs,
         currentWindowFromIso: range.from,
         prevWindowFromIso: prevRange.from,
+        currentAppointments: appointments,
+        prevAppointments,
       },
       channelMap,
     );
@@ -393,6 +426,7 @@ export async function loadDashboardData(input: {
         totalConvsCurrent: convs.length,
         totalConvsPrev: prevConvs.length,
         historicCloseRate: closeRateBaseline,
+        unmatchedAppointmentsCurrent: countUnmatchedAppointments(appointments),
       },
     },
   };

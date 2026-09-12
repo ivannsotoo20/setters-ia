@@ -38,10 +38,10 @@ const WINDOW_FROM = '2026-05-08T00:00:00Z';
 const PREV_WINDOW_FROM = '2026-05-01T00:00:00Z';
 
 describe('WIDGET_CATALOG', () => {
-  it('contiene 18 métricas con keys únicas (12 de Lambda.2 + 6 de outbound)', () => {
-    expect(WIDGET_CATALOG).toHaveLength(18);
+  it('contiene 19 métricas con keys únicas (12 de Lambda.2 + 6 de outbound + enlaces enviados)', () => {
+    expect(WIDGET_CATALOG).toHaveLength(19);
     const keys = WIDGET_CATALOG.map((m) => m.key);
-    expect(new Set(keys).size).toBe(18);
+    expect(new Set(keys).size).toBe(19);
   });
 
   it('todas categorizadas como volume o rate', () => {
@@ -299,14 +299,47 @@ describe('computeWidget — qualified / scheduled distinct', () => {
     if (r.category === 'volume') expect(r.value.current).toBe(2);
   });
 
-  it('scheduled distinct convs to=6 OR 7', () => {
+  it('scheduled cuenta citas reales del calendario (por conversación), no eventos F6/F7', () => {
+    const events: PipelineEvent[] = [
+      ev({ to_value: '6', conversation_id: 1 }),
+      ev({ to_value: '7', conversation_id: 2 }),
+    ];
+    const appts = [
+      { id: 1, conversation_id: 2, lead_id: 1, appointment_status: 'confirmed', booked_at: '2026-05-10T10:00:00Z', start_at: '2026-05-12T10:00:00Z', channel_id: 1, direction: 'inbound' },
+      { id: 2, conversation_id: 2, lead_id: 1, appointment_status: 'new', booked_at: '2026-05-10T11:00:00Z', start_at: '2026-05-13T10:00:00Z', channel_id: 1, direction: 'inbound' },
+      { id: 3, conversation_id: 5, lead_id: 2, appointment_status: 'cancelled', booked_at: '2026-05-10T10:00:00Z', start_at: '2026-05-12T10:00:00Z', channel_id: 1, direction: 'inbound' },
+      { id: 4, conversation_id: 6, lead_id: 3, appointment_status: 'confirmed', booked_at: '2026-05-10T10:00:00Z', start_at: '2026-05-12T10:00:00Z', channel_id: 2, direction: 'outbound' },
+    ];
+    const igMap = new Map<number, ChannelInfo>([[1, { kind: 'whatsapp' }], [2, { kind: 'instagram_dm' }]]);
+    const input = {
+      currentEvents: events,
+      prevEvents: [],
+      currentConvs: [],
+      prevConvs: [],
+      currentWindowFromIso: WINDOW_FROM,
+      prevWindowFromIso: PREV_WINDOW_FROM,
+      currentAppointments: appts,
+      prevAppointments: [],
+    };
+    const all = computeWidget('scheduled', null, input, igMap);
+    if (all.category === 'volume') expect(all.value.current).toBe(2); // convs 2 y 6
+    const wa = computeWidget('scheduled', { channel: 'wa' }, input, igMap);
+    if (wa.category === 'volume') expect(wa.value.current).toBe(1);
+    const igOut = computeWidget('scheduled', { channel: 'ig-out' }, input, igMap);
+    if (igOut.category === 'volume') expect(igOut.value.current).toBe(1);
+    // Sin citas: 0 aunque haya F6/F7.
+    const none = computeWidget('scheduled', null, { ...input, currentAppointments: [] }, igMap);
+    if (none.category === 'volume') expect(none.value.current).toBe(0);
+  });
+
+  it('link_sent distinct convs to=6 OR 7 (el antiguo "Agendados")', () => {
     const events: PipelineEvent[] = [
       ev({ to_value: '6', conversation_id: 1 }),
       ev({ to_value: '7', conversation_id: 2 }),
       ev({ to_value: '5', conversation_id: 3 }),
     ];
     const r = computeWidget(
-      'scheduled',
+      'link_sent',
       null,
       {
         currentEvents: events,

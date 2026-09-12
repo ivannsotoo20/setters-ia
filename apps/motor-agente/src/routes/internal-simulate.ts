@@ -157,8 +157,13 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         );
       }
 
+      // En el simulador el origen dice quién abrió: 'inbound' es que escribió
+      // ella; cualquier otro (bienvenida / lm / manual) es que abrimos nosotros.
       const leadOriginDirective = buildLeadOriginDirective({
-        origin: mapConversationSourceToOrigin(body.origin ?? null),
+        origin: mapConversationSourceToOrigin(body.origin ?? null, {
+          direction: body.origin === 'inbound' ? 'inbound' : body.origin ? 'outbound' : null,
+          hasFormAnswers: Boolean(body.form_answers && Object.keys(body.form_answers).length > 0),
+        }),
         channel: body.channel as LeadChannel,
         formAnswers: body.form_answers ?? null,
       });

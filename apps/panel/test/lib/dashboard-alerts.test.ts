@@ -11,6 +11,7 @@ function emptyKpis(): KpiSnapshot {
     leads: v,
     active: v,
     qualified: v,
+    linkSent: v,
     scheduled: v,
     won: v,
     showRate: r,

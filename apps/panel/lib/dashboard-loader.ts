@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { ConvSnapshot } from './dashboard-metrics';
+import type { AppointmentSnapshot, ConvSnapshot } from './dashboard-metrics';
 import {
   isTestLeadName,
   type ChannelInfo,
@@ -102,6 +102,63 @@ export async function loadWindowEvents(
     .lte('occurred_at', params.toIso);
   if (error) return { events: [], error: error.message };
   return { events: (data ?? []) as PipelineEvent[], error: null };
+}
+
+/**
+ * Citas del calendario vinculado RESERVADAS en la ventana (`booked_at`), con el
+ * canal y la dirección de la conversación casada para poder situarlas en el
+ * mismo filtro de canal que el resto del dashboard. Es la fuente de "Citas
+ * agendadas" (2026-09-12); antes ese número era el proxy F6/F7.
+ *
+ * Se filtra por `booked_at` y no por `received_at` porque el calendar-sync del
+ * motor trae citas de días atrás y el backfill inicial las traería todas hoy.
+ */
+export async function loadWindowAppointments(
+  supabase: SupabaseClient,
+  params: {
+    tenantId: number;
+    fromIso: string;
+    toIso: string;
+    channelIds: number[] | null;
+    direction: 'inbound' | 'outbound' | null;
+  },
+): Promise<{ appointments: AppointmentSnapshot[]; error: string | null }> {
+  const { data, error } = await supabase
+    .from('calendar_appointments')
+    .select(
+      'id, conversation_id, lead_id, appointment_status, booked_at, start_at, conversations(channel_id, direction)',
+    )
+    .eq('tenant_id', params.tenantId)
+    .gte('booked_at', params.fromIso)
+    .lte('booked_at', params.toIso);
+  if (error) return { appointments: [], error: error.message };
+
+  const appointments: AppointmentSnapshot[] = [];
+  for (const row of data ?? []) {
+    const conv = (Array.isArray(row.conversations) ? row.conversations[0] : row.conversations) as
+      | { channel_id: number | null; direction: string | null }
+      | null
+      | undefined;
+    const channelId = conv?.channel_id != null ? Number(conv.channel_id) : null;
+    const direction = conv?.direction ?? null;
+    // El filtro global de canal se aplica sobre la conversación casada, igual
+    // que en `loadWindowConvs`. Una cita sin conversación no pasa ningún filtro.
+    if (params.channelIds && params.channelIds.length > 0) {
+      if (channelId == null || !params.channelIds.includes(channelId)) continue;
+    }
+    if (params.direction && direction !== params.direction) continue;
+    appointments.push({
+      id: Number(row.id),
+      conversation_id: row.conversation_id != null ? Number(row.conversation_id) : null,
+      lead_id: row.lead_id != null ? Number(row.lead_id) : null,
+      appointment_status: String(row.appointment_status ?? 'new'),
+      booked_at: String(row.booked_at),
+      start_at: String(row.start_at),
+      channel_id: channelId,
+      direction,
+    });
+  }
+  return { appointments, error: null };
 }
 
 const REPLY_LOOKUP_CHUNK = 200;

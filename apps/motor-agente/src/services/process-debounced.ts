@@ -32,6 +32,8 @@ import {
   extractFormAnswers,
   mapConversationSourceToOrigin,
 } from '../lib/lead-origin.js';
+import { evaluateZone, loadZonePolicy } from '../lib/zone-policy.js';
+import { tenantHasLinkedCalendar } from '../lib/linked-calendar.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -81,7 +83,7 @@ export async function processDebounced(
   const { data: conv, error: convErr } = await supabase
     .from('conversations')
     .select(
-      'id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until, conversation_source, custom_fields',
+      'id, tenant_id, lead_id, channel_id, phase_number, state, ai_paused_until, conversation_source, direction, custom_fields',
     )
     .eq('id', conversationId)
     .maybeSingle();
@@ -409,13 +411,43 @@ export async function processDebounced(
   //
   // Va junto a la directiva de tratamiento en el MISMO `extraSystemSuffix`
   // (el composer solo acepta un string) — de ahí `combineSystemDirectives`.
+  //
+  // 2026-09-12: el origen se deriva también de `direction` (quién escribió el
+  // primer mensaje). `conversation_source='inbound'` con `direction='outbound'`
+  // es la automatización de la entrenadora contestando a una palabra clave, no
+  // la persona escribiendo por iniciativa propia.
+  const formAnswers = extractFormAnswers(conv.custom_fields);
   const leadOrigin = mapConversationSourceToOrigin(
     conv.conversation_source as string | null | undefined,
+    {
+      direction: (conv.direction as string | null | undefined) ?? null,
+      hasFormAnswers: formAnswers != null && Object.keys(formAnswers).length > 0,
+    },
   );
+  // Zona geográfica (2026-09-12): país del teléfono y países nombrados en el
+  // chat, contra la política del tenant (tenant_configs.lead_qualification).
+  // Es un HECHO que se declara al setter; el cierre lo decide el coach. Cuando
+  // el prefijo dice que no cualifica, V20 impide además que salga un enlace.
+  const zonePolicy = await loadZonePolicy(supabase, tenantId);
+  const zoneVerdict = evaluateZone({
+    phone: (lead.phone as string | null | undefined) ?? null,
+    leadMessages: allHistory.filter((m) => m.role === 'user').map((m) => m.content),
+    policy: zonePolicy,
+  });
+  const zoneRejected = zoneVerdict.kind === 'reject_by_prefix';
+  if (zoneVerdict.kind === 'reject_by_prefix' || zoneVerdict.kind === 'mention') {
+    console.log(
+      `[zone] conv=${conversationId} verdict=${zoneVerdict.kind} ` +
+        (zoneVerdict.kind === 'mention'
+          ? `term=${zoneVerdict.term}`
+          : `country=${zoneVerdict.country.iso}`),
+    );
+  }
   const leadOriginDirective = buildLeadOriginDirective({
     origin: leadOrigin,
     channel: channelTypeDb,
-    formAnswers: extractFormAnswers(conv.custom_fields),
+    formAnswers,
+    zone: zoneVerdict,
   });
   const systemDirectives = combineSystemDirectives(
     leadOriginDirective,
@@ -446,6 +478,9 @@ export async function processDebounced(
           // Para mirror_lead, expectedAddressing queda undefined (V18 skip) porque
           // la directiva ya va inyectada al system prompt como extraSystemSuffix.
           expectedAddressing,
+          // 2026-09-12 — V20: la persona no cualifica por residencia (prefijo
+          // telefónico en la lista del tenant). Ningún turno puede llevar URL.
+          zoneRejected,
         },
         composeOverrides: {
           // Enrutado por canal: si el entrenador tiene coach de WhatsApp y la
@@ -621,6 +656,31 @@ export async function processDebounced(
     );
   }
 
+  // 9.1. Zona (2026-09-12): si la persona no cualifica por residencia, la fase
+  //      no pasa de F4 aunque el modelo haya propuesto. V20 ya impidió el
+  //      enlace; esto evita que el CRM la cuente como cualificada o propuesta.
+  let effectivePhase = newPhase;
+  if (zoneRejected && effectivePhase >= 5) {
+    const capped = Math.min(currentPhase, 4);
+    console.warn(
+      `[zone] conv=${conversationId} fase F${effectivePhase} con residencia fuera de zona → F${capped}`,
+    );
+    effectivePhase = capped;
+  }
+
+  // 9.2. F7 solo lo confirma el calendario (2026-09-12). Con un calendario
+  //      vinculado, la cita real llega por webhook AppointmentCreate o por el
+  //      calendar-sync, y es el applier quien mueve a F7. Que el modelo lo
+  //      decidiera porque la persona dijo "ya reservé" llenaba F7 de reservas
+  //      que no existían: Tania veía "agendadas" que eran enlaces enviados. Sin
+  //      calendario vinculado no hay otra fuente de verdad y se respeta al modelo.
+  if (effectivePhase >= 7 && (await tenantHasLinkedCalendar(supabase, tenantId))) {
+    console.log(
+      `[phase] conv=${conversationId} F7 decidido por el modelo → F6 hasta que el calendario confirme la cita`,
+    );
+    effectivePhase = 6;
+  }
+
   const newStatus = mapConversationStatus(pipelineOut.generator.setterOutput.conversation_status);
   const setterOut = pipelineOut.generator.setterOutput;
   // Razonamiento estructurado por turno — campos opcionales del Generator.
@@ -653,7 +713,7 @@ export async function processDebounced(
   const { error: updateErr } = await supabase
     .from('conversations')
     .update({
-      phase_number: newPhase,
+      phase_number: effectivePhase,
       state: newStatus,
       is_qualified:
         pipelineOut.generator.setterOutput.conversation_status === 'qualified' ? true : null,
@@ -742,7 +802,7 @@ export async function processDebounced(
     totalCostUsd: pipelineOut.totals.costUsd + mediaResult.costUsd,
     totalLatencyMs: pipelineOut.totals.latencyMs,
     pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
-    phase: newPhase,
+    phase: effectivePhase,
     correlationId: run.correlationId,
   };
   } catch (err) {

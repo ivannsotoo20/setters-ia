@@ -5,6 +5,7 @@ import { getEffectiveTenant } from '@/lib/effective-tenant';
 import {
   enrichWithLeadReplies,
   loadChannelMap,
+  loadWindowAppointments,
   loadWindowConvs,
   loadWindowEvents,
   resolveChannelFilter,
@@ -99,12 +100,14 @@ export async function listWidgetMembers(input: {
   if (chErr) return { ok: false, error: chErr };
   const { channelIds, direction } = resolveChannelFilter(channelKey, channelMap);
 
-  const [convsRes, eventsRes] = await Promise.all([
+  const [convsRes, eventsRes, apptRes] = await Promise.all([
     loadWindowConvs(supabase, { tenantId, fromIso, toIso, channelIds, direction }),
     loadWindowEvents(supabase, { tenantId, fromIso, toIso }),
+    loadWindowAppointments(supabase, { tenantId, fromIso, toIso, channelIds, direction }),
   ]);
   if (convsRes.error) return { ok: false, error: convsRes.error };
   if (eventsRes.error) return { ok: false, error: eventsRes.error };
+  if (apptRes.error) return { ok: false, error: apptRes.error };
   const enrich = await enrichWithLeadReplies(supabase, convsRes.convs);
   if (enrich.error) return { ok: false, error: enrich.error };
 
@@ -118,6 +121,8 @@ export async function listWidgetMembers(input: {
       prevConvs: [],
       currentWindowFromIso: fromIso,
       prevWindowFromIso: fromIso,
+      currentAppointments: apptRes.appointments,
+      prevAppointments: [],
     },
     channelMap,
   );

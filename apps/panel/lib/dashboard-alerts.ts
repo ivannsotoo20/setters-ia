@@ -76,7 +76,8 @@ const KPI_LABELS_ES: Record<string, string> = {
   leads: 'leads totales',
   active: 'conversaciones activas',
   qualified: 'cualificaciones',
-  scheduled: 'agendas',
+  linkSent: 'enlaces enviados',
+  scheduled: 'citas agendadas',
   won: 'cierres ganados',
 };
 
@@ -229,11 +230,12 @@ export function computeAlerts(input: {
 }): Alert[] {
   const out: Alert[] = [];
 
-  // 1. WoW changes en 5 KPIs de volumen
+  // 1. WoW changes en los 6 KPIs de volumen
   const volumeKpis: Array<keyof KpiSnapshot> = [
     'leads',
     'active',
     'qualified',
+    'linkSent',
     'scheduled',
     'won',
   ];

@@ -3,12 +3,24 @@ import type { KpiSnapshot } from '@/lib/dashboard-metrics';
 
 interface Props {
   kpis: KpiSnapshot;
+  /**
+   * Citas vivas del calendario reservadas en el periodo sin conversación
+   * asociada. No entran en "Citas agendadas" (la tarjeta lista conversaciones);
+   * se avisa debajo para que el número no parezca menor que el calendario.
+   */
+  unmatchedAppointments?: number;
 }
 
-export function KpiRow({ kpis }: Props) {
+/**
+ * 2026-09-12 — "Agendados" se parte en dos tarjetas (Tania: "las llamadas
+ * agendadas siguen siendo los enlaces enviados, no realmente las llamadas
+ * agendadas"): "Enlaces enviados" es el proxy F6/F7 de siempre, y "Citas
+ * agendadas" son reservas reales del calendario vinculado.
+ */
+export function KpiRow({ kpis, unmatchedAppointments = 0 }: Props) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
         <KpiCard
           variant="volume"
           label="Leads totales"
@@ -29,8 +41,14 @@ export function KpiRow({ kpis }: Props) {
         />
         <KpiCard
           variant="volume"
-          label="Agendados"
-          tooltip="Convs cuya fase llegó a F6 (link agenda enviado) o F7 (cita agendada). Proxy hasta integración GHL completa."
+          label="Enlaces enviados"
+          tooltip="Convs cuya fase llegó a F6 (enlace de agenda enviado) o F7 en el periodo. Enviar el enlace no es reservar."
+          value={kpis.linkSent}
+        />
+        <KpiCard
+          variant="volume"
+          label="Citas agendadas"
+          tooltip="Reservas reales en tu calendario vinculado (GHL) hechas en el periodo, contadas por conversación. Excluye canceladas. Sin calendario vinculado, siempre 0."
           value={kpis.scheduled}
         />
         <KpiCard
@@ -40,6 +58,14 @@ export function KpiRow({ kpis }: Props) {
           value={kpis.won}
         />
       </div>
+      {unmatchedAppointments > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          Además hay {unmatchedAppointments}{' '}
+          {unmatchedAppointments === 1 ? 'cita reservada' : 'citas reservadas'} en el calendario en
+          este periodo sin conversación asociada (reservas directas o personas que no pasaron por el
+          setter). No entran en “Citas agendadas”.
+        </p>
+      ) : null}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         <KpiCard
           variant="rate"

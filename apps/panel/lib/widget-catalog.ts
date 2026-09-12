@@ -15,10 +15,12 @@
  */
 
 import {
+  type AppointmentSnapshot,
   type ConvSnapshot,
   type KpiValue,
   type RateKpiValue,
   KPI_MIN_EVENTS,
+  scheduledConversationIds,
 } from './dashboard-metrics';
 import {
   computeShowRate,
@@ -49,6 +51,12 @@ export interface WidgetComputeInput {
   prevConvs: ConvSnapshot[];
   currentWindowFromIso: string;
   prevWindowFromIso: string;
+  /**
+   * 2026-09-12 — citas del calendario vinculado reservadas en cada ventana.
+   * Alimentan "Citas agendadas". Opcionales: sin ellas la métrica es 0.
+   */
+  currentAppointments?: AppointmentSnapshot[];
+  prevAppointments?: AppointmentSnapshot[];
 }
 
 function toKpi(current: number, previous: number): KpiValue {
@@ -158,10 +166,21 @@ export const WIDGET_CATALOG: WidgetMetricDef[] = [
     category: 'volume',
     supportsChannel: true,
   },
+  // 2026-09-12 (Tania: "las llamadas agendadas siguen siendo los enlaces
+  // enviados"): el proxy F6/F7 se llama por su nombre y "Citas agendadas" cuenta
+  // reservas reales del calendario vinculado.
+  {
+    key: 'link_sent',
+    label: 'Enlaces enviados',
+    description: 'Conversaciones que llegaron a F6 (enlace de agenda enviado) o F7 en el periodo.',
+    category: 'volume',
+    supportsChannel: true,
+  },
   {
     key: 'scheduled',
-    label: 'Agendados',
-    description: 'Convs con fase F6 (link agenda) o F7 (cita) en el periodo.',
+    label: 'Citas agendadas',
+    description:
+      'Reservas reales en tu calendario vinculado (GHL) hechas en el periodo, contadas por conversación. Sin calendario vinculado, siempre 0.',
     category: 'volume',
     supportsChannel: true,
   },
@@ -341,6 +360,24 @@ function filterByChannel<T extends { channel_id: number; direction: string }>(
   );
 }
 
+/**
+ * Filtra citas por el canal de su conversación casada. Una cita sin conversación
+ * no tiene canal: con filtro de canal queda fuera, sin filtro se mantiene (y la
+ * cuenta de "Citas agendadas" la ignora igualmente por no tener conversación).
+ */
+function filterAppointmentsByChannel(
+  appointments: AppointmentSnapshot[],
+  filter: WidgetFilter | null | undefined,
+  channelMap: Map<number, ChannelInfo>,
+): AppointmentSnapshot[] {
+  if (!filter?.channel) return appointments;
+  return appointments.filter(
+    (a) =>
+      a.channel_id != null &&
+      classifyChannel(channelMap.get(Number(a.channel_id)), String(a.direction ?? '')) === filter.channel,
+  );
+}
+
 function filterEventsByChannel(
   events: PipelineEvent[],
   filter: WidgetFilter | null | undefined,
@@ -422,12 +459,24 @@ export function computeWidget(
           distinctConvsByPhase(prevEvents, ['5']),
         ),
       };
-    case 'scheduled':
+    case 'link_sent':
       return {
         category: 'volume',
         value: toKpi(
           distinctConvsByPhase(curEvents, ['6', '7']),
           distinctConvsByPhase(prevEvents, ['6', '7']),
+        ),
+      };
+    case 'scheduled':
+      return {
+        category: 'volume',
+        value: toKpi(
+          scheduledConversationIds(
+            filterAppointmentsByChannel(input.currentAppointments ?? [], filter, channelMap),
+          ).size,
+          scheduledConversationIds(
+            filterAppointmentsByChannel(input.prevAppointments ?? [], filter, channelMap),
+          ).size,
         ),
       };
     case 'won':
@@ -573,8 +622,14 @@ export function selectWidgetMembers(
       return volume(ids(activeConvs(curConvs, input.currentWindowFromIso)));
     case 'qualified':
       return volume([...convIdsByPhase(curEvents, ['5'])]);
-    case 'scheduled':
+    case 'link_sent':
       return volume([...convIdsByPhase(curEvents, ['6', '7'])]);
+    case 'scheduled':
+      return volume([
+        ...scheduledConversationIds(
+          filterAppointmentsByChannel(input.currentAppointments ?? [], filter, channelMap),
+        ),
+      ]);
     case 'won':
       return volume([...convIdsByOutcome(curEvents, ['bought'])]);
     case 'lost':

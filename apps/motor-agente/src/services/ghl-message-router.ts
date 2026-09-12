@@ -555,11 +555,18 @@ export async function routeGhlOutbound(
 
   // Caso B: matched keyword y sí hay conversación → setear conversation_source +
   // INSERT source='system' (auto-bienvenida/lm/inbound)
+  //
+  // 2026-09-12: NO se pisa un origen ya clasificado. Antes, la automatización que
+  // contestaba con una palabra clave dentro de una conversación abierta con
+  // bienvenida la reescribía como 'inbound' (18 casos en el tenant 7) y el panel
+  // la contaba como si la persona hubiera escrito primero. La IA sigue activa
+  // igual: lo que la despierta es que el origen no sea nulo, no su valor.
   if (matchedType && existing) {
     await supabase
       .from('conversations')
       .update({ conversation_source: matchedType, updated_at: new Date().toISOString() })
-      .eq('id', existing.conversationId);
+      .eq('id', existing.conversationId)
+      .is('conversation_source', null);
 
     await supabase.from('conversation_messages').insert({
       tenant_id: outbound.tenantId,

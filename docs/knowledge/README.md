@@ -71,6 +71,15 @@ valor, nunca el valor. Escanear antes de commitear.
   esté en el historial y lo persiste a `leads.first_name` sin guarda de procedencia. Verificado
   abierto el 2026-07-30. El fix es de código + deploy del motor, no de `coach_block`.
 
+### Tenant 7 — Tania (clienta propia, SaaS en producción)
+
+- [Ronda 2026-09-12: zona por prefijo, tiempo del dolor, citas reales, inbound](project_tania_ronda_2026-09-12.md) —
+  cuatro quejas de Tania medidas en su BD y resueltas: el país del teléfono decide la zona
+  (zone-policy + V20), un dolor de 15 días ya no llega a la llamada (coach v22), "Citas
+  agendadas" son reservas reales del calendario (calendar-sync cada 10 min, migrations 078/079)
+  y "Inbound" es solo quien escribe primero (`direction`). Incluye lo pendiente (cancelar la
+  cita del +502) y el estado del deploy.
+
 ### Autoría de coaches (coach-engineering)
 
 - [KB de autoría de coaches](project_coach_authoring_kb.md) — la base en

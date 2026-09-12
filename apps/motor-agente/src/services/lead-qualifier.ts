@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { findWholeWordTerm, normalizeText } from '../lib/text-match.js';
 
 /**
  * Cualificación de leads de formulario ANTES de enviar la bienvenida (2026-08-25).
@@ -81,29 +82,10 @@ const TIER_A = new Set([
   'canada', 'australia', 'nueva zelanda', 'new zealand',
 ]);
 
-const norm = (s: unknown): string =>
-  String(s ?? '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .trim();
-
-const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * Primer término (normalizado) que aparece como PALABRA COMPLETA en el texto
- * normalizado, o null. Palabra completa para que "Mosquito Bay" no sea Quito
- * ni "California" sea Cali.
- */
-function matchesTerm(textNorm: string, terms: string[]): string | null {
-  for (const raw of terms) {
-    const t = norm(raw);
-    if (!t) continue;
-    const re = new RegExp(`(^|[^a-z0-9])${escapeRegex(t)}(?![a-z0-9])`);
-    if (re.test(textNorm)) return t;
-  }
-  return null;
-}
+// Normalización y comparación por palabra completa: compartidas con la política
+// de zona del chat (lib/zone-policy.ts) desde 2026-09-12. Viven en lib/text-match.ts.
+const norm = normalizeText;
+const matchesTerm = findWholeWordTerm;
 
 export async function loadQualificationConfig(
   supabase: SupabaseClient,

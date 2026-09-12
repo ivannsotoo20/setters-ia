@@ -8,7 +8,7 @@
  */
 
 import type { PipelineEvent } from './pipeline-metrics';
-import type { ConvSnapshot } from './dashboard-metrics';
+import { isBookedAppointment, type AppointmentSnapshot, type ConvSnapshot } from './dashboard-metrics';
 
 export type ChannelKey = 'wa' | 'fb' | 'ig-in' | 'ig-out';
 export type MatrixColumnKey = ChannelKey | 'total';
@@ -34,7 +34,7 @@ export interface MatrixCell {
 }
 
 export interface MatrixRow {
-  key: 'leads' | 'active' | 'qualified' | 'scheduled' | 'won';
+  key: 'leads' | 'active' | 'qualified' | 'link_sent' | 'scheduled' | 'won';
   label: string;
   cells: Record<MatrixColumnKey, MatrixCell>;
 }
@@ -43,11 +43,14 @@ export interface MatrixData {
   rows: MatrixRow[];
 }
 
+// 2026-09-12: "Agendados" (F6/F7) pasa a llamarse lo que es, "Enlaces enviados",
+// y "Citas agendadas" cuenta reservas reales del calendario vinculado.
 const ROW_DEFS: Array<{ key: MatrixRow['key']; label: string }> = [
   { key: 'leads', label: 'Leads totales' },
   { key: 'active', label: 'Conversaciones activas' },
   { key: 'qualified', label: 'Cualificados' },
-  { key: 'scheduled', label: 'Agendados' },
+  { key: 'link_sent', label: 'Enlaces enviados' },
+  { key: 'scheduled', label: 'Citas agendadas' },
   { key: 'won', label: 'Ganados' },
 ];
 
@@ -140,6 +143,27 @@ function countOutcomeInChannel(
   return count;
 }
 
+/**
+ * Conversaciones distintas con una cita viva, por canal. El canal es el de la
+ * conversación casada (`channel_id` + `direction` vienen en el snapshot de la
+ * cita); una cita sin conversación no tiene canal y no cuenta aquí.
+ */
+function countScheduledInChannel(
+  appointments: AppointmentSnapshot[],
+  channelMap: Map<number, ChannelInfo>,
+  channelKey: ChannelKey,
+): number {
+  const ids = new Set<number>();
+  for (const a of appointments) {
+    if (!isBookedAppointment(a) || a.conversation_id == null || a.channel_id == null) continue;
+    if (classifyChannel(channelMap.get(Number(a.channel_id)), String(a.direction ?? '')) !== channelKey) {
+      continue;
+    }
+    ids.add(Number(a.conversation_id));
+  }
+  return ids.size;
+}
+
 function withDeltaAndIntensity(
   values: Record<MatrixColumnKey, number>,
   prevValues: Record<MatrixColumnKey, number>,
@@ -165,6 +189,9 @@ export function aggregateMatrix(input: {
   channelMap: Map<number, ChannelInfo>;
   windowFromIso: string;
   prevWindowFromIso: string;
+  /** Citas del calendario vinculado reservadas en cada ventana (fila "Citas agendadas"). */
+  appointments?: AppointmentSnapshot[];
+  prevAppointments?: AppointmentSnapshot[];
 }): MatrixData {
   const cur = bucketConvsByChannel(input.convs, input.channelMap);
   const prev = bucketConvsByChannel(input.prevConvs, input.channelMap);
@@ -206,7 +233,7 @@ export function aggregateMatrix(input: {
           ck,
         );
       }
-    } else if (key === 'scheduled') {
+    } else if (key === 'link_sent') {
       for (const ck of ALL_CHANNEL_KEYS) {
         values[ck] = countByEventTo(
           input.events,
@@ -222,6 +249,11 @@ export function aggregateMatrix(input: {
           input.channelMap,
           ck,
         );
+      }
+    } else if (key === 'scheduled') {
+      for (const ck of ALL_CHANNEL_KEYS) {
+        values[ck] = countScheduledInChannel(input.appointments ?? [], input.channelMap, ck);
+        prevValues[ck] = countScheduledInChannel(input.prevAppointments ?? [], input.channelMap, ck);
       }
     } else if (key === 'won') {
       for (const ck of ALL_CHANNEL_KEYS) {

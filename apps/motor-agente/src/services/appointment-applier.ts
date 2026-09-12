@@ -12,6 +12,17 @@
  *   - AppointmentDelete           → appointment_status='cancelled' (best-effort); registro mantenido.
  *   - Sin lead matched (unmatched) → solo UPSERT calendar_appointments con lead_id NULL.
  *   - Idempotente: re-ejecutar con el mismo payload no duplica eventos.
+ *
+ * 2026-09-12:
+ *   - Lo invocan DOS caminos: el webhook AppointmentCreate del app Marketplace
+ *     (webhook-ghl-calendar.ts) y el calendar-sync periódico (calendar-sync.ts),
+ *     que es el único que funciona para cuentas PIT como la de Tania.
+ *   - `booked_at` (cuándo se reservó) se toma de `appointment.dateAdded` al crear;
+ *     el dashboard cuenta "citas agendadas" por esa fecha, no por cuándo la vimos.
+ *   - El row de `pipeline_events` ya NO se inserta aquí: el trigger
+ *     `trg_log_phase_change` de `conversations` lo escribe al cambiar
+ *     `phase_number` (to_value '7', el mismo formato que el resto del embudo). El
+ *     insert manual escribía 'F7' y duplicaba el evento con otro formato.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -48,8 +59,14 @@ export async function applyAppointmentToConversation(input: ApplyInput): Promise
       ? 'cancelled'
       : normalizeStatus(appointment.appointmentStatus);
 
-  // 1. UPSERT calendar_appointments
+  // 1. UPSERT calendar_appointments. `booked_at` solo se fija al crear: en un
+  //    Update/Delete el upsert no toca la columna y se conserva la fecha original.
+  const bookedAt =
+    eventType === 'AppointmentCreate'
+      ? { booked_at: parseIsoOrNow(appointment.dateAdded) }
+      : {};
   const upsertRow = {
+    ...bookedAt,
     tenant_id: tenantId,
     calendar_account_id: calendarAccountId,
     external_appointment_id: appointment.id,
@@ -193,31 +210,8 @@ export async function applyAppointmentToConversation(input: ApplyInput): Promise
     throw new Error(`applyAppointment: conversation update failed: ${updErr.message}`);
   }
 
-  // 4. pipeline_events log — idempotente. Hardening 2026-05-15 audit MEDIUM
-  //    M-12: si el webhook se repite en <5min (ej. backfill + webhook simultáneo,
-  //    o reconciliation re-aplicando), NO duplicar el row de phase_change.
-  const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-  const { data: existingEvent } = await supabase
-    .from('pipeline_events')
-    .select('id')
-    .eq('conversation_id', match.conversationId)
-    .eq('event_type', 'phase_change')
-    .eq('to_value', `F${F7_PHASE_NUMBER}`)
-    .gte('occurred_at', fiveMinAgo)
-    .limit(1)
-    .maybeSingle();
-
-  if (!existingEvent) {
-    await supabase.from('pipeline_events').insert({
-      tenant_id: tenantId,
-      conversation_id: match.conversationId,
-      event_type: 'phase_change',
-      from_value: previousPhase != null ? `F${previousPhase}` : null,
-      to_value: `F${F7_PHASE_NUMBER}`,
-      source: 'calendar_webhook',
-      occurred_at: new Date().toISOString(),
-    });
-  }
+  // 4. El evento F<old>→7 de `pipeline_events` lo escribe el trigger
+  //    `trg_log_phase_change` al cambiar `phase_number` (ver cabecera).
 
   return {
     appointmentLocalId,
@@ -225,6 +219,14 @@ export async function applyAppointmentToConversation(input: ApplyInput): Promise
     previousPhase,
     newPhase: F7_PHASE_NUMBER,
   };
+}
+
+function parseIsoOrNow(value: string | null | undefined): string {
+  if (typeof value === 'string' && value.trim() !== '') {
+    const ms = Date.parse(value);
+    if (Number.isFinite(ms)) return new Date(ms).toISOString();
+  }
+  return new Date().toISOString();
 }
 
 function normalizeStatus(s: string | null | undefined): string {

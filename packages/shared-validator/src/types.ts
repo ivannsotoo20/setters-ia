@@ -42,6 +42,14 @@ export interface ValidationContext {
    * "expectativa" depende del lead, no es estática).
    */
   expectedAddressing?: 'tu' | 'usted';
+  /**
+   * 2026-09-12 — La persona NO cualifica por residencia según la política de
+   * zona del entrenador (prefijo telefónico en la lista de países a los que no
+   * lleva; ver apps/motor-agente/src/lib/zone-policy.ts). Con `true`, V20 tumba
+   * cualquier turno que lleve una URL: el enlace es lo único que produce una
+   * reserva. undefined/false → V20 no aplica.
+   */
+  zoneRejected?: boolean;
 }
 
 export interface RuleViolation {

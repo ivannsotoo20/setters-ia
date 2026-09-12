@@ -5,6 +5,7 @@ import {
   extractFormAnswers,
   mapConversationSourceToOrigin,
   renderFormAnswers,
+  renderZoneBlock,
   FORM_ANSWERS_MAX_FIELDS,
   FORM_ANSWERS_MAX_VALUE_CHARS,
   type LeadOrigin,
@@ -12,23 +13,41 @@ import {
 
 // =============================================================================
 // mapConversationSourceToOrigin
+//
+// 2026-09-12: el origen se deriva de `conversation_source` Y de `direction`.
+// En el tenant 7 había 171 conversaciones de Instagram abiertas por la
+// automatización (primer mensaje nuestro) con source='inbound' — el tipo de la
+// palabra clave —, y la directiva le decía al setter "te escribió ella".
 // =============================================================================
 
 describe('mapConversationSourceToOrigin', () => {
-  const cases: Array<{ source: string | null | undefined; expected: LeadOrigin }> = [
-    { source: 'bienvenida', expected: 'form' },
+  const cases: Array<{
+    source: string | null | undefined;
+    opts?: { direction?: string | null; hasFormAnswers?: boolean };
+    expected: LeadOrigin;
+  }> = [
+    // bienvenida: formulario solo si tenemos sus respuestas
+    { source: 'bienvenida', opts: { hasFormAnswers: true }, expected: 'form' },
+    { source: 'bienvenida', opts: { direction: 'outbound' }, expected: 'welcome' },
+    { source: 'bienvenida', expected: 'welcome' },
+    // lm
     { source: 'lm', expected: 'lead_magnet' },
+    // inbound: depende de quién abrió
+    { source: 'inbound', opts: { direction: 'inbound' }, expected: 'inbound' },
+    { source: 'inbound', opts: { direction: 'outbound' }, expected: 'keyword_outbound' },
     { source: 'inbound', expected: 'inbound' },
+    // sin source: si escribió ella, eso sí se declara
+    { source: null, opts: { direction: 'inbound' }, expected: 'inbound' },
+    { source: null, opts: { direction: 'outbound' }, expected: 'unknown' },
     { source: 'manual', expected: 'unknown' },
-    { source: null, expected: 'unknown' },
     { source: undefined, expected: 'unknown' },
     { source: '', expected: 'unknown' },
     { source: 'source_futuro_no_contemplado', expected: 'unknown' },
   ];
 
-  for (const { source, expected } of cases) {
-    it(`source=${JSON.stringify(source)} → ${expected}`, () => {
-      expect(mapConversationSourceToOrigin(source)).toBe(expected);
+  for (const { source, opts, expected } of cases) {
+    it(`source=${JSON.stringify(source)} opts=${JSON.stringify(opts ?? {})} → ${expected}`, () => {
+      expect(mapConversationSourceToOrigin(source, opts)).toBe(expected);
     });
   }
 });
@@ -38,7 +57,7 @@ describe('mapConversationSourceToOrigin', () => {
 // =============================================================================
 
 describe('buildLeadOriginDirective — origen', () => {
-  it('sin origen NI canal no inyecta nada', () => {
+  it('sin origen NI canal NI zona no inyecta nada', () => {
     expect(buildLeadOriginDirective({ origin: 'unknown', channel: null })).toBeNull();
   });
 
@@ -53,11 +72,25 @@ describe('buildLeadOriginDirective — origen', () => {
   });
 
   it('form NO afirma por qué canal concreto dejó los datos', () => {
-    // 'bienvenida' lo escriben dos caminos (lead-form y trainer-escribe-primero
-    // vía GHL). La directiva solo puede afirmar lo cierto en AMBOS.
     const d = (buildLeadOriginDirective({ origin: 'form' }) ?? '').toLowerCase();
     expect(d).not.toContain('facebook');
     expect(d).not.toContain('tally');
+  });
+
+  it('welcome dice que abrimos nosotros y que NO hay formulario', () => {
+    const d = buildLeadOriginDirective({ origin: 'welcome' }) ?? '';
+    expect(d).toContain('NO la abrió ella');
+    expect(d).toContain('bienvenida');
+    expect(d).toContain('No tenemos respuestas de ningún formulario');
+    expect(d).not.toContain('dejó sus datos en un formulario');
+  });
+
+  it('keyword_outbound dice que abrió la automatización por una palabra clave', () => {
+    const d = buildLeadOriginDirective({ origin: 'keyword_outbound' }) ?? '';
+    expect(d).toContain('NO la abrió ella');
+    expect(d).toContain('palabra clave');
+    expect(d).toContain('El primer mensaje del historial es nuestro');
+    expect(d).not.toContain('te escribió ella');
   });
 
   it('lead_magnet separa interés en el recurso de intención de compra', () => {
@@ -72,12 +105,13 @@ describe('buildLeadOriginDirective — origen', () => {
     expect(d).toContain('NO des por hecho');
   });
 
-  it('form e inbound se contradicen entre sí (no son intercambiables)', () => {
-    const form = buildLeadOriginDirective({ origin: 'form' }) ?? '';
+  it('los orígenes abiertos por nosotros y el inbound se contradicen entre sí', () => {
     const inbound = buildLeadOriginDirective({ origin: 'inbound' }) ?? '';
-    expect(form).toContain('NO la abrió ella');
-    expect(inbound).toContain('te escribió ella');
-    expect(form).not.toBe(inbound);
+    for (const origin of ['form', 'welcome', 'keyword_outbound', 'lead_magnet'] as const) {
+      const d = buildLeadOriginDirective({ origin }) ?? '';
+      expect(d).toContain('NO la abrió ella');
+      expect(d).not.toBe(inbound);
+    }
   });
 });
 
@@ -108,6 +142,63 @@ describe('buildLeadOriginDirective — canal', () => {
     const wa = buildLeadOriginDirective({ origin: 'form', channel: 'whatsapp' });
     const ig = buildLeadOriginDirective({ origin: 'form', channel: 'instagram_dm' });
     expect(wa).not.toBe(ig);
+  });
+});
+
+// =============================================================================
+// Zona geográfica (2026-09-12)
+// =============================================================================
+
+describe('renderZoneBlock / buildLeadOriginDirective — zona', () => {
+  const GT = { iso: 'GT', name: 'Guatemala', prefix: '502' };
+
+  it('clear o ausente no declara nada', () => {
+    expect(renderZoneBlock(null)).toBeNull();
+    expect(renderZoneBlock(undefined)).toBeNull();
+    expect(renderZoneBlock({ kind: 'clear' })).toBeNull();
+  });
+
+  it('reject_by_prefix: nombra el país al setter, decide por sí solo y prohíbe enlace y propuesta', () => {
+    const d = renderZoneBlock({ kind: 'reject_by_prefix', country: GT }) ?? '';
+    expect(d).toContain('Guatemala (+502)');
+    expect(d).toContain('no cualifica por residencia');
+    expect(d).toContain('sin ningún enlace');
+    expect(d).toContain('sin propuesta de videollamada');
+    expect(d).toContain('coach_qualification_doesnt');
+    // La excepción pasa por la entrenadora, nunca por el enlace.
+    expect(d).toContain('B_derivacion');
+  });
+
+  it('in_zone_by_prefix: cualifica y evita la pregunta de rutina', () => {
+    const d = renderZoneBlock({ kind: 'in_zone_by_prefix', country: { iso: 'ES', name: 'España', prefix: '34' } }) ?? '';
+    expect(d).toContain('España');
+    expect(d).toContain('cualifica');
+    expect(d).toContain('No le preguntes el país por rutina');
+  });
+
+  it('mention: obliga a confirmar residencia una vez y bloquea propuesta y enlace hasta entonces', () => {
+    const d = renderZoneBlock({ kind: 'mention', term: 'colombia', excerpt: 'Colombia' }) ?? '';
+    expect(d).toContain('«colombia»');
+    expect(d).toContain('Nombrar un país no es residir en él');
+    expect(d).toContain('una sola vez');
+    expect(d).toContain('ni propuesta de videollamada ni enlace');
+  });
+
+  it('la zona sola ya justifica inyectar, y va como sección propia', () => {
+    const d = buildLeadOriginDirective({ origin: 'unknown', channel: null, zone: { kind: 'reject_by_prefix', country: GT } }) ?? '';
+    expect(d.startsWith('## Zona geográfica')).toBe(true);
+  });
+
+  it('con origen + canal + zona salen dos secciones, la de zona la última', () => {
+    const d = buildLeadOriginDirective({
+      origin: 'form',
+      channel: 'whatsapp',
+      zone: { kind: 'reject_by_prefix', country: GT },
+    }) ?? '';
+    const headers = d.split('\n').filter((l) => l.startsWith('## '));
+    expect(headers).toHaveLength(2);
+    expect(headers[0]).toContain('De dónde viene');
+    expect(headers[1]).toContain('Zona geográfica');
   });
 });
 
@@ -155,11 +246,7 @@ describe('renderFormAnswers', () => {
   it('trunca valores largos con elipsis', () => {
     const out = renderFormAnswers({ historia: 'x'.repeat(1000) }) ?? '';
     expect(out).toContain('…');
-    // Cota sanitaria: valor truncado + preámbulo fijo (rotulado como datos +
-    // regla de saltar preguntas ya respondidas). Si esto crece, es el preámbulo
-    // el que ha engordado, no el valor sin truncar.
     expect(out.length).toBeLessThan(FORM_ANSWERS_MAX_VALUE_CHARS + 450);
-    // Y la verdadera garantía: el valor en sí quedó truncado.
     const bullet = out.split('\n').find((l) => l.startsWith('- historia:')) ?? '';
     expect(bullet.length).toBeLessThan(FORM_ANSWERS_MAX_VALUE_CHARS + 20);
   });
@@ -189,7 +276,7 @@ describe('buildLeadOriginDirective — respuestas del formulario', () => {
   });
 
   it('NO las incluye si el origen no es form (no las tenemos: afirmarlas sería falso)', () => {
-    for (const origin of ['inbound', 'lead_magnet', 'unknown'] as const) {
+    for (const origin of ['inbound', 'welcome', 'keyword_outbound', 'lead_magnet', 'unknown'] as const) {
       const d = buildLeadOriginDirective({ origin, channel: 'whatsapp', formAnswers: answers }) ?? '';
       expect(d).not.toContain('Lumbar');
     }
