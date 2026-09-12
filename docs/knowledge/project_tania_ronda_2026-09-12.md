@@ -14,7 +14,7 @@ como "brote de algo previo". Ocho turnos después, con un dolor que "va a mejor 
 Dios", estaba en la propuesta de videollamada. El bloque tenía la regla pero también
 "ante la duda, el sesgo es CUALIFICAR" y no decía qué cuenta como antecedente.
 
-**Qué se cambió (coach_v5 v22, snapshot en `prompt_block_versions`).**
+**Qué se cambió (coach_v5 v22→v24 el mismo día, snapshots en `prompt_block_versions`).**
 - TIEMPO: la validación es UNA y abierta; cuenta como antecedente un episodio anterior
   descrito con sustancia; un "sí" a secas, y menos a una pregunta que lleva la respuesta
   dentro, no cuenta; caída/resbalón/mal gesto reciente sin episodio anterior = dolor agudo
@@ -48,7 +48,7 @@ suficiente; o si lo dice en la conversación en caso de que no lo sepas".
 - **V20** (`shared-validator`): con `zoneRejected` ningún turno puede llevar una URL; el
   orquestador reintenta una vez pidiendo el cierre y si vuelve con enlace tumba el turno.
 - El motor deja la fase en ≤F4 si el modelo propone a alguien rechazado por prefijo.
-- Coach v22: el teléfono decide solo (excepción: si ella dice residir fuera de la lista,
+- Coach v22-v24: el teléfono decide solo (excepción: si ella dice residir fuera de la lista,
   handoff B para que lo confirme Tania); en el chat, una pista obliga a UNA pregunta de
   residencia antes de proponer; sin pista y sin teléfono, normalidad.
 - Config cargada para el tenant 7: VE, CU, DO, CO, BO, EC, GT, SV, AR.
@@ -97,6 +97,10 @@ mensaje de las 1.662 conversaciones).
 - Panel: `lib/conversation-origin.ts` es el único sitio que traduce los dos campos a
   "Inbound (escribió ella) / Bienvenida / Palabra clave / Lead magnet / Manual"; el filtro
   de origen de contactos usa esas claves (y acepta los valores viejos en enlaces guardados).
+
+## Regresión en el simulador de producción (`.tmp/sim-tests/bateria-v22.mjs`, tenant 7, ~1,5 $ de la clave de Tania)
+
+Seis escenarios contra el bloque (el motor de producción es el anterior al deploy, así que aquí no hay directiva de zona ni V20): Jenny (15 días + resbalón) cierra con el literal 1 en el turno del resbalón; un "sí" a secas se concreta una vez y sin concretar cierra (v24: hubo que sacar ese "no sé" de la lista de lo que nunca descualifica); un episodio anterior descrito sigue; "Colombia" a secas pregunta residencia y confirmada cierra con el literal 8 tal cual (v23: la v22 explicaba "por zona no puedo…"); "vivo en Venezuela" cierra en el primer turno; Lima sigue.
 
 ## Pendiente / vigilar
 

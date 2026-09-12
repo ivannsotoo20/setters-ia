@@ -615,7 +615,7 @@ Cuatro quejas de Tania (tenant 7) medidas en su BD; el detalle y el porqué en [
 
 **Dashboard.** "Agendados" se parte en **Enlaces enviados** (`linkSent` / widget `link_sent`: F6/F7, el proxy de siempre) y **Citas agendadas** (`scheduled`: reservas reales por conversación desde `calendar_appointments`, cargadas por `loadWindowAppointments`; las que no casan con ninguna conversación van a `meta.unmatchedAppointmentsCurrent`).
 
-**Coach de Tania v22**: la validación del tiempo es una y abierta; un "sí" a una pregunta que lleva la respuesta dentro no es antecedente; caída reciente sin episodio anterior descrito es dolor agudo (cierre 1); "quiere cambiarlo" se verbaliza. Carga versionada desde el `.md` con `node scripts/load-coach-v5-version.mjs --tenant 7 --file prompts/source/coach-v5/tania-duarte-matos.md --version <n+1> --expect-md5 <md5 actual>` (UPDATE + snapshot, verificado por md5).
+**Coach de Tania v22→v24 (mismo día)**: la validación del tiempo es una y abierta; un "sí" a una pregunta que lleva la respuesta dentro no es antecedente; caída reciente sin episodio anterior descrito es dolor agudo (cierre 1); "quiere cambiarlo" se verbaliza. Carga versionada desde el `.md` con `node scripts/load-coach-v5-version.mjs --tenant 7 --file prompts/source/coach-v5/tania-duarte-matos.md --version <n+1> --expect-md5 <md5 actual>` (UPDATE + snapshot, verificado por md5).
 
 ## Qué NO hacer
 
