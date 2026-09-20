@@ -3,6 +3,7 @@ import {
   enrichWithLeadReplies,
   loadLastMessageBySource,
   loadTestLeadIds,
+  loadWindowAppointments,
   resolveChannelFilter,
 } from '../../lib/dashboard-loader';
 import type { ConvSnapshot } from '../../lib/dashboard-metrics';
@@ -78,6 +79,130 @@ describe('enrichWithLeadReplies', () => {
     const sb = makeSupabase([]);
     await enrichWithLeadReplies(sb.client, [conv(1, 'inbound')]);
     expect(sb.batches).toEqual([]);
+  });
+});
+
+interface AppointmentDbRow {
+  id: number;
+  conversation_id: number | null;
+  lead_id: number | null;
+  appointment_status: string;
+  booked_at: string;
+  start_at: string;
+  conversations: { channel_id: number | null; direction: string | null } | null;
+}
+
+/**
+ * Supabase falso para `calendar_appointments`: devuelve las filas tal cual y
+ * registra el select que se le pide, que es lo que aquí importa.
+ */
+function makeAppointmentsSupabase(rows: AppointmentDbRow[]) {
+  const selects: string[] = [];
+  const client: any = {
+    from(table: string) {
+      if (table !== 'calendar_appointments') throw new Error(`tabla inesperada ${table}`);
+      const b: any = {
+        select: (sel: string) => {
+          selects.push(sel);
+          return b;
+        },
+        eq: () => b,
+        gte: () => b,
+        lte: () => Promise.resolve({ data: rows, error: null }),
+      };
+      return b;
+    },
+  };
+  return { selects, client };
+}
+
+describe('loadWindowAppointments', () => {
+  const rows: AppointmentDbRow[] = [
+    // casada con una conv de WhatsApp inbound
+    {
+      id: 1,
+      conversation_id: 100,
+      lead_id: 7,
+      appointment_status: 'confirmed',
+      booked_at: '2026-09-10T10:00:00Z',
+      start_at: '2026-09-15T10:00:00Z',
+      conversations: { channel_id: 10, direction: 'inbound' },
+    },
+    // casada con una conv de Instagram outbound
+    {
+      id: 2,
+      conversation_id: 200,
+      lead_id: 8,
+      appointment_status: 'new',
+      booked_at: '2026-09-11T10:00:00Z',
+      start_at: '2026-09-16T10:00:00Z',
+      conversations: { channel_id: 20, direction: 'outbound' },
+    },
+    // huérfana: no casó con ninguna conversación
+    {
+      id: 3,
+      conversation_id: null,
+      lead_id: null,
+      appointment_status: 'new',
+      booked_at: '2026-09-12T10:00:00Z',
+      start_at: '2026-09-17T10:00:00Z',
+      conversations: null,
+    },
+  ];
+
+  it('embebe conversations por conversation_id: hay dos FKs entre las tablas y PostgREST no elige sola', async () => {
+    const sb = makeAppointmentsSupabase(rows);
+    await loadWindowAppointments(sb.client, {
+      tenantId: 1,
+      fromIso: '2026-09-01T00:00:00Z',
+      toIso: '2026-09-30T00:00:00Z',
+      channelIds: null,
+      direction: null,
+    });
+    expect(sb.selects).toHaveLength(1);
+    // Sin el hint el servidor responde PGRST201 ("more than one relationship was
+    // found for 'calendar_appointments' and 'conversations'") y cae el dashboard.
+    expect(sb.selects[0]).toContain('conversations!conversation_id(');
+  });
+
+  it('sin filtro devuelve todas, con el canal y la dirección de la conv casada', async () => {
+    const sb = makeAppointmentsSupabase(rows);
+    const r = await loadWindowAppointments(sb.client, {
+      tenantId: 1,
+      fromIso: '2026-09-01T00:00:00Z',
+      toIso: '2026-09-30T00:00:00Z',
+      channelIds: null,
+      direction: null,
+    });
+    expect(r.error).toBeNull();
+    expect(r.appointments.map((a) => a.id)).toEqual([1, 2, 3]);
+    expect(r.appointments[0]).toMatchObject({ channel_id: 10, direction: 'inbound' });
+    expect(r.appointments[2]).toMatchObject({
+      conversation_id: null,
+      channel_id: null,
+      direction: null,
+    });
+  });
+
+  it('el filtro de canal y dirección se aplica sobre la conv casada; la huérfana no pasa ninguno', async () => {
+    const sb = makeAppointmentsSupabase(rows);
+    const byChannel = await loadWindowAppointments(sb.client, {
+      tenantId: 1,
+      fromIso: '2026-09-01T00:00:00Z',
+      toIso: '2026-09-30T00:00:00Z',
+      channelIds: [20],
+      direction: null,
+    });
+    expect(byChannel.appointments.map((a) => a.id)).toEqual([2]);
+
+    const byDirection = await loadWindowAppointments(sb.client, {
+      tenantId: 1,
+      fromIso: '2026-09-01T00:00:00Z',
+      toIso: '2026-09-30T00:00:00Z',
+      channelIds: null,
+      direction: 'inbound',
+    });
+    expect(byDirection.appointments.map((a) => a.id)).toEqual([1]);
   });
 });
 

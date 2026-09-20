@@ -112,6 +112,11 @@ export async function loadWindowEvents(
  *
  * Se filtra por `booked_at` y no por `received_at` porque el calendar-sync del
  * motor trae citas de días atrás y el backfill inicial las traería todas hoy.
+ *
+ * El embed de `conversations` lleva el hint `!conversation_id` porque entre las
+ * dos tablas hay DOS claves foráneas (`calendar_appointments.conversation_id` y
+ * `conversations.last_appointment_id`, migrations 048/049) y PostgREST no elige
+ * sola: sin el hint responde PGRST201 y el dashboard entero cae (2026-09-20).
  */
 export async function loadWindowAppointments(
   supabase: SupabaseClient,
@@ -126,7 +131,7 @@ export async function loadWindowAppointments(
   const { data, error } = await supabase
     .from('calendar_appointments')
     .select(
-      'id, conversation_id, lead_id, appointment_status, booked_at, start_at, conversations(channel_id, direction)',
+      'id, conversation_id, lead_id, appointment_status, booked_at, start_at, conversations!conversation_id(channel_id, direction)',
     )
     .eq('tenant_id', params.tenantId)
     .gte('booked_at', params.fromIso)
