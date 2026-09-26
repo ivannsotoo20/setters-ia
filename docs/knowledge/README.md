@@ -79,6 +79,11 @@ valor, nunca el valor. Escanear antes de commitear.
   agendadas" son reservas reales del calendario (calendar-sync cada 10 min, migrations 078/079)
   y "Inbound" es solo quien escribe primero (`direction`). Incluye lo pendiente (cancelar la
   cita del +502) y el estado del deploy.
+- [Ronda 2026-09-26: zona en lista blanca (Perú y el resto de Latinoamérica fuera)](project_tania_ronda_2026-09-26.md) —
+  un abogado de Perú aprobado por el formulario ("Zona D") llegó al enlace. Lista blanca en una
+  sola fuente (`zone_allowlist`), la regla de país del formulario que nunca funcionó (leía el
+  WhatsApp), cierre por zona obligatorio y con el literal exacto (V21), D1 (+502 "En Canadá" →
+  Tania) y la fase 2b pendiente (tener el contexto sin preguntar).
 
 ### Autoría de coaches (coach-engineering)
 
