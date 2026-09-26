@@ -1,6 +1,11 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { runPipeline, loadConversationHistory } from '@fyzon/agent-pipeline';
+import {
+  runPipeline,
+  loadConversationHistory,
+  ZoneCloseError,
+  ZONE_CLOSE_ERROR_PREFIX,
+} from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
 import { getAnthropicForTenant } from '../lib/anthropic.js';
@@ -32,7 +37,15 @@ import {
   extractFormAnswers,
   mapConversationSourceToOrigin,
 } from '../lib/lead-origin.js';
-import { evaluateZone, loadZonePolicy } from '../lib/zone-policy.js';
+import { evaluateZone, isZoneRejectVerdict, loadZonePolicy } from '../lib/zone-policy.js';
+import { pickResidenceAnswer } from './lead-qualifier.js';
+
+/**
+ * Qué respuesta del formulario es la de residencia, para la excepción D1 de la
+ * zona. `pickResidenceAnswer` descarta las respuestas con forma de teléfono (el
+ * campo del WhatsApp de Tally también habla de "tu país").
+ */
+const RESIDENCE_LABEL = /vives|pa[ií]s|residencia|resides/i;
 import { tenantHasLinkedCalendar } from '../lib/linked-calendar.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
@@ -381,11 +394,6 @@ export async function processDebounced(
   const leadTimezoneLabel = timezoneToLabel(leadTimezone ?? trainerTimezone);
   const trainerTimezoneLabel = timezoneToLabel(trainerTimezone);
 
-  // Cerebro v5 — instrucción focal corta de la fase activa para inyectar en
-  // {{current_phase_focus}} del core_v5_base. Reemplaza el filtro dinámico de
-  // fase_N_v4 del v4.
-  const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false);
-
   // Hito 12.1 — Tratamiento al lead.
   // - 'tu'/'usted': pasar expectedAddressing al validatorCtx para que V18 valide.
   // - 'mirror_lead': detectar el tratamiento del ÚLTIMO mensaje del lead y
@@ -426,19 +434,27 @@ export async function processDebounced(
   );
   // Zona geográfica (2026-09-12): país del teléfono y países nombrados en el
   // chat, contra la política del tenant (tenant_configs.lead_qualification).
-  // Es un HECHO que se declara al setter; el cierre lo decide el coach. Cuando
-  // el prefijo dice que no cualifica, V20 impide además que salga un enlace.
+  // Es un HECHO que se declara al setter; el literal del cierre lo pone el coach.
+  // Cuando el prefijo dice que no cualifica, V20 impide además que salga un
+  // enlace, y desde 2026-09-26 la focal de cierre y V21 obligan a que el turno
+  // cierre (ver `currentPhaseFocus` más abajo).
   const zonePolicy = await loadZonePolicy(supabase, tenantId);
   const zoneVerdict = evaluateZone({
     phone: (lead.phone as string | null | undefined) ?? null,
     leadMessages: allHistory.filter((m) => m.role === 'user').map((m) => m.content),
     policy: zonePolicy,
+    // D1 (2026-09-26): la residencia que declaró en el formulario decide la
+    // excepción "prefijo de fuera, vive en zona" sin depender del modelo.
+    declaredResidence: formAnswers ? pickResidenceAnswer(formAnswers, RESIDENCE_LABEL, null)?.value ?? null : null,
   });
-  const zoneRejected = zoneVerdict.kind === 'reject_by_prefix';
-  if (zoneVerdict.kind === 'reject_by_prefix' || zoneVerdict.kind === 'mention') {
+  // `zoneRejected` enciende V20 (ningún enlace) en los dos modos; el modo dice si
+  // el turno cierra o pasa a la entrenadora (V21 y la focal).
+  const zoneHandoff = zoneVerdict.kind === 'prefix_out_residence_in';
+  const zoneRejected = isZoneRejectVerdict(zoneVerdict) || zoneHandoff;
+  if (zoneVerdict.kind !== 'clear' && zoneVerdict.kind !== 'in_zone_by_prefix') {
     console.log(
       `[zone] conv=${conversationId} verdict=${zoneVerdict.kind} ` +
-        (zoneVerdict.kind === 'mention'
+        (zoneVerdict.kind === 'mention' || zoneVerdict.kind === 'reject_by_declaration'
           ? `term=${zoneVerdict.term}`
           : `country=${zoneVerdict.country.iso}`),
     );
@@ -453,6 +469,24 @@ export async function processDebounced(
     leadOriginDirective,
     addressingDirective,
   );
+
+  // Cerebro v5 — instrucción focal corta de la fase activa. El composer la emite
+  // como último bloque del prompt, fuera de caché. Reemplaza el filtro dinámico
+  // de fase_N_v4 del v4.
+  //
+  // Con la zona rechazada por el prefijo, la focal NO es la de la fase: es la del
+  // cierre por residencia (2026-09-26). En la conv 12203 (+57) la directiva de zona
+  // ordenaba cerrar y esta focal, que va detrás y el modelo lee como la orden
+  // vigente, decía "FASE 1… no extraer datos de cualificación"; ganó la fase y
+  // el setter siguió 24 mensajes. Por eso se calcula aquí, después del veredicto.
+  //
+  // `trackedCalendarUrl` NO se anula en este caso: un null cae al respaldo
+  // SIN_CALENDARIO del coach, que abre otra rama del prompt ("me lo apunto… te
+  // escribimos" + handoff). El enlace ya lo impide V20.
+  const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false, {
+    zoneClose: zoneRejected,
+    zoneHandoff,
+  });
 
   let pipelineOut;
   try {
@@ -480,8 +514,16 @@ export async function processDebounced(
           expectedAddressing,
           // 2026-09-12 — V20: la persona no cualifica por residencia (prefijo
           // telefónico en la lista del tenant). Ningún turno puede llevar URL.
+          // 2026-09-26 — V21: y el turno tiene que cerrar (disqualified, o
+          // handoff B_derivacion si ella declaró residencia en zona).
           zoneRejected,
         },
+        // 2026-09-26 — modo del turno con la zona rechazada, y el literal del
+        // cierre de la entrenadora (`lead_qualification.zone_close_message`) para
+        // mandarlo tal cual en vez de fiarse de que el modelo lo copie.
+        zone: zoneRejected
+          ? { mode: zoneHandoff ? 'handoff' : 'close', closeParts: zonePolicy?.closeParts ?? null }
+          : undefined,
         composeOverrides: {
           // Enrutado por canal: si el entrenador tiene coach de WhatsApp y la
           // conversacion va por WhatsApp, se usa ese; si no, el generico.
@@ -510,6 +552,41 @@ export async function processDebounced(
       error: err,
     });
     runResolved = true;
+    // Zona sin cierre (V21) o con enlace insistente (V20) tras el reintento: no
+    // se relanza. Relanzar = el cron reencola a los 30 s, vuelve a correr el
+    // pipeline entero (2-3 llamadas al Generator) y, si el modelo insiste, así
+    // indefinidamente. Aquí no hay nada transitorio que esperar: se pausa la IA y
+    // se avisa a la entrenadora, sin mandarle nada a la persona.
+    const zoneFailureRule = zoneRejected ? zoneCloseFailureRule(err) : null;
+    if (zoneFailureRule) {
+      await landZoneCloseFailure({
+        supabase,
+        tenantId,
+        conversationId,
+        lead: {
+          id: Number(lead.id),
+          firstName: (lead.first_name as string | null | undefined) ?? null,
+          phone: (lead.phone as string | null | undefined) ?? null,
+        },
+        channelType,
+        correlationId: run.correlationId,
+        ruleId: zoneFailureRule,
+      });
+      return {
+        conversationId,
+        scheduleIds: [],
+        parts: [],
+        totalCostUsd: mediaResult.costUsd,
+        totalLatencyMs: Date.now() - startedAtMs,
+        pipelineStatus: 'handoff',
+        phase: currentPhase,
+        correlationId: run.correlationId,
+        skipped: true,
+        reason:
+          'zona: la persona no cualifica por residencia y el turno no cerró tras el reintento; ' +
+          'IA pausada y aviso a la entrenadora, sin mensaje a la persona',
+      };
+    }
     throw err;
   }
 
@@ -757,7 +834,12 @@ export async function processDebounced(
   //      renderizará la plantilla y enviará via Resend. Best-effort: si
   //      enqueueNotification falla, log y seguimos (no rompemos el pipeline).
   const generatorStatus = pipelineOut.generator.setterOutput.conversation_status;
-  const eventType = mapStatusToEventType(generatorStatus);
+  // Solo en la TRANSICIÓN a descalificada (2026-09-26): tras un cierre la IA
+  // sigue contestando (estado 'stopped') y con la zona rechazada cada turno sale
+  // `disqualified` otra vez; sin esto la entrenadora recibía un email por mensaje.
+  const alreadyDisqualified =
+    generatorStatus === 'disqualified' && String(conv.state ?? '') === newStatus;
+  const eventType = alreadyDisqualified ? null : mapStatusToEventType(generatorStatus);
   if (eventType) {
     const enqueueRes = await enqueueNotification({
       supabase,
@@ -878,6 +960,112 @@ function mapStatusToEventType(
     case 'active':
     case 'paused':
       return null;
+  }
+}
+
+/**
+ * Qué regla de zona tumbó el turno, o null si el error es otro: V21 si el modelo
+ * no cerró (`ZoneCloseError`), V20 si insistió en mandar el enlace (error del
+ * validador). Solo tiene sentido preguntarlo en un turno con `zoneRejected`: V20
+ * y V21 no se disparan sin ese flag.
+ *
+ * Se reconoce también por el texto: el de V20 no tiene clase propia (sale del
+ * `hasErrors` genérico del pipeline), y un `instanceof` falla si el error llega
+ * desde otra copia del paquete.
+ */
+export function zoneCloseFailureRule(err: unknown): 'V20' | 'V21' | null {
+  if (err instanceof ZoneCloseError) return 'V21';
+  if (!(err instanceof Error)) return null;
+  if (err.message.startsWith(ZONE_CLOSE_ERROR_PREFIX)) return 'V21';
+  // "Validator V0-V20 found unrecoverable errors after Judge: V20: la persona…"
+  // → casa "V20:" y no el "V0-V20 found" del prefijo.
+  if (/\bV20:/.test(err.message)) return 'V20';
+  return null;
+}
+
+/** Texto de la causa en el email de handoff: lo que la entrenadora tiene que hacer. */
+export const ZONE_CLOSE_FAILURE_CAUSE =
+  'Fuera de zona (por el prefijo de su teléfono o porque ha dicho dónde vive), y la IA no ' +
+  'consiguió resolver el turno sola. Está pausada y en este turno no se le ha enviado nada: ' +
+  'ciérrala tú, o confírmalo con ella si dice que vive en un país de tu zona.';
+
+/**
+ * Aterrizaje seguro de un turno de zona tumbado (V20/V21): IA pausada, handoff
+ * marcado y aviso a la entrenadora. La persona no recibe nada.
+ *
+ * Por qué no se relanza el error: el cron (`tickDebounce`) reencola cualquier
+ * fallo de `processDebounced` a los 30 s sin límite de intentos. Un turno de zona
+ * que el modelo se niega a cerrar no es un fallo transitorio: relanzarlo es pagar
+ * 2-3 llamadas al Generator cada 30 s hasta que el modelo acierte por azar, y si
+ * acierta, el cierre sale tarde y a destiempo.
+ *
+ * Por qué no se toca `state`: con 'closed', `getOrCreateConversation` salta la
+ * conversación e intenta insertar otra, y el índice único (tenant, lead, canal)
+ * lo rechaza: el siguiente mensaje de la persona se perdería (fallo aparte, de
+ * todo handoff, revisión del 2026-09-26). Con la pausa, lo que escriba cae
+ * en esta misma conversación, el motor no contesta y los follow-ups programados
+ * se cancelan en el gate de salida (`outboundGateSkipReason`: 'ai paused').
+ *
+ * Best-effort: si el UPDATE o el aviso fallan se loguea y se sigue. Sin PII en
+ * el log (ni teléfono ni nombre).
+ */
+export async function landZoneCloseFailure(args: {
+  supabase: SupabaseClient;
+  tenantId: number;
+  conversationId: number;
+  lead: { id: number; firstName: string | null; phone: string | null };
+  channelType: 'whatsapp' | 'instagram' | 'facebook';
+  correlationId?: string;
+  ruleId: 'V20' | 'V21';
+}): Promise<void> {
+  const { supabase, tenantId, conversationId, lead } = args;
+  console.warn(
+    `[zone] conv=${conversationId} ${args.ruleId}: turno tumbado ` +
+      `(${args.ruleId === 'V21' ? 'no cerró' : 'insistió en el enlace'}) → IA pausada + aviso a la entrenadora`,
+  );
+
+  const { error: updateErr } = await supabase
+    .from('conversations')
+    .update({
+      ai_paused_until: 'infinity',
+      is_handoff_to_human: true,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', conversationId)
+    .eq('tenant_id', tenantId);
+  if (updateErr) {
+    console.warn(
+      `[zone] conv=${conversationId} pausa tras ${args.ruleId} falló: ${updateErr.message}`,
+    );
+  }
+
+  try {
+    const enqueueRes = await enqueueNotification({
+      supabase,
+      tenantId,
+      eventType: 'handoff',
+      payload: {
+        // Mismas claves que el aviso de handoff normal (ver 9.5 en processDebounced).
+        lead_id: lead.id,
+        lead_first_name: lead.firstName,
+        first_name: lead.firstName,
+        lead_phone: lead.phone,
+        phone: lead.phone,
+        conversation_id: conversationId,
+        channel_type: args.channelType,
+        correlation_id: args.correlationId,
+        handoff_cause: ZONE_CLOSE_FAILURE_CAUSE,
+      },
+    });
+    if (!enqueueRes.ok) {
+      console.warn(
+        `[zone] conv=${conversationId} aviso de handoff tras ${args.ruleId} falló: ${enqueueRes.error}`,
+      );
+    }
+  } catch (err) {
+    console.warn(
+      `[zone] conv=${conversationId} aviso de handoff tras ${args.ruleId} lanzó: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 

@@ -17,6 +17,14 @@ import Fastify, { type FastifyInstance } from 'fastify';
  *   8. Tally aprobado por reglas → fila completada con lead_id/conversation_id/welcome_sent.
  *   9. Aprobado pero sin plantilla → fila con error, 409 como siempre.
  *  10. El INSERT del registro falla → el flujo sigue y la bienvenida sale igual.
+ *
+ * Lista blanca de zona y reenvío (2026-09-26, Tania):
+ *  11. Tally con el orden real (WhatsApp antes de la residencia): la regla de
+ *      país lee la residencia (Perú +51 rechazado, España +34 aprobado).
+ *  12. Payload plano con respuestas también se cualifica (VIA-06).
+ *  13. Evaluador caído con prefijo fuera de zona → rechazado.
+ *  14. Reenvío tras un rechazo en 30 días → rechazado sin cualificar; ventana
+ *      anclada al rechazo real; consulta fallida = se cualifica igual.
  */
 
 interface TenantTokenRow {
@@ -35,6 +43,7 @@ interface TenantConfigRow {
 interface SubmissionRow {
   id: number;
   tenant_id: number;
+  received_at: string;
   phone: string | null;
   first_name: string | null;
   answers: Record<string, unknown>;
@@ -117,6 +126,8 @@ const mocks = vi.hoisted(() => {
     submissionUpdates: [] as Array<{ id: number; payload: Record<string, unknown> }>,
     /** Simula que la tabla lead_form_submissions no existe / falla el INSERT. */
     failSubmissionInsert: false,
+    /** Simula que falla la consulta de rechazos previos (regla de reenvío). */
+    failSubmissionSelect: false,
     dedupClaim: true,
     nextChannelId: 1,
     nextLeadId: 1,
@@ -130,6 +141,14 @@ const mocks = vi.hoisted(() => {
     for (const [col, val, op] of filters) {
       if (op === 'is_null') {
         out = out.filter((r) => r[col] == null);
+      } else if (op === 'gte') {
+        out = out.filter((r) => r[col] != null && String(r[col]) >= String(val));
+      } else if (op === 'not_like') {
+        // Como en Postgres: NOT LIKE sobre NULL no devuelve la fila.
+        const re = new RegExp(
+          '^' + String(val).split('%').map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$',
+        );
+        out = out.filter((r) => r[col] != null && !re.test(String(r[col])));
       } else if (op === 'not_eq') {
         out = out.filter((r) => r[col] !== val);
       } else {
@@ -156,8 +175,12 @@ const mocks = vi.hoisted(() => {
             if (val == null) filters.push([col, null, 'is_null']);
             return builder;
           },
-          not(col: string, _op: string, val: unknown) {
-            filters.push([col, val, 'not_eq']);
+          not(col: string, op: string, val: unknown) {
+            filters.push([col, val, op === 'like' ? 'not_like' : 'not_eq']);
+            return builder;
+          },
+          gte(col: string, val: unknown) {
+            filters.push([col, val, 'gte']);
             return builder;
           },
           order(_col: string, _opts?: { ascending?: boolean }) {
@@ -166,7 +189,10 @@ const mocks = vi.hoisted(() => {
           limit(_n: number) {
             return builder;
           },
-          async maybeSingle<T>(): Promise<{ data: T | null; error: null }> {
+          async maybeSingle<T>(): Promise<{ data: T | null; error: { message: string } | null }> {
+            if (table === 'lead_form_submissions' && state.failSubmissionSelect) {
+              return { data: null, error: { message: 'statement timeout' } };
+            }
             const rows = pickRows(table);
             const filtered = applyFilters(rows, filters);
             return { data: (filtered[0] as T) ?? null, error: null };
@@ -327,6 +353,7 @@ const mocks = vi.hoisted(() => {
       const row: SubmissionRow = {
         id: state.nextSubmissionId++,
         tenant_id: payload.tenant_id as number,
+        received_at: (payload.received_at as string | undefined) ?? new Date().toISOString(),
         phone: (payload.phone as string | null) ?? null,
         first_name: (payload.first_name as string | null) ?? null,
         answers: (payload.answers as Record<string, unknown>) ?? {},
@@ -359,9 +386,10 @@ vi.mock('../src/lib/redis.js', () => ({
   tryClaimDedupKey: mocks.tryClaimDedupKeyMock,
   getRedis: () => ({}),
 }));
-// El evaluador IA no debe llamarse en estos tests: los casos de cualificación
-// se resuelven por reglas deterministas. Si alguien lo llamara, el qualifier
-// hace fail-open ('aprobado' / 'ninguno') y las aserciones sobre 'reglas' fallan.
+// El evaluador IA está siempre "caído" en estos tests: los casos se resuelven
+// por reglas deterministas, y los que llegan a la IA ejercitan el fallo seguro
+// (sin lista blanca, fail-open 'aprobado'/'ninguno'; con lista blanca, decide
+// el prefijo).
 vi.mock('../src/lib/anthropic.js', () => {
   const stub = {
     messages: {
@@ -395,6 +423,7 @@ beforeEach(async () => {
   s.submissions.length = 0;
   s.submissionUpdates.length = 0;
   s.failSubmissionInsert = false;
+  s.failSubmissionSelect = false;
   s.dedupClaim = true;
   s.nextChannelId = 1;
   s.nextLeadId = 1;
@@ -875,5 +904,294 @@ describe('lead_form_submissions — registro del veredicto para el panel', () =>
     expect(row.first_name).toBe('Juan');
     expect(row.welcome_sent).toBe(true);
     expect(row.lead_id).toBe(1);
+  });
+});
+
+// ----------------------------------------------------------------------------
+// Lista blanca de zona + reenvío tras rechazo (2026-09-26, Tania)
+// ----------------------------------------------------------------------------
+
+/** Config de Tania recortada: lista blanca de zona y parte de su lista de no contacto. */
+const ZONE_QUALIFICATION_CONFIG = {
+  ...QUALIFICATION_CONFIG,
+  country_reject_terms: ['Perú', 'peruana', 'Lima', 'Colombia', 'Bogotá'],
+  zone_allowlist: {
+    always: ['ES', 'PT', 'FR', 'IT', 'DE', 'GB', 'IE', 'US', 'CA', 'AU', 'NZ'],
+    filtered: ['MX', 'CL'],
+  },
+};
+
+const WHATSAPP_LABEL =
+  'Para seguir viendo tu caso y hablar sobre tu situación, déjame aquí tu número de WhatsApp (incluye prefijo de tu país).Comprueba que el número esté completo y tenga WhatsApp asociado. De lo contrario, no podré ponerme en contacto contigo ni analizar tu caso con más detalle.';
+
+/**
+ * FORM_RESPONSE con las 10 preguntas reales del Tally de Tania EN SU ORDEN: el
+ * WhatsApp (cuyo label dice "prefijo de tu país") va antes que "¿Donde vives
+ * actualmente?". Con ese orden el cualificador tomaba el teléfono por el país.
+ */
+function tallyRealBody(o: { whatsapp: string; residence: string; occupation?: string }) {
+  return {
+    eventId: 'evt_real',
+    eventType: 'FORM_RESPONSE',
+    data: {
+      responseId: 'resp_real',
+      fields: [
+        { key: 'q1', label: 'Nombre y apellidos', type: 'INPUT_TEXT', value: 'Nombre Apellido' },
+        { key: 'q2', label: WHATSAPP_LABEL, type: 'INPUT_PHONE_NUMBER', value: o.whatsapp },
+        { key: 'q3', label: 'Edad', type: 'INPUT_NUMBER', value: 47 },
+        { key: 'q4', label: 'Ocupación', type: 'INPUT_TEXT', value: o.occupation ?? 'Abogado' },
+        { key: 'q5', label: '¿Donde vives actualmente?', type: 'INPUT_TEXT', value: o.residence },
+        {
+          key: 'q6',
+          label: '¿Desde cuándo tienes dolor de espalda?',
+          type: 'MULTIPLE_CHOICE',
+          value: ['o1'],
+          options: [{ id: 'o1', text: 'Más de 3 años' }],
+        },
+        { key: 'q7', label: '¿Qué diagnóstico o qué te han dicho hasta ahora?', type: 'TEXTAREA', value: 'Hernia discal' },
+        { key: 'q8', label: '¿Como afecto esto a tu vida diaria?', type: 'TEXTAREA', value: 'No puedo trabajar sentado' },
+        { key: 'q9', label: '¿Qué has probado hasta ahora y qué resultados tuviste?', type: 'TEXTAREA', value: 'Fisioterapia' },
+        {
+          key: 'q10',
+          label:
+            '¿Hasta qué punto estás comprometid@ en invertir en ti mism@ para dejar atrás tus molestias y empezar a vivir como deseas?',
+          type: 'MULTIPLE_CHOICE',
+          value: ['c1'],
+          options: [{ id: 'c1', text: 'Muy comprometid@ → quiero solucionarlo' }],
+        },
+      ],
+    },
+  };
+}
+
+function daysAgo(n: number): string {
+  return new Date(Date.now() - n * 86_400_000).toISOString();
+}
+
+/** Fila previa en lead_form_submissions, como la habría dejado un envío anterior. */
+function seedPreviousSubmission(o: { phone: string; decision: string; motivo: string; receivedAt: string }) {
+  mocks.state.submissions.push({
+    id: mocks.state.nextSubmissionId++,
+    tenant_id: 2,
+    received_at: o.receivedAt,
+    phone: o.phone,
+    first_name: 'Nombre',
+    answers: {},
+    decision: o.decision,
+    motivo: o.motivo,
+    evaluado_por: 'ia',
+    lead_id: null,
+    conversation_id: null,
+    welcome_sent: false,
+    error: null,
+  });
+}
+
+describe('cualificación con lista blanca de zona (2026-09-26)', () => {
+  it('Q1: Tally en su orden real, Perú +51 abogado → rechazado por la regla de país, sin lead ni bienvenida', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+51 987 654 321', residence: 'Lima, Perú' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toMatchObject({ qualified: false, decision: 'rechazado', evaluado_por: 'reglas' });
+
+    const row = mocks.state.submissions[0]!;
+    expect(row.phone).toBe('+51987654321');
+    expect(row.motivo).toContain('Regla de zona');
+    expect(row.motivo).toContain('Perú');
+    expect(mocks.state.leads).toHaveLength(0);
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('Q1: Tally en su orden real, España +34 → aprobado por la regla de país y bienvenida enviada', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+34 600 12 34 56', residence: 'España' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const row = mocks.state.submissions[0]!;
+    expect(row.decision).toBe('aprobado');
+    expect(row.evaluado_por).toBe('reglas');
+    expect(row.welcome_sent).toBe(true);
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('VIA-06: un payload plano CON respuestas también se cualifica (antes entraba sin filtro)', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: {
+        phone: '+51987654321',
+        first_name: 'Nombre',
+        answers: {
+          [WHATSAPP_LABEL]: '+51 987 654 321',
+          '¿Donde vives actualmente?': 'Lima, Perú',
+          Ocupación: 'Abogado',
+        },
+      },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body).decision).toBe('rechazado');
+    expect(mocks.state.submissions[0]!.evaluado_por).toBe('reglas');
+    expect(mocks.state.leads).toHaveLength(0);
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('Q5: evaluador caído con prefijo +51 → rechazado (ya no se aprueba a todo el mundo)', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      // "Trujillo" existe en España y en Perú: ninguna regla decide, va a la IA (caída).
+      payload: tallyRealBody({ whatsapp: '+51 987 654 321', residence: 'Trujillo' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const row = mocks.state.submissions[0]!;
+    expect(row.decision).toBe('rechazado');
+    expect(row.motivo).toContain('no disponible');
+    expect(row.motivo).toContain('prefijo fuera de zona');
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('reenvío del formulario tras un rechazo (2026-09-26)', () => {
+  // Caso real: un +52 rechazado el 03-09 (jubilado) reenvió el formulario el
+  // 05-09 diciendo que hacía trading y salió aprobado. Con la IA caída en estos
+  // tests, México (con filtro) saldría aprobado con aviso: si sale rechazado es
+  // la regla de reenvío.
+  const MX_PHONE = '+528116542813';
+
+  it('un rechazo del mismo teléfono en los últimos 30 días → rechazado sin cualificar, y queda registrado', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+    seedPreviousSubmission({
+      phone: MX_PHONE,
+      decision: 'rechazado',
+      motivo: 'México con filtro: ocupación jubilado sin otra fuente de ingresos.',
+      receivedAt: daysAgo(2),
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+52 811 654 2813', residence: 'Monterrey, México', occupation: 'Trading' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toMatchObject({ decision: 'rechazado', evaluado_por: 'reglas' });
+
+    expect(mocks.state.submissions).toHaveLength(2);
+    const row = mocks.state.submissions[1]!;
+    expect(row.decision).toBe('rechazado');
+    expect(row.evaluado_por).toBe('reglas');
+    expect(row.motivo).toMatch(/^Reenvío del formulario tras un rechazo el \d{2}\/\d{2}\/\d{4}: /);
+    expect(row.motivo).toContain('jubilado');
+    expect(row.answers['Ocupación']).toBe('Trading');
+    expect(mocks.state.leads).toHaveLength(0);
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('un rechazo de hace más de 30 días no cuenta: se cualifica de nuevo', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+    seedPreviousSubmission({ phone: MX_PHONE, decision: 'rechazado', motivo: 'Jubilado.', receivedAt: daysAgo(40) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+52 811 654 2813', residence: 'Monterrey, México', occupation: 'Trading' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions.at(-1)!.decision).toBe('aprobado');
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('un rechazo que ya era un reenvío no alarga la ventana', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+    seedPreviousSubmission({
+      phone: MX_PHONE,
+      decision: 'rechazado',
+      motivo: 'Reenvío del formulario tras un rechazo el 01/08/2026: Jubilado.',
+      receivedAt: daysAgo(10),
+    });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+52 811 654 2813', residence: 'Monterrey, México', occupation: 'Trading' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions.at(-1)!.decision).toBe('aprobado');
+  });
+
+  it('un rechazo decidido con criterios anteriores (antes de criteria_updated_at) no cuenta', async () => {
+    // Fila 53 (EEUU, 11-09): la IA razonó "corresponde aprobar" y devolvió
+    // rechazado con los criterios v4. Con los de hoy entra: no hereda el veto.
+    seedReadyTenant({
+      welcomeTemplateId: 10,
+      qualification: { ...ZONE_QUALIFICATION_CONFIG, criteria_updated_at: daysAgo(1) },
+    });
+    seedPreviousSubmission({ phone: MX_PHONE, decision: 'rechazado', motivo: 'Jubilado.', receivedAt: daysAgo(5) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+52 811 654 2813', residence: 'Monterrey, México', occupation: 'Trading' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions.at(-1)!.decision).toBe('aprobado');
+  });
+
+  it('un rechazo posterior a criteria_updated_at sí cuenta', async () => {
+    seedReadyTenant({
+      welcomeTemplateId: 10,
+      qualification: { ...ZONE_QUALIFICATION_CONFIG, criteria_updated_at: daysAgo(10) },
+    });
+    seedPreviousSubmission({ phone: MX_PHONE, decision: 'rechazado', motivo: 'Jubilado.', receivedAt: daysAgo(5) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+52 811 654 2813', residence: 'Monterrey, México', occupation: 'Trading' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions.at(-1)!.decision).toBe('rechazado');
+    expect(mocks.state.submissions.at(-1)!.motivo).toMatch(/^Reenvío del formulario/);
+  });
+
+  it('un aprobado previo o un rechazo de otro teléfono no activan la regla', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+    seedPreviousSubmission({ phone: MX_PHONE, decision: 'aprobado', motivo: 'ok', receivedAt: daysAgo(1) });
+    seedPreviousSubmission({ phone: '+528110000000', decision: 'rechazado', motivo: 'Jubilado.', receivedAt: daysAgo(1) });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+52 811 654 2813', residence: 'Monterrey, México', occupation: 'Trading' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions.at(-1)!.decision).toBe('aprobado');
+  });
+
+  it('si la consulta del historial falla, se cualifica igual (best-effort)', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+    mocks.state.failSubmissionSelect = true;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+34 600 12 34 56', residence: 'España' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions[0]!.decision).toBe('aprobado');
+    expect(mocks.state.submissions[0]!.evaluado_por).toBe('reglas');
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
   });
 });

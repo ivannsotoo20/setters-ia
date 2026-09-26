@@ -51,6 +51,11 @@ export {
 
 export {
   runPipeline,
+  isZoneClose,
+  isZoneHandoffB,
+  closeAlreadySent,
+  ZoneCloseError,
+  ZONE_CLOSE_ERROR_PREFIX,
   type PipelineInput,
   type PipelineOutput,
   type PipelineStageMetric,

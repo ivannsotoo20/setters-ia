@@ -21,13 +21,6 @@
  */
 
 /**
- * Devuelve la instrucción focal para la fase activa.
- *
- * @param currentPhase - fase activa 1..6 (la fase 7 del output schema mapea a F6 + cierre)
- * @param isHandoff    - si la conversación está en flujo de handoff (causa B/C/D)
- * @returns string en formato instrucción imperativa breve
- */
-/**
  * Dónde vive el enlace de agenda, repetido en las focales de F1 a F4.
  *
  * Antes esta disciplina se la daba al modelo el atributo `priority="active"` pegado
@@ -42,10 +35,86 @@ const LINK_BELONGS_TO_F6 =
   'El enlace de agenda pertenece a la F6, cuando ya ha aceptado la llamada. ' +
   'Si te lo pide ahora, le reconoces la petición con naturalidad y sigues con el objetivo de esta fase.';
 
+export interface PhaseFocusOptions {
+  /**
+   * El motor ha decidido que la persona NO cualifica por residencia (prefijo del
+   * teléfono fuera de zona, `zoneVerdict.kind === 'reject_by_prefix'`). La focal
+   * deja de hablar de la fase y ordena el cierre en este turno.
+   */
+  zoneClose?: boolean;
+  /**
+   * Prefijo fuera de zona pero residencia EN zona declarada en su formulario
+   * (`prefix_out_residence_in`, decisión D1 de Iván): el turno no cierra, pasa a
+   * la entrenadora con handoff B. Manda sobre `zoneClose`.
+   */
+  zoneHandoff?: boolean;
+}
+
+/**
+ * Focal de la excepción D1, determinista desde 2026-09-26: con la excepción
+ * solo explicada dentro de la focal de cierre, el modelo cerró con el literal a
+ * un +502 que en su formulario había escrito "En Canadá".
+ */
+const ZONE_HANDOFF_FOCUS =
+  'PRIORIDAD ABSOLUTA — ESTE TURNO PASA A LA ENTRENADORA. Esta instrucción manda sobre la fase ' +
+  'en la que ibas: su teléfono es de un país al que la entrenadora no lleva, pero en su ' +
+  'formulario declaró vivir en uno al que sí lleva (sección "Zona geográfica"). No la cierres, ' +
+  'no sigas cualificando y no le preguntes dónde vive. Tu mensaje es breve: le dices que le ' +
+  'escribe la entrenadora. Devuelve conversation_status="handoff" con ' +
+  'handoff_cause="B_derivacion". Sin propuesta de videollamada y sin enlace.';
+
+/**
+ * Focal de cierre por zona. Sustituye a la de la fase, no se suma a ella.
+ *
+ * Por qué existe (conv 12203, Instagram con teléfono +57, 2026-09-23): la
+ * directiva de zona decía "en este turno tu mensaje es el cierre", pero el
+ * último bloque del prompt, que es esta focal y el modelo lee como la orden de
+ * mayor prioridad, decía "FASE 1… NO extraer datos de cualificación todavía".
+ * Razonamiento real del modelo (llm_calls 5064): «Colombia está en lista de
+ * exclusión… se aplicará como cierre cuando corresponda; de momento sigo el
+ * flujo». Veinticuatro mensajes sin cerrar. Con dos órdenes que se contradicen
+ * gana la última, así que la última tiene que ser el cierre.
+ *
+ * El literal NO vive aquí: lo pone el bloque del coach (coach_qualification_doesnt).
+ * El motor solo dice QUÉ toca en este turno y con qué estado sale.
+ *
+ * La cláusula del cierre ya enviado cubre la conversación que sigue viva tras el
+ * `disqualified` (el estado 'stopped' no pausa la IA): si ella vuelve a escribir,
+ * el turno sigue cerrando, pero sin repetirle el mismo literal.
+ */
+const ZONE_CLOSE_FOCUS =
+  'PRIORIDAD ABSOLUTA — ESTE TURNO CIERRA POR RESIDENCIA. Esta instrucción manda sobre la fase ' +
+  'en la que ibas y sobre cualquier objetivo de fase: el motor ha comprobado que esta persona no ' +
+  'cualifica por residencia (sección "Zona geográfica"). No sigas cualificando ni esperes a otro ' +
+  'turno para cerrar. Tu mensaje de este turno es el cierre de residencia fuera de zona que define ' +
+  'tu bloque (coach_qualification_doesnt), escrito tal cual: sin nombrar el país ni el motivo, sin ' +
+  'preguntas, sin propuesta de videollamada y sin ningún enlace. Devuelve ' +
+  'conversation_status="disqualified". Si ese cierre ya se lo enviaste en un turno anterior, no lo ' +
+  'repitas: una frase breve de despedida, sin preguntas, y conversation_status="disqualified". ' +
+  'Única excepción: si ella ha escrito, en el formulario o en el chat, que reside en un país de la ' +
+  'zona de contacto, no la cierras tú: conversation_status="handoff" con ' +
+  'handoff_cause="B_derivacion" y un mensaje breve de que le escribe la entrenadora, sin enlace.';
+
+/**
+ * Devuelve la instrucción focal para la fase activa.
+ *
+ * @param currentPhase - fase activa 1..6 (la fase 7 del output schema mapea a F6 + cierre)
+ * @param isHandoff    - si la conversación está en flujo de handoff (causa B/C/D)
+ * @param options      - `zoneClose`: la persona no cualifica por residencia. Manda
+ *                       sobre la fase y sobre `isHandoff`.
+ * @returns string en formato instrucción imperativa breve
+ */
 export function buildPhaseFocusInstruction(
   currentPhase: number,
   isHandoff: boolean = false,
+  options: PhaseFocusOptions = {},
 ): string {
+  if (options.zoneHandoff === true) {
+    return ZONE_HANDOFF_FOCUS;
+  }
+  if (options.zoneClose === true) {
+    return ZONE_CLOSE_FOCUS;
+  }
   if (isHandoff) {
     return (
       `AHORA ESTÁS EN HANDOFF (cierre cálido / silencioso / con mensaje según causa). ` +

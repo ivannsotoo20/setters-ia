@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { ZoneCloseError } from '@fyzon/agent-pipeline';
 import { classifyPipelineError } from '../src/services/pipeline-runs.js';
 
 describe('classifyPipelineError', () => {
@@ -14,6 +15,19 @@ describe('classifyPipelineError', () => {
       'Validator V0-V16 found unrecoverable errors after Judge: V05: medical_advice violation',
     );
     expect(classifyPipelineError(err)).toBe('validator_error');
+  });
+
+  it('classifies the current validator range (V0-V20) and V21 as validator_error', () => {
+    // El pipeline lanza "V0-V20" desde 2026-09-12; antes se buscaba "V0-V16" exacto
+    // y todos estos quedaban como pipeline_error.
+    expect(
+      classifyPipelineError(
+        new Error('Validator V0-V20 found unrecoverable errors after Judge: V20: enlace a una persona fuera de zona'),
+      ),
+    ).toBe('validator_error');
+    expect(
+      classifyPipelineError(new ZoneCloseError({ conversation_status: 'active' })),
+    ).toBe('validator_error');
   });
 
   it('falls back to pipeline_error for any other Error', () => {

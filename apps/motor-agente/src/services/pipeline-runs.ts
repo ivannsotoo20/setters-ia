@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { PipelineOutput, PipelineStageMetric } from '@fyzon/agent-pipeline';
+import {
+  ZONE_CLOSE_ERROR_PREFIX,
+  type PipelineOutput,
+  type PipelineStageMetric,
+} from '@fyzon/agent-pipeline';
 import { randomUUID } from 'node:crypto';
 
 /**
@@ -157,16 +161,23 @@ export async function failPipelineRun(
 
 /**
  * Clasifica un Error en un outcome semántico para `pipeline_runs.outcome`.
- * runPipeline puede lanzar dos clases conocidas (Judge reject, Validator error);
- * cualquier otra cosa cae en `pipeline_error`.
+ * runPipeline puede lanzar tres clases conocidas (Judge reject, Validator error y
+ * V21 de zona sin cierre); cualquier otra cosa cae en `pipeline_error`.
+ *
+ * El rango del validador va sin fijar ("V0-V16", "V0-V20"…): se buscaba el texto
+ * exacto "V0-V16" y, desde que el pipeline lanza "V0-V20" (2026-09-12), todos los
+ * errores del validador quedaban registrados como `pipeline_error`.
  */
+const VALIDATOR_ERROR_RE = /^Validator V0-V\d+ found unrecoverable errors after Judge:/;
+
 export function classifyPipelineError(err: unknown): Exclude<PipelineRunOutcome, 'success'> {
   if (!(err instanceof Error)) return 'pipeline_error';
   const msg = err.message;
   if (msg.startsWith('Judge rejected message:')) return 'judge_reject';
-  if (msg.startsWith('Validator V0-V16 found unrecoverable errors after Judge:')) {
-    return 'validator_error';
-  }
+  if (VALIDATOR_ERROR_RE.test(msg)) return 'validator_error';
+  // V21 (zona rechazada sin cierre): red determinista del pipeline, mismo trato
+  // que un error del validador.
+  if (msg.startsWith(ZONE_CLOSE_ERROR_PREFIX)) return 'validator_error';
   return 'pipeline_error';
 }
 

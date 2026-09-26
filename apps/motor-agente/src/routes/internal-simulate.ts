@@ -24,6 +24,12 @@
  * el enlace es REAL y reservar desde él crea una cita de verdad en el
  * calendario, que entrará como `unmatched` por ese slug.
  *
+ * Y la ZONA (2026-09-26): con `phone` en el body, el prefijo se evalúa contra la
+ * política del tenant igual que en producción (directiva, focal de cierre, V20 y
+ * V21). Sin `phone`, solo las menciones del chat. Diferencia a conocer: si V20 o
+ * V21 tumban el turno, aquí se devuelve `rejected`; en producción la IA se pausa
+ * y se avisa a la entrenadora.
+ *
  * NO valida la fontanería: webhooks, GHL, el debounce que agrupa mensajes
  * seguidos, los tiempos de envío, el troceado real en burbujas separadas ni el
  * etiquetado. Nada de eso se ejecuta aquí.
@@ -58,6 +64,13 @@ import {
   mapConversationSourceToOrigin,
   type LeadChannel,
 } from '../lib/lead-origin.js';
+import {
+  evaluateZone,
+  isZoneRejectVerdict,
+  loadZonePolicy,
+  type ZoneVerdict,
+} from '../lib/zone-policy.js';
+import { pickResidenceAnswer } from '../services/lead-qualifier.js';
 import { loadSchedulingConfig } from '../services/process-debounced.js';
 import {
   getSimulatedCalendarUrl,
@@ -85,7 +98,43 @@ const bodySchema = z.object({
     .default([]),
   /** Respuestas de un formulario, para simular el caso de lead con contexto previo. */
   form_answers: z.record(z.string(), z.unknown()).nullable().optional(),
+  /**
+   * Teléfono de la persona simulada, en E.164 (+51987654321). Con él, la zona se
+   * evalúa por prefijo igual que en producción: sin esto el simulador no podía
+   * reproducir el caso que más ha fallado (un +51 o un +57 que el setter llevaba
+   * a llamada). Sin teléfono se evalúan solo las menciones del chat.
+   */
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+[1-9]\d{6,14}$/, 'phone va en E.164: "+" y el número completo, sin espacios')
+    .nullable()
+    .optional(),
 });
+
+/**
+ * Lo que el simulador enseña de la zona: el veredicto y, si lo decidió el
+ * prefijo, el país (ISO). Nunca el teléfono.
+ */
+function describeZone(zone: ZoneVerdict): {
+  kind: ZoneVerdict['kind'];
+  country?: string;
+  term?: string;
+  declared?: string;
+} {
+  switch (zone.kind) {
+    case 'reject_by_prefix':
+    case 'in_zone_by_prefix':
+      return { kind: zone.kind, country: zone.country.iso };
+    case 'prefix_out_residence_in':
+      return { kind: zone.kind, country: zone.country.iso, declared: zone.declaredIso };
+    case 'mention':
+    case 'reject_by_declaration':
+      return { kind: zone.kind, term: zone.term };
+    case 'clear':
+      return { kind: zone.kind };
+  }
+}
 
 export async function internalSimulateRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Body: unknown }>(
@@ -123,7 +172,30 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       // estaría enseñando un setter que no existe.
       const schedulingConfig = await loadSchedulingConfig(supabase, body.tenant_id);
 
-      const currentPhaseFocus = buildPhaseFocusInstruction(body.phase, false);
+      // Zona: la misma política y la misma evaluación que producción
+      // (process-debounced). El prefijo, si llega teléfono; si no, las menciones
+      // del chat: lo que la persona escribió en los turnos anteriores y en este.
+      const zonePolicy = await loadZonePolicy(supabase, body.tenant_id);
+      const zoneVerdict = evaluateZone({
+        phone: body.phone ?? null,
+        leadMessages: [
+          ...body.history.filter((h) => h.role === 'user').map((h) => h.content),
+          body.message,
+        ],
+        policy: zonePolicy,
+        declaredResidence: body.form_answers
+          ? pickResidenceAnswer(body.form_answers, /vives|pa[ií]s|residencia|resides/i, null)?.value ?? null
+          : null,
+      });
+      const zoneHandoff = zoneVerdict.kind === 'prefix_out_residence_in';
+      const zoneRejected = isZoneRejectVerdict(zoneVerdict) || zoneHandoff;
+
+      // Con la zona rechazada, la focal es la del cierre por residencia (o la del
+      // paso a la entrenadora) y no la de la fase, igual que en producción.
+      const currentPhaseFocus = buildPhaseFocusInstruction(body.phase, false, {
+        zoneClose: zoneRejected,
+        zoneHandoff,
+      });
 
       let expectedAddressing: 'tu' | 'usted' | undefined;
       let addressingDirective: string | null = null;
@@ -166,6 +238,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         }),
         channel: body.channel as LeadChannel,
         formAnswers: body.form_answers ?? null,
+        zone: zoneVerdict,
       });
       const systemDirectives = combineSystemDirectives(
         leadOriginDirective,
@@ -196,7 +269,13 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
               isFirstAssistantMessage: !body.history.some((h) => h.role === 'assistant'),
               forbiddenPhrases: schedulingConfig.forbiddenPhrases,
               expectedAddressing,
+              // V20 (sin enlace) y V21 (el turno cierra), como en producción.
+              zoneRejected,
             },
+            // Modo del turno y literal del cierre de la entrenadora, como en producción.
+            zone: zoneRejected
+              ? { mode: zoneHandoff ? 'handoff' : 'close', closeParts: zonePolicy?.closeParts ?? null }
+              : undefined,
             composeOverrides: {
               // Mismo enrutado por canal que produccion: el entrenador prueba
               // el coach que de verdad se usaria en ese canal.
@@ -231,6 +310,9 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
           // Transparencia: qué se le inyectó por venir de donde viene. Es lo que
           // explica que el mismo mensaje se responda distinto según el origen.
           injected_directive: systemDirectives,
+          // Veredicto de zona de este turno. Si es 'reject_by_prefix', la focal
+          // fue la del cierre por residencia y el turno tenía que cerrar.
+          zone: describeZone(zoneVerdict),
           // Qué enlace de agenda se le dio al setter en este turno, y si no se
           // le dio ninguno, por qué. Sin esto, un entrenador sin calendario
           // vinculado ve al setter derivar y no sabe si es un fallo o su
@@ -259,6 +341,10 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
           ok: false,
           rejected: true,
           reason: message,
+          // Con la zona rechazada, un rechazo por V21 significa que en
+          // producción este turno no saldría: la IA se pausaría y se avisaría a
+          // la entrenadora.
+          zone: describeZone(zoneVerdict),
           latency_ms: Date.now() - startedAt,
           simulated: true,
         });

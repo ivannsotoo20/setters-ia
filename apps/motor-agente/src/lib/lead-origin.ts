@@ -41,7 +41,7 @@
  *   (Hito 12.1), OUT of cache, por turno.
  */
 
-import type { ZoneVerdict } from './zone-policy.js';
+import { UNKNOWN_COUNTRY_ISO, type ZoneVerdict } from './zone-policy.js';
 
 /**
  * Origen normalizado de la lead.
@@ -187,10 +187,19 @@ export function renderFormAnswers(
     // una y otra vez, y encima tantas horas sentado no ayuda…". Datos correctos,
     // momento absurdo. Son CONTEXTO para saber qué NO preguntar, no material que
     // leerle en voz alta.
-    'Se usan de UNA forma: si ibas a preguntar algo que ya está aquí, cambias de ' +
-    'pregunta y preguntas lo que aún no sabes. No se los devuelves dichos ni ' +
-    'resumidos en ningún momento: repetirle lo que acaba de escribir suena a ' +
-    'expediente, no a interés.\n\n' +
+    // 2026-09-26 — "Se usan de UNA forma: no repreguntar" dejaba el formulario
+    // fuera de la cualificación. Caso medido en el simulador con la respuesta
+    // "¿Donde vives actualmente?: Peru": el setter sabía que era "abogado en
+    // Perú" (lo escribió en su user_summary) y siguió hacia la llamada, porque
+    // esta frase le decía que el formulario solo servía para no repreguntar.
+    // Lo que declara aquí es suyo igual que lo que escribe en el chat.
+    'Te sirven para dos cosas. Para no repreguntar: si ibas a preguntar algo que ' +
+    'ya está aquí, cambias de pregunta y preguntas lo que aún no sabes. Y para ' +
+    'cualificar: lo que declara aquí cuenta como dicho por ella, así que si algo ' +
+    'de esto cumple un cierre de tu bloque (por ejemplo, dónde vive), el cierre ' +
+    'aplica igual que si lo hubiera escrito en el chat. Lo que no haces nunca es ' +
+    'devolvérselos dichos ni resumidos: repetirle lo que acaba de escribir suena ' +
+    'a expediente, no a interés.\n\n' +
     lines.join('\n')
   );
 }
@@ -291,46 +300,122 @@ function renderOriginLine(origin: LeadOrigin): string | null {
 }
 
 /**
+ * Un prefijo en zona no tapa lo que ella declara. 2026-09-26: con las respuestas
+ * del formulario contando ya como dichas por ella, "a efectos de zona cualifica"
+ * a secas contradecía un "¿Dónde vives?: Peru" escrito en el formulario.
+ */
+const DECLARED_RESIDENCE_OUTWEIGHS_PREFIX =
+  'Lo único que pesa más que el prefijo es que ella misma diga, en el chat o en su ' +
+  'formulario, que reside en un país al que la entrenadora no lleva: eso es residencia ' +
+  'declarada y se cierra igual.';
+
+/**
  * Zona geográfica como HECHO del motor. El cierre (qué literal, con qué tono) es
  * del coach: aquí solo se dice qué se sabe y qué no puede pasar en este turno.
  */
 export function renderZoneBlock(zone: ZoneVerdict | null | undefined): string | null {
   if (!zone || zone.kind === 'clear') return null;
   switch (zone.kind) {
-    case 'reject_by_prefix':
+    case 'reject_by_prefix': {
+      // 2026-09-26 — antes decía "{país} está en la lista de países a los que la
+      // entrenadora NO lleva". Con lista blanca eso es falso (Perú no está en
+      // ninguna lista: está fuera de la zona) y con un prefijo desconocido ni
+      // siquiera hay país que nombrar. Lo cierto en los dos modos es "un país al
+      // que la entrenadora no lleva".
+      const fact =
+        zone.country.iso === UNKNOWN_COUNTRY_ISO
+          ? `**Su número de teléfono (empieza por +${zone.country.prefix}) es de un país al ` +
+            'que la entrenadora NO lleva.** '
+          : `**Su número de teléfono es de ${zone.country.name} (+${zone.country.prefix})**, ` +
+            'un país al que la entrenadora NO lleva. ';
       return (
         '## Zona geográfica (dato del motor, no es una opinión)\n\n' +
-        `**Su número de teléfono es de ${zone.country.name} (+${zone.country.prefix})**, y ` +
-        `${zone.country.name} está en la lista de países a los que la entrenadora NO lleva. ` +
-        'Este dato decide por sí solo: la persona **no cualifica por residencia** y no hace ' +
-        'falta preguntarle el país. En este turno, tu mensaje es el cierre de residencia fuera ' +
-        'de zona que define tu bloque (coach_qualification_doesnt), escrito tal cual: sin ' +
-        'nombrar el país, sin explicar el motivo, sin propuesta de videollamada y sin ningún ' +
-        'enlace. Puedes reconocer en una frase lo que acaba de contarte antes del cierre; lo ' +
-        'que no puedes es abrir preguntas nuevas ni seguir cualificando. Única excepción: si ' +
-        'ella misma ha escrito que reside en un país fuera de esa lista (por ejemplo «vivo en ' +
-        'Madrid»), no la cierres tú ni le mandes enlace: pásala a la entrenadora ' +
-        '(conversation_status=handoff, handoff_cause=B_derivacion) con un mensaje breve de que ' +
-        'le escribe ella para que lo confirme.'
+        fact +
+        // "Manda sobre la fase": en la conv 12203 (Instagram con un +57) el motor
+        // declaró este veredicto y el modelo siguió 24 mensajes cualificando,
+        // porque la instrucción de la fase activa le pedía avanzar.
+        'Este dato decide por sí solo y manda sobre la fase en la que estés: la persona ' +
+        '**no cualifica por residencia** y no hace falta preguntarle el país. En este turno, ' +
+        'tu mensaje es el cierre de residencia fuera de zona que define tu bloque ' +
+        '(coach_qualification_doesnt), escrito tal cual: sin nombrar el país, sin explicar el ' +
+        'motivo, sin propuesta de videollamada y sin ningún enlace. No abras preguntas nuevas ' +
+        'ni sigas cualificando, aunque la fase te pida avanzar. ' +
+        // La excepción es la decisión D1 de Iván (2026-09-26): residencia en zona
+        // declarada por ella (+502 con "En Canadá" en el formulario) no la cierra
+        // el setter; la confirma la entrenadora. Sin ejemplo entre comillas a
+        // propósito: el coach de Tania quitó «vivo en Madrid» porque el modelo lo
+        // copió como mensaje suyo a una lead de Managua.
+        'Única excepción: si ella misma ha dicho, en el chat o en las respuestas de su ' +
+        'formulario, que reside en otro país y es uno al que la entrenadora sí lleva, no la ' +
+        'cierres tú ni le mandes enlace: pásala a la entrenadora (conversation_status=handoff, ' +
+        'handoff_cause=B_derivacion) con un mensaje breve de que le escribe ella para que lo ' +
+        'confirme.'
+      );
+    }
+    case 'prefix_out_residence_in':
+      // Decisión D1 de Iván (2026-09-26), hecha determinista: el formulario se
+      // aprobó por la residencia declarada y aquí no se decide nada más. En la
+      // batería de ese día, con la excepción solo explicada, el modelo cerró con
+      // el literal a un +502 que había escrito "En Canadá".
+      return (
+        '## Zona geográfica (dato del motor, no es una opinión)\n\n' +
+        `Su número de teléfono es de **${zone.country.name}** (+${zone.country.prefix}), un país al ` +
+        `que la entrenadora no lleva, pero en su formulario declaró que vive en ` +
+        `**${zone.declaredName}**, uno al que sí lleva. Esa contradicción no la resuelves tú ni ` +
+        'la cierras tú: en este turno la pasas a la entrenadora (conversation_status=handoff, ' +
+        'handoff_cause=B_derivacion) con un mensaje breve de que le escribe ella. Sin cualificar, ' +
+        'sin preguntarle dónde vive, sin propuesta de videollamada y sin enlace.'
+      );
+    case 'reject_by_declaration':
+      return (
+        '## Zona geográfica (dato del motor, no es una opinión)\n\n' +
+        `Ha dicho en el chat que vive en **«${zone.term}»** («${zone.excerpt}»), un sitio al que ` +
+        'la entrenadora NO lleva. Es residencia declarada, no una pista: no hace falta ' +
+        'preguntarle nada y manda sobre la fase en la que estés. En este turno, tu mensaje es el ' +
+        'cierre de residencia fuera de zona que define tu bloque (coach_qualification_doesnt), ' +
+        'escrito tal cual: sin nombrar el país, sin explicar el motivo, sin propuesta de ' +
+        'videollamada y sin ningún enlace.'
       );
     case 'in_zone_by_prefix':
+      if (zone.tier === 'filtered') {
+        // Zona con filtro (México y Chile para Tania). Reactivo a propósito: el
+        // filtro no abre preguntas, se aplica cuando el dato ya está.
+        return (
+          '## Zona geográfica (dato del motor)\n\n' +
+          `Su número de teléfono es de **${zone.country.name}** (+${zone.country.prefix}): la ` +
+          'zona cualifica con una condición de trabajo. La entrenadora no lleva a quien no ' +
+          'tiene un trabajo estable ni a quien tiene un trabajo básico o manual sin ' +
+          'cualificación. No abras preguntas para averiguarlo ni le preguntes el país: tenlo ' +
+          'presente. Si ya lo sabes, por el chat o por su formulario, y es así, tu mensaje es ' +
+          'el cierre de residencia fuera de zona de tu bloque, sin nombrar el país ni el ' +
+          'motivo, sin propuesta de videollamada y sin enlace. Si no es así, o aún no lo ha ' +
+          'contado, sigue con normalidad. ' +
+          DECLARED_RESIDENCE_OUTWEIGHS_PREFIX
+        );
+      }
       return (
         '## Zona geográfica (dato del motor)\n\n' +
         `Su número de teléfono es de **${zone.country.name}** (+${zone.country.prefix}): a ` +
-        'efectos de zona cualifica. No le preguntes el país por rutina.'
+        'efectos de zona cualifica. No le preguntes el país por rutina. ' +
+        DECLARED_RESIDENCE_OUTWEIGHS_PREFIX
       );
     case 'mention':
+      // 2026-09-26 — "si reside fuera de la lista, sigue con normalidad" era la
+      // puerta de Perú en el chat: con lista blanca, no estar en la lista de
+      // términos no es estar en zona. Se redacta con lo que vale en los dos
+      // modos: un país al que la entrenadora lleva o no.
       return (
         '## Zona geográfica (dato del motor)\n\n' +
         `En el chat ha escrito **«${zone.term}»** («${zone.excerpt}»). Nombrar un país no es ` +
-        'residir en él (una venezolana puede vivir en Madrid), pero ese término pertenece a la ' +
-        'lista de países a los que la entrenadora NO lleva, así que ANTES de proponer nada ' +
-        'tienes que saber dónde reside. Si ya lo ha dicho en el chat, no vuelvas a preguntarlo: ' +
-        'si reside en un país de esa lista, tu mensaje es el cierre de residencia fuera de zona ' +
-        'de tu bloque (sin nombrar el país ni el motivo); si reside fuera de la lista, sigue con ' +
-        'normalidad. Si aún no lo ha dicho, este turno lleva la pregunta natural de residencia ' +
-        'que define tu bloque, una sola vez, dentro de la conversación. Mientras la residencia ' +
-        'no esté resuelta: ni propuesta de videollamada ni enlace.'
+        'residir en él (una venezolana puede vivir en Madrid), pero ese término apunta a un ' +
+        'país al que la entrenadora NO lleva, así que ANTES de proponer nada tienes que saber ' +
+        'dónde reside. Si ya lo ha dicho, en el chat o en su formulario, no vuelvas a ' +
+        'preguntarlo: si reside en un país al que la entrenadora no lleva, tu mensaje es el ' +
+        'cierre de residencia fuera de zona de tu bloque (sin nombrar el país ni el motivo); si ' +
+        'reside en uno al que sí lleva, sigue con normalidad. Si aún no lo ha dicho, este turno ' +
+        'lleva la pregunta natural de residencia que define tu bloque, una sola vez, dentro de ' +
+        'la conversación. Mientras la residencia no esté resuelta: ni propuesta de videollamada ' +
+        'ni enlace.'
       );
   }
 }

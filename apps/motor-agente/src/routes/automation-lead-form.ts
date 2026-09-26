@@ -27,6 +27,11 @@
  * al escribir el registro NUNCA tumba el flujo. El panel lo lista en
  * /leads/formularios.
  *
+ * Cualificación (2026-09-26): se cualifica todo payload con respuestas, tenga
+ * o no forma de Tally, y con el filtro activo un teléfono rechazado en los
+ * últimos 30 días se rechaza otra vez sin cualificar (regla de reenvío). La
+ * lógica de país y zona vive en services/lead-qualifier.ts.
+ *
  * Errores:
  *   404 invalid token, 401 secret mismatch (enforce), 400 invalid payload,
  *   409 no welcome template configured, 422 lead/template/account inválido,
@@ -47,7 +52,11 @@ import {
   resolveTenantByToken,
   upsertLead,
 } from '../services/lead-ingest.js';
-import { qualifyFormLead, type QualifyResult } from '../services/lead-qualifier.js';
+import {
+  loadQualificationConfig,
+  qualifyFormLead,
+  type QualifyResult,
+} from '../services/lead-qualifier.js';
 import {
   sendWelcomeTemplate,
   WelcomeTemplateError,
@@ -97,6 +106,10 @@ type Payload = z.infer<typeof payloadSchema>;
  *   - answers    → TODOS los campos como label → valor, con las opciones de
  *                  choice resueltas a su texto (Tally manda ids).
  *   - external_id→ data.responseId (dedup), source → 'tally'.
+ *   - phone_label→ label del campo del teléfono (2026-09-26). No es parte del
+ *                  payload plano: el endpoint lo lee aparte y se lo pasa al
+ *                  cualificador para que nunca tome el WhatsApp por el país
+ *                  (el label de Tania dice "incluye prefijo de tu país").
  *
  * Devuelve null si el body no tiene la forma de Tally — el caller sigue con el
  * payload plano de siempre, así que n8n/GHL Workflow siguen funcionando igual.
@@ -181,6 +194,7 @@ export function flattenTallyPayload(body: unknown): Record<string, unknown> | nu
     external_id:
       typeof b.data!.responseId === 'string' ? b.data!.responseId : null,
     answers,
+    phone_label: labelOf(phoneField).trim() || null,
   };
 }
 
@@ -322,30 +336,70 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
         });
       }
 
-      // 5.2) Cualificación (2026-08-25) — SOLO para payloads de formulario con
-      //      respuestas (Tally). Porta el workflow n8n "Formulario Tally": dos
-      //      reglas deterministas (dolor reciente rechaza, país Tier A aprueba)
-      //      y evaluador IA con los criterios del entrenador para el resto.
-      //      Un payload plano sin answers (Workflow GHL de anuncios) no trae
-      //      nada que cualificar y pasa directo, como siempre.
-      //      Rechazado → NO se crea lead ni se envía nada; queda en el log y en
-      //      llm_calls (role='qualifier') si decidió la IA.
+      // 5.2) Cualificación (2026-08-25) — para todo payload con respuestas.
+      //      Porta el workflow n8n "Formulario Tally": reglas deterministas
+      //      (dolor reciente, país de residencia) y evaluador IA con los
+      //      criterios del entrenador para el resto (services/lead-qualifier.ts).
+      //      Hasta 2026-09-26 solo se cualificaba si el body tenía forma de
+      //      Tally: un payload plano CON answers (n8n, GHL Workflow, curl)
+      //      entraba sin filtro. Ahora manda que haya respuestas, venga de donde
+      //      venga. Un payload plano sin answers (Workflow GHL de anuncios) no
+      //      trae nada que cualificar y pasa directo, como siempre.
+      //      Rechazado → NO se crea lead ni se envía nada; queda en el registro
+      //      y en llm_calls (role='qualifier') si decidió la IA.
+      const qualificationConfig = await loadQualificationConfig(supabase, tenantId);
+      const filterEnabled = qualificationConfig?.enabled === true;
+      const hasAnswers = !!payload.answers && Object.keys(payload.answers).length > 0;
       let veredicto: QualifyResult = { decision: 'sin_filtro', motivo: null, evaluadoPor: 'ninguno' };
-      if (tallyFlattened && payload.answers && Object.keys(payload.answers).length > 0) {
+
+      // 5.2a) Reenvío tras un rechazo (2026-09-26). Un +52 rechazado el 03-09
+      //       como jubilado volvió a rellenar el formulario el 05-09 diciendo
+      //       que hacía trading y salió aprobado: el filtro no tenía memoria y
+      //       reenviar el formulario cambiando la respuesta lo saltaba. Si el
+      //       mismo teléfono tuvo un rechazo en los últimos 30 días, se
+      //       rechaza otra vez sin cualificar. Aplica con el filtro activo
+      //       aunque este envío no traiga respuestas: el rechazo es de la
+      //       persona, no del formulario por el que vuelve.
+      if (filterEnabled) {
+        const previous = await findRecentRejection(
+          request,
+          supabase,
+          tenantId,
+          phoneNormalized,
+          criteriaUpdatedAt(qualificationConfig),
+        );
+        if (previous) {
+          veredicto = {
+            decision: 'rechazado',
+            motivo: resubmissionMotivo(previous),
+            evaluadoPor: 'reglas',
+          };
+        }
+      }
+
+      if (filterEnabled && hasAnswers && veredicto.decision === 'sin_filtro') {
         const anthropic = await getAnthropicForTenant(supabase, tenantId);
+        const phoneLabel =
+          typeof tallyFlattened?.phone_label === 'string' ? tallyFlattened.phone_label : null;
         veredicto = await qualifyFormLead({
           supabase,
           anthropic: anthropic as never,
           tenantId,
-          answers: payload.answers,
+          answers: payload.answers!,
           phone: phoneNormalized,
+          phoneLabel,
+          config: qualificationConfig,
         });
+      }
+      if (filterEnabled) {
+        // Sin `motivo` en el log: lleva la residencia y la ocupación que la
+        // persona escribió (PII). Está en lead_form_submissions para el panel.
         request.log.info(
           {
             tenantId,
             decision: veredicto.decision,
             evaluadoPor: veredicto.evaluadoPor,
-            motivo: veredicto.motivo,
+            paisIso: veredicto.paisIso ?? null,
           },
           'lead-form: cualificación evaluada',
         );
@@ -658,6 +712,92 @@ async function recordSubmission(
     );
     return null;
   }
+}
+
+/** Ventana de memoria de un rechazo para la regla de reenvío. */
+const RESUBMISSION_WINDOW_DAYS = 30;
+/**
+ * Arranque del motivo de un rechazo por reenvío. La consulta excluye las filas
+ * que empiezan así: la ventana cuenta desde el rechazo REAL, no desde el último
+ * reenvío, o quien reenvía cada 20 días quedaría vetado para siempre.
+ */
+const RESUBMISSION_PREFIX = 'Reenvío del formulario tras un rechazo';
+
+interface PreviousRejection {
+  receivedAt: string;
+  motivo: string | null;
+}
+
+/**
+ * Desde cuándo rigen los criterios vigentes (`lead_qualification.criteria_updated_at`).
+ * Un rechazo decidido con criterios anteriores no bloquea un reenvío: hasta el
+ * 2026-09-26 la regla de país leía el campo del WhatsApp y la IA llegó a razonar
+ * "corresponde aprobar" y devolver rechazado (fila 53, EEUU). Heredar esos
+ * rechazos sería vetar 30 días a gente que con los criterios de hoy entra.
+ */
+function criteriaUpdatedAt(config: unknown): string | null {
+  const raw = (config as { criteria_updated_at?: unknown } | null)?.criteria_updated_at;
+  if (typeof raw !== 'string') return null;
+  const t = Date.parse(raw);
+  return Number.isNaN(t) ? null : new Date(t).toISOString();
+}
+
+/**
+ * Último rechazo REAL de este teléfono en el tenant dentro de la ventana y con
+ * los criterios vigentes (`notBefore`). Best-effort: si la consulta falla, se
+ * sigue sin esta regla (warn) — perderla un envío es mejor que tumbar el endpoint.
+ */
+async function findRecentRejection(
+  request: FastifyRequest,
+  supabase: ReturnType<typeof getSupabase>,
+  tenantId: number,
+  phone: string,
+  notBefore: string | null = null,
+): Promise<PreviousRejection | null> {
+  try {
+    const windowStart = new Date(Date.now() - RESUBMISSION_WINDOW_DAYS * 86_400_000).toISOString();
+    const since = notBefore && notBefore > windowStart ? notBefore : windowStart;
+    const { data, error } = await supabase
+      .from(LEAD_FORM_SUBMISSIONS_TABLE)
+      .select('received_at, motivo')
+      .eq('tenant_id', tenantId)
+      .eq('phone', phone)
+      .eq('decision', 'rechazado')
+      .gte('received_at', since)
+      .not('motivo', 'like', `${RESUBMISSION_PREFIX}%`)
+      .order('received_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    const row = data as { received_at?: unknown; motivo?: unknown } | null;
+    if (!row || typeof row.received_at !== 'string') return null;
+    return {
+      receivedAt: row.received_at,
+      motivo: typeof row.motivo === 'string' ? row.motivo : null,
+    };
+  } catch (err) {
+    request.log.warn(
+      { tenantId, err: err instanceof Error ? err.message : String(err) },
+      'lead-form: consulta de rechazos previos falló — se cualifica sin la regla de reenvío',
+    );
+    return null;
+  }
+}
+
+/** "Reenvío del formulario tras un rechazo el 03/09/2026: <motivo anterior>". */
+function resubmissionMotivo(previous: PreviousRejection): string {
+  const date = new Date(previous.receivedAt);
+  const when = Number.isNaN(date.getTime())
+    ? previous.receivedAt.slice(0, 10)
+    : new Intl.DateTimeFormat('es-ES', {
+        timeZone: 'Europe/Madrid',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(date);
+  const prev = (previous.motivo ?? 'sin motivo registrado').replace(/\s+/g, ' ').trim();
+  const cut = prev.length > 140 ? `${prev.slice(0, 140)}…` : prev;
+  return `${RESUBMISSION_PREFIX} el ${when}: ${cut}`;
 }
 
 /** UPDATE best-effort de la fila del formulario. No-op si no hay id. */
