@@ -89,8 +89,9 @@ valor, nunca el valor. Escanear antes de commitear.
   (−10 %): fuera recap, "no lo des por normal", preguntas que pescan un sí y presión tras el
   enlace; dentro rutas A-F, suelo único, explicar cómo trabaja antes de proponer, país preguntado,
   ruta de recurso, franja antes del enlace. Las focales F1-F5 ceden al coach y el Judge ya no borra
-  los vídeos de recurso en F1-F3. Pendiente: modo
-  recurso del motor para fuera de zona (V20/V21), dos URLs de recursos, precio y seguimiento post-enlace.
+  los vídeos de recurso en F1-F3. Zona por canal (decisión de Iván): WhatsApp decide el prefijo y
+  nunca se pregunta; Instagram pregunta el país al principio; fuera de zona, cierre directo.
+  Pendiente: dos URLs de recursos, "¿sería en casa?", precio y seguimiento post-enlace.
 
 ### Autoría de coaches (coach-engineering)
 

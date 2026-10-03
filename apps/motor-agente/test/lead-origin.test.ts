@@ -130,6 +130,9 @@ describe('buildLeadOriginDirective — canal', () => {
     const d = buildLeadOriginDirective({ origin: 'inbound', channel: 'instagram_dm' }) ?? '';
     expect(d).toContain('Instagram');
     expect(d).toContain('NO tienes su teléfono');
+    // 2026-10-03: nunca empuja a pedir el número (CR6); declara que falta el país.
+    expect(d).not.toContain('pedírselo');
+    expect(d).toContain('tampoco el país de su número');
   });
 
   it('el canal solo/sin origen conocido ya justifica inyectar', () => {

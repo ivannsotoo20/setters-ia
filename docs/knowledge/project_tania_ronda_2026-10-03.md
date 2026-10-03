@@ -31,15 +31,15 @@ lo que molesta antes de meter lo nuevo.
   sabido. Que falte algo nunca cierra: se sigue conversando o va un recurso.
 - **F4 = explicar cómo trabaja**, conectado con su caso (puntos 9, 10, 22), con sus dos ejemplos.
 - **Señales de intención** (punto 8) y **de no-entiendo** (puntos 10, 31: se para el camino a la llamada).
-- **País** (puntos 15-21): obligatorio antes de proponer y preguntado de forma explícita con su
-  frase ("Te pregunto porque acompaño a personas de distintos países") cuando no lo dan el motor,
-  el formulario ni el chat. Instagram casi nunca trae teléfono (medido el 26-09: 940 de 995
-  conversaciones eran de Instagram y solo 2 tenían teléfono).
-  Fuera de zona = **ruta de recurso** con el mismo tono, nunca "no cualificas"; si pregunta precio
-  o cómo empezar, handoff B a Tania.
+- **País por canal** (puntos 15-21, con la decisión de Iván de más abajo): en WhatsApp decide el
+  prefijo y nunca se pregunta; en Instagram/Messenger se pregunta al principio con su frase ("Te
+  pregunto porque acompaño a personas de distintos países"). Instagram casi nunca trae teléfono
+  (medido el 26-09: 940 de 995 conversaciones eran de Instagram y solo 2 tenían teléfono). Fuera
+  de zona: cierre 8 directo, nunca "no cualificas"; si después pregunta precio o cómo empezar,
+  handoff B a Tania.
 - **Recurso según necesidad** (puntos 18, 19, 33): rigidez de mañana, miedo a entrenar/fuerza,
-  rigidez general/sentada; se ofrece ("Si quieres te la paso") y se manda con un sí; fuera de
-  zona cierra, en el resto la conversación sigue `active`.
+  rigidez general/sentada; se ofrece ("Si quieres te la paso") y se manda con un sí; la
+  conversación sigue `active` salvo en el cierre 3 (solo quiere ejercicios sueltos).
 - **Interés / intención / intención de agenda** (puntos 24-26) y **franja antes del enlace**
   (punto 25), escrita como no-negociación de hora para no chocar con la CR5. El enlace va en tres
   burbujas con su "compruebo que haya quedado correctamente reservado 😊".
@@ -95,16 +95,27 @@ recuperaron cinco cosas del v27 que su documento no pedía quitar ("gracias por 
 "me alegra que me lo cuentes" vetado, el miedo a que lo online no funcione, la histéresis de fase
 y el caso "Colombia a secas").
 
-## Lo que NO se puede cumplir desde el prompt (pendiente, decisión de Iván o de Tania)
+## Decisión de Iván sobre la zona (mismo día): por canal y cierre directo
 
-1. **Fuera de zona decidido por el motor** (prefijo de fuera, o "vivo en / te escribo desde" +
-   término): V21 manda `zone_close_message` (el literal 8) en el primer turno y V20 bloquea
-   cualquier URL, también los vídeos. Ahí la ruta de recurso no corre. Donde el país sale como
-   respuesta a la pregunta del país (veredicto `mention`, Instagram) sí corre. Para cumplir su
-   punto 17 en todos los casos: un modo "recurso" en el motor (V20 bloquearía solo el enlace de
-   agenda y WhatsApp, V21 dejaría unos turnos de ruta B con tope y cerraría con el literal si no
-   cierra). Es dar la vuelta a la decisión del 26-09, que nació de los 24 mensajes de la conv 12203:
-   necesita su OK.
+Se le planteó construir un "modo recurso" en el motor para que el punto 17 de Tania (fuera de zona
+sin corte en seco, con un recurso) se cumpliera también cuando el país lo detecta el motor. Su
+respuesta: **no**. El país se resuelve por canal y el de fuera se descalifica directamente.
+
+- **WhatsApp**: decide el prefijo. El país no se pregunta nunca. Prefijo de fuera → cierre 8 en
+  ese turno (V21 + `zone_close_message`, como desde el 26-09).
+- **Instagram / Messenger**: no hay teléfono, así que el país se pregunta al principio (primera
+  respuesta tras que cuente algo, segundo mensaje como muy tarde), y su respuesta decide igual:
+  fuera de zona → cierre 8 en ese turno.
+
+En consecuencia, la ruta de recurso del bloque queda para quien no está preparada, momento médico,
+poca apertura o solo ejercicios, no para la zona. La línea de canal de Instagram/Messenger de
+`lead-origin.ts` ("si hace falta [el teléfono], hay que pedírselo", contra la CR6) pasa a decir que
+falta el país de su número. Los cambios de la directiva `mention` y del Judge se quedan: siguen
+siendo correctos (el bloque decide el camino; los vídeos de recurso no se borran en F1-F3).
+
+## Pendiente (decisión de Tania o producto)
+
+1. **Zona**: resuelto por la decisión de arriba; no se construye el modo recurso.
 2. **Recursos sin URL**: movilidad para la jornada (oficina) y la guía de los tres bloqueos
    (punto 19). Con las URLs, son dos líneas en `coach_secondary_links`.
 3. **Precio** (punto 30): pide responder con sus condiciones comerciales; la CR2 del Core prohíbe
@@ -121,8 +132,7 @@ y el caso "Colombia a secas").
 6. **Dudas para Tania**: qué contestar a "sería en casa o fuera?" (su punto 31 la nombra y el
    bloque no inventa dónde se entrena); y si quiere que el setter dé la cifra del precio.
 7. **Fuera de este trabajo, a revisar**: el literal de IA empieza por "No, soy la asistenta virtual"
-   (decisión de Iván del 06-09; ese "No," puede leerse como negar ser una IA) y la línea de canal de
-   Instagram en `lead-origin.ts` dice "si hace falta [el teléfono], hay que pedírselo", contra la CR6.
+   (decisión de Iván del 06-09; ese "No," puede leerse como negar ser una IA).
 8. **Configuración**: el turno del enlace son tres burbujas; con `aiMessagesPerTurnMax` < 3 el
    Splitter junta la tercera. Sus frases vetadas de empatía pueden ir además a `forbiddenPhrases`
    (V17, máx. 10 de ≤40 caracteres) si se quiere cumplimiento estricto.
@@ -134,8 +144,9 @@ No se cargó: sin acceso a Supabase desde la sesión. Se carga como v28 con el S
 `cf6e774f7a6ec6d7efbdd619b458698b` si la BD está en el `.md` de `d8f9afe`) y la batería del
 simulador. Escenarios a meter, con sus ejemplos: el lead de los 7 años (no repreguntar), la
 operación (reflejo sin dramatizar), "necesito alguien que sepa de espalda" (explicar, no
-repreguntar), Instagram sin teléfono que llega al suelo (pregunta del país antes de proponer),
-"Perú" como respuesta (ruta B sin decir el motivo), "sí, me gustaría" (franja, no enlace),
+repreguntar), Instagram que cuenta su dolor (pregunta del país en el segundo mensaje como muy
+tarde), "Perú" como respuesta (cierre 8 directo, sin motivo), WhatsApp +34 (nunca pregunta el
+país), WhatsApp +57 (cierre 8 en el primer turno), "sí, me gustaría" (franja, no enlace),
 "mañana por la mañana?" (enlace directo), "mañana lo miro" tras el enlace (sin presión),
 "qué haces exactamente?" tras la propuesta (explicar, no repetir enlace), pérdida de fuerza nueva
 (derivación), y los de la batería v22-v27 (Jenny 15 días, "sí" a secas, Colombia, Venezuela, Lima).

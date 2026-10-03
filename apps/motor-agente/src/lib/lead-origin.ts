@@ -129,15 +129,22 @@ export function mapConversationSourceToOrigin(
   }
 }
 
-/** Frase de canal. Declara el medio, no el estilo. */
+/**
+ * Frase de canal. Declara el medio, no el estilo.
+ *
+ * 2026-10-03: Instagram y Messenger decían "si hace falta [el teléfono], hay que
+ * pedírselo", contra la CR6 (nunca pedir números). Ahora declaran lo que falta (el
+ * país de su número) y el bloque coach decide si se pregunta el país (Tania: sí, al
+ * principio, y solo en estos canales; en WhatsApp decide el prefijo).
+ */
 function renderChannelLine(channel: LeadChannel | null | undefined): string | null {
   switch (channel) {
     case 'whatsapp':
       return 'Hablas por **WhatsApp**, y ya tienes su teléfono.';
     case 'instagram_dm':
-      return 'Hablas por **mensaje directo de Instagram**. Aquí NO tienes su teléfono: si en algún momento hace falta, hay que pedírselo.';
+      return 'Hablas por **mensaje directo de Instagram**. Aquí NO tienes su teléfono, así que tampoco el país de su número.';
     case 'facebook_messenger':
-      return 'Hablas por **Messenger de Facebook**. Aquí NO tienes su teléfono: si en algún momento hace falta, hay que pedírselo.';
+      return 'Hablas por **Messenger de Facebook**. Aquí NO tienes su teléfono, así que tampoco el país de su número.';
     default:
       return null;
   }
