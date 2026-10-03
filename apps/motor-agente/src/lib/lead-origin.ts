@@ -386,9 +386,10 @@ export function renderZoneBlock(zone: ZoneVerdict | null | undefined): string | 
           'zona cualifica con una condición de trabajo. La entrenadora no lleva a quien no ' +
           'tiene un trabajo estable ni a quien tiene un trabajo básico o manual sin ' +
           'cualificación. No abras preguntas para averiguarlo ni le preguntes el país: tenlo ' +
-          'presente. Si ya lo sabes, por el chat o por su formulario, y es así, tu mensaje es ' +
-          'el cierre de residencia fuera de zona de tu bloque, sin nombrar el país ni el ' +
-          'motivo, sin propuesta de videollamada y sin enlace. Si no es así, o aún no lo ha ' +
+          'presente. Si ya lo sabes, por el chat o por su formulario, y es así, sigues el ' +
+          'camino de fuera de zona que define tu bloque (coach_qualification_doesnt), sin ' +
+          'nombrar el país ni el motivo, sin propuesta de videollamada y sin enlace de agenda. ' +
+          'Si no es así, o aún no lo ha ' +
           'contado, sigue con normalidad. ' +
           DECLARED_RESIDENCE_OUTWEIGHS_PREFIX
         );
@@ -404,18 +405,23 @@ export function renderZoneBlock(zone: ZoneVerdict | null | undefined): string | 
       // puerta de Perú en el chat: con lista blanca, no estar en la lista de
       // términos no es estar en zona. Se redacta con lo que vale en los dos
       // modos: un país al que la entrenadora lleva o no.
+      // 2026-10-03 — "tu mensaje es el cierre" pasa a "sigues el camino de fuera de
+      // zona de tu bloque": aquí no hay V21 y el coach de Tania define ese camino como
+      // una ruta de recurso antes del cierre (su punto 17: no cortar en seco). Igual en
+      // el tier filtrado. Los veredictos de rechazo (prefijo, declaración) no cambian.
       return (
         '## Zona geográfica (dato del motor)\n\n' +
         `En el chat ha escrito **«${zone.term}»** («${zone.excerpt}»). Nombrar un país no es ` +
         'residir en él (una venezolana puede vivir en Madrid), pero ese término apunta a un ' +
         'país al que la entrenadora NO lleva, así que ANTES de proponer nada tienes que saber ' +
         'dónde reside. Si ya lo ha dicho, en el chat o en su formulario, no vuelvas a ' +
-        'preguntarlo: si reside en un país al que la entrenadora no lleva, tu mensaje es el ' +
-        'cierre de residencia fuera de zona de tu bloque (sin nombrar el país ni el motivo); si ' +
+        'preguntarlo: si reside en un país al que la entrenadora no lleva, sigues el camino de ' +
+        'fuera de zona que define tu bloque (coach_qualification_doesnt), sin nombrar el país ' +
+        'ni el motivo; si ' +
         'reside en uno al que sí lleva, sigue con normalidad. Si aún no lo ha dicho, este turno ' +
         'lleva la pregunta natural de residencia que define tu bloque, una sola vez, dentro de ' +
         'la conversación. Mientras la residencia no esté resuelta: ni propuesta de videollamada ' +
-        'ni enlace.'
+        'ni enlace de agenda.'
       );
   }
 }

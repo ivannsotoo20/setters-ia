@@ -181,7 +181,11 @@ describe('renderZoneBlock / buildLeadOriginDirective — zona', () => {
     expect(d).toContain('«colombia»');
     expect(d).toContain('Nombrar un país no es residir en él');
     expect(d).toContain('una sola vez');
-    expect(d).toContain('ni propuesta de videollamada ni enlace');
+    expect(d).toContain('ni propuesta de videollamada ni enlace de agenda');
+    // 2026-10-03: sin V21 aquí, fuera de zona es el camino del bloque (ruta de
+    // recurso en Tania), no un cierre en este turno.
+    expect(d).toContain('sigues el camino de fuera de zona que define tu bloque');
+    expect(d).not.toContain('tu mensaje es el cierre');
   });
 
   // ---------------------------------------------------------------------------
@@ -235,7 +239,8 @@ describe('renderZoneBlock / buildLeadOriginDirective — zona', () => {
     expect(d).toContain('básico o manual sin cualificación');
     expect(d).toContain('No abras preguntas para averiguarlo');
     expect(d).toContain('por el chat o por su formulario');
-    expect(d).toContain('cierre de residencia fuera de zona');
+    expect(d).toContain('camino de fuera de zona que define tu bloque');
+    expect(d).toContain('sin enlace de agenda');
     expect(d).toContain('sigue con normalidad');
     // Un +52 con "Peru" como residencia en el formulario tampoco sigue.
     expect(d).toContain('Lo único que pesa más que el prefijo');

@@ -207,6 +207,14 @@ describe('el Judge no puede quitar el enlace de agenda', () => {
   it('y dice que ante la duda se deja', () => {
     expect(JUDGE_SYSTEM_PROMPT).toMatch(/la respuesta es SIEMPRE dejarla/);
   });
+
+  // 2026-10-03: el coach de Tania manda un vídeo de recurso (ruta B) a quien no
+  // está para videollamada, casi siempre en F1-F3. Con "URL en fases 1-3 →
+  // eliminar", el Judge se lo quitaba y le llegaba "Aquí la tienes" sin vídeo.
+  it('en F1-F3 solo quita el enlace de agenda o de WhatsApp, nunca un recurso de contenido', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/Enlace de AGENDA \(calendario, reserva\) o de WhatsApp en fases 1-3/);
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/NO se toca en ninguna fase: es un recurso del entrenador/);
+  });
 });
 
 describe('el Judge distingue negar ser IA de decir que eres el asistente', () => {

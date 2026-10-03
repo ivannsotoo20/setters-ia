@@ -49,9 +49,13 @@ lo que molesta antes de meter lo nuevo.
 - **Tono** (punto 37): su nombre una vez como mucho, "tiene sentido / totalmente / es normal /
   entiendo" una vez cada una, sus frases de empatía inventada vetadas.
 
-Tamaño del cuerpo: 43,2k → ~36,7k caracteres (−15 %), con los 37 puntos dentro.
+Tamaño del cuerpo: 43,2k → ~39k caracteres (−10 %), con los 37 puntos dentro. Del v27 solo
+siguen tal cual ~6k caracteres de líneas, casi todos literales de Tania o de Iván; el resto se
+quitó o se reescribió.
 
-## Cambio de código que hacía falta: las focales de fase
+## Cambios de código que hacían falta
+
+### Las focales de fase
 
 `apps/motor-agente/src/lib/phase-focus.ts`. La focal es el último bloque del prompt y el modelo
 la lee como la orden vigente (lección de la conv 12203). La F4 pedía en cada turno
@@ -60,6 +64,36 @@ enlace ya": justo lo que el documento de Tania prohíbe, y por encima del coach.
 justo después del título, que si el bloque coach define la fase manda el coach; la F5 da el enlace
 ya salvo que el coach pida un paso antes (la franja), y nunca hace esperar a quien ya pidió reservar.
 F6 y las focales de zona no cambian. Para un coach que no redefine la fase no cambia nada.
+
+### El Judge borraba los vídeos de recurso
+
+`packages/agent-pipeline/src/judge.ts`, guardrail 5: "URL en fases 1-3 → eliminar". La ruta de
+recurso manda el vídeo casi siempre en F1-F3, así que le habría llegado "Si quieres te la paso"
+y, tras su sí, un mensaje sin enlace. Ahora en F1-F3 solo se quita el enlace de agenda o de
+WhatsApp; un enlace a contenido (vídeo, publicación, guía, lead magnet) no se toca en ninguna fase.
+
+### La directiva de zona de `mention` y del tier filtrado
+
+`apps/motor-agente/src/lib/lead-origin.ts`. Decía "tu mensaje es el cierre de residencia fuera de
+zona de tu bloque" y va la última del prompt: con eso, quien contesta "Perú" a la pregunta del
+país se llevaba el literal 8 al instante, que es justo el corte que su punto 20 prohíbe. Ahora
+dice "sigues el camino de fuera de zona que define tu bloque" y "sin enlace de agenda" (antes
+"sin enlace", que también vetaba el vídeo). Los veredictos de rechazo (prefijo, "vivo en…") no
+cambian: ahí sigue mandando V21.
+
+### Revisión adversarial (mismo día)
+
+Un revisor independiente cruzó el bloque con sus 37 puntos, el Core y las directivas del motor.
+Además de lo anterior, entró en el bloque: qué literales van tal cual y cuáles son ejemplos (el de
+F5 decía "L5-S1" fijo); la propuesta no repite la explicación de F4; lo que contesta a "de dónde
+me escribes?" ya es residencia; el turno en que dice su país no cambia de ritmo; la pregunta de F3
+no repregunta lo que le falta si ya lo dijo; "Tú qué me recomiendas?" con el suelo completo es
+intención; las plantillas que pescan un sí del propio Core vetadas; matices de CR4/CR5/CR6 en
+`coach_special_protocols` (donde el Core los admite); brote de siempre ≠ derivación y emergencia de
+ahora = handoff silencioso (CR10); Tania en primera persona en precio y fuera de zona; y se
+recuperaron cinco cosas del v27 que su documento no pedía quitar ("gracias por contármelo", el
+"me alegra que me lo cuentes" vetado, el miedo a que lo online no funcione, la histéresis de fase
+y el caso "Colombia a secas").
 
 ## Lo que NO se puede cumplir desde el prompt (pendiente, decisión de Iván o de Tania)
 
@@ -84,7 +118,12 @@ F6 y las focales de zona no cambian. Para un coach que no redefine la fase no ca
    inactividad no sabe de enlaces), registro del motivo de no reserva (29), estados
    CALL_INTEREST → BOOKING_CONFIRMED (27) y el embudo de métricas (35). Hoy existen "Enlaces
    enviados" (proxy F6/F7) y "Citas agendadas" (reales, del calendario).
-6. **Configuración**: el turno del enlace son tres burbujas; con `aiMessagesPerTurnMax` < 3 el
+6. **Dudas para Tania**: qué contestar a "sería en casa o fuera?" (su punto 31 la nombra y el
+   bloque no inventa dónde se entrena); y si quiere que el setter dé la cifra del precio.
+7. **Fuera de este trabajo, a revisar**: el literal de IA empieza por "No, soy la asistenta virtual"
+   (decisión de Iván del 06-09; ese "No," puede leerse como negar ser una IA) y la línea de canal de
+   Instagram en `lead-origin.ts` dice "si hace falta [el teléfono], hay que pedírselo", contra la CR6.
+8. **Configuración**: el turno del enlace son tres burbujas; con `aiMessagesPerTurnMax` < 3 el
    Splitter junta la tercera. Sus frases vetadas de empatía pueden ir además a `forbiddenPhrases`
    (V17, máx. 10 de ≤40 caracteres) si se quiere cumplimiento estricto.
 
@@ -92,7 +131,7 @@ F6 y las focales de zona no cambian. Para un coach que no redefine la fase no ca
 
 No se cargó: sin acceso a Supabase desde la sesión. Se carga como v28 con el SOP
 `sops/cargar-coach-v5-desde-md.md` (`--expect-md5` del v27 en BD, que debería ser
-`cf6e774f7a6ec6d7efbdd619b458698b` si la BD está en el `.md` del commit anterior) y la batería del
+`cf6e774f7a6ec6d7efbdd619b458698b` si la BD está en el `.md` de `d8f9afe`) y la batería del
 simulador. Escenarios a meter, con sus ejemplos: el lead de los 7 años (no repreguntar), la
 operación (reflejo sin dramatizar), "necesito alguien que sepa de espalda" (explicar, no
 repreguntar), Instagram sin teléfono que llega al suelo (pregunta del país antes de proponer),
@@ -100,7 +139,8 @@ repreguntar), Instagram sin teléfono que llega al suelo (pregunta del país ant
 "mañana por la mañana?" (enlace directo), "mañana lo miro" tras el enlace (sin presión),
 "qué haces exactamente?" tras la propuesta (explicar, no repetir enlace), pérdida de fuerza nueva
 (derivación), y los de la batería v22-v27 (Jenny 15 días, "sí" a secas, Colombia, Venezuela, Lima).
-Las focales nuevas solo están en producción tras el deploy del motor (push a `main`).
+Las focales, el Judge y la directiva de zona nuevos solo están en producción tras el deploy del
+motor (push a `main`); cargar el v28 antes del deploy deja el bloque peleando con la F4 vieja.
 
 La captura que acompañó la petición enseñaba las palabras clave de bienvenida de Tania (#27-#29,
 "Hola, te doy la bienvenida a esta comunidad"): son las bienvenidas a las que responde el carril

@@ -86,9 +86,10 @@ valor, nunca el valor. Escanear antes de commitear.
   Tania) y la fase 2b pendiente (tener el contexto sin preguntar).
 - [Ronda 2026-10-03: su documento "Objetivo de la IA" aplicado al coach](project_tania_ronda_2026-10-03.md) —
   37 puntos de Tania: el objetivo es el siguiente paso adecuado, no la llamada. Coach reescrito
-  (−15 %): fuera recap, "no lo des por normal", preguntas que pescan un sí y presión tras el
+  (−10 %): fuera recap, "no lo des por normal", preguntas que pescan un sí y presión tras el
   enlace; dentro rutas A-F, suelo único, explicar cómo trabaja antes de proponer, país preguntado,
-  ruta de recurso, franja antes del enlace. Las focales F1-F5 ahora ceden al coach. Pendiente: modo
+  ruta de recurso, franja antes del enlace. Las focales F1-F5 ceden al coach y el Judge ya no borra
+  los vídeos de recurso en F1-F3. Pendiente: modo
   recurso del motor para fuera de zona (V20/V21), dos URLs de recursos, precio y seguimiento post-enlace.
 
 ### Autoría de coaches (coach-engineering)
