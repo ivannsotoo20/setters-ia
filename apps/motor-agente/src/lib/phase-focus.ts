@@ -35,6 +35,24 @@ const LINK_BELONGS_TO_F6 =
   'El enlace de agenda pertenece a la F6, cuando ya ha aceptado la llamada. ' +
   'Si te lo pide ahora, le reconoces la petición con naturalidad y sigues con el objetivo de esta fase.';
 
+/**
+ * El bloque coach manda sobre el resumen del Core que repite la focal (2026-10-03).
+ *
+ * La focal es el último bloque del prompt y el modelo la lee como la orden vigente,
+ * así que cuando un coach redefine una fase, el resumen del Core escrito aquí gana
+ * al coach aunque el propio Core diga lo contrario (`module_hierarchy`: el coach
+ * prevalece salvo CR1-CR12). Caso que lo destapó: el documento de Tania (tenant 7)
+ * prohíbe el resumen de confirmación ("Voy bien o me dejo algo?") y la pregunta de
+ * prioridad que pesca un sí, y la F4 y la F3 de esta focal los pedían en cada turno.
+ *
+ * Va justo después del título, antes del resumen, para que se lea primero. Para un
+ * coach que no redefine la fase no cambia nada: el resumen sigue siendo el Core.
+ */
+const COACH_SHAPES_THE_PHASE =
+  'Si tu bloque coach define cómo se hace esta fase (coach_phase_massage, ' +
+  'coach_structural_modifications_phases), manda el coach: donde diga algo distinto ' +
+  'de este resumen, haces lo que dice el coach. ';
+
 export interface PhaseFocusOptions {
   /**
    * El motor ha decidido que la persona NO cualifica por residencia (prefijo del
@@ -126,6 +144,7 @@ export function buildPhaseFocusInstruction(
     case 1:
       return (
         `AHORA ESTÁS EN FASE 1 — CONEXIÓN + TEMA PRINCIPAL. Hard cap 5 mensajes. ` +
+        COACH_SHAPES_THE_PHASE +
         `Objetivo: conocer situación actual del lead, generar conexión real con microaportes, ` +
         `identificar el TEMA PRINCIPAL ÚNICO sin preguntarlo expresamente. ` +
         `NO extraer datos de cualificación todavía. Una pregunta abierta por mensaje. ` +
@@ -134,6 +153,7 @@ export function buildPhaseFocusInstruction(
     case 2:
       return (
         `AHORA ESTÁS EN FASE 2 — CONTEXTO Y PROBLEMA. Hard cap 6 mensajes. ` +
+        COACH_SHAPES_THE_PHASE +
         `Objetivo: obtener (a) OBJETIVO cuantificado, (b) OBSTÁCULO principal, ` +
         `(c) CONTEXTO de la persona. Validar el TEMA PRINCIPAL hipotetizado en F1. ` +
         `Orden: situación → resultado → obstáculo → validación tema. ` +
@@ -143,6 +163,7 @@ export function buildPhaseFocusInstruction(
     case 3:
       return (
         `AHORA ESTÁS EN FASE 3 — CUALIFICACIÓN SUTIL. Hard cap 2 mensajes. ` +
+        COACH_SHAPES_THE_PHASE +
         `Objetivo: una sola pregunta sutil sobre disposición a cambiar AHORA. ` +
         `Evalúa internamente los 3 criterios universales + criterios <coach_qualification>. ` +
         `Si ya cualifica implícitamente (señales en F1-F2) → SALTA a F4. ` +
@@ -152,6 +173,7 @@ export function buildPhaseFocusInstruction(
     case 4:
       return (
         `AHORA ESTÁS EN FASE 4 — PUENTE / RESUMEN. Hard cap 2 mensajes. ` +
+        COACH_SHAPES_THE_PHASE +
         `Objetivo: resumen-puente con SITUACIÓN + OBSTÁCULO + RESULTADO en SUS palabras + ` +
         `pregunta de confirmación cerrada ("¿Voy bien o me dejé algo?"). ` +
         `NUNCA incluyas datos que el lead NO dijo. Si ya verbalizó necesidad de ayuda → OMITE esa pregunta. ` +
@@ -160,11 +182,13 @@ export function buildPhaseFocusInstruction(
     case 5:
       return (
         `AHORA ESTÁS EN FASE 5 — PROPUESTA DE VIDEOLLAMADA. Hard cap 2 mensajes. ` +
+        COACH_SHAPES_THE_PHASE +
         `Objetivo: proponer la llamada como consecuencia natural de la conversación, no como propuesta comercial. ` +
         `Estructura: transición + justificación (su caso) + beneficio analítico + pregunta cierre. ` +
         `Anclar al TEMA PRINCIPAL del lead. Si duda → 1-2 argumentos distintos antes de cerrar. ` +
-        `Si en este mismo turno acepta la llamada, pasas a F6 y le das el enlace ya, ` +
-        `pegando la URL entera tal y como aparece en <coach_links>.`
+        `Si en este turno acepta la llamada, pasas a F6 y le das el enlace ya, salvo que tu bloque coach ` +
+        `pida un paso antes del enlace que aún no has dado: entonces ese paso va primero, a no ser que ` +
+        `ella ya haya pedido día, horario o reservar. La URL se pega entera tal y como aparece en <coach_links>.`
       );
     case 6:
       return (

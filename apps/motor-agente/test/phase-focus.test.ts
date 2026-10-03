@@ -89,3 +89,38 @@ describe('buildPhaseFocusInstruction — paso a la entrenadora por zona (D1, 202
     expect(handoffFocus).toContain('Sin propuesta de videollamada y sin enlace');
   });
 });
+
+describe('buildPhaseFocusInstruction — el bloque coach manda sobre el resumen del Core (2026-10-03)', () => {
+  // El documento de Tania (tenant 7) prohíbe el resumen de confirmación y la
+  // pregunta de prioridad, y la F4 y la F3 de la focal los pedían en cada turno:
+  // la focal es el último bloque del prompt y ganaba al coach.
+  const COACH_CLAUSE = 'Si tu bloque coach define cómo se hace esta fase';
+
+  it('F1 a F5 dicen que manda el coach, justo después del título y antes del resumen', () => {
+    for (const phase of [1, 2, 3, 4, 5]) {
+      const focus = buildPhaseFocusInstruction(phase);
+      expect(focus).toContain(COACH_CLAUSE);
+      expect(focus.indexOf(COACH_CLAUSE)).toBeLessThan(focus.indexOf('Objetivo:'));
+    }
+  });
+
+  it('F6 no lleva la cláusula: el enlace se pega entero y literal en cualquier cuenta', () => {
+    const f6 = buildPhaseFocusInstruction(6);
+    expect(f6).not.toContain(COACH_CLAUSE);
+    expect(f6).toContain('ENTERO y literal');
+  });
+
+  it('F5: el enlace va ya salvo un paso previo del coach, y nunca si ella ya pidió reservar', () => {
+    const f5 = buildPhaseFocusInstruction(5);
+    expect(f5).toContain('le das el enlace ya, salvo que tu bloque coach');
+    expect(f5).toContain('pida un paso antes del enlace que aún no has dado');
+    expect(f5).toContain('a no ser que ella ya haya pedido día, horario o reservar');
+    expect(f5).toContain('URL se pega entera');
+  });
+
+  it('las focales de zona no cambian: mandan sobre la fase y sobre el coach', () => {
+    const zoneFocus = buildPhaseFocusInstruction(4, false, { zoneClose: true });
+    expect(zoneFocus).not.toContain(COACH_CLAUSE);
+    expect(zoneFocus).toContain('ESTE TURNO CIERRA POR RESIDENCIA');
+  });
+});
