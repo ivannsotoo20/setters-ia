@@ -139,10 +139,23 @@ siendo correctos (el bloque decide el camino; los vídeos de recurso no se borra
 
 ## Carga
 
-No se cargó: sin acceso a Supabase desde la sesión. Se carga como v28 con el SOP
-`sops/cargar-coach-v5-desde-md.md` (`--expect-md5` del v27 en BD, que debería ser
-`cf6e774f7a6ec6d7efbdd619b458698b` si la BD está en el `.md` de `d8f9afe`) y la batería del
-simulador. Escenarios a meter, con sus ejemplos: el lead de los 7 años (no repreguntar), la
+**Motor**: en `main` desde `4dcc73b` (2026-10-03, con el OK de Iván), deploy por el CI
+`deploy-motor.yml`. Con el v27 aún en BD no cambia el comportamiento del bloque: las focales ceden
+a un coach que todavía tiene su recap, y lo de zona por canal vive en el v28.
+
+**Bloque v28**: sin cargar. La sesión cloud no llega a Supabase (la política de red del entorno no
+deja pasar `mcp.supabase.com` ni `ppujrqxiizgfqclbuxet.supabase.co`). Se carga desde una máquina
+con el `.env.local`, tras `git pull` de `main`:
+
+```bash
+node scripts/load-coach-v5-version.mjs --tenant 7 \
+  --file prompts/source/coach-v5/tania-duarte-matos.md --version 28 \
+  --expect-md5 cf6e774f7a6ec6d7efbdd619b458698b \
+  --summary "v28: documento Objetivo de la IA de Tania + zona por canal (WhatsApp prefijo, Instagram pregunta)"
+```
+
+El script aborta si la BD no tiene ese md5 (el del v27 del `.md` de `d8f9afe`) o si la última
+versión no es la 27. Después, la batería del simulador. Escenarios a meter, con sus ejemplos: el lead de los 7 años (no repreguntar), la
 operación (reflejo sin dramatizar), "necesito alguien que sepa de espalda" (explicar, no
 repreguntar), Instagram que cuenta su dolor (pregunta del país en el segundo mensaje como muy
 tarde), "Perú" como respuesta (cierre 8 directo, sin motivo), WhatsApp +34 (nunca pregunta el
