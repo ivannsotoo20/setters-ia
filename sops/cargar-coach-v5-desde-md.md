@@ -28,6 +28,10 @@ nuevo ya cargado por seed que después se edita.
    SELECT id, md5(content), length(content)
    FROM prompt_blocks WHERE tenant_id = <X> AND block_key = 'coach_v5' AND is_active;
    ```
+   El md5 se compara con el body tal y como lo lee el script en la máquina que carga: si la
+   carga se hace desde Windows, el `.md` llega con saltos CRLF y la BD los guarda así. Un md5
+   calculado en Linux (LF) no casa aunque el contenido sea el mismo (pasó el 2026-10-04 con el
+   v28 de Tania): sácalo de la BD con la query de arriba, no del `.md` en otra máquina.
    Y la última versión: `SELECT max(version_number) FROM prompt_block_versions WHERE prompt_block_id = <id>;`
 5. **Cargar con el script**, que hace UPDATE + snapshot y verifica por md5:
    ```bash
