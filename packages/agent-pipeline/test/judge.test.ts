@@ -235,3 +235,28 @@ describe('el Judge distingue negar ser IA de decir que eres el asistente', () =>
     expect(JUDGE_SYSTEM_PROMPT).toMatch(/Tu no revisas esa decision/);
   });
 });
+
+describe('el Judge deja el precio que autoriza el entrenador (2026-10-07)', () => {
+  // Tania: si la persona insiste, se le da el rango "entre 600 y 1.200€". Sin esta
+  // excepción el guardrail 2 lo borraba (o rechazaba el turno entero).
+  it('el guardrail 2 tiene la excepción del PRECIO AUTORIZADO', () => {
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/si recibes PRECIO AUTORIZADO, ese texto exacto/);
+    expect(JUDGE_SYSTEM_PROMPT).toMatch(/Cualquier otra cifra sigue siendo violación/);
+  });
+
+  it('el rango autorizado llega en el mensaje al Judge, y sin él no aparece', async () => {
+    const create = vi.fn().mockResolvedValue({
+      stop_reason: 'tool_use',
+      content: [{ type: 'tool_use', id: 't', name: JUDGE_TOOL_NAME, input: { decision: 'pass', violations: [] } }],
+      usage: { input_tokens: 10, output_tokens: 5 },
+    });
+    const anthropic = { messages: { create } } as any;
+    const base = { messageRaw: 'Puede estar entre 600 y 1.200€.', currentPhase: 3, tenantId: 7, conversationId: 1 };
+
+    await runJudge({ supabase: makeFakeSupabase(), anthropic }, { ...base, allowedPriceText: 'entre 600 y 1.200€' });
+    expect(String(create.mock.calls[0]![0].messages[0].content)).toContain('PRECIO AUTORIZADO: «entre 600 y 1.200€»');
+
+    await runJudge({ supabase: makeFakeSupabase(), anthropic }, base);
+    expect(String(create.mock.calls[1]![0].messages[0].content)).not.toContain('PRECIO AUTORIZADO');
+  });
+});

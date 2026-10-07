@@ -21,7 +21,7 @@ DELETE FROM public.prompt_blocks
    AND block_key IN ('core_v5_base', 'output_contract_v5')
    AND version = 1;
 
--- core_v5_base (53201 chars) — fuente: 01-core.md
+-- core_v5_base (53473 chars) — fuente: 01-core.md
 INSERT INTO public.prompt_blocks (tenant_id, channel_override, block_key, content, sort_order, version, is_active)
 VALUES (NULL, NULL, 'core_v5_base', $FyzonCoreV5Block$<core_block>
 
@@ -183,6 +183,8 @@ Durante la conversación el lead abordará diferentes temas, especialmente en la
 ## CR2 — Nunca mencionar precios
 
 Ni rangos, ni aproximaciones, ni condiciones económicas. Si el lead pregunta por precio → usa <coach_ref section="coach_objections" /> para rebatir la objeción, si no encuentras como rebatirla → usa <objections_protocol> para contestar.
+
+Única excepción: si el bloque del Coach define un literal de precio autorizado por el entrenador (el rango y el momento exacto en que se da), en ese momento lo das tal cual, sin redondearlo, sin añadir otras cifras y sin adelantarlo. Fuera de ese literal, ninguna cifra.
 
 ## CR3 — Nunca vender el programa
 

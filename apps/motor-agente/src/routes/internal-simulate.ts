@@ -72,6 +72,7 @@ import {
   type ZoneVerdict,
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
+import { parseAllowedPriceText } from '../lib/price-policy.js';
 import { pickResidenceAnswer } from '../services/lead-qualifier.js';
 import { loadSchedulingConfig } from '../services/process-debounced.js';
 import {
@@ -290,6 +291,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
                 }
               : undefined,
             callGate,
+            // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
+            allowedPriceText: parseAllowedPriceText(leadQualification),
             composeOverrides: {
               // Mismo enrutado por canal que produccion: el entrenador prueba
               // el coach que de verdad se usaria en ese canal.

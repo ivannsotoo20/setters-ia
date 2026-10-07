@@ -23,6 +23,12 @@ export interface PipelineInput extends GeneratorInput {
   /** Resumen del coach que recibe el Judge (1-2 frases). */
   coachSummary?: string;
   /**
+   * Precio que el entrenador autoriza decir tal cual (2026-10-07,
+   * `lead_qualification.allowed_price_text`). El Judge no lo quita y V11 no lo
+   * cuenta; cualquier otra cifra sigue siendo filtración.
+   */
+  allowedPriceText?: string | null;
+  /**
    * Zona (2026-09-26). Solo con `validationContext.zoneRejected`:
    *   - mode 'close': la persona no cualifica por residencia; el turno cierra
    *     (`disqualified`), salvo la excepción de residencia en zona declarada en
@@ -165,6 +171,7 @@ export async function runPipeline(
     currentPhase: input.currentPhase,
     coachSummary: input.coachSummary,
     conversationContext: `Último mensaje del lead: "${input.userMessage.slice(0, 200)}"`,
+    allowedPriceText: input.allowedPriceText ?? null,
     tenantId: input.tenantId,
     conversationId: input.conversationId,
     model: input.models?.judge,
@@ -202,6 +209,8 @@ export async function runPipeline(
     // turno puede llevar una URL. 2026-09-26 — V21 (más abajo, sobre el estado y
     // no sobre el texto): además, el turno tiene que cerrar.
     zoneRejected: input.validationContext?.zoneRejected,
+    // 2026-10-07 — el precio autorizado por el entrenador no es filtración (V11).
+    allowedPriceText: input.allowedPriceText ?? undefined,
   };
   let validatorOut = validateMessage(textAfterJudge, validatorCtx);
 

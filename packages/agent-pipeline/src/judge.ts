@@ -19,6 +19,12 @@ export interface JudgeInput {
   coachSummary?: string;
   /** Contexto bruto adicional (último mensaje del lead, datos del subscriber). */
   conversationContext?: string;
+  /**
+   * El precio que el entrenador ha autorizado decir tal cual (2026-10-07, Tania:
+   * "entre 600 y 1.200€" cuando la persona insiste). El guardrail 2 no lo quita;
+   * cualquier otra cifra, sí.
+   */
+  allowedPriceText?: string | null;
   tenantId: number;
   conversationId: number | null;
   model?: string;
@@ -99,6 +105,8 @@ GUARDRAILS OBJETIVOS (cualquiera dispara fix o reject):
    entrenador decide en su bloque que se contesta a esa pregunta, y hay entrenadores cuyo literal
    aprobado es exactamente ese. Tu no revisas esa decision.
 2. Mencionar precios concretos (€/USD/MXN cifras) antes de la fase 6 → fix (eliminar el precio) o reject si es central al mensaje.
+   Excepción: si recibes PRECIO AUTORIZADO, ese texto exacto lo ha aprobado el entrenador para darlo
+   tal cual: no es violación, no lo quites ni lo cambies. Cualquier otra cifra sigue siendo violación.
 3. Repetir saludo ("Hola", "Buenos días", "Hey") cuando NO es el primer turno del bot → fix.
 4. Más de UNA pregunta cerrada con "?" en el mismo mensaje → fix (dejar solo la última).
 5. Enlace de AGENDA (calendario, reserva) o de WhatsApp en fases 1-3 → fix (eliminar URL).
@@ -145,6 +153,7 @@ export async function runJudge(
   ];
   if (input.coachSummary) userParts.push(`COACH (resumen): ${input.coachSummary}`);
   if (input.conversationContext) userParts.push(`CONTEXTO: ${input.conversationContext}`);
+  if (input.allowedPriceText) userParts.push(`PRECIO AUTORIZADO: «${input.allowedPriceText}»`);
   userParts.push(`MENSAJE A REVISAR:\n${input.messageRaw}`);
 
   const startedAt = Date.now();

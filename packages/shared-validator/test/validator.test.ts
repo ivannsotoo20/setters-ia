@@ -150,6 +150,22 @@ describe('validator V11 price leak', () => {
     const r = validateMessage('Tengo 35 años y poco tiempo', baseCtx);
     expect(r.violations.find((v) => v.ruleId === 'V11')).toBeUndefined();
   });
+
+  // 2026-10-07 — Tania autoriza un rango tal cual cuando la persona insiste.
+  it('el precio autorizado por el entrenador no cuenta; cualquier otra cifra sí', () => {
+    const ctx = { ...baseCtx, currentPhase: 3, allowedPriceText: 'entre 600 y 1200 euros' };
+    const ok = validateMessage(
+      'Dependiendo de la modalidad, puede estar ENTRE 600 Y  1200 euros. Si quieres lo vemos en una videollamada.',
+      ctx,
+    );
+    expect(ok.violations.find((v) => v.ruleId === 'V11')).toBeUndefined();
+
+    const otra = validateMessage('Puede estar entre 600 y 1200 euros, o 300 euros al mes', ctx);
+    expect(otra.violations.find((v) => v.ruleId === 'V11')?.match).toBe('300 euros');
+
+    const sinAutorizar = validateMessage('Puede estar entre 600 y 1200 euros', { ...baseCtx, currentPhase: 3 });
+    expect(sinAutorizar.violations.find((v) => v.ruleId === 'V11')).toBeDefined();
+  });
 });
 
 describe('validator V12 excess apology', () => {

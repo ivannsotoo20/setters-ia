@@ -92,6 +92,12 @@ valor, nunca el valor. Escanear antes de commitear.
   los vídeos de recurso en F1-F3. Zona por canal (decisión de Iván): WhatsApp decide el prefijo y
   nunca se pregunta; Instagram pregunta el país al principio; fuera de zona, cierre directo.
   Pendiente: dos URLs de recursos, "¿sería en casa?", precio y seguimiento post-enlace.
+- [Ronda 2026-10-07: cerrojo de la videollamada, Tally por prefijo, precio, bienvenidas](project_tania_ronda_2026-10-07.md) —
+  "llevamos meses": V22 no deja salir propuesta ni enlace sin país de zona y 3 meses de dolor
+  declarados; un +598 pasó el Tally por la excepción D1 (ahora el prefijo decide, D1 solo con
+  `residence_overrides_prefix`); precio en dos literales (Core v7 + Judge + V11 con
+  `allowed_price_text`); videollamada "para valorar si puedo ayudarte", nunca "armar la
+  progresión"; bienvenidas con nombre o emoji distintos ya casan. Orden de despliegue y SQL dentro.
 
 ### Autoría de coaches (coach-engineering)
 

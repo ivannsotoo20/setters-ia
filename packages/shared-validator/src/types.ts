@@ -50,6 +50,12 @@ export interface ValidationContext {
    * reserva. undefined/false → V20 no aplica.
    */
   zoneRejected?: boolean;
+  /**
+   * 2026-10-07 — El precio que el entrenador ha autorizado decir tal cual
+   * (`lead_qualification.allowed_price_text`). V11 no lo cuenta como filtración;
+   * cualquier otra cifra, sí.
+   */
+  allowedPriceText?: string;
 }
 
 export interface RuleViolation {

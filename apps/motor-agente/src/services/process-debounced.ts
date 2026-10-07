@@ -46,6 +46,7 @@ import {
   parseZonePolicy,
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
+import { parseAllowedPriceText } from '../lib/price-policy.js';
 import { pickResidenceAnswer } from './lead-qualifier.js';
 
 /**
@@ -545,6 +546,8 @@ export async function processDebounced(
             }
           : undefined,
         callGate,
+        // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
+        allowedPriceText: parseAllowedPriceText(leadQualification),
         composeOverrides: {
           // Enrutado por canal: si el entrenador tiene coach de WhatsApp y la
           // conversacion va por WhatsApp, se usa ese; si no, el generico.
