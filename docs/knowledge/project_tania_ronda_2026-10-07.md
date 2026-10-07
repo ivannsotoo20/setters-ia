@@ -119,3 +119,12 @@ motor (paso 1) se desplegó el 2026-10-07 en el run 71 de `deploy-motor`.
    semanas sin episodio (no propone), precio una vez (literal 1) y otra (literal 2, sin subir
    fase), "¿sería en casa?" (respuesta corta), propuesta (literal de la videollamada, sin
    "progresión"), un +598 por WhatsApp (cierre 8 directo).
+
+## Carga (2026-10-07, Iván desde Windows con el script)
+
+Los tres pasos en verde: `lead_qualification` del tenant 7 con `call_gate` y `allowed_price_text`
+(claves previas conservadas); Core `core_v5_base` (id 32) de 53.201 a 53.473 caracteres, snapshot
+v7 (revertir = copiar el v6); coach de Tania (id 36) en v29, md5 en BD
+`0d3a666b8e09eec106648fc2c4a95476` (CRLF, 43.529 caracteres), snapshot v29 verificado. Ese md5 es
+el `--expect-md5` de la próxima carga (v30). Pendiente: la batería del simulador.
+
