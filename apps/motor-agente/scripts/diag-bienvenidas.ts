@@ -86,8 +86,9 @@ function toMs(v: number | string | undefined): number {
   return typeof v === 'number' ? v : Date.parse(v);
 }
 
-const preview = (s: string | null | undefined) =>
-  String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 70);
+/** Recorta por caracteres, no por unidades UTF-16: un emoji partido sale como «�». */
+const preview = (s: string | null | undefined, max = 70) =>
+  Array.from(String(s ?? '').replace(/\s+/g, ' ').trim()).slice(0, max).join('');
 
 async function main(): Promise<void> {
   const supabase = getSupabase();
@@ -136,7 +137,7 @@ async function main(): Promise<void> {
   const patternLabel = (text: string) => {
     const hit = matchKeyword(text, welcomes);
     const idx = hit ? welcomes.findIndex((w) => w.pattern === hit.pattern) : -1;
-    return idx >= 0 ? `frase ${idx + 1} «${preview(welcomes[idx]!.pattern).slice(0, 40)}»` : '¿?';
+    return idx >= 0 ? `frase ${idx + 1} «${preview(welcomes[idx]!.pattern, 40)}»` : '¿?';
   };
   const bySource = new Map<string, number>();
   for (const m of storedWelcomes) bySource.set(m.source, (bySource.get(m.source) ?? 0) + 1);
@@ -267,7 +268,7 @@ async function main(): Promise<void> {
           .eq('conversation_id', lc.id)
           .not('content', 'is', null)
           .limit(200);
-        const head = preview(f.msg.body).slice(0, 25).toLowerCase();
+        const head = preview(f.msg.body, 25).toLowerCase();
         const stored = (cm ?? []).find((x) => preview(x.content).toLowerCase().includes(head));
         detail = `conv ${lc.id} (${lc.direction}/${lc.conversation_source ?? 'sin origen'}, creada ${String(lc.created_at).slice(0, 16)})`;
         if (!stored) verdict = 'NO NOS LLEGÓ (la conversación existe por otro mensaje)';
@@ -279,7 +280,7 @@ async function main(): Promise<void> {
       }
     }
     verdicts.set(verdict, (verdicts.get(verdict) ?? 0) + 1);
-    console.log(`  ${String(f.msg.dateAdded).slice(0, 16)}  ${f.msg.source ?? '?'}  «${preview(f.msg.body).slice(0, 45)}»  → ${verdict} ${detail}`);
+    console.log(`  ${String(f.msg.dateAdded).slice(0, 16)}  ${f.msg.source ?? '?'}  «${preview(f.msg.body, 45)}»  → ${verdict} ${detail}`);
   }
 
   console.log('\n=== Resumen ===');

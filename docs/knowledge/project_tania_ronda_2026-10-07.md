@@ -128,3 +128,15 @@ v7 (revertir = copiar el v6); coach de Tania (id 36) en v29, md5 en BD
 `0d3a666b8e09eec106648fc2c4a95476` (CRLF, 43.529 caracteres), snapshot v29 verificado. Ese md5 es
 el `--expect-md5` de la próxima carga (v30). Pendiente: la batería del simulador.
 
+## Bienvenidas: diagnóstico con datos (2026-10-07, tarde)
+
+`apps/motor-agente/scripts/diag-bienvenidas.ts` (solo lectura) cruza GHL con la BD. Resultado de
+los últimos 3 días: Tania mandó 63 bienvenidas, todas con la frase #29, todas desde la app de
+Instagram (`source=app`, `TYPE_INSTAGRAM`) y todas el 7/10 entre las 12:49 y las 13:02 (Madrid).
+Llegaron las 63 por el Workflow de GHL; 61 quedaron como conversación de bienvenida de ese día (lo
+que cuenta "Bienvenidas enviadas"). Las otras dos: «Hola tocaya, te doy la bienvenida…» (enviada
+antes del despliegue de las 15:11, el matcher viejo no la reconoció por la palabra metida y casó
+con una palabra clave inbound; conv 13060) y una a Carmen, que había escrito ella 20 minutos
+antes (conv 12937, correcta como inbound). O sea: los mensajes desde la app sí disparan el Workflow
+de salida y el conteo funciona; el fallo era el matcher, solo con texto añadido a la frase.
+
