@@ -94,6 +94,10 @@ conciencia como guía de ruta, y el filtro 3 sin la excepción de residencia. Cu
 
 ## Orden de despliegue (importa)
 
+Pasos 2-4 en un solo comando, con comprobaciones (no pisa un Core o un coach editados fuera del
+`.md`): `node scripts/apply-tania-ronda-2026-10-07.mjs` (solo mira) y después con `--apply`. El
+motor (paso 1) se desplegó el 2026-10-07 en el run 71 de `deploy-motor`.
+
 1. **Motor** (push a `main`, CI `deploy-motor.yml`) y panel (Vercel). Sin el motor nuevo, el
    literal del precio lo borraría el Judge y no habría cerrojo.
 2. **Config del tenant 7** (merge, nunca reescribir el JSONB):
