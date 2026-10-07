@@ -168,8 +168,9 @@ describe('renderZoneBlock / buildLeadOriginDirective — zona', () => {
     expect(d).toContain('sin ningún enlace');
     expect(d).toContain('sin propuesta de videollamada');
     expect(d).toContain('coach_qualification_doesnt');
-    // La excepción pasa por la entrenadora, nunca por el enlace.
-    expect(d).toContain('B_derivacion');
+    // 2026-10-07: por defecto no hay excepción (Iván: el prefijo descalifica directamente).
+    expect(d).not.toContain('B_derivacion');
+    expect(d).toContain('el prefijo manda: no hay excepción');
   });
 
   it('in_zone_by_prefix: cualifica y evita la pregunta de rutina', () => {
@@ -210,13 +211,31 @@ describe('renderZoneBlock / buildLeadOriginDirective — zona', () => {
     expect(d).toContain('ni sigas cualificando');
   });
 
-  it('reject_by_prefix: la excepción (D1) acepta la residencia declarada en el formulario y no lleva ejemplo copiable', () => {
-    const d = renderZoneBlock({ kind: 'reject_by_prefix', country: GT }) ?? '';
+  it('reject_by_prefix con la excepción (D1) encendida: acepta la residencia declarada en el formulario y no lleva ejemplo copiable', () => {
+    const d = renderZoneBlock({ kind: 'reject_by_prefix', country: GT }, { residenceException: true }) ?? '';
     expect(d).toContain('en el chat o en las respuestas de su formulario');
     expect(d).toContain('B_derivacion');
     // El coach de Tania quitó «vivo en Madrid» porque el modelo lo copió como
     // mensaje suyo; la directiva no puede volver a meterlo.
     expect(d).not.toContain('vivo en Madrid');
+  });
+
+  it('buildLeadOriginDirective pasa la excepción a la zona y añade el cerrojo de la videollamada', () => {
+    const conExcepcion =
+      buildLeadOriginDirective({
+        origin: 'form',
+        zone: { kind: 'reject_by_prefix', country: GT },
+        residenceException: true,
+      }) ?? '';
+    expect(conExcepcion).toContain('B_derivacion');
+
+    const conCerrojo =
+      buildLeadOriginDirective({
+        origin: 'unknown',
+        channel: null,
+        callGateBlock: '## Antes de proponer la videollamada (cerrojo del motor)\n\nx',
+      }) ?? '';
+    expect(conCerrojo).toContain('Antes de proponer la videollamada');
   });
 
   it('reject_by_prefix con prefijo desconocido (ZZ): no inventa país y cierra igual', () => {

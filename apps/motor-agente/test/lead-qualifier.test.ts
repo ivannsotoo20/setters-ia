@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { qualifyFormLead } from '../src/services/lead-qualifier.js';
+import { decideByPrefix, qualifyFormLead } from '../src/services/lead-qualifier.js';
 import { EUROPE_ISO } from '../src/lib/zone-config.js';
 
 /**
@@ -307,6 +307,14 @@ const CFG_ZONE = {
   ],
 };
 
+/**
+ * La misma config con la excepción D1 encendida (`residence_overrides_prefix`).
+ * Desde 2026-10-07 el prefijo de fuera rechaza solo por defecto; los casos que
+ * prueban las reglas de residencia y la red de zona con un prefijo de fuera
+ * usan esta config para seguir llegando a esas reglas.
+ */
+const CFG_ZONE_D1 = { ...CFG_ZONE, residence_overrides_prefix: true };
+
 // El label real del WhatsApp en el Tally de Tania. Contiene "país", así que casa
 // con country_label_regex ('vives|pais|país') igual que "¿Donde vives actualmente?".
 const WHATSAPP_LABEL =
@@ -437,7 +445,7 @@ describe('Q3 — país por palabra completa, no por substring', () => {
 
   it('lista blanca: "Pandi cundinamarca" +57 no se aprueba en seco; la IA dice Colombia y queda rechazado', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+573001234567', residence: 'Pandi cundinamarca' }),
       phone: '+573001234567',
       ai: { razonamiento: 'Cundinamarca es Colombia.', pais_detectado: 'Colombia', pais_iso: 'CO', decision: 'rechazado' },
@@ -448,7 +456,7 @@ describe('Q3 — país por palabra completa, no por substring', () => {
 
   it('lista blanca: "Cañada de Gómez, Argentina" +54 → aunque la IA aprobara, la red lo rechaza', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+5493471123456', residence: 'Cañada de Gómez, Argentina' }),
       phone: '+5493471123456',
       ai: { razonamiento: 'Ocupación cualificada.', pais_detectado: 'Argentina', pais_iso: 'AR', decision: 'aprobado' },
@@ -461,7 +469,7 @@ describe('Q3 — país por palabra completa, no por substring', () => {
 
   it('lista blanca: "Grecia, Alajuela" +506 no aprueba por Grecia; la red veta el aprobado con CR', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+50688887777', residence: 'Grecia, Alajuela' }),
       phone: '+50688887777',
       ai: { razonamiento: 'Grecia (Grecia).', pais_detectado: 'Costa Rica', pais_iso: 'CR', decision: 'aprobado' },
@@ -474,7 +482,7 @@ describe('Q3 — país por palabra completa, no por substring', () => {
 describe('lista blanca — reglas deterministas de zona', () => {
   it('término de no contacto sin país y prefijo fuera → rechazo por regla ("Bogotá" +57)', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+573001234567', residence: 'Bogotá' }),
       phone: '+573001234567',
     });
@@ -509,10 +517,11 @@ describe('lista blanca — reglas deterministas de zona', () => {
 
   // Revisión 2026-09-26: con el WhatsApp de su país de origen, quien reside en
   // zona es el caso D1 (se aprueba y el setter deriva). La regla en seco la
-  // rechazaba solo por nombrar Perú o "peruana".
-  it('D1 por el formulario: "Barcelona, soy peruana" con +51 no se rechaza en seco; la IA dice España → aprobado con aviso', async () => {
+  // rechazaba solo por nombrar Perú o "peruana". Desde 2026-10-07 solo con la
+  // excepción encendida: por defecto el +51 rechaza solo (ver más abajo).
+  it('D1 encendida: "Barcelona, soy peruana" con +51 no se rechaza en seco; la IA dice España → aprobado con aviso', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+51987654321', residence: 'Barcelona, soy peruana' }),
       phone: '+51987654321',
       ai: { razonamiento: 'Reside en España.', pais_detectado: 'España', pais_iso: 'ES', decision: 'aprobado' },
@@ -524,7 +533,7 @@ describe('lista blanca — reglas deterministas de zona', () => {
 
   it('"Madrid, soy de Perú" con +51 tampoco se rechaza en seco: va a la IA', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+51987654321', residence: 'Madrid, soy de Perú' }),
       phone: '+51987654321',
       ai: { razonamiento: 'Reside en Perú.', pais_detectado: 'Perú', pais_iso: 'PE', decision: 'rechazado' },
@@ -537,7 +546,7 @@ describe('lista blanca — reglas deterministas de zona', () => {
   it('solo señales de fuera sigue siendo rechazo en seco: "vivo en Lima", "Perú." y "Lima / Perú" con +51', async () => {
     for (const residence of ['vivo en Lima', 'Perú.', 'Lima / Perú']) {
       const { out, create } = await qualify({
-        config: CFG_ZONE,
+        config: CFG_ZONE_D1,
         answers: tallyAnswers({ whatsapp: '+51987654321', residence }),
         phone: '+51987654321',
       });
@@ -563,7 +572,7 @@ describe('lista blanca — reglas deterministas de zona', () => {
     // +882 (redes internacionales) no está en la tabla de prefijos: el prefijo
     // no confirma la residencia, así que no hay aprobación en seco.
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+882161234567', residence: 'Suecia' }),
       phone: '+882161234567',
       ai: { razonamiento: 'Europa.', pais_detectado: 'Suecia', pais_iso: 'SE', decision: 'aprobado' },
@@ -577,7 +586,7 @@ describe('lista blanca — reglas deterministas de zona', () => {
 describe('lista blanca — red posterior a la IA (solo veto)', () => {
   it('la IA aprueba a un +51 como "Zona D" con PE → la red lo rechaza con motivo explícito', async () => {
     const { out, create } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+51987654321', residence: 'San Isidro' }),
       phone: '+51987654321',
       ai: { razonamiento: 'Zona D, abogado: corresponde aprobar.', pais_detectado: 'Perú', pais_iso: 'PE', decision: 'aprobado' },
@@ -591,9 +600,9 @@ describe('lista blanca — red posterior a la IA (solo veto)', () => {
     expect(out.paisIso).toBe('PE');
   });
 
-  it('D1: "En Canadá" +502 con la IA diciendo CA → aprobado, y el motivo avisa del prefijo', async () => {
+  it('D1 encendida: "En Canadá" +502 con la IA diciendo CA → aprobado, y el motivo avisa del prefijo', async () => {
     const { out } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+50258746350', residence: 'En Canadá' }),
       phone: '+50258746350',
       ai: { razonamiento: 'Reside en Canadá.', pais_detectado: 'Canadá', pais_iso: 'CA', decision: 'aprobado' },
@@ -616,7 +625,7 @@ describe('lista blanca — red posterior a la IA (solo veto)', () => {
     expect(es.out.decision).toBe('aprobado');
 
     const unknown = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+882161234567', residence: 'Lagos' }),
       phone: '+882161234567',
       ai,
@@ -674,7 +683,7 @@ describe('lista blanca — red posterior a la IA (solo veto)', () => {
 describe('lista blanca — sin evaluador decide el prefijo (Q5)', () => {
   it('IA caída con +51 → rechazado por prudencia', async () => {
     const { out } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+51987654321', residence: 'Trujillo' }),
       phone: '+51987654321',
       ai: new Error('rate_limit_error'),
@@ -699,7 +708,7 @@ describe('lista blanca — sin evaluador decide el prefijo (Q5)', () => {
 
   it('decisión no reconocida con +51 → rechazado', async () => {
     const { out } = await qualify({
-      config: CFG_ZONE,
+      config: CFG_ZONE_D1,
       answers: tallyAnswers({ whatsapp: '+51987654321', residence: 'Trujillo' }),
       phone: '+51987654321',
       ai: { razonamiento: 'x', pais_detectado: 'Perú', pais_iso: 'PE', decision: 'quizas' },
@@ -735,6 +744,112 @@ describe('lista blanca — sin evaluador decide el prefijo (Q5)', () => {
     });
     expect(out.decision).toBe('aprobado');
     expect(out.evaluadoPor).toBe('ninguno');
+  });
+});
+
+describe('el prefijo decide solo (2026-10-07)', () => {
+  // Caso real: un +598 de Uruguay rellenó el Tally de Tania y recibió la
+  // bienvenida. Iván, 2026-10-03: "en WhatsApp […] el prefijo es de un país que
+  // Tania no quiere. En cuanto veas eso, directamente descalificas".
+  it('+598 Uruguay con residencia "España" se rechaza en seco, sin IA, y el motivo lo dice', async () => {
+    const { out, create } = await qualify({
+      config: CFG_ZONE,
+      answers: tallyAnswers({ whatsapp: '+598 94 123 456', residence: 'España' }),
+      phone: '+59894123456',
+      ai: { razonamiento: 'Reside en España.', pais_detectado: 'España', pais_iso: 'ES', decision: 'aprobado' },
+    });
+    expect(out.decision).toBe('rechazado');
+    expect(out.evaluadoPor).toBe('reglas');
+    expect(out.paisIso).toBe('UY');
+    expect(out.motivo).toContain('prefijo fuera de zona (+598, Uruguay)');
+    expect(out.motivo).toContain('«España»');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('+598 con "Montevideo", con "Madrid" o con una residencia que la IA aprobaría: siempre rechazado', async () => {
+    for (const residence of ['Montevideo', 'Madrid', 'Vivo en Valencia desde hace años']) {
+      const { out, create } = await qualify({
+        config: CFG_ZONE,
+        answers: tallyAnswers({ whatsapp: '+59894123456', residence }),
+        phone: '+59894123456',
+        ai: { razonamiento: 'x', pais_detectado: 'España', pais_iso: 'ES', decision: 'aprobado' },
+      });
+      expect(out.decision).toBe('rechazado');
+      expect(create).not.toHaveBeenCalled();
+    }
+  });
+
+  it('el dolor reciente no hace falta mirarlo: el prefijo decide antes', async () => {
+    const answers = { ...tallyAnswers({ whatsapp: '+59894123456', residence: 'Uruguay' }) };
+    answers['¿Desde cuándo tienes dolor de espalda?'] = 'Menos de 3 meses';
+    const { out } = await qualify({ config: CFG_ZONE, answers, phone: '+59894123456' });
+    expect(out.decision).toBe('rechazado');
+    expect(out.motivo).toContain('+598, Uruguay');
+  });
+
+  it('"En Canadá" con +502 ya no se aprueba: la excepción D1 está apagada por defecto', async () => {
+    const { out, create } = await qualify({
+      config: CFG_ZONE,
+      answers: tallyAnswers({ whatsapp: '+50258746350', residence: 'En Canadá' }),
+      phone: '+50258746350',
+      ai: { razonamiento: 'Reside en Canadá.', pais_detectado: 'Canadá', pais_iso: 'CA', decision: 'aprobado' },
+    });
+    expect(out.decision).toBe('rechazado');
+    expect(out.motivo).toContain('+502, Guatemala');
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('un número completo con un prefijo que no se reconoce también se rechaza', async () => {
+    const { out, create } = await qualify({
+      config: CFG_ZONE,
+      answers: tallyAnswers({ whatsapp: '+882161234567', residence: 'Suecia' }),
+      phone: '+882161234567',
+    });
+    expect(out.decision).toBe('rechazado');
+    expect(out.motivo).toContain('prefijo no reconocido');
+    expect(out.paisIso).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('los prefijos de zona siguen igual: +34 España aprueba en seco y +52 México va a la IA', async () => {
+    const es = await qualify({
+      config: CFG_ZONE,
+      answers: tallyAnswers({ whatsapp: '+34600123456', residence: 'España' }),
+      phone: '+34600123456',
+    });
+    expect(es.out.decision).toBe('aprobado');
+    expect(es.create).not.toHaveBeenCalled();
+
+    const mx = await qualify({
+      config: CFG_ZONE,
+      answers: tallyAnswers({ whatsapp: '+528116542813', residence: 'Monterrey' }),
+      phone: '+528116542813',
+      ai: { razonamiento: 'México, abogado.', pais_detectado: 'México', pais_iso: 'MX', decision: 'aprobado' },
+    });
+    expect(mx.create).toHaveBeenCalledTimes(1);
+    expect(mx.out.decision).toBe('aprobado');
+  });
+});
+
+describe('decideByPrefix — formularios sin respuestas', () => {
+  // El endpoint la aplica también cuando el formulario no trae respuestas (no
+  // hay nada más que cualificar, pero el prefijo sigue mandando).
+  it('con lista blanca y filtro activo, un +598 se rechaza y un +34 no decide nada', () => {
+    expect(decideByPrefix(CFG_ZONE, '+59894123456', null)?.decision).toBe('rechazado');
+    expect(decideByPrefix(CFG_ZONE, '+34600123456', null)).toBeNull();
+    expect(decideByPrefix(CFG_ZONE, '+528116542813', null)).toBeNull();
+  });
+
+  it('sin el motivo de la residencia cuando no la hay', () => {
+    const out = decideByPrefix(CFG_ZONE, '+59894123456', null);
+    expect(out?.motivo).toBe('Regla de zona: prefijo fuera de zona (+598, Uruguay). Por WhatsApp el prefijo decide solo.');
+  });
+
+  it('no aplica sin lista blanca, con el filtro apagado ni con la excepción D1 encendida', () => {
+    expect(decideByPrefix(CONFIG, '+59894123456', null)).toBeNull();
+    expect(decideByPrefix({ ...CFG_ZONE, enabled: false }, '+59894123456', null)).toBeNull();
+    expect(decideByPrefix(CFG_ZONE_D1, '+59894123456', null)).toBeNull();
+    expect(decideByPrefix(null, '+59894123456', null)).toBeNull();
   });
 });
 

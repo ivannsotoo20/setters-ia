@@ -40,9 +40,11 @@ function computeMessageRawMaxLength(maxParts: 1 | 2 | 3 | 4): number {
  * y se llama 1 vez por turno. Sí se cachean los system prompts vía
  * `cache_control: { type: 'ephemeral' }` en otro flujo.
  */
-export function buildRespondAsSetterTool(opts: { maxParts: 1 | 2 | 3 | 4 } = { maxParts: DEFAULT_MAX_PARTS }): AnthropicTool {
+export function buildRespondAsSetterTool(
+  opts: { maxParts: 1 | 2 | 3 | 4; qualificationFields?: boolean } = { maxParts: DEFAULT_MAX_PARTS },
+): AnthropicTool {
   const maxLength = computeMessageRawMaxLength(opts.maxParts);
-  return {
+  const tool: AnthropicTool = {
     name: RESPOND_AS_SETTER_TOOL_NAME,
     description:
       'Genera el siguiente turno del setter. Devuelve la respuesta del setter (message_raw), el resumen del lead, ' +
@@ -206,7 +208,49 @@ export function buildRespondAsSetterTool(opts: { maxParts: 1 | 2 | 3 | 4 } = { m
     additionalProperties: false,
   },
   };
+  if (opts.qualificationFields === true) {
+    const schema = tool.input_schema as { properties: Record<string, unknown> };
+    schema.properties = { ...schema.properties, ...CALL_GATE_PROPERTIES };
+  }
+  return tool;
 }
+
+/**
+ * Cerrojo de la videollamada (2026-10-07). Solo van en la tool cuando el motor
+ * pasa `callGate`: lo que el setter sabe de la persona, declarado en CADA turno.
+ * El pipeline no deja salir una propuesta de videollamada ni el enlace de agenda
+ * si con estos datos la persona no cualifica o falta alguno.
+ *
+ * Tania, tras meses del mismo fallo: se seguían proponiendo llamadas a personas
+ * que no cualificaban por país o por tiempo de dolor. El criterio estaba escrito
+ * en el bloque del coach; la decisión de aplicarlo era del modelo.
+ */
+const CALL_GATE_PROPERTIES = {
+  lead_country_iso: {
+    type: 'string',
+    description:
+      'País donde VIVE la persona, en código ISO-2 (ES, MX, US…). Rellénalo en CADA turno en que lo ' +
+      'sepas: lo sabes si ella lo ha dicho en esta conversación, si está en las respuestas de su ' +
+      'formulario o si te lo da la sección "Zona geográfica". Si no lo sabes, omítelo: no lo deduzcas ' +
+      'por su forma de escribir, su nombre o de dónde es su familia.',
+    maxLength: 2,
+  },
+  pain_duration_months: {
+    type: 'number',
+    description:
+      'Desde hace cuántos meses tiene el dolor por el que escribe, según lo que ella ha dicho (o su ' +
+      'formulario): 2 semanas = 0.5, "desde marzo" = los meses que van, "más de 3 años" = 36. ' +
+      'Rellénalo en CADA turno en que lo sepas. Si solo ha dicho algo vago ("hace tiempo", "unos ' +
+      'meses"), omítelo: aún no lo sabes.',
+    minimum: 0,
+  },
+  previous_episode: {
+    type: 'boolean',
+    description:
+      'true si ella ha descrito un episodio ANTERIOR del mismo dolor, antes de la crisis actual ' +
+      '(por ejemplo, "ya me pasó hace dos años"). Omítelo si no lo ha contado.',
+  },
+} as const;
 
 /**
  * Hito 12.1 — Export legacy de compatibilidad con consumidores que aún no

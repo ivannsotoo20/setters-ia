@@ -93,6 +93,14 @@ export interface LeadOriginContext {
   formAnswers?: Record<string, unknown> | null;
   /** Veredicto de zona del motor (zone-policy.ts). Si falta o es 'clear', no se declara nada. */
   zone?: ZoneVerdict | null;
+  /**
+   * Excepción de residencia con un prefijo de fuera (`residence_overrides_prefix`):
+   * si ella dice que vive en zona, pasa a la entrenadora en vez de cerrarse.
+   * Apagada salvo `true` desde 2026-10-07 (Iván: el prefijo descalifica directamente).
+   */
+  residenceException?: boolean;
+  /** Cerrojo de la videollamada (lib/call-gate.ts). Sin él no se declara nada. */
+  callGateBlock?: string | null;
 }
 
 /**
@@ -246,9 +254,10 @@ export function buildLeadOriginDirective(ctx: LeadOriginContext): string | null 
   const channelLine = renderChannelLine(channel);
   // Las respuestas solo se declaran si sabemos que vino de formulario.
   const answersBlock = origin === 'form' ? renderFormAnswers(formAnswers) : null;
-  const zoneBlock = renderZoneBlock(zone);
+  const zoneBlock = renderZoneBlock(zone, { residenceException: ctx.residenceException === true });
+  const gateBlock = ctx.callGateBlock ?? null;
 
-  if (!originLine && !channelLine && !zoneBlock) return null;
+  if (!originLine && !channelLine && !zoneBlock && !gateBlock) return null;
 
   const parts = [originLine, channelLine, answersBlock].filter(
     (p): p is string => typeof p === 'string' && p.length > 0,
@@ -257,6 +266,7 @@ export function buildLeadOriginDirective(ctx: LeadOriginContext): string | null 
   const sections: string[] = [];
   if (parts.length > 0) sections.push(`## De dónde viene esta persona\n\n${parts.join('\n\n')}`);
   if (zoneBlock) sections.push(zoneBlock);
+  if (gateBlock) sections.push(gateBlock);
   return sections.join('\n\n');
 }
 
@@ -320,7 +330,10 @@ const DECLARED_RESIDENCE_OUTWEIGHS_PREFIX =
  * Zona geográfica como HECHO del motor. El cierre (qué literal, con qué tono) es
  * del coach: aquí solo se dice qué se sabe y qué no puede pasar en este turno.
  */
-export function renderZoneBlock(zone: ZoneVerdict | null | undefined): string | null {
+export function renderZoneBlock(
+  zone: ZoneVerdict | null | undefined,
+  opts: { residenceException?: boolean } = {},
+): string | null {
   if (!zone || zone.kind === 'clear') return null;
   switch (zone.kind) {
     case 'reject_by_prefix': {
@@ -346,17 +359,21 @@ export function renderZoneBlock(zone: ZoneVerdict | null | undefined): string | 
         'tu mensaje es el cierre de residencia fuera de zona que define tu bloque ' +
         '(coach_qualification_doesnt), escrito tal cual: sin nombrar el país, sin explicar el ' +
         'motivo, sin propuesta de videollamada y sin ningún enlace. No abras preguntas nuevas ' +
-        'ni sigas cualificando, aunque la fase te pida avanzar. ' +
+        'ni sigas cualificando, aunque la fase te pida avanzar.' +
         // La excepción es la decisión D1 de Iván (2026-09-26): residencia en zona
         // declarada por ella (+502 con "En Canadá" en el formulario) no la cierra
         // el setter; la confirma la entrenadora. Sin ejemplo entre comillas a
         // propósito: el coach de Tania quitó «vivo en Madrid» porque el modelo lo
-        // copió como mensaje suyo a una lead de Managua.
-        'Única excepción: si ella misma ha dicho, en el chat o en las respuestas de su ' +
-        'formulario, que reside en otro país y es uno al que la entrenadora sí lleva, no la ' +
-        'cierres tú ni le mandes enlace: pásala a la entrenadora (conversation_status=handoff, ' +
-        'handoff_cause=B_derivacion) con un mensaje breve de que le escribe ella para que lo ' +
-        'confirme.'
+        // copió como mensaje suyo a una lead de Managua. Desde 2026-10-07 solo con
+        // `residence_overrides_prefix` (Iván, 2026-10-03: el prefijo descalifica
+        // directamente; un +598 que pasó el formulario la había reabierto).
+        (opts.residenceException
+          ? ' Única excepción: si ella misma ha dicho, en el chat o en las respuestas de su ' +
+            'formulario, que reside en otro país y es uno al que la entrenadora sí lleva, no la ' +
+            'cierres tú ni le mandes enlace: pásala a la entrenadora (conversation_status=handoff, ' +
+            'handoff_cause=B_derivacion) con un mensaje breve de que le escribe ella para que lo ' +
+            'confirme.'
+          : ' Aunque diga que vive en otro país, el prefijo manda: no hay excepción.')
       );
     }
     case 'prefix_out_residence_in':

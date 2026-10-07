@@ -3,6 +3,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   runPipeline,
   loadConversationHistory,
+  CallGateError,
+  CALL_GATE_ERROR_PREFIX,
   ZoneCloseError,
   ZONE_CLOSE_ERROR_PREFIX,
 } from '@fyzon/agent-pipeline';
@@ -37,7 +39,13 @@ import {
   extractFormAnswers,
   mapConversationSourceToOrigin,
 } from '../lib/lead-origin.js';
-import { evaluateZone, isZoneRejectVerdict, loadZonePolicy } from '../lib/zone-policy.js';
+import {
+  evaluateZone,
+  isZoneRejectVerdict,
+  loadLeadQualification,
+  parseZonePolicy,
+} from '../lib/zone-policy.js';
+import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
 import { pickResidenceAnswer } from './lead-qualifier.js';
 
 /**
@@ -438,7 +446,8 @@ export async function processDebounced(
   // Cuando el prefijo dice que no cualifica, V20 impide además que salga un
   // enlace, y desde 2026-09-26 la focal de cierre y V21 obligan a que el turno
   // cierre (ver `currentPhaseFocus` más abajo).
-  const zonePolicy = await loadZonePolicy(supabase, tenantId);
+  const leadQualification = await loadLeadQualification(supabase, tenantId);
+  const zonePolicy = parseZonePolicy(leadQualification);
   const zoneVerdict = evaluateZone({
     phone: (lead.phone as string | null | undefined) ?? null,
     leadMessages: allHistory.filter((m) => m.role === 'user').map((m) => m.content),
@@ -459,11 +468,18 @@ export async function processDebounced(
           : `country=${zoneVerdict.country.iso}`),
     );
   }
+  // Cerrojo de la videollamada (2026-10-07, V22): sin país de zona y sin el
+  // tiempo de dolor mínimo declarados por el setter, no sale una propuesta ni el
+  // enlace. Con la zona rechazada no hace falta: V20 y V21 ya obligan al cierre.
+  const callGate = zoneRejected ? undefined : buildCallGate({ leadQualification, zoneVerdict });
+  const residenceException = zonePolicy?.residenceOverridesPrefix === true;
   const leadOriginDirective = buildLeadOriginDirective({
     origin: leadOrigin,
     channel: channelTypeDb,
     formAnswers,
     zone: zoneVerdict,
+    residenceException,
+    callGateBlock: renderCallGateBlock(callGate),
   });
   const systemDirectives = combineSystemDirectives(
     leadOriginDirective,
@@ -522,8 +538,13 @@ export async function processDebounced(
         // cierre de la entrenadora (`lead_qualification.zone_close_message`) para
         // mandarlo tal cual en vez de fiarse de que el modelo lo copie.
         zone: zoneRejected
-          ? { mode: zoneHandoff ? 'handoff' : 'close', closeParts: zonePolicy?.closeParts ?? null }
+          ? {
+              mode: zoneHandoff ? 'handoff' : 'close',
+              closeParts: zonePolicy?.closeParts ?? null,
+              allowResidenceHandoff: residenceException,
+            }
           : undefined,
+        callGate,
         composeOverrides: {
           // Enrutado por canal: si el entrenador tiene coach de WhatsApp y la
           // conversacion va por WhatsApp, se usa ese; si no, el generico.
@@ -557,7 +578,13 @@ export async function processDebounced(
     // pipeline entero (2-3 llamadas al Generator) y, si el modelo insiste, así
     // indefinidamente. Aquí no hay nada transitorio que esperar: se pausa la IA y
     // se avisa a la entrenadora, sin mandarle nada a la persona.
-    const zoneFailureRule = zoneRejected ? zoneCloseFailureRule(err) : null;
+    // V22 (cerrojo de la videollamada) igual: el modelo insistió en proponer la
+    // llamada sin los datos o a quien no cualifica. Mismo aterrizaje.
+    const zoneFailureRule = zoneRejected
+      ? zoneCloseFailureRule(err)
+      : callGate
+        ? callGateFailureRule(err)
+        : null;
     if (zoneFailureRule) {
       await landZoneCloseFailure({
         supabase,
@@ -583,8 +610,11 @@ export async function processDebounced(
         correlationId: run.correlationId,
         skipped: true,
         reason:
-          'zona: la persona no cualifica por residencia y el turno no cerró tras el reintento; ' +
-          'IA pausada y aviso a la entrenadora, sin mensaje a la persona',
+          zoneFailureRule === 'V22'
+            ? 'cerrojo de la videollamada: el turno la proponía sin cualificar tras el reintento; ' +
+              'IA pausada y aviso a la entrenadora, sin mensaje a la persona'
+            : 'zona: la persona no cualifica por residencia y el turno no cerró tras el reintento; ' +
+              'IA pausada y aviso a la entrenadora, sin mensaje a la persona',
       };
     }
     throw err;
@@ -983,6 +1013,19 @@ export function zoneCloseFailureRule(err: unknown): 'V20' | 'V21' | null {
   return null;
 }
 
+/** V22: el turno tumbado por el cerrojo de la videollamada. */
+export function callGateFailureRule(err: unknown): 'V22' | null {
+  if (err instanceof CallGateError) return 'V22';
+  if (err instanceof Error && err.message.startsWith(CALL_GATE_ERROR_PREFIX)) return 'V22';
+  return null;
+}
+
+/** Causa del aviso cuando el cerrojo de la videollamada tumba el turno. */
+export const CALL_GATE_FAILURE_CAUSE =
+  'La IA iba a proponerle la videollamada (o mandarle el enlace) sin saber dónde vive o desde ' +
+  'cuándo le duele, o a pesar de que no cumple tus criterios, y no lo corrigió al reintentarlo. ' +
+  'Está pausada y en este turno no se le ha enviado nada: revisa la conversación y sigue tú.';
+
 /** Texto de la causa en el email de handoff: lo que la entrenadora tiene que hacer. */
 export const ZONE_CLOSE_FAILURE_CAUSE =
   'Fuera de zona (por el prefijo de su teléfono o porque ha dicho dónde vive), y la IA no ' +
@@ -1016,12 +1059,17 @@ export async function landZoneCloseFailure(args: {
   lead: { id: number; firstName: string | null; phone: string | null };
   channelType: 'whatsapp' | 'instagram' | 'facebook';
   correlationId?: string;
-  ruleId: 'V20' | 'V21';
+  ruleId: 'V20' | 'V21' | 'V22';
 }): Promise<void> {
   const { supabase, tenantId, conversationId, lead } = args;
+  const what =
+    args.ruleId === 'V21'
+      ? 'no cerró'
+      : args.ruleId === 'V22'
+        ? 'proponía la videollamada sin cualificar'
+        : 'insistió en el enlace';
   console.warn(
-    `[zone] conv=${conversationId} ${args.ruleId}: turno tumbado ` +
-      `(${args.ruleId === 'V21' ? 'no cerró' : 'insistió en el enlace'}) → IA pausada + aviso a la entrenadora`,
+    `[zone] conv=${conversationId} ${args.ruleId}: turno tumbado (${what}) → IA pausada + aviso a la entrenadora`,
   );
 
   const { error: updateErr } = await supabase
@@ -1054,7 +1102,7 @@ export async function landZoneCloseFailure(args: {
         conversation_id: conversationId,
         channel_type: args.channelType,
         correlation_id: args.correlationId,
-        handoff_cause: ZONE_CLOSE_FAILURE_CAUSE,
+        handoff_cause: args.ruleId === 'V22' ? CALL_GATE_FAILURE_CAUSE : ZONE_CLOSE_FAILURE_CAUSE,
       },
     });
     if (!enqueueRes.ok) {

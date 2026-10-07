@@ -101,7 +101,8 @@ export default async function KeywordsPage() {
           <CardDescription>
             No hace falta escribir la frase entera ni cuidar mayúsculas o acentos de más: basta
             con un trozo característico. Si guardas «gracias por escribir», también reconocerá
-            «¡Hola! Gracias por escribirme».
+            «¡Hola! Gracias por escribirme». Una frase de cuatro palabras o más la reconoce
+            aunque metas el nombre de la persona o cambies el emoji o los signos.
           </CardDescription>
         </CardHeader>
         <CardContent>

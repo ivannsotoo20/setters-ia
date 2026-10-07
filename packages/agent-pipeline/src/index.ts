@@ -1,4 +1,5 @@
 export type {
+  CallGate,
   ConversationMessage,
   GeneratorInput,
   GeneratorOutput,
@@ -56,6 +57,11 @@ export {
   closeAlreadySent,
   ZoneCloseError,
   ZONE_CLOSE_ERROR_PREFIX,
+  isCallStep,
+  callGateMiss,
+  CallGateError,
+  CALL_GATE_ERROR_PREFIX,
+  type CallGateMiss,
   type PipelineInput,
   type PipelineOutput,
   type PipelineStageMetric,

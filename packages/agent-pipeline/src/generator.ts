@@ -83,7 +83,11 @@ export async function runGenerator(
   // `message_raw.maxLength` a `maxParts × 280 + 30` chars. Si el modelo intenta
   // pasarse, Anthropic rechaza el tool_use por schema validation.
   const aiMessagesPerTurnMax: 1 | 2 | 3 | 4 = input.aiMessagesPerTurnMax ?? 4;
-  const respondTool = buildRespondAsSetterTool({ maxParts: aiMessagesPerTurnMax });
+  const respondTool = buildRespondAsSetterTool({
+    maxParts: aiMessagesPerTurnMax,
+    // Cerrojo de la videollamada: la tool pide país, meses de dolor y episodio anterior.
+    qualificationFields: input.callGate != null,
+  });
 
   // 1. Compose system prompt (Cerebro v5 — cargado desde Supabase, con cache_control)
   //
@@ -333,5 +337,17 @@ export function validateSetterOutput(raw: unknown): SetterToolOutput {
       typeof r.captured_lead_name === 'string' && r.captured_lead_name.trim() !== ''
         ? r.captured_lead_name.trim()
         : undefined,
+    // Cerrojo de la videollamada. Lo que no tenga forma válida cuenta como no sabido.
+    lead_country_iso:
+      typeof r.lead_country_iso === 'string' && /^[A-Za-z]{2}$/.test(r.lead_country_iso.trim())
+        ? r.lead_country_iso.trim().toUpperCase()
+        : undefined,
+    pain_duration_months:
+      typeof r.pain_duration_months === 'number' &&
+      Number.isFinite(r.pain_duration_months) &&
+      r.pain_duration_months >= 0
+        ? r.pain_duration_months
+        : undefined,
+    previous_episode: typeof r.previous_episode === 'boolean' ? r.previous_episode : undefined,
   };
 }

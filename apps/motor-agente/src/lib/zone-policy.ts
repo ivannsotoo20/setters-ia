@@ -35,8 +35,9 @@
  *     - país en 'always'   → in_zone_by_prefix (tier 'always').
  *     - país en 'filtered' → in_zone_by_prefix (tier 'filtered'): la directiva le
  *       recuerda al setter la condición de trabajo.
- *     - cualquier otro país → reject_by_prefix, salvo que su formulario declare
- *       residencia en zona → prefix_out_residence_in (ver el tipo).
+ *     - cualquier otro país → reject_by_prefix. Solo con
+ *       `residence_overrides_prefix: true`, si su formulario declara residencia
+ *       en zona → prefix_out_residence_in (ver el tipo; apagado desde 2026-10-07).
  *     - número completo con un prefijo que el mapa no conoce → reject_by_prefix
  *       con país 'ZZ'. Con lista blanca, lo desconocido no es zona: un número de
  *       Camerún no puede colarse por no estar en el mapa.
@@ -90,6 +91,13 @@ export interface ZonePolicy {
    * lo sigue necesitando para los cierres que decide el modelo.
    */
   closeParts?: string[];
+  /**
+   * Excepción D1 (`lead_qualification.residence_overrides_prefix`): un prefijo de
+   * fuera con residencia en zona declarada en el formulario no cierra, pasa a la
+   * entrenadora. Apagada salvo `true` explícito desde 2026-10-07 (ver el tipo
+   * `prefix_out_residence_in`).
+   */
+  residenceOverridesPrefix?: boolean;
 }
 
 /** Tramo de zona de un prefijo que cualifica. Solo existe con lista blanca. */
@@ -109,6 +117,11 @@ export type ZoneVerdict =
    * cierra: se pasa a la entrenadora (handoff B_derivacion) para que lo
    * confirme. Antes dependía de que el modelo leyera el formulario, y en la
    * batería del 26-09 la cerró con el literal. Solo con lista blanca.
+   *
+   * Desde 2026-10-07 solo con `residence_overrides_prefix: true` en la config.
+   * Iván (2026-10-03): "en WhatsApp […] el prefijo es de un país que Tania no
+   * quiere. En cuanto veas eso, directamente descalificas". Y un +598 de Uruguay
+   * pasó el formulario con esta puerta abierta y recibió la bienvenida.
    */
   | {
       kind: 'prefix_out_residence_in';
@@ -189,6 +202,7 @@ export function parseZonePolicy(raw: unknown): ZonePolicy | null {
   if (allowlist) policy.allowlist = allowlist;
   const closeParts = parseCloseParts(cfg.zone_close_message);
   if (closeParts) policy.closeParts = closeParts;
+  if (cfg.residence_overrides_prefix === true) policy.residenceOverridesPrefix = true;
   return policy;
 }
 
@@ -215,6 +229,17 @@ export async function loadZonePolicy(
   supabase: SupabaseClient,
   tenantId: number,
 ): Promise<ZonePolicy | null> {
+  return parseZonePolicy(await loadLeadQualification(supabase, tenantId));
+}
+
+/**
+ * `tenant_configs.lead_qualification` tal cual (zona, cerrojo de la videollamada…).
+ * Best-effort: cualquier fallo devuelve null.
+ */
+export async function loadLeadQualification(
+  supabase: SupabaseClient,
+  tenantId: number,
+): Promise<unknown> {
   try {
     const { data, error } = await supabase
       .from('tenant_configs')
@@ -222,7 +247,7 @@ export async function loadZonePolicy(
       .eq('tenant_id', tenantId)
       .maybeSingle();
     if (error || !data) return null;
-    return parseZonePolicy(data.lead_qualification);
+    return data.lead_qualification ?? null;
   } catch {
     return null;
   }
@@ -245,7 +270,7 @@ export function evaluateZone(input: {
 
   if (policy.allowlist) {
     const byPrefix = evaluatePrefixAgainstAllowlist(phone, policy.allowlist);
-    if (byPrefix?.kind === 'reject_by_prefix') {
+    if (byPrefix?.kind === 'reject_by_prefix' && policy.residenceOverridesPrefix === true) {
       const declaredIn = declaredResidenceInZone(input.declaredResidence, policy);
       if (declaredIn) {
         return {
@@ -394,7 +419,12 @@ export function findDeclaredResidenceTerm(message: string, terms: string[]): str
  * para decidir (sin número, o demasiado corto para ser un número completo): en
  * ese caso el turno sigue con las menciones del chat, como sin teléfono.
  */
-function evaluatePrefixAgainstAllowlist(
+/**
+ * El prefijo contra la lista blanca: en zona (con su tramo), fuera, o número
+ * completo con un prefijo que el mapa no conoce (fuera, país 'ZZ'). null si no
+ * hay número utilizable. El cualificador del formulario usa la misma regla.
+ */
+export function evaluatePrefixAgainstAllowlist(
   phone: string | null | undefined,
   allowlist: ZoneAllowlist,
 ): ZoneVerdict | null {

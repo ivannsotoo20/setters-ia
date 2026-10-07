@@ -356,11 +356,27 @@ describe('evaluateZone — menciones en el chat (Instagram, sin teléfono)', () 
 });
 
 describe('evaluateZone — residencia del formulario con prefijo de fuera (D1, 2026-09-26)', () => {
-  it('+502 con "En Canadá" en el formulario → prefix_out_residence_in (pasa a la entrenadora)', () => {
+  // Desde 2026-10-07 la excepción solo existe con `residence_overrides_prefix`.
+  const TANIA_ALLOW_D1 = parseZonePolicy({ ...TANIA_LEAD_QUALIFICATION, residence_overrides_prefix: true })!;
+
+  it('por defecto un +502 con "En Canadá" en el formulario cierra por el prefijo (Iván, 2026-10-03)', () => {
+    expect(TANIA_ALLOW.residenceOverridesPrefix).toBeUndefined();
     const v = evaluateZone({
       phone: '+50258746350',
       leadMessages: ['Hola, sí'],
       policy: TANIA_ALLOW,
+      declaredResidence: 'En Canadá ',
+    });
+    expect(v.kind).toBe('reject_by_prefix');
+    expect(isZoneRejectVerdict(v)).toBe(true);
+  });
+
+  it('con la excepción encendida: +502 con "En Canadá" → prefix_out_residence_in (pasa a la entrenadora)', () => {
+    expect(TANIA_ALLOW_D1.residenceOverridesPrefix).toBe(true);
+    const v = evaluateZone({
+      phone: '+50258746350',
+      leadMessages: ['Hola, sí'],
+      policy: TANIA_ALLOW_D1,
       declaredResidence: 'En Canadá ',
     });
     expect(v.kind).toBe('prefix_out_residence_in');
@@ -374,7 +390,7 @@ describe('evaluateZone — residencia del formulario con prefijo de fuera (D1, 2
 
   it('una residencia con señal de fuera, una ciudad sin país o un país de fuera no activan la excepción', () => {
     for (const declared of ['Cañada de Gómez, Santa Fe, Argentina', 'Vivo en Madrid', 'Peru', 'Grecia, Alajuela', '']) {
-      const v = evaluateZone({ phone: '+51987654321', leadMessages: [], policy: TANIA_ALLOW, declaredResidence: declared });
+      const v = evaluateZone({ phone: '+51987654321', leadMessages: [], policy: TANIA_ALLOW_D1, declaredResidence: declared });
       expect(v.kind, declared).toBe('reject_by_prefix');
     }
   });

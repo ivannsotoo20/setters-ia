@@ -176,11 +176,26 @@ describe('pipeline — V21 zona rechazada sin cierre', () => {
     expect(retryPrompt).toContain('NO cualifica por residencia');
     expect(retryPrompt).toContain('conversation_status="active"');
     expect(retryPrompt).toContain('conversation_status="disqualified"');
-    expect(retryPrompt).toContain('B_derivacion');
+    // 2026-10-07: sin `allowResidenceHandoff` el prefijo descalifica sin excepción.
+    expect(retryPrompt).not.toContain('B_derivacion');
 
     expect(out.parts.join(' ')).toContain('En mi perfil tienes mucho contenido');
     expect(out.parts.join(' ')).not.toContain('desde cuándo');
     expect(out.generator.setterOutput.conversation_status).toBe('disqualified');
+  });
+
+  it('con la excepción de residencia encendida, el reintento ofrece pasarla a la entrenadora', async () => {
+    const { anthropic, generatorCalls } = makeAnthropic([
+      setterReply(SIGUE_CUALIFICANDO, 'active', 1),
+      setterReply(CIERRE, 'disqualified', 1),
+    ]);
+
+    await runPipeline(
+      { supabase: makeFakeSupabase(), anthropic },
+      { ...baseInput, zone: { mode: 'close', allowResidenceHandoff: true } } as any,
+    );
+
+    expect(lastUserContent(generatorCalls()[1]!)).toContain('B_derivacion');
   });
 
   it('si el reintento tampoco cierra, tumba el turno con V21 y no llega al Splitter', async () => {

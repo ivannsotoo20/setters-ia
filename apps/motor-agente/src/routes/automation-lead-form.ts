@@ -53,6 +53,7 @@ import {
   upsertLead,
 } from '../services/lead-ingest.js';
 import {
+  decideByPrefix,
   loadQualificationConfig,
   qualifyFormLead,
   type QualifyResult,
@@ -390,6 +391,12 @@ export async function automationLeadFormRoutes(app: FastifyInstance): Promise<vo
           phoneLabel,
           config: qualificationConfig,
         });
+      }
+      // 5.2b) Sin respuestas no hay nada que cualificar, pero el prefijo sigue
+      //       mandando (2026-10-07): un WhatsApp de fuera de zona no recibe la
+      //       bienvenida, venga del formulario que venga.
+      if (filterEnabled && !hasAnswers && veredicto.decision === 'sin_filtro') {
+        veredicto = decideByPrefix(qualificationConfig, phoneNormalized, null) ?? veredicto;
       }
       if (filterEnabled) {
         // Sin `motivo` en el log: lleva la residencia y la ocupación que la

@@ -1047,12 +1047,16 @@ describe('cualificación con lista blanca de zona (2026-09-26)', () => {
   });
 
   it('Q5: evaluador caído con prefijo +51 → rechazado (ya no se aprueba a todo el mundo)', async () => {
-    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+    // Con la excepción D1 encendida el +51 no decide solo: "Trujillo" existe en
+    // España y en Perú, va a la IA (caída) y decide el prefijo por prudencia.
+    seedReadyTenant({
+      welcomeTemplateId: 10,
+      qualification: { ...ZONE_QUALIFICATION_CONFIG, residence_overrides_prefix: true },
+    });
 
     const res = await app.inject({
       method: 'POST',
       url: '/automations/lead-form/good-token',
-      // "Trujillo" existe en España y en Perú: ninguna regla decide, va a la IA (caída).
       payload: tallyRealBody({ whatsapp: '+51 987 654 321', residence: 'Trujillo' }),
     });
     expect(res.statusCode).toBe(200);
@@ -1061,6 +1065,56 @@ describe('cualificación con lista blanca de zona (2026-09-26)', () => {
     expect(row.motivo).toContain('no disponible');
     expect(row.motivo).toContain('prefijo fuera de zona');
     expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('el prefijo decide solo en el formulario (2026-10-07)', () => {
+  // Caso real: un +598 de Uruguay rellenó el Tally de Tania y la IA le escribió
+  // por WhatsApp. Con el prefijo de fuera no hay bienvenida, diga lo que diga la
+  // residencia escrita.
+  it('+598 Uruguay con residencia "España" → rechazado por el prefijo, sin lead ni bienvenida', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: tallyRealBody({ whatsapp: '+598 94 123 456', residence: 'España' }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toMatchObject({ qualified: false, decision: 'rechazado', evaluado_por: 'reglas' });
+    const row = mocks.state.submissions[0]!;
+    expect(row.phone).toBe('+59894123456');
+    expect(row.motivo).toContain('prefijo fuera de zona (+598, Uruguay)');
+    expect(mocks.state.leads).toHaveLength(0);
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('un payload SIN respuestas con un +598 tampoco recibe la bienvenida', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: { phone: '+59894123456', first_name: 'Nombre' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.body)).toMatchObject({ decision: 'rechazado', evaluado_por: 'reglas' });
+    expect(mocks.state.submissions[0]!.motivo).toContain('+598, Uruguay');
+    expect(mocks.state.leads).toHaveLength(0);
+    expect(mocks.fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('un payload SIN respuestas con un +34 sigue entrando sin filtro, como siempre', async () => {
+    seedReadyTenant({ welcomeTemplateId: 10, qualification: ZONE_QUALIFICATION_CONFIG });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/automations/lead-form/good-token',
+      payload: { phone: '+34600123456', first_name: 'Nombre' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mocks.state.submissions[0]!.decision).toBe('sin_filtro');
+    expect(mocks.fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -18,6 +18,7 @@ const loadHistoryMock = vi.fn();
 const enqueueNotificationMock = vi.fn();
 const failPipelineRunMock = vi.fn();
 const evaluateZoneMock = vi.fn();
+const leadQualificationMock = vi.fn();
 
 vi.mock('@fyzon/agent-pipeline', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fyzon/agent-pipeline')>();
@@ -57,7 +58,7 @@ vi.mock('../src/lib/zone-policy.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/lib/zone-policy.js')>();
   return {
     ...actual,
-    loadZonePolicy: async () => ({ noContactCountries: new Set(['CO']), countryRejectTerms: [] }),
+    loadLeadQualification: async () => leadQualificationMock(),
     evaluateZone: (...args: unknown[]) => evaluateZoneMock(...args),
   };
 });
@@ -65,7 +66,7 @@ vi.mock('../src/lib/zone-policy.js', async (importOriginal) => {
 const { processDebounced, zoneCloseFailureRule } = await import(
   '../src/services/process-debounced.js'
 );
-const { ZoneCloseError } = await import('@fyzon/agent-pipeline');
+const { CallGateError, ZoneCloseError } = await import('@fyzon/agent-pipeline');
 
 const REJECT_CO = {
   kind: 'reject_by_prefix',
@@ -138,6 +139,7 @@ beforeEach(() => {
   enqueueNotificationMock.mockReset().mockResolvedValue({ ok: true, id: 1 });
   failPipelineRunMock.mockReset().mockResolvedValue(undefined);
   evaluateZoneMock.mockReset().mockReturnValue(REJECT_CO);
+  leadQualificationMock.mockReset().mockReturnValue({ no_contact_countries: ['CO'] });
 });
 
 describe('processDebounced — zona rechazada por prefijo', () => {
@@ -246,5 +248,75 @@ describe('zoneCloseFailureRule', () => {
     ).toBeNull();
     expect(zoneCloseFailureRule(new Error('Judge rejected message: x'))).toBeNull();
     expect(zoneCloseFailureRule('V21: no es un Error')).toBeNull();
+  });
+});
+
+describe('processDebounced — cerrojo de la videollamada (V22, 2026-10-07)', () => {
+  const TANIA_CONFIG = {
+    zone_allowlist: { always: ['ES', 'US'], filtered: ['MX'] },
+    call_gate: { require_country: true, min_pain_months: 3 },
+  };
+
+  it('con call_gate en la config, el pipeline recibe el cerrojo y el setter la directiva', async () => {
+    leadQualificationMock.mockReturnValue(TANIA_CONFIG);
+    evaluateZoneMock.mockReturnValue({ kind: 'clear' });
+    runPipelineMock.mockRejectedValue(new Error('Judge rejected message: x'));
+    const { supabase } = makeFakeSupabase();
+
+    await expect(processDebounced({ supabase, anthropic: {} as any }, 12203)).rejects.toThrow(/Judge/);
+    const input = runPipelineMock.mock.calls[0]![1];
+    expect(input.callGate).toEqual({
+      allowedCountries: ['ES', 'US', 'MX'],
+      countryKnownInZone: false,
+      minPainMonths: 3,
+    });
+    expect(input.composeOverrides.extraSystemSuffix).toContain('Antes de proponer la videollamada');
+    expect(input.composeOverrides.extraSystemSuffix).toContain('lead_country_iso');
+  });
+
+  it('con el prefijo de zona, el país no hace falta declararlo', async () => {
+    leadQualificationMock.mockReturnValue(TANIA_CONFIG);
+    evaluateZoneMock.mockReturnValue({
+      kind: 'in_zone_by_prefix',
+      country: { iso: 'ES', name: 'España', prefix: '34' },
+      tier: 'always',
+    });
+    runPipelineMock.mockRejectedValue(new Error('Judge rejected message: x'));
+    const { supabase } = makeFakeSupabase();
+
+    await expect(processDebounced({ supabase, anthropic: {} as any }, 12203)).rejects.toThrow(/Judge/);
+    const input = runPipelineMock.mock.calls[0]![1];
+    expect(input.callGate.countryKnownInZone).toBe(true);
+    expect(input.composeOverrides.extraSystemSuffix).not.toContain('lead_country_iso');
+    expect(input.composeOverrides.extraSystemSuffix).toContain('pain_duration_months');
+  });
+
+  it('V22: no relanza; pausa la IA y avisa a la entrenadora con el motivo del cerrojo', async () => {
+    leadQualificationMock.mockReturnValue(TANIA_CONFIG);
+    evaluateZoneMock.mockReturnValue({ kind: 'clear' });
+    runPipelineMock.mockRejectedValue(
+      new CallGateError('country_unknown', { conversation_status: 'active', phase_decision: 5 }),
+    );
+    const { supabase, conversationUpdates } = makeFakeSupabase();
+
+    const out = await processDebounced({ supabase, anthropic: {} as any }, 12203);
+
+    expect(out.skipped).toBe(true);
+    expect(out.parts).toEqual([]);
+    expect(out.reason).toContain('cerrojo de la videollamada');
+    expect(conversationUpdates.some((u) => u.ai_paused_until === 'infinity')).toBe(true);
+    const notif = enqueueNotificationMock.mock.calls[0]![0];
+    expect(String(notif.payload.handoff_cause)).toContain('videollamada');
+  });
+
+  it('sin call_gate no hay cerrojo y un V22 improbable se relanza', async () => {
+    evaluateZoneMock.mockReturnValue({ kind: 'clear' });
+    runPipelineMock.mockRejectedValue(
+      new CallGateError('pain_unknown', { conversation_status: 'active', phase_decision: 5 }),
+    );
+    const { supabase } = makeFakeSupabase();
+
+    await expect(processDebounced({ supabase, anthropic: {} as any }, 12203)).rejects.toThrow(/^V22/);
+    expect(runPipelineMock.mock.calls[0]![1].callGate).toBeUndefined();
   });
 });

@@ -67,9 +67,11 @@ import {
 import {
   evaluateZone,
   isZoneRejectVerdict,
-  loadZonePolicy,
+  loadLeadQualification,
+  parseZonePolicy,
   type ZoneVerdict,
 } from '../lib/zone-policy.js';
+import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
 import { pickResidenceAnswer } from '../services/lead-qualifier.js';
 import { loadSchedulingConfig } from '../services/process-debounced.js';
 import {
@@ -175,7 +177,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       // Zona: la misma política y la misma evaluación que producción
       // (process-debounced). El prefijo, si llega teléfono; si no, las menciones
       // del chat: lo que la persona escribió en los turnos anteriores y en este.
-      const zonePolicy = await loadZonePolicy(supabase, body.tenant_id);
+      const leadQualification = await loadLeadQualification(supabase, body.tenant_id);
+      const zonePolicy = parseZonePolicy(leadQualification);
       const zoneVerdict = evaluateZone({
         phone: body.phone ?? null,
         leadMessages: [
@@ -229,6 +232,10 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         );
       }
 
+      // Cerrojo de la videollamada (V22), como en producción.
+      const callGate = zoneRejected ? undefined : buildCallGate({ leadQualification, zoneVerdict });
+      const residenceException = zonePolicy?.residenceOverridesPrefix === true;
+
       // En el simulador el origen dice quién abrió: 'inbound' es que escribió
       // ella; cualquier otro (bienvenida / lm / manual) es que abrimos nosotros.
       const leadOriginDirective = buildLeadOriginDirective({
@@ -239,6 +246,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         channel: body.channel as LeadChannel,
         formAnswers: body.form_answers ?? null,
         zone: zoneVerdict,
+        residenceException,
+        callGateBlock: renderCallGateBlock(callGate),
       });
       const systemDirectives = combineSystemDirectives(
         leadOriginDirective,
@@ -274,8 +283,13 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             },
             // Modo del turno y literal del cierre de la entrenadora, como en producción.
             zone: zoneRejected
-              ? { mode: zoneHandoff ? 'handoff' : 'close', closeParts: zonePolicy?.closeParts ?? null }
+              ? {
+                  mode: zoneHandoff ? 'handoff' : 'close',
+                  closeParts: zonePolicy?.closeParts ?? null,
+                  allowResidenceHandoff: residenceException,
+                }
               : undefined,
+            callGate,
             composeOverrides: {
               // Mismo enrutado por canal que produccion: el entrenador prueba
               // el coach que de verdad se usaria en ese canal.
@@ -307,6 +321,15 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             urgency: setterOut.urgency ?? null,
             next_action: setterOut.next_action ?? null,
           },
+          // Lo que el setter declaró para el cerrojo de la videollamada (V22),
+          // si el tenant lo tiene. Con un turno de fase 5-6 tiene que cumplir.
+          call_gate: callGate
+            ? {
+                lead_country_iso: setterOut.lead_country_iso ?? null,
+                pain_duration_months: setterOut.pain_duration_months ?? null,
+                previous_episode: setterOut.previous_episode ?? null,
+              }
+            : null,
           // Transparencia: qué se le inyectó por venir de donde viene. Es lo que
           // explica que el mismo mensaje se responda distinto según el origen.
           injected_directive: systemDirectives,

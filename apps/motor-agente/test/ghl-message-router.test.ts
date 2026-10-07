@@ -4,6 +4,7 @@ import {
   classifyInboundOnly,
   inferContentTypeFromUrl,
   matchesAnyKeyword,
+  matchesKeywordPattern,
 } from '../src/services/ghl-message-router.js';
 
 describe('classifyByKeywords', () => {
@@ -137,6 +138,91 @@ describe('classifyInboundOnly (Iván 2026-05-25 — gate inbound IA por keyword)
 
   it('returns null with empty keywords list', () => {
     expect(classifyInboundOnly('info programa precio', [])).toBeNull();
+  });
+});
+
+describe('matchesKeywordPattern — bienvenidas guardadas enteras (Tania, 2026-10-07)', () => {
+  // Sus tres palabras clave de bienvenida, tal cual están en el panel: la frase
+  // entera con su emoji. La #29 estaba activa y sus bienvenidas no se contaban.
+  const COMUNIDAD = 'Hola, te doy la bienvenida a esta comunidad 🎉';
+  const PERFIL = 'Hola! Te doy la bienvenida a mi perfil 🥰';
+  const SEGUIRME = 'Holaaa! Vi que empezaste a seguirme y quería saludarte. Espero que no te moleste 😊';
+
+  it('casa la frase tal cual', () => {
+    expect(matchesKeywordPattern(COMUNIDAD, COMUNIDAD)).toBe(true);
+  });
+
+  it('casa con el nombre de la persona metido', () => {
+    expect(
+      matchesKeywordPattern('Hola María José, te doy la bienvenida a esta comunidad 🎉', COMUNIDAD),
+    ).toBe(true);
+    expect(matchesKeywordPattern('Hola Laura! Te doy la bienvenida a mi perfil 🥰', PERFIL)).toBe(true);
+  });
+
+  it('casa con otro emoji, sin emoji, con otros signos o sin acentos', () => {
+    expect(matchesKeywordPattern('Hola! Te doy la bienvenida a esta comunidad ✨💛', COMUNIDAD)).toBe(true);
+    expect(matchesKeywordPattern('hola te doy la bienvenida a esta comunidad', COMUNIDAD)).toBe(true);
+    expect(
+      matchesKeywordPattern(
+        'Holaa! Vi que empezaste a seguirme y queria saludarte, espero que no te moleste',
+        SEGUIRME,
+      ),
+    ).toBe(true);
+  });
+
+  it('casa con texto antes o después de la bienvenida', () => {
+    expect(
+      matchesKeywordPattern(
+        '¡Hola, Ana! Te doy la bienvenida a esta comunidad 🎉 Cuéntame, ¿qué te trajo por aquí?',
+        COMUNIDAD,
+      ),
+    ).toBe(true);
+  });
+
+  it('tolera una palabra cambiada en una frase larga', () => {
+    expect(matchesKeywordPattern('Hola, te doy la bienvenida a nuestra comunidad 🎉', COMUNIDAD)).toBe(
+      true,
+    );
+  });
+
+  it('no casa con un mensaje distinto que comparte palabras sueltas', () => {
+    expect(matchesKeywordPattern('Hola, ¿cómo vas con la espalda esta semana?', COMUNIDAD)).toBe(false);
+    expect(matchesKeywordPattern('Bienvenida de nuevo, ¿qué tal la comunidad?', COMUNIDAD)).toBe(false);
+    expect(matchesKeywordPattern('Hola, te doy la bienvenida', COMUNIDAD)).toBe(false);
+  });
+
+  it('no casa si las palabras van desperdigadas por un mensaje largo', () => {
+    expect(
+      matchesKeywordPattern(
+        'Hola Marta, te escribo porque ayer te doy por hecho que viste la bienvenida que te mandé a ti y a esta gente de la comunidad',
+        COMUNIDAD,
+      ),
+    ).toBe(false);
+  });
+
+  it('una palabra clave corta no se queda sin su emoji: «Hola! 👋» no casa con cualquier hola', () => {
+    expect(matchesKeywordPattern('Hola Marta, ¿qué tal vas?', 'Hola! 👋')).toBe(false);
+    expect(matchesKeywordPattern('hola!👋 cómo estás', 'Hola! 👋')).toBe(true);
+  });
+
+  it('las palabras clave cortas ya no dependen de los acentos', () => {
+    expect(matchesKeywordPattern('quiero mas informacion', 'Información')).toBe(true);
+    expect(matchesKeywordPattern('Quiero más INFORMACIÓN', 'informacion')).toBe(true);
+  });
+
+  it('classifyByKeywords devuelve bienvenida para la bienvenida con nombre', () => {
+    const tania = [
+      { type: 'bienvenida' as const, pattern: SEGUIRME },
+      { type: 'bienvenida' as const, pattern: PERFIL },
+      { type: 'bienvenida' as const, pattern: COMUNIDAD },
+      { type: 'inbound' as const, pattern: 'Espalda' },
+      { type: 'inbound' as const, pattern: 'Información' },
+    ];
+    expect(classifyByKeywords('Hola Lucía, te doy la bienvenida a esta comunidad 🎊', tania)).toBe(
+      'bienvenida',
+    );
+    expect(classifyByKeywords('Hola Lucía, ¿cómo sigue tu espalda?', tania)).toBe('inbound');
+    expect(classifyByKeywords('Hola Lucía, ¿te viene bien el jueves?', tania)).toBeNull();
   });
 });
 

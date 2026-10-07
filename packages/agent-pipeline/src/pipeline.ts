@@ -4,7 +4,7 @@ import { validateMessage, type ValidationContext, type ValidationResult } from '
 import { runGenerator } from './generator.js';
 import { runJudge } from './judge.js';
 import { runSplitter } from './splitter.js';
-import type { GeneratorInput, GeneratorOutput, GeneratorUsage, SetterToolOutput } from './types.js';
+import type { CallGate, GeneratorInput, GeneratorOutput, GeneratorUsage, SetterToolOutput } from './types.js';
 
 interface RunPipelineDeps {
   supabase: SupabaseClient;
@@ -35,7 +35,17 @@ export interface PipelineInput extends GeneratorInput {
    * Sin `zone`, con `zoneRejected` se asume 'close' sin literal (comportamiento
    * del primer despliegue de V21).
    */
-  zone?: { mode: 'close' | 'handoff'; closeParts?: string[] | null };
+  zone?: {
+    mode: 'close' | 'handoff';
+    closeParts?: string[] | null;
+    /**
+     * Excepción de residencia en zona declarada (formulario o chat) con un
+     * prefijo de fuera: el reintento de cierre ofrece pasarla a la entrenadora
+     * (handoff B). Desde 2026-10-07 solo con `true` (config
+     * `residence_overrides_prefix`): por defecto el prefijo descalifica sin más.
+     */
+    allowResidenceHandoff?: boolean;
+  };
 }
 
 export interface PipelineStageMetric {
@@ -339,6 +349,7 @@ export async function runPipeline(
           : buildZoneRetryMessage({
               hasLink,
               previousStatus: generatorOut.setterOutput.conversation_status,
+              allowResidenceHandoff: input.zone?.allowResidenceHandoff === true,
             });
       try {
         const retryGen = await runGenerator(deps, {
@@ -378,6 +389,59 @@ export async function runPipeline(
       if (textForSplitter.length === 0) {
         return silentShutdownResult(generatorOut, stages, startedAt);
       }
+    }
+  }
+
+  // V22 — cerrojo de la videollamada (2026-10-07). Con `callGate`, un turno que
+  // propone la videollamada o lleva el enlace de agenda (fase 5-6, `qualified` o
+  // la URL del calendario en el texto) tiene que declarar en la tool que la
+  // persona cualifica: país de zona y dolor de al menos N meses o un episodio
+  // anterior. Si falta o no cumple, UN reintento con la instrucción concreta
+  // (preguntarlo, o seguir el camino del bloque para quien no cualifica). Si el
+  // reintento sigue proponiendo sin cumplir, el turno se tumba con CallGateError.
+  //
+  // Tania, tras meses con el mismo fallo: se seguían proponiendo y agendando
+  // llamadas a personas que no cualificaban por país o por tiempo de dolor. El
+  // criterio estaba en el bloque del coach; aplicarlo dependía del modelo.
+  //
+  // Con la zona rechazada no aplica: V20 y V21 ya obligan al cierre.
+  if (input.callGate && validatorCtx.zoneRejected !== true) {
+    const gate = input.callGate;
+    const calendarUrl = input.composeOverrides?.trackedCalendarUrl ?? null;
+    const miss = isCallStep(generatorOut.setterOutput, textForSplitter, calendarUrl)
+      ? callGateMiss(generatorOut.setterOutput, gate)
+      : null;
+    if (miss) {
+      // Si el reintento lanza (red, sobrecarga), el error sube tal cual: el motor
+      // reencola el turno y lo rehace entero. Tumbarlo aquí pausaría la IA por un
+      // fallo pasajero.
+      const retryGen = await runGenerator(deps, {
+        ...input,
+        userMessage: buildCallGateRetryMessage(miss, generatorOut.setterOutput, gate),
+        history: [
+          ...input.history,
+          { role: 'user' as const, content: input.userMessage },
+          { role: 'assistant' as const, content: textForSplitter },
+        ],
+        model: input.models?.generator,
+      });
+      stages.push({
+        role: 'generator',
+        model: retryGen.model,
+        usage: retryGen.usage,
+        llmCallId: retryGen.llmCallId,
+        notes: `V22_retry:${miss}`,
+      });
+      // El reintento rehace el turno entero: texto, estado, fase y lo que declara.
+      generatorOut.setterOutput = retryGen.setterOutput;
+      textForSplitter = retryGen.setterOutput.message_raw;
+      if (textForSplitter.length === 0) {
+        return silentShutdownResult(generatorOut, stages, startedAt);
+      }
+      const stillMiss = isCallStep(generatorOut.setterOutput, textForSplitter, calendarUrl)
+        ? callGateMiss(generatorOut.setterOutput, gate)
+        : null;
+      if (stillMiss) throw new CallGateError(stillMiss, generatorOut.setterOutput);
     }
   }
 
@@ -541,6 +605,136 @@ export class ZoneCloseError extends Error {
   }
 }
 
+/** Lo que le falta a un turno que propone la videollamada para pasar el cerrojo. */
+export type CallGateMiss = 'country_unknown' | 'country_out' | 'pain_unknown' | 'pain_recent';
+
+/**
+ * ¿Este turno lleva a la videollamada? Fase 5 (propuesta) o 6 (enlace),
+ * `qualified`, o la URL del calendario en el texto aunque la fase diga otra cosa.
+ * Un turno que cierra, pasa a la entrenadora o pausa no lleva a nada; F7 es
+ * después de la reserva.
+ */
+export function isCallStep(
+  out: Pick<SetterToolOutput, 'conversation_status' | 'phase_decision'>,
+  text: string,
+  calendarUrl: string | null | undefined,
+): boolean {
+  if (out.conversation_status === 'disqualified' || out.conversation_status === 'handoff') return false;
+  if (out.conversation_status === 'paused') return false;
+  if (out.conversation_status === 'qualified') return true;
+  if (out.phase_decision === 5 || out.phase_decision === 6) return true;
+  const base = (calendarUrl ?? '').split('?')[0]!.trim();
+  return base.length > 0 && text.includes(base);
+}
+
+/**
+ * Qué falta para que la persona vaya a videollamada según lo que el setter
+ * declara en la tool, o null si cumple. Primero el país (con el país de fuera no
+ * hace falta mirar más), luego el dolor.
+ */
+export function callGateMiss(
+  out: Pick<SetterToolOutput, 'lead_country_iso' | 'pain_duration_months' | 'previous_episode'>,
+  gate: CallGate,
+): CallGateMiss | null {
+  if (gate.allowedCountries && !gate.countryKnownInZone) {
+    const iso = out.lead_country_iso?.toUpperCase();
+    if (!iso) return 'country_unknown';
+    if (!gate.allowedCountries.includes(iso)) return 'country_out';
+  }
+  if (gate.minPainMonths != null && out.previous_episode !== true) {
+    const months = out.pain_duration_months;
+    if (months == null) return 'pain_unknown';
+    if (months < gate.minPainMonths) return 'pain_recent';
+  }
+  return null;
+}
+
+/** Prefijo estable del error de V22: el motor lo reconoce para no reencolar el turno. */
+export const CALL_GATE_ERROR_PREFIX = 'V22: videollamada sin cualificar';
+
+/**
+ * El turno proponía la videollamada (o llevaba el enlace) a alguien que, según
+ * lo que declara el propio setter, no cualifica o de quien falta un dato, y el
+ * reintento no lo corrigió. No sale nada: el motor pausa la IA y avisa a la
+ * entrenadora.
+ */
+export class CallGateError extends Error {
+  readonly ruleId = 'V22' as const;
+  readonly miss: CallGateMiss;
+
+  constructor(miss: CallGateMiss, out: Pick<SetterToolOutput, 'conversation_status' | 'phase_decision'>) {
+    super(
+      `${CALL_GATE_ERROR_PREFIX} (${miss}; conversation_status=${out.conversation_status}, ` +
+        `phase_decision=${out.phase_decision}). El turno no se envía.`,
+    );
+    this.name = 'CallGateError';
+    this.miss = miss;
+  }
+}
+
+/**
+ * Instrucción del reintento de V22. Dice qué falta y qué hacer en su lugar; el
+ * cómo (la pregunta, el cierre, el recurso) sigue siendo del bloque del coach.
+ */
+function buildCallGateRetryMessage(
+  miss: CallGateMiss,
+  out: Pick<SetterToolOutput, 'lead_country_iso' | 'pain_duration_months'>,
+  gate: CallGate,
+): string {
+  const head =
+    `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] Tu respuesta anterior lleva ` +
+    `a la videollamada (la propone, manda el enlace o la da por cualificada), y `;
+  const noCall =
+    `sin proponer la videollamada ni poner ningún enlace de agenda, y con la fase 4 como mucho. `;
+  const tail = `NO menciones esta corrección al lead.`;
+  switch (miss) {
+    case 'country_unknown':
+      return (
+        head +
+        `no has declarado en qué país vive: la entrenadora solo hace videollamada a quien vive en ` +
+        `su zona de contacto. Si ella YA te ha dicho dónde vive (en el chat o en su formulario), ` +
+        `devuelve tu misma respuesta y rellena lead_country_iso con ese país. Si no te lo ha dicho, ` +
+        `reescribe TU ÚLTIMA respuesta preguntándole dónde vive, con naturalidad y en una sola ` +
+        `pregunta, ` +
+        noCall +
+        tail
+      );
+    case 'country_out':
+      return (
+        head +
+        `según tú mismo vive en ${out.lead_country_iso ?? 'un país'}, fuera de la zona de ` +
+        `contacto de la entrenadora. Reescribe TU ÚLTIMA respuesta siguiendo el camino de fuera de ` +
+        `zona que define tu bloque (coach_qualification_doesnt), sin nombrar el país ni el motivo, ` +
+        noCall +
+        tail
+      );
+    case 'pain_unknown':
+      return (
+        head +
+        `no has declarado desde cuándo le duele: la entrenadora solo hace videollamada a quien ` +
+        `lleva al menos ${gate.minPainMonths} meses con el dolor o ha tenido un episodio anterior. ` +
+        `Si ella YA te lo ha dicho (en el chat o en su formulario), devuelve tu misma respuesta y ` +
+        `rellena pain_duration_months (y previous_episode si describió un episodio anterior). Si ` +
+        `no, reescribe TU ÚLTIMA respuesta preguntándoselo, con naturalidad y en una sola ` +
+        `pregunta, ` +
+        noCall +
+        tail
+      );
+    case 'pain_recent':
+      return (
+        head +
+        `según tú mismo lleva ${out.pain_duration_months} meses con el dolor y no ha descrito un ` +
+        `episodio anterior: con el criterio de la entrenadora (al menos ${gate.minPainMonths} ` +
+        `meses o un episodio anterior) no es caso de videollamada. Si en realidad sí describió un ` +
+        `episodio anterior del mismo dolor, devuelve tu misma respuesta con previous_episode=true. ` +
+        `Si no, reescribe TU ÚLTIMA respuesta siguiendo lo que tu bloque dice para el dolor ` +
+        `reciente, ` +
+        noCall +
+        tail
+      );
+  }
+}
+
 /**
  * Instrucción del reintento de zona. La misma para V20 y V21 (el cierre del
  * bloque); solo cambia la primera frase, que le dice qué ha hecho mal.
@@ -548,6 +742,7 @@ export class ZoneCloseError extends Error {
 function buildZoneRetryMessage(args: {
   hasLink: boolean;
   previousStatus: SetterToolOutput['conversation_status'];
+  allowResidenceHandoff?: boolean;
 }): string {
   // Neutro sobre el MOTIVO: la zona se rechaza por el prefijo del teléfono o por
   // la residencia que ella dijo en el chat (sin teléfono). Revisión del 26-09.
@@ -565,10 +760,13 @@ function buildZoneRetryMessage(args: {
     `bloque (coach_qualification_doesnt), tal cual: sin ninguna URL, sin propuesta de ` +
     `videollamada, sin nombrar el país ni el motivo, y sin preguntas. Si ese cierre ya se lo ` +
     `enviaste en un turno anterior, no lo repitas: una frase breve de despedida. Devuelve ` +
-    `conversation_status="disqualified". Única excepción: si ella ha escrito, en el formulario ` +
-    `o en el chat, que reside en un país de la zona de contacto, devuelve ` +
-    `conversation_status="handoff" con handoff_cause="B_derivacion" y un mensaje breve de que ` +
-    `le escribe la entrenadora. NO menciones esta corrección al lead.`
+    `conversation_status="disqualified". ` +
+    (args.allowResidenceHandoff
+      ? `Única excepción: si ella ha escrito, en el formulario o en el chat, que reside en un ` +
+        `país de la zona de contacto, devuelve conversation_status="handoff" con ` +
+        `handoff_cause="B_derivacion" y un mensaje breve de que le escribe la entrenadora. `
+      : '') +
+    `NO menciones esta corrección al lead.`
   );
 }
 

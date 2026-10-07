@@ -82,6 +82,40 @@ export interface SetterToolOutput {
    * Útil cuando el handle IG/FB no es el nombre real (ej: caballo56 → María).
    */
   captured_lead_name?: string;
+  /**
+   * Cerrojo de la videollamada (2026-10-07). Solo existen cuando el motor pasa
+   * `callGate`: lo que el setter sabe de la persona, declarado en cada turno.
+   * País donde VIVE (ISO-2), solo si ella lo ha dicho o lo da el formulario.
+   */
+  lead_country_iso?: string;
+  /** Desde hace cuántos meses le duele, según lo que ella ha dicho (0.5 = dos semanas). */
+  pain_duration_months?: number;
+  /** Ha descrito un episodio anterior del mismo dolor, antes de esta crisis. */
+  previous_episode?: boolean;
+}
+
+/**
+ * Cerrojo de la videollamada (2026-10-07, Tania): lo que tiene que saberse de la
+ * persona antes de proponerle la videollamada o mandarle el enlace. El motor lo
+ * construye desde `tenant_configs.lead_qualification.call_gate`; sin él, no hay
+ * cerrojo y la tool no lleva los campos.
+ */
+export interface CallGate {
+  /**
+   * Países de residencia que van a videollamada (ISO-2 en mayúsculas). null = el
+   * país no se exige.
+   */
+  allowedCountries: string[] | null;
+  /**
+   * El motor ya sabe que vive en zona (prefijo de un país de la lista): el país
+   * no hace falta que lo declare el setter.
+   */
+  countryKnownInZone: boolean;
+  /**
+   * Meses mínimos de dolor para ir a videollamada, salvo episodio anterior
+   * descrito. null = no se exige.
+   */
+  minPainMonths: number | null;
 }
 
 /** Input al Generator: todo lo que necesita para producir un turno. */
@@ -111,6 +145,12 @@ export interface GeneratorInput {
    * Default `undefined` → cap 4 (baseline pre-Hito 12.1).
    */
   aiMessagesPerTurnMax?: 1 | 2 | 3 | 4;
+  /**
+   * Cerrojo de la videollamada. Con él, la tool pide además país, meses de dolor
+   * y episodio anterior, y el pipeline no deja salir una propuesta ni un enlace
+   * sin ellos (ver `callGateMiss` en pipeline.ts).
+   */
+  callGate?: CallGate;
   /**
    * Overrides que el motor inyecta al composer por turno (Cerebro v5).
    *

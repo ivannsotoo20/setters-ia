@@ -56,11 +56,10 @@ vi.mock('../src/lib/zone-policy.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../src/lib/zone-policy.js')>();
   return {
     ...actual,
-    loadZonePolicy: async () =>
-      actual.parseZonePolicy({
-        no_contact_countries: ['PE', 'CO'],
-        country_reject_terms: ['venezuela'],
-      }),
+    loadLeadQualification: async () => ({
+      no_contact_countries: ['PE', 'CO'],
+      country_reject_terms: ['venezuela'],
+    }),
   };
 });
 

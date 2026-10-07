@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
+  CALL_GATE_ERROR_PREFIX,
   ZONE_CLOSE_ERROR_PREFIX,
   type PipelineOutput,
   type PipelineStageMetric,
@@ -178,6 +179,8 @@ export function classifyPipelineError(err: unknown): Exclude<PipelineRunOutcome,
   // V21 (zona rechazada sin cierre): red determinista del pipeline, mismo trato
   // que un error del validador.
   if (msg.startsWith(ZONE_CLOSE_ERROR_PREFIX)) return 'validator_error';
+  // V22 (cerrojo de la videollamada): igual.
+  if (msg.startsWith(CALL_GATE_ERROR_PREFIX)) return 'validator_error';
   return 'pipeline_error';
 }
 

@@ -2,6 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { inferCountryFromPhone, type PhoneCountry } from '../lib/phone-country.js';
 import { findWholeWordTerm, normalizeText } from '../lib/text-match.js';
+import { evaluatePrefixAgainstAllowlist, UNKNOWN_COUNTRY_ISO } from '../lib/zone-policy.js';
 import {
   countryNameEs,
   findCountryNames,
@@ -19,6 +20,9 @@ import {
  * Puerto del workflow n8n "Formulario Tally" de Tania, que se apagó con la
  * migración. Secuencia:
  *
+ *   0. PREFIJO (2026-10-07, solo con `zone_allowlist`): un WhatsApp de fuera de
+ *      zona, o con un prefijo que no se reconoce, se rechaza en seco aunque la
+ *      residencia escrita sea de zona (decideByPrefix).
  *   1. REGLA DURA — dolor reciente: si alguna respuesta es literalmente uno de
  *      los valores de rechazo ("Menos de 3 meses") → rechazado sin gastar IA.
  *   2. REGLAS DE PAÍS sobre la RESIDENCIA declarada (el campo cuyo label casa
@@ -73,6 +77,13 @@ export interface LeadQualificationConfig {
   zone_allowlist?: unknown;
   /** System prompt del evaluador IA. Sin él, el paso 3 no evalúa (ver cabecera). */
   ai_criteria?: string;
+  /**
+   * Excepción D1 (2026-09-26): residencia declarada en zona con un WhatsApp de
+   * fuera no se rechaza por el prefijo (la decide la IA y el chat la pasa a la
+   * entrenadora). Desde 2026-10-07 solo con `true` explícito: por defecto el
+   * prefijo decide solo (ver decideByPrefix).
+   */
+  residence_overrides_prefix?: boolean;
 }
 
 export interface QualifyInput {
@@ -142,6 +153,13 @@ export async function qualifyFormLead(input: QualifyInput): Promise<QualifyResul
     return { decision: 'sin_filtro', motivo: null, evaluadoPor: 'ninguno' };
   }
 
+  const residenceRegex = safeRegex(config.country_label_regex ?? 'vives|pais');
+  const residence = pickResidenceAnswer(input.answers, residenceRegex, input.phoneLabel ?? null);
+
+  // 0. Prefijo de fuera de zona → rechazo determinista, diga lo que diga el resto.
+  const byPrefix = decideByPrefix(config, input.phone, residence?.value ?? null);
+  if (byPrefix) return byPrefix;
+
   const values = Object.values(input.answers).map((v) => String(v ?? '').trim());
 
   // 1. Dolor reciente → rechazo determinista.
@@ -159,11 +177,6 @@ export async function qualifyFormLead(input: QualifyInput): Promise<QualifyResul
   const zone = parseZoneAllowlist(config);
   const prefix = inferCountryFromPhone(input.phone);
   const rejectTerms = config.country_reject_terms ?? [];
-  const residence = pickResidenceAnswer(
-    input.answers,
-    safeRegex(config.country_label_regex ?? 'vives|pais'),
-    input.phoneLabel ?? null,
-  );
   if (residence) {
     const byCountry = zone
       ? decideByZone(residence.value, prefix, zone, rejectTerms)
@@ -260,16 +273,53 @@ function quote(text: string): string {
 }
 
 /**
+ * Con lista blanca, un WhatsApp de fuera de zona (o un número completo con un
+ * prefijo que el mapa no conoce) se rechaza por sí solo, antes de leer nada más
+ * y sin IA. Es la misma regla que aplica el chat (zone-policy.ts), así que nadie
+ * recibe una bienvenida que el setter cerraría en el primer mensaje.
+ *
+ * Caso real (2026-10-06): un +598 de Uruguay rellenó el Tally de Tania y recibió
+ * la bienvenida. Con la excepción D1, una residencia escrita de zona mandaba la
+ * decisión a la IA y su aprobado se respetaba; Iván había dejado dicho el
+ * 2026-10-03 que en WhatsApp el prefijo descalifica directamente. La excepción
+ * solo vuelve con `residence_overrides_prefix: true`.
+ *
+ * Exportada porque el endpoint la aplica también a un formulario sin respuestas
+ * (no hay nada más que cualificar, pero el prefijo sigue mandando).
+ */
+export function decideByPrefix(
+  config: LeadQualificationConfig | null,
+  phone: string,
+  residence: string | null,
+): QualifyResult | null {
+  if (!config || config.enabled !== true || config.residence_overrides_prefix === true) return null;
+  const zone = parseZoneAllowlist(config);
+  if (!zone) return null;
+  const verdict = evaluatePrefixAgainstAllowlist(phone, zone);
+  if (verdict?.kind !== 'reject_by_prefix') return null;
+
+  const known = verdict.country.iso === UNKNOWN_COUNTRY_ISO ? null : verdict.country;
+  const declared = residence && residence.trim() ? ` La residencia escrita (${quote(residence)}) no cambia la decisión.` : '';
+  return {
+    decision: 'rechazado',
+    motivo: `Regla de zona: ${prefixOutsideZoneText(known)}. Por WhatsApp el prefijo decide solo.${declared}`,
+    evaluadoPor: 'reglas',
+    paisIso: known?.iso ?? null,
+  };
+}
+
+/**
  * Reglas deterministas CON lista blanca. Devuelve null cuando no hay certeza:
  * entonces decide la IA (y su aprobado pasa por la red de zona).
  *
- * Doctrina: en el formulario manda la RESIDENCIA, no el origen ni el prefijo.
- * Por eso ninguna regla decide sola con una de las dos señales:
- *   - "Barcelona, soy peruana" lleva un término de no contacto, pero reside en
- *     España → IA, con +34 y también con un +51 (su WhatsApp de origen).
+ * Llega aquí con un prefijo de zona (o sin número utilizable): uno de fuera ya
+ * lo rechazó decideByPrefix, salvo con `residence_overrides_prefix`. Entre los
+ * de zona manda la RESIDENCIA, así que ninguna regla decide con una sola señal:
+ *   - "Barcelona, soy peruana" con +34 lleva un término de no contacto, pero
+ *     reside en España → IA.
  *   - "Santo Domingo de la Calzada" con +34 es La Rioja → IA.
- *   - "En Canadá" con +502 declara residencia en zona con prefijo fuera → IA
- *     (Iván: se aprueba y en el chat el setter deriva para que Tania confirme).
+ *   - Con la excepción D1 encendida, "En Canadá" con +502 declara residencia en
+ *     zona con prefijo fuera → IA (se aprueba y el setter deriva a la entrenadora).
  */
 function decideByZone(
   residence: string,
@@ -438,9 +488,9 @@ function evaluatorUnavailable(
  * Si la IA da un ISO y un nombre de país que no coinciden y uno de los dos está
  * fuera, gana el veto: la contradicción ya es señal de que algo se leyó mal.
  *
- * Residencia en zona con prefijo fuera (+502 "En Canadá") se respeta: Iván lo
- * aprueba y en el chat el setter deriva para que Tania confirme. El motivo lo
- * deja escrito para que se vea en el panel.
+ * Residencia en zona con prefijo fuera (+502 "En Canadá") solo llega aquí con
+ * la excepción D1 encendida (`residence_overrides_prefix`): se respeta y el
+ * motivo lo deja escrito para que se vea en el panel.
  */
 function applyZoneVeto(
   verdict: QualifyResult,
