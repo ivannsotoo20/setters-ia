@@ -62,13 +62,24 @@ type GhlMessage = {
 };
 
 async function ghlGet<T>(token: string, path: string): Promise<T> {
-  const res = await fetch(`${GHL_BASE}${path}`, {
-    headers: { Authorization: `Bearer ${token}`, Version: '2021-07-28', Accept: 'application/json' },
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`GHL ${res.status} ${path}: ${text.slice(0, 200)}`);
-  return JSON.parse(text) as T;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${GHL_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}`, Version: '2021-07-28', Accept: 'application/json' },
+    });
+    const text = await res.text();
+    // Límite de peticiones de GHL: se espera y se reintenta (hasta 4 veces).
+    if (res.status === 429 && attempt < 4) {
+      await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
+      continue;
+    }
+    if (!res.ok) throw new Error(`GHL ${res.status} ${path}: ${text.slice(0, 200)}`);
+    return JSON.parse(text) as T;
+  }
 }
+
+/** Fecha en hora de España (el panel de Tania la enseña así). */
+const dayMadrid = (iso: string | number) =>
+  new Date(iso).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit' });
 
 function toMs(v: number | string | undefined): number {
   if (v == null) return 0;
@@ -122,8 +133,18 @@ async function main(): Promise<void> {
   const storedWelcomes = (msgs ?? []).filter(
     (m) => typeof m.content === 'string' && matchKeyword(m.content, welcomes)?.type === 'bienvenida',
   );
+  const patternLabel = (text: string) => {
+    const hit = matchKeyword(text, welcomes);
+    const idx = hit ? welcomes.findIndex((w) => w.pattern === hit.pattern) : -1;
+    return idx >= 0 ? `frase ${idx + 1} «${preview(welcomes[idx]!.pattern).slice(0, 40)}»` : '¿?';
+  };
   const bySource = new Map<string, number>();
   for (const m of storedWelcomes) bySource.set(m.source, (bySource.get(m.source) ?? 0) + 1);
+  const byPattern = new Map<string, number>();
+  for (const m of storedWelcomes) {
+    const k = patternLabel(m.content as string);
+    byPattern.set(k, (byPattern.get(k) ?? 0) + 1);
+  }
   console.log(`\nMensajes guardados en la BD que casan con una bienvenida: ${storedWelcomes.length}`);
   for (const [s, n] of bySource) {
     const meaning =
@@ -136,6 +157,18 @@ async function main(): Promise<void> {
             : s;
     console.log(`  ${String(n).padStart(4)}  source=${s}: ${meaning}`);
   }
+  console.log('Por frase:');
+  for (const [k, n] of byPattern) console.log(`  ${String(n).padStart(4)}  ${k}`);
+
+  // Lo que debería enseñar "Bienvenidas enviadas" en el panel, día a día.
+  const welcomeConvsByDay = new Map<string, number>();
+  for (const c of convs ?? []) {
+    if (c.conversation_source !== 'bienvenida') continue;
+    const d = dayMadrid(c.created_at);
+    welcomeConvsByDay.set(d, (welcomeConvsByDay.get(d) ?? 0) + 1);
+  }
+  console.log('"Bienvenidas enviadas" por día (lo que debería enseñar el panel):');
+  for (const [d, n] of [...welcomeConvsByDay.entries()].sort()) console.log(`  ${d}  ${n}`);
 
   // --- Lo que dice GHL ------------------------------------------------------------
   const cred = await resolveGhlCredentials(supabase, tenantId, {
@@ -175,7 +208,10 @@ async function main(): Promise<void> {
   type Found = { contactId: string; msg: GhlMessage; ghlConv: string };
   const found: Found[] = [];
   const outboundSources = new Map<string, number>();
+  let done = 0;
   for (const conv of conversations) {
+    done += 1;
+    if (done % 25 === 0) console.log(`  … leídas ${done}/${conversations.length} conversaciones de GHL`);
     let res: { messages?: { messages?: GhlMessage[] } | GhlMessage[] };
     try {
       res = await ghlGet(cred.accessToken, `/conversations/${conv.id}/messages?limit=50`);
@@ -187,12 +223,12 @@ async function main(): Promise<void> {
     for (const m of list) {
       if (m.direction !== 'outbound' || toMs(m.dateAdded) < sinceMs) continue;
       if (!m.body || matchKeyword(m.body, welcomes)?.type !== 'bienvenida') continue;
-      const src = `${m.source ?? '?'} · ${m.messageType ?? '?'}`;
+      const src = `${m.source ?? '?'} · ${m.messageType ?? '?'} · ${patternLabel(m.body)}`;
       outboundSources.set(src, (outboundSources.get(src) ?? 0) + 1);
       found.push({ contactId: m.contactId ?? conv.contactId ?? '', msg: m, ghlConv: conv.id });
     }
   }
-  console.log(`GHL: ${found.length} bienvenidas enviadas en el periodo. Desde dónde se mandaron (source · tipo):`);
+  console.log(`GHL: ${found.length} bienvenidas enviadas en el periodo. Desde dónde se mandaron (source · tipo · frase):`);
   for (const [s, n] of outboundSources) console.log(`  ${String(n).padStart(4)}  ${s}`);
 
   // --- Cruce ----------------------------------------------------------------------
