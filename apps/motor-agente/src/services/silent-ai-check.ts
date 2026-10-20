@@ -121,7 +121,7 @@ export async function findSilentConversations(
     (c) =>
       c.state === 'active' &&
       c.is_handoff_to_human !== true &&
-      !isAiPausedFromDb(c.ai_paused_until as string | null),
+      !isAiPausedFromDb(c.ai_paused_until as string | null, nowMs),
   );
   if (active.length === 0) return [];
 

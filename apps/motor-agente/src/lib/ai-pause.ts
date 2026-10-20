@@ -23,7 +23,11 @@
  *
  * Replica la lógica de `apps/panel/components/conversation-layout/format-helpers.ts:isAiPaused`.
  */
-export function isAiPausedFromDb(raw: string | null | undefined): boolean {
+export function isAiPausedFromDb(
+  raw: string | null | undefined,
+  /** Reloj de referencia; la alerta de IA muda pasa el suyo (tests deterministas). */
+  nowMs: number = Date.now(),
+): boolean {
   if (raw === null || raw === undefined || raw === '') return false;
   // PostgreSQL especial: 'infinity' = pausa permanente.
   if (raw === 'infinity') return true;
@@ -34,5 +38,5 @@ export function isAiPausedFromDb(raw: string | null | undefined): boolean {
   // Si el valor no es parseable, FAIL-SAFE: tratar como pausada. Mejor no
   // disparar IA por un valor raro que dispararla cuando no debíamos.
   if (!Number.isFinite(ts)) return true;
-  return ts > Date.now();
+  return ts > nowMs;
 }

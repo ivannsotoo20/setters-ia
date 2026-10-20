@@ -69,4 +69,10 @@ describe('isAiPausedFromDb', () => {
     // Después del fix:
     expect(isAiPausedFromDb('infinity')).toBe(true); // ✅ correcto
   });
+
+  it('con reloj explícito decide contra ese instante, no contra la hora real', () => {
+    const pausedUntil = '2026-10-20T11:30:00Z';
+    expect(isAiPausedFromDb(pausedUntil, Date.parse('2026-10-20T10:30:00Z'))).toBe(true);
+    expect(isAiPausedFromDb(pausedUntil, Date.parse('2026-10-20T12:30:00Z'))).toBe(false);
+  });
 });
