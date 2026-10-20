@@ -85,13 +85,14 @@ El motor soporta **varios proveedores BSP** en paralelo, decididos por `integrat
 8. Añadir `<PROVIDER>_API_BASE` en `apps/motor-agente/src/config/env.ts` y `.env.example` si aplica.
 9. Tests: `packages/channel-adapters/test/<provider>-api.test.ts` (mock fetch) + `apps/motor-agente/test/parser-<provider>.test.ts` (fixtures payload).
 10. Tras aplicar migration → `pnpm db:generate-types` para tipos DB actualizados.
+11. Antiduplicado en BD: el parser rellena `InboundMessage.providerMessageId` con un id que el proveedor repita en cada reintento (si no lo hay, se deja vacío), la ruta llama a `findMessageByProviderId` justo después del claim de Redis e inserta con `provider` (ver "Redis caído" abajo).
 
 ### Convenciones
 
 - **Token webhook**: `tenant_tokens.purpose = '<provider>_webhook'` (snake_case). Cada ruta filtra por su purpose.
 - **Credenciales sensibles**: `integration_accounts.credentials_encrypted` (JSONB shape `{"blob":"v1:iv:ct:tag"}`, AES-256-GCM via `apps/motor-agente/src/lib/crypto.ts`). La columna legacy `credentials` (plain) se conserva durante la transición — el helper `decodeCredentialsRow` (`apps/motor-agente/src/lib/integration-credentials.ts`) prefiere `credentials_encrypted` y hace fallback a `credentials` plain. Backfill: `node scripts/encrypt-credentials.mjs`. Requiere env `CREDENTIALS_ENCRYPTION_KEY` (32 bytes hex, generar con `openssl rand -hex 32`).
 - **Datos no sensibles**: `integration_accounts.connection_config` (JSON, plain). Para YCloud incluye `business_phone` (E.164).
-- **Dedup Redis**: prefijo `<provider>:{tenantId}:{external_id_estable}`. YCloud usa el `wamid` del mensaje; ManyChat usa `subscriber_id:timestamp`.
+- **Dedup Redis**: prefijo `<provider>:{tenantId}:{external_id_estable}`. YCloud usa el `wamid` del mensaje; ManyChat usa `subscriber_id:timestamp`. Solo cubre 60 s: los reintentos tardíos los para el antiduplicado en BD (ver "Redis caído").
 
 ### Verificación HMAC de webhooks (Hardening 1.2)
 
@@ -100,6 +101,15 @@ El motor soporta **varios proveedores BSP** en paralelo, decididos por `integrat
 | **GHL** | ✅ Sí — **EN ENFORCE desde 2026-08-25** | Dos firmas en paralelo: `x-ghl-signature` (**Ed25519**, 64 bytes base64, clave pública universal de GHL — la vigente) y `x-wh-signature` (RSA-SHA256, **deprecada por GHL el 2026-09-01**). El verifier combinado (`apps/motor-agente/src/lib/webhook-verify-marketplace.ts`) prefiere Ed25519 > RSA > HMAC legado, discriminando por la forma del header. Claves públicas en `GHL_WEBHOOK_ED25519_PUBLIC_KEY_PEM` / `GHL_WEBHOOK_PUBLIC_KEY_PEM` (en el VPS van en UNA línea con `\n` literales; `env.ts` los convierte — el `env_file` de docker compose no admite multilínea). Verificado en producción: webhook real OK por ed25519 + request sin firma → 401. |
 | **YCloud** | ✅ Sí | Header `YCloud-Signature: t=<unix_seconds>,s=<hmac_sha256_hex>`. Signed payload `{ts}.{rawBody}`. Secret se obtiene del panel YCloud (Retrieve a webhook endpoint API) y se guarda en `integration_accounts.webhook_secret`. Implementación: `apps/motor-agente/src/lib/webhook-verify.ts`. Modo configurable vía `YCLOUD_WEBHOOK_VERIFY_MODE=disabled\|warn\|enforce` (default `warn`). En `enforce`, requests sin firma o con firma inválida → 401. Tolerance default 300s anti-replay. Para el tenant 7 el endpoint se creó vía API el 2026-08-25 y el secret real ya está guardado; queda en `warn` hasta ver el primer webhook real verificado. |
 | **ManyChat** | ❌ No | ManyChat NO firma webhooks (verificado 2026-04-21). Protección única: token aleatorio en URL `/webhook/manychat/<tenant_token>`. Deuda asumida hasta que Pablo migre a YCloud / Meta Cloud / GHL (Fase 6). |
+
+### Redis caído (incidente 2026-10-17)
+
+Del 17 al 20-oct Redis (expuesto en `0.0.0.0:6379`, atacado con `REPLICAOF`) dejó de contestar y el motor se quedó esperando sin un error: la IA de Tania estuvo muda tres días y los reintentos de los proveedores duplicaron 774 mensajes. Desde entonces:
+
+- **Redis nunca cuelga el motor** (`apps/motor-agente/src/lib/redis.ts`): `commandTimeout` 2 s y sin cola offline. Colgado → el comando falla a los 2 s; caído → al instante. El dedup de Redis deja pasar (fail-open) y `enqueueDebounceOrDefer` aplaza en memoria lo que no pudo encolar; el tick lo devuelve a Redis cuando vuelve. Todo script que use `getRedis()` tiene que esperar a `waitForRedisReady()` antes del primer comando.
+- **Antiduplicado en BD** (migration 080): `conversation_messages.provider` + `provider_message_id` con índice único `(tenant_id, provider, provider_message_id)`. Completo y no parcial: el upsert de PostgREST (`onConflict` + `ignoreDuplicates`) no sabe apuntar a un índice parcial. Si el mensaje ya está, la ruta contesta 200 sin tocar nada ni encolar.
+- **`/health`** mira Redis y la cola (`redis_reachable`, `debounce_queue_size`, `debounce_overdue`, `debounce_deferred_in_memory`) y devuelve 503 si Redis o Supabase no responden.
+- **Alerta de IA muda** (`services/silent-ai-check.ts`, cada 5 min): conversación activa, sin pausa ni handoff, con integración en su canal y el último mensaje del lead sin respuesta de la IA ni humana en `SILENT_AI_THRESHOLD_MINUTES` (15). Encola un `error_motor` con `payload.kind='ai_silent'`; `notify-trainer` manda los `error_motor` a los agency admins (`profiles.is_agency_admin`), nunca al trainer. `SILENT_AI_ALERT_ENABLED=false` la apaga.
 
 ## Autoría de bloques COACH (coach-engineering)
 
