@@ -47,6 +47,8 @@ describe('parseYCloudInbound — Meta-style payload', () => {
     expect(message!.text).toBe('Hola, vengo del anuncio');
     // 1714900000 (s) -> 1714900000000 (ms)
     expect(message!.timestampMs).toBe(1714900000000);
+    // Antiduplicado en BD (migration 080): el wamid, igual en cada reintento.
+    expect(message!.providerMessageId).toBe('wamid.HBgM123');
   });
 
   it('parses an image inbound with caption and link', () => {
@@ -139,6 +141,7 @@ describe('parseYCloudInbound — Native YCloud payload', () => {
     expect(message!.text).toBe('Hola desde nativo');
     expect(message!.externalUserId).toBe('34699887766');
     expect(message!.timestampMs).toBe(1714900300000);
+    expect(message!.providerMessageId).toBe('wamid.native1');
   });
 
   it('detects native status events as isStatusUpdate', () => {

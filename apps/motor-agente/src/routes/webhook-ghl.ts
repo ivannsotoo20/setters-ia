@@ -20,6 +20,7 @@ import {
   routeGhlOutbound,
 } from '../services/ghl-message-router.js';
 import {
+  findMessageByProviderId,
   resolveTenantByOauthLocation,
   resolveTenantByToken,
 } from '../services/lead-ingest.js';
@@ -204,6 +205,10 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           if (!claimed) {
             return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId });
           }
+          const stored = await findStoredGhlMessage(supabase, tenantId, payload.messageId);
+          if (stored) {
+            return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId, ...stored });
+          }
 
           const debounceWindow = await loadDebounceWindow(supabase, tenantId);
           const inbound = parseGhlInboundMessage(payload, tenantId, request.body);
@@ -224,6 +229,10 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         }
 
         if (payload.type === 'OutboundMessage') {
+          const stored = await findStoredGhlMessage(supabase, tenantId, payload.messageId);
+          if (stored) {
+            return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId, ...stored });
+          }
           const outbound = parseGhlOutboundMessage(payload, tenantId);
           const result = await routeGhlOutbound({ supabase, ghlClient, outbound });
           await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
@@ -407,6 +416,10 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
           if (!claimed) {
             return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId });
           }
+          const stored = await findStoredGhlMessage(supabase, tenantId, payload.messageId);
+          if (stored) {
+            return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId, ...stored });
+          }
 
           const ghlClient = await loadGhlClient(supabase, tenantId);
           const debounceWindow = await loadDebounceWindow(supabase, tenantId);
@@ -428,6 +441,10 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
         }
 
         if (payload.type === 'OutboundMessage') {
+          const stored = await findStoredGhlMessage(supabase, tenantId, payload.messageId);
+          if (stored) {
+            return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId, ...stored });
+          }
           const ghlClient = await loadGhlClient(supabase, tenantId);
           const outbound = parseGhlOutboundMessage(payload, tenantId);
           const result = await routeGhlOutbound({ supabase, ghlClient, outbound });
@@ -462,6 +479,24 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
 // ----------------------------------------------------------------------------
 // Helpers
 // ----------------------------------------------------------------------------
+
+/**
+ * 2026-10-20 — Antiduplicado en BD (migration 080). GHL reintenta un webhook
+ * hasta +10h54m y el Redis solo recuerda 60 s (y nada si está caído): en el
+ * incidente de octubre cada reintento se guardó otra vez, hasta 20 copias. Si
+ * el mensaje ya está guardado, la ruta acusa recibo sin procesarlo, también
+ * los OutboundMessage (un reintento tardío de un mensaje humano volvía a pausar
+ * la IA). Solo el endpoint de la App Marketplace trae `messageId`; el Workflow
+ * webhook no, y ahí no hay nada estable con que deduplicar.
+ */
+async function findStoredGhlMessage(
+  supabase: ReturnType<typeof getSupabase>,
+  tenantId: number,
+  ghlMessageId: string | undefined,
+): Promise<{ conversation_id: number } | null> {
+  const stored = await findMessageByProviderId(supabase, tenantId, 'ghl', ghlMessageId);
+  return stored ? { conversation_id: stored.conversationId } : null;
+}
 
 async function loadGhlClient(
   supabase: ReturnType<typeof getSupabase>,

@@ -27,6 +27,8 @@ describe('parseManyChatInbound', () => {
     expect(message.mediaType).toBeUndefined();
     expect(message.timestampMs).toBe(1713620000000);
     expect(parsed.subscriber.first_name).toBe('Juan');
+    // Antiduplicado en BD (migration 080): subscriber + timestamp del payload.
+    expect(message.providerMessageId).toBe('12345:1713620000000');
   });
 
   it('parses an Instagram audio payload with media_url', () => {
@@ -65,6 +67,8 @@ describe('parseManyChatInbound', () => {
     const { message } = parseManyChatInbound(payload, tenantId);
     expect(message.timestampMs).toBeGreaterThanOrEqual(before);
     expect(message.timestampMs).toBeLessThanOrEqual(Date.now());
+    // Sin timestamp no hay nada estable: no se deduplica en BD.
+    expect(message.providerMessageId).toBeUndefined();
   });
 
   it('rejects payloads with invalid channel', () => {

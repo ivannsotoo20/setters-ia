@@ -6,6 +6,7 @@ import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import {
+  findMessageByProviderId,
   getOrCreateChannel,
   getOrCreateConversation,
   insertInboundMessage,
@@ -69,6 +70,24 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
           .send({ ack: true, deduped: true, tenant_id: tenantId });
       }
 
+      // 3.1. Antiduplicado en BD (2026-10-20, migration 080): sobrevive al TTL
+      //      de Redis y a Redis caído. Solo si el payload trae timestamp (es lo
+      //      único estable que manda ManyChat).
+      const stored = await findMessageByProviderId(
+        supabase,
+        tenantId,
+        'manychat',
+        message.providerMessageId,
+      );
+      if (stored) {
+        return reply.code(200).send({
+          ack: true,
+          deduped: true,
+          tenant_id: tenantId,
+          conversation_id: stored.conversationId,
+        });
+      }
+
       // 4. Canal + lead + conversacion + mensaje
       const { channelId } = await getOrCreateChannel({
         supabase,
@@ -96,12 +115,21 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
         channelId,
       });
 
-      const { messageId } = await insertInboundMessage({
+      const { messageId, duplicate } = await insertInboundMessage({
         supabase,
         tenantId,
         conversationId,
         message,
+        provider: 'manychat',
       });
+      if (duplicate) {
+        return reply.code(200).send({
+          ack: true,
+          deduped: true,
+          tenant_id: tenantId,
+          conversation_id: conversationId,
+        });
+      }
 
       // 4.7. Sprint Iota.3 (Iván 2026-05-12) + Iván (2026-05-25) — Gate
       // manychat_inbound_mode análogo a `ghl_inbound_mode='classified_only'`.

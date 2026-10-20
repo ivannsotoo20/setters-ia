@@ -160,6 +160,8 @@ function buildInboundMessage(
     mediaUrl,
     mediaType,
     timestampMs,
+    // Mismo id que el dedupKey: YCloud lo repite en cada reintento.
+    providerMessageId: msg.id,
     rawPayload: { message: msg, contact, contactName },
   };
 }

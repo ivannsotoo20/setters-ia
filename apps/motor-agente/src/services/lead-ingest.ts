@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { InboundMessage } from '@fyzon/channel-adapters';
+import { logger } from '../lib/logger.js';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 
 export interface ResolveTenantResult {
@@ -296,11 +297,156 @@ export async function getOrCreateConversation({
   return { conversationId: Number(inserted.id), created: true };
 }
 
+// ============================================================================
+// 2026-10-20 — Antiduplicado de webhooks en la base de datos (migration 080)
+// ============================================================================
+//
+// Hasta el incidente de Redis (17-20 oct) el antiduplicado vivía solo en Redis,
+// con TTL de 60 s. Con Redis caído, o cuando el proveedor reintenta pasado ese
+// minuto (YCloud hasta ~5,5 h, GHL hasta +10h54m), cada reintento se guardaba
+// otra vez: 774 filas duplicadas en el tenant 7, hasta 20 copias de un mensaje.
+//
+// Dos líneas, y hacen falta las dos:
+//   1. `findMessageByProviderId`: el webhook la consulta justo después del
+//      Redis. Si el mensaje ya está, contesta 200 sin tocar lead, conversación
+//      ni debounce.
+//   2. `insertWebhookMessageRows`: INSERT ... ON CONFLICT DO NOTHING contra el
+//      índice único (tenant_id, provider, provider_message_id). Cubre la carrera
+//      de dos entregas simultáneas que pasan las dos la consulta.
+
+/** Proveedores que entregan mensajes por webhook con un id estable. */
+export type MessageProvider = 'ycloud' | 'ghl' | 'manychat';
+
+const PROVIDER_DEDUP_ON_CONFLICT = 'tenant_id,provider,provider_message_id';
+
+interface DbError {
+  code?: string;
+  message?: string;
+}
+
+/**
+ * True si el error dice que la migración 080 no está aplicada: columna que
+ * PostgREST no conoce (PGRST204), columna inexistente en Postgres (42703) o
+ * ON CONFLICT sin índice único que lo respalde (42P10).
+ */
+export function isProviderDedupSchemaMissing(error: DbError | null | undefined): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST204' || error.code === '42703' || error.code === '42P10') return true;
+  const msg = error.message ?? '';
+  return /provider/.test(msg) && /column|schema cache|ON CONFLICT/i.test(msg);
+}
+
+function withoutProviderColumns(row: Record<string, unknown>): Record<string, unknown> {
+  const copy = { ...row };
+  delete copy.provider;
+  delete copy.provider_message_id;
+  return copy;
+}
+
+let warnedSchemaMissing = false;
+function warnProviderDedupUnavailable(error: DbError): void {
+  if (warnedSchemaMissing) return;
+  warnedSchemaMissing = true;
+  logger.warn(
+    { code: error.code, err: error.message },
+    'antiduplicado en BD desactivado: falta la migration 080 (conversation_messages.provider_message_id); los mensajes se guardan igual',
+  );
+}
+
+/**
+ * Primera línea: ¿este mensaje del proveedor ya está guardado?
+ *
+ * Fail-open: si la consulta falla (p. ej. la migración aún no está aplicada)
+ * devuelve null y el mensaje sigue su curso.
+ */
+export async function findMessageByProviderId(
+  supabase: SupabaseClient,
+  tenantId: number,
+  provider: MessageProvider,
+  providerMessageId: string | null | undefined,
+): Promise<{ messageId: number; conversationId: number } | null> {
+  if (!providerMessageId) return null;
+  const { data, error } = await supabase
+    .from('conversation_messages')
+    .select('id, conversation_id')
+    .eq('tenant_id', tenantId)
+    .eq('provider', provider)
+    .eq('provider_message_id', providerMessageId)
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    if (isProviderDedupSchemaMissing(error)) {
+      warnProviderDedupUnavailable(error);
+    } else {
+      logger.warn(
+        { tenantId, provider, err: error.message },
+        'findMessageByProviderId: consulta fallida; se procesa como nuevo',
+      );
+    }
+    return null;
+  }
+  if (!data) return null;
+  return { messageId: Number(data.id), conversationId: Number(data.conversation_id) };
+}
+
+/**
+ * Segunda línea: inserta las filas de un mensaje entrante. Si alguna lleva
+ * `provider_message_id`, va con ON CONFLICT DO NOTHING y `duplicate: true`
+ * significa que todas chocaron (ya estaba). Sin id del proveedor es un INSERT
+ * normal. Si la migración 080 no está aplicada, reintenta sin las columnas
+ * nuevas: el mensaje se guarda igual, sin antiduplicado. Lanza si el INSERT
+ * falla por otra causa.
+ */
+export async function insertWebhookMessageRows(
+  supabase: SupabaseClient,
+  rows: Array<Record<string, unknown>>,
+): Promise<{ ids: number[]; duplicate: boolean }> {
+  let toInsert = rows;
+  if (rows.some((r) => r.provider_message_id != null)) {
+    const { data, error } = await supabase
+      .from('conversation_messages')
+      .upsert(rows, { onConflict: PROVIDER_DEDUP_ON_CONFLICT, ignoreDuplicates: true })
+      .select('id');
+    if (!error) {
+      const ids = ((data ?? []) as Array<{ id: number }>).map((r) => Number(r.id));
+      return { ids, duplicate: ids.length === 0 };
+    }
+    if (!isProviderDedupSchemaMissing(error)) {
+      throw new Error(`insert conversation_messages failed: ${error.message}`);
+    }
+    warnProviderDedupUnavailable(error);
+    toInsert = rows.map(withoutProviderColumns);
+  }
+  const { data, error } = await supabase.from('conversation_messages').insert(toInsert).select('id');
+  if (error || !data || data.length === 0) {
+    throw new Error(`insert conversation_messages failed: ${error?.message}`);
+  }
+  return { ids: (data as Array<{ id: number }>).map((r) => Number(r.id)), duplicate: false };
+}
+
+/** Columnas del antiduplicado para la fila `part` de un mensaje del proveedor. */
+export function providerMessageColumns(
+  provider: MessageProvider,
+  providerMessageId: string | null | undefined,
+  part = 0,
+): { provider?: MessageProvider; provider_message_id?: string } {
+  if (!providerMessageId) return {};
+  return {
+    provider,
+    provider_message_id: part === 0 ? providerMessageId : `${providerMessageId}:${part}`,
+  };
+}
+
 interface InsertInboundMessageParams {
   supabase: SupabaseClient;
   tenantId: number;
   conversationId: number;
   message: InboundMessage;
+  /**
+   * Proveedor que entregó el webhook. Con él y `message.providerMessageId` el
+   * INSERT es a prueba de reintentos (migration 080).
+   */
+  provider?: MessageProvider;
 }
 
 export async function insertInboundMessage({
@@ -308,7 +454,8 @@ export async function insertInboundMessage({
   tenantId,
   conversationId,
   message,
-}: InsertInboundMessageParams): Promise<{ messageId: number }> {
+  provider,
+}: InsertInboundMessageParams): Promise<{ messageId: number | null; duplicate: boolean }> {
   const contentType = mapMediaTypeToContentType(message.mediaType);
 
   // Un audio o una imagen sin pie llegan con text='' desde el parser de YCloud.
@@ -317,22 +464,35 @@ export async function insertInboundMessage({
   // (2026-09-03: 12 audios de WhatsApp del tenant 7 sin transcribir).
   const content = typeof message.text === 'string' && message.text.trim().length > 0 ? message.text : null;
 
-  const { data, error } = await supabase
-    .from('conversation_messages')
-    .insert({
-      tenant_id: tenantId,
-      conversation_id: conversationId,
-      source: 'lead',
-      content_type: contentType,
-      content,
-      media_url: message.mediaUrl ?? null,
-      sent_at: new Date(message.timestampMs).toISOString(),
-    })
-    .select('id')
-    .single();
+  const row = {
+    tenant_id: tenantId,
+    conversation_id: conversationId,
+    source: 'lead',
+    content_type: contentType,
+    content,
+    media_url: message.mediaUrl ?? null,
+    sent_at: new Date(message.timestampMs).toISOString(),
+  };
 
-  if (error || !data) {
-    throw new Error(`insertInboundMessage failed: ${error?.message}`);
+  let messageId: number;
+  if (provider && message.providerMessageId) {
+    const res = await insertWebhookMessageRows(supabase, [
+      { ...row, ...providerMessageColumns(provider, message.providerMessageId) },
+    ]);
+    // Ya estaba: otra entrega del mismo mensaje ganó la carrera.
+    if (res.duplicate) return { messageId: null, duplicate: true };
+    messageId = res.ids[0]!;
+  } else {
+    const { data, error } = await supabase
+      .from('conversation_messages')
+      .insert(row)
+      .select('id')
+      .single();
+
+    if (error || !data) {
+      throw new Error(`insertInboundMessage failed: ${error?.message}`);
+    }
+    messageId = Number(data.id);
   }
 
   // Actualiza last_message_at de la conversacion (best-effort).
@@ -341,7 +501,7 @@ export async function insertInboundMessage({
     .update({ last_message_at: new Date(message.timestampMs).toISOString() })
     .eq('id', conversationId);
 
-  return { messageId: Number(data.id) };
+  return { messageId, duplicate: false };
 }
 
 function mapMediaTypeToContentType(

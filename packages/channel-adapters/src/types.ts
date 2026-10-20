@@ -16,6 +16,13 @@ export interface InboundMessage {
   mediaUrl?: string;
   mediaType?: 'audio' | 'image' | 'video' | 'document';
   timestampMs: number;
+  /**
+   * Id del mensaje en el proveedor, el mismo en cada reintento del webhook
+   * (YCloud: id del mensaje; ManyChat: `subscriber_id:timestamp` cuando el
+   * payload trae timestamp). El motor lo guarda como antiduplicado en BD
+   * (migration 080). Ausente si el proveedor no da nada estable.
+   */
+  providerMessageId?: string;
   rawPayload: unknown;
 }
 
