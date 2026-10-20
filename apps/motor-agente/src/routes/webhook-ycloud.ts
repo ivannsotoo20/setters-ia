@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { parseYCloudInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
-import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
 import { verifyYCloudSignature } from '../lib/webhook-verify.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import { env } from '../config/env.js';
@@ -244,7 +244,8 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
       // 6. Encolar/extender debounce
       try {
         const debounceWindowSeconds = await loadDebounceWindow(supabase, tenantId);
-        await enqueueDebounce(getRedis(), conversationId, debounceWindowSeconds);
+        // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
+        await enqueueDebounceOrDefer(getRedis(), conversationId, debounceWindowSeconds);
       } catch (err) {
         request.log.warn({ err }, 'enqueueDebounce failed (non-fatal)');
       }

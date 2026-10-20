@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import { dropDebounce, enqueueDebounce, getExpiredDebounces } from '../lib/debounce-buffer.js';
-import { getRedis } from '../lib/redis.js';
+import {
+  dropDebounce,
+  enqueueDebounceOrDefer,
+  flushDeferredDebounces,
+  getExpiredDebounces,
+} from '../lib/debounce-buffer.js';
+import { createThrottledLog, getRedis } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { processDebounced } from '../services/process-debounced.js';
 import { sendNextBatch } from '../services/outbound-sender.js';
@@ -42,11 +47,21 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let calendarSyncFirstTimer: NodeJS.Timeout | null = null;
   let calendarSyncRunning = false;
   let stopping = false;
+  // Con Redis caído el tick falla cada 5 s; basta un aviso por minuto.
+  const logTickDebounceError = createThrottledLog(60_000);
 
   const tickDebounce = async () => {
     if (stopping) return;
     try {
       const redis = getRedis();
+      // Lo que los webhooks no pudieron encolar mientras Redis no respondía.
+      const recovered = await flushDeferredDebounces(redis);
+      if (recovered.flushed > 0) {
+        app.log.warn(
+          { flushed: recovered.flushed, stillDeferred: recovered.pending },
+          'debounce: conversaciones aplazadas devueltas a la cola tras volver Redis',
+        );
+      }
       const expired = await getExpiredDebounces(redis, Date.now(), 25);
       if (expired.length === 0) return;
       const supabase = getSupabase();
@@ -95,11 +110,13 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
             { err, conversationId: entry.conversationId, retryDelayS: DEBOUNCE_RETRY_DELAY_S },
             'processDebounced failed; re-queueing with delay',
           );
-          await enqueueDebounce(redis, entry.conversationId, DEBOUNCE_RETRY_DELAY_S);
+          // Ya se reclamó (ZREM): si Redis tampoco acepta el re-encolado, se
+          // aplaza en memoria en vez de perder la conversación.
+          await enqueueDebounceOrDefer(redis, entry.conversationId, DEBOUNCE_RETRY_DELAY_S);
         }
       }
     } catch (err) {
-      app.log.error({ err }, 'tickDebounce error');
+      logTickDebounceError((suppressed) => app.log.error({ err, suppressed }, 'tickDebounce error'));
     }
   };
 
@@ -273,6 +290,9 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   };
 
   app.addHook('onReady', async () => {
+    // Abre la conexión a Redis ya, no con el primer webhook: sin cola offline,
+    // un comando que llega antes de que la conexión esté lista falla al momento.
+    getRedis();
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
     // SPIKE Trigger.dev (2026-05-19): si TRIGGER_OUTBOUND_ENABLED=true, el envío
     // de mensajes lo gestiona la task `outboundBatchTick` en Trigger; aquí lo

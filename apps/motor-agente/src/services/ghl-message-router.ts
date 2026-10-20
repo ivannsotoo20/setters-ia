@@ -23,7 +23,7 @@ import type {
   GhlParsedOutbound,
 } from '@fyzon/channel-adapters';
 import { GhlClient } from '@fyzon/ghl-client';
-import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
 import { logger } from '../lib/logger.js';
 import {
@@ -544,7 +544,8 @@ export async function routeGhlInbound(
 
   // 7) Enqueue debounce solo si IA NO está pausada
   if (!isAiPaused) {
-    await enqueueDebounce(redis, conversationId, ctx.debounceWindowSeconds);
+    // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
+    await enqueueDebounceOrDefer(redis, conversationId, ctx.debounceWindowSeconds);
   } else {
     logger.info(
       { conversationId, tenantId: inbound.tenantId, pausedUntil: rawPausedUntil },

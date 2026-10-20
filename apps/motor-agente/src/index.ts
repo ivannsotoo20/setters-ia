@@ -1,5 +1,6 @@
 import { env } from './config/env.js';
 import { assertEncryptionKey } from './lib/crypto.js';
+import { waitForRedisReady } from './lib/redis.js';
 import { buildServer } from './server.js';
 
 async function main(): Promise<void> {
@@ -15,6 +16,13 @@ async function main(): Promise<void> {
   }
 
   const app = await buildServer();
+
+  // Sin cola offline en el cliente Redis (ver lib/redis.ts), esperamos a la
+  // conexión antes de abrir el puerto. Si Redis no está, arrancamos igual: los
+  // webhooks guardan el mensaje y el debounce se aplaza hasta que vuelva.
+  if (!(await waitForRedisReady())) {
+    app.log.warn('Redis no está listo tras 5 s; el motor arranca degradado');
+  }
 
   try {
     await app.listen({ port: env.PORT, host: '0.0.0.0' });

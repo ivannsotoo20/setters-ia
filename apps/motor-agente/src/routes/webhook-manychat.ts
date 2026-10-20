@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { parseManyChatInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
-import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import {
   getOrCreateChannel,
@@ -179,7 +179,8 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
       // 5. Encolar/extender debounce: el cron levantará el pipeline al expirar.
       try {
         const debounceWindowSeconds = await loadDebounceWindow(supabase, tenantId);
-        await enqueueDebounce(getRedis(), conversationId, debounceWindowSeconds);
+        // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
+        await enqueueDebounceOrDefer(getRedis(), conversationId, debounceWindowSeconds);
       } catch (err) {
         // No bloqueamos el ack si Redis está caído — el motor sigue persistiendo.
         request.log.warn({ err }, 'enqueueDebounce failed (non-fatal)');
