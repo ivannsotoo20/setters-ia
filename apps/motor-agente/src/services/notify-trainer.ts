@@ -1,7 +1,14 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@fyzon/db';
 import { sendEmail, type SendEmailResult } from '../lib/email.js';
-import { renderEmailTemplate, type NotificationEventType } from '../lib/email-templates.js';
+import {
+  AGENCY_NOTIFICATION_EVENT_TYPES,
+  renderAgencyEmailTemplate,
+  renderEmailTemplate,
+  type AgencyNotificationEventType,
+  type NotificationEventType,
+  type RenderedEmail,
+} from '../lib/email-templates.js';
 
 /**
  * Notificaciones email al trainer (Sprint Gamma 2.4).
@@ -15,6 +22,10 @@ import { renderEmailTemplate, type NotificationEventType } from '../lib/email-te
  *      sent/failed.
  *
  * Retry policy: 3 intentos con backoff [1m, 5m, 30m]. Tras 3 fallos → status='failed'.
+ *
+ * Avisos técnicos (`error_motor`, 2026-10-20, p. ej. la alerta de IA muda): no
+ * van al trainer sino a los agency admins activos (`profiles.is_agency_admin`),
+ * sin mirar suscripciones.
  *
  * Skip si:
  *   - Trainer sin trainerEmail configurado.
@@ -106,56 +117,77 @@ export async function processNotificationQueue(deps: ProcessDeps): Promise<Proce
     const tenantId = row.tenant_id as number;
 
     try {
-      // 2. Lee trainer_preferences (para email + subscriptions)
-      const { data: prefsRow } = await deps.supabase
-        .from('trainer_preferences')
-        .select('preferences')
-        .eq('tenant_id', tenantId)
-        .maybeSingle();
-      const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
-      const trainerEmail = typeof prefs.trainerEmail === 'string' ? prefs.trainerEmail : null;
-      const trainerName =
-        typeof prefs.trainerName === 'string' && prefs.trainerName.trim() !== ''
-          ? prefs.trainerName.trim()
-          : null;
-      const subscriptions = Array.isArray(prefs.notificationSubscriptions)
-        ? (prefs.notificationSubscriptions as string[])
-        : DEFAULT_SUBSCRIPTIONS;
+      let recipients: string[];
+      let rendered: RenderedEmail;
 
-      // Skip si sin email o no suscrito
-      if (!trainerEmail) {
-        await markSkipped(deps.supabase, row.id as number, 'trainer sin email configurado');
-        result.skipped++;
-        continue;
+      if (AGENCY_NOTIFICATION_EVENT_TYPES.has(row.event_type as string)) {
+        // 2026-10-20 — avisos técnicos (error_motor, p. ej. IA muda): van a los
+        // agency admins (Iván), no al entrenador, y sin suscripción que valga.
+        recipients = await loadAgencyAdminEmails(deps.supabase);
+        if (recipients.length === 0) {
+          await markSkipped(deps.supabase, row.id as number, 'sin agency admin activo con email');
+          result.skipped++;
+          continue;
+        }
+        rendered = renderAgencyEmailTemplate(row.event_type as AgencyNotificationEventType, {
+          tenantName: await loadTenantName(deps.supabase, tenantId),
+          payload: (row.payload as Record<string, unknown>) ?? {},
+        });
+      } else {
+        // 2. Lee trainer_preferences (para email + subscriptions)
+        const { data: prefsRow } = await deps.supabase
+          .from('trainer_preferences')
+          .select('preferences')
+          .eq('tenant_id', tenantId)
+          .maybeSingle();
+        const prefs = (prefsRow?.preferences ?? {}) as Record<string, unknown>;
+        const trainerEmail = typeof prefs.trainerEmail === 'string' ? prefs.trainerEmail : null;
+        const trainerName =
+          typeof prefs.trainerName === 'string' && prefs.trainerName.trim() !== ''
+            ? prefs.trainerName.trim()
+            : null;
+        const subscriptions = Array.isArray(prefs.notificationSubscriptions)
+          ? (prefs.notificationSubscriptions as string[])
+          : DEFAULT_SUBSCRIPTIONS;
+
+        // Skip si sin email o no suscrito
+        if (!trainerEmail) {
+          await markSkipped(deps.supabase, row.id as number, 'trainer sin email configurado');
+          result.skipped++;
+          continue;
+        }
+        if (!subscriptions.includes(eventType)) {
+          await markSkipped(deps.supabase, row.id as number, `no suscrito a '${eventType}'`);
+          result.skipped++;
+          continue;
+        }
+
+        // 3. Lee tenant.name
+        const tenantName = await loadTenantName(deps.supabase, tenantId);
+
+        // 4. Renderiza template (Sprint 2.5b/A: incluye trainerName para saludo personalizado)
+        rendered = renderEmailTemplate(eventType, {
+          tenantName,
+          payload: (row.payload as Record<string, unknown>) ?? {},
+          trainerName,
+        });
+        recipients = [trainerEmail];
       }
-      if (!subscriptions.includes(eventType)) {
-        await markSkipped(deps.supabase, row.id as number, `no suscrito a '${eventType}'`);
-        result.skipped++;
-        continue;
+
+      // 5. Send vía Resend. Con varios destinatarios (agency admins) basta con
+      //    que llegue a uno; si no llega a ninguno, cuenta el último error.
+      let sendResult: SendEmailResult = { ok: false, error: 'sin destinatarios' };
+      let delivered: SendEmailResult | null = null;
+      for (const to of recipients) {
+        sendResult = await sendEmail({
+          to,
+          subject: rendered.subject,
+          html: rendered.html,
+          fetchImpl: deps.fetchImpl,
+        });
+        if (sendResult.ok && !delivered) delivered = sendResult;
       }
-
-      // 3. Lee tenant.name
-      const { data: tenant } = await deps.supabase
-        .from('tenants')
-        .select('name')
-        .eq('id', tenantId)
-        .maybeSingle();
-      const tenantName = (tenant?.name as string | undefined) ?? `Tenant #${tenantId}`;
-
-      // 4. Renderiza template (Sprint 2.5b/A: incluye trainerName para saludo personalizado)
-      const rendered = renderEmailTemplate(eventType, {
-        tenantName,
-        payload: (row.payload as Record<string, unknown>) ?? {},
-        trainerName,
-      });
-
-      // 5. Send vía Resend
-      const sendResult: SendEmailResult = await sendEmail({
-        to: trainerEmail,
-        subject: rendered.subject,
-        html: rendered.html,
-        fetchImpl: deps.fetchImpl,
-      });
+      if (delivered) sendResult = delivered;
 
       if (sendResult.ok) {
         await deps.supabase
@@ -214,6 +246,29 @@ export async function processNotificationQueue(deps: ProcessDeps): Promise<Proce
   }
 
   return result;
+}
+
+async function loadTenantName(supabase: SupabaseTyped, tenantId: number): Promise<string> {
+  const { data: tenant } = await supabase
+    .from('tenants')
+    .select('name')
+    .eq('id', tenantId)
+    .maybeSingle();
+  return (tenant?.name as string | undefined) ?? `Tenant #${tenantId}`;
+}
+
+/** Emails de los agency admins activos (Iván): destino de los avisos técnicos. */
+async function loadAgencyAdminEmails(supabase: SupabaseTyped): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('is_agency_admin', true)
+    .eq('is_active', true);
+  if (error) throw new Error(`load agency admins: ${error.message}`);
+  const emails = (data ?? [])
+    .map((p) => (typeof p.email === 'string' ? p.email.trim() : ''))
+    .filter((e) => e.length > 0);
+  return [...new Set(emails)];
 }
 
 async function markSkipped(

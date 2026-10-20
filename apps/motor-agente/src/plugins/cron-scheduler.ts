@@ -13,6 +13,7 @@ import { processNotificationQueue } from '../services/notify-trainer.js';
 import { evaluateInactivityRules } from '../services/labels/index.js';
 import { runAutoFollowupCron } from '../services/auto-followup-cron.js';
 import { checkIntegrationsHealth } from '../services/integration-health-check.js';
+import { checkSilentAi } from '../services/silent-ai-check.js';
 import { syncCalendarAppointments } from '../services/calendar-sync.js';
 import { env } from '../config/env.js';
 
@@ -22,6 +23,11 @@ const NOTIFY_TICK_MS = 10_000;
 const INACTIVITY_TICK_MS = 60 * 60 * 1_000; // 1h
 const AUTO_FOLLOWUP_TICK_MS = 15 * 60 * 1_000; // 15min
 const INTEGRATION_HEALTH_TICK_MS = 30 * 60 * 1_000; // 30min (Sprint Iota.5 PR-D)
+/**
+ * 2026-10-20 — alerta de IA muda. Con umbral de 15 min y tick de 5, el aviso
+ * sale como mucho ~20 min después del primer mensaje sin respuesta.
+ */
+const SILENT_AI_TICK_MS = 5 * 60 * 1_000;
 /**
  * 2026-09-12 — sondeo de citas GHL. Diez minutos es el tope que tarda una
  * reserva en aparecer como F7 en el panel para las cuentas sin webhook (PIT).
@@ -43,6 +49,8 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let inactivityTimer: NodeJS.Timeout | null = null;
   let autoFollowupTimer: NodeJS.Timeout | null = null;
   let integrationHealthTimer: NodeJS.Timeout | null = null;
+  let silentAiTimer: NodeJS.Timeout | null = null;
+  let silentAiRunning = false;
   let calendarSyncTimer: NodeJS.Timeout | null = null;
   let calendarSyncFirstTimer: NodeJS.Timeout | null = null;
   let calendarSyncRunning = false;
@@ -243,6 +251,29 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  const tickSilentAi = async () => {
+    if (stopping || silentAiRunning) return;
+    silentAiRunning = true;
+    try {
+      const result = await checkSilentAi({
+        supabase: getSupabase(),
+        thresholdMinutes: env.SILENT_AI_THRESHOLD_MINUTES,
+        log: app.log as unknown as {
+          info: (obj: unknown, msg?: string) => void;
+          warn: (obj: unknown, msg?: string) => void;
+          error: (obj: unknown, msg?: string) => void;
+        },
+      });
+      if (result.silent > 0 || result.errors > 0) {
+        app.log.info({ ...result }, 'silent-ai-check completed');
+      }
+    } catch (err) {
+      app.log.error({ err }, 'tickSilentAi error');
+    } finally {
+      silentAiRunning = false;
+    }
+  };
+
   const tickCalendarSync = async () => {
     if (stopping || calendarSyncRunning) return;
     calendarSyncRunning = true;
@@ -304,6 +335,9 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     inactivityTimer = setInterval(tickInactivity, INACTIVITY_TICK_MS);
     autoFollowupTimer = setInterval(tickAutoFollowup, AUTO_FOLLOWUP_TICK_MS);
     integrationHealthTimer = setInterval(tickIntegrationHealth, INTEGRATION_HEALTH_TICK_MS);
+    if (env.SILENT_AI_ALERT_ENABLED) {
+      silentAiTimer = setInterval(tickSilentAi, SILENT_AI_TICK_MS);
+    }
     if (env.CALENDAR_SYNC_ENABLED) {
       calendarSyncFirstTimer = setTimeout(() => {
         void tickCalendarSync();
@@ -318,6 +352,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
         inactivityMs: INACTIVITY_TICK_MS,
         autoFollowupMs: AUTO_FOLLOWUP_TICK_MS,
         integrationHealthMs: INTEGRATION_HEALTH_TICK_MS,
+        silentAiMs: env.SILENT_AI_ALERT_ENABLED ? SILENT_AI_TICK_MS : 'disabled',
         calendarSyncMs: env.CALENDAR_SYNC_ENABLED ? CALENDAR_SYNC_TICK_MS : 'disabled',
       },
       'cron-scheduler started',
@@ -332,6 +367,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     if (inactivityTimer) clearInterval(inactivityTimer);
     if (autoFollowupTimer) clearInterval(autoFollowupTimer);
     if (integrationHealthTimer) clearInterval(integrationHealthTimer);
+    if (silentAiTimer) clearInterval(silentAiTimer);
     if (calendarSyncFirstTimer) clearTimeout(calendarSyncFirstTimer);
     if (calendarSyncTimer) clearInterval(calendarSyncTimer);
     app.log.info('cron-scheduler stopped');
