@@ -98,6 +98,11 @@ valor, nunca el valor. Escanear antes de commitear.
   `residence_overrides_prefix`); precio en dos literales (Core v7 + Judge + V11 con
   `allowed_price_text`); videollamada "para valorar si puedo ayudarte", nunca "armar la
   progresión"; bienvenidas con nombre o emoji distintos ya casan. Orden de despliegue y SQL dentro.
+- [Ronda 2026-10-20: caída de Redis, plan por fases, inbound y país a tiempo](project_tania_ronda_2026-10-20.md) —
+  la IA muda tres días por un Redis expuesto a internet (ataques `REPLICAOF`, ELF como
+  `dump.rdb`), restaurado con el puerto en loopback. Diagnóstico medido: sin bienvenidas a
+  seguidores desde el 8 oct, 21 inbound sin respuesta y país en Instagram de media en el 10.º
+  mensaje. Decisiones D1-D4 de Iván. Hecho en rama: tarjetas de inbound y V23 (país a tiempo).
 
 ### Autoría de coaches (coach-engineering)
 
