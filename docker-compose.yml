@@ -3,7 +3,10 @@ services:
     image: redis:7-alpine
     container_name: fyzon-redis
     ports:
-      - "6379:6379"
+      # Solo loopback. Publicado en 0.0.0.0 y sin contraseña recibió 255 ataques
+      # REPLICAOF y uno dejó un binario como dump.rdb (caída del 17-oct-2026).
+      # El motor entra por la red interna (redis://redis:6379); esto es para pnpm dev.
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     healthcheck:
