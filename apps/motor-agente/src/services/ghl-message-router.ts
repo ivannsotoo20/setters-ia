@@ -23,12 +23,14 @@ import type {
   GhlParsedOutbound,
 } from '@fyzon/channel-adapters';
 import { GhlClient } from '@fyzon/ghl-client';
-import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
 import { logger } from '../lib/logger.js';
 import {
   getOrCreateChannel,
   getOrCreateConversation,
+  insertWebhookMessageRows,
+  providerMessageColumns,
   upsertLead,
 } from './lead-ingest.js';
 import { buildSourceTags, type TagChannel } from '../lib/source-tags.js';
@@ -319,8 +321,12 @@ export interface RouteGhlInboundContext {
 export interface RouteGhlInboundResult {
   conversationId: number;
   leadId: number;
-  messageId: number;
+  /** null si `duplicate`: otra entrega del mismo mensaje ya lo había guardado. */
+  messageId: number | null;
+  /** Con `duplicate` no se llega a mirar la pausa y vale false. */
   isAiPaused: boolean;
+  /** El mensaje ya estaba guardado (carrera entre dos entregas): ni reglas ni debounce. */
+  duplicate: boolean;
 }
 
 export async function routeGhlInbound(
@@ -456,6 +462,10 @@ export async function routeGhlInbound(
   const hasText = typeof inbound.message === 'string' && inbound.message.trim().length > 0;
   const attachments = inbound.attachments ?? [];
 
+  //    2026-10-20 (migration 080): cada fila lleva el messageId de GHL como
+  //    antiduplicado; la fila k>0 (adjuntos) con sufijo ':k'. La ruta ya
+  //    descartó los reintentos con `findMessageByProviderId`; el ON CONFLICT
+  //    de aquí cubre dos entregas simultáneas.
   const messageRows: Array<Record<string, unknown>> = [];
   if (hasText) {
     messageRows.push({
@@ -465,6 +475,7 @@ export async function routeGhlInbound(
       content_type: 'text',
       content: inbound.message,
       sent_at: sentAt,
+      ...providerMessageColumns('ghl', inbound.ghlMessageId, messageRows.length),
     });
   }
   for (const url of attachments) {
@@ -477,6 +488,7 @@ export async function routeGhlInbound(
       content: null,
       media_url: url,
       sent_at: sentAt,
+      ...providerMessageColumns('ghl', inbound.ghlMessageId, messageRows.length),
     });
   }
 
@@ -486,15 +498,21 @@ export async function routeGhlInbound(
     );
   }
 
-  const { data: insertedRows, error: insertErr } = await supabase
-    .from('conversation_messages')
-    .insert(messageRows)
-    .select('id');
-
-  if (insertErr || !insertedRows || insertedRows.length === 0) {
-    throw new Error(`routeGhlInbound: insert message failed: ${insertErr?.message}`);
+  let insertedIds: number[];
+  try {
+    const res = await insertWebhookMessageRows(supabase, messageRows);
+    if (res.duplicate) {
+      logger.info(
+        { tenantId: inbound.tenantId, conversationId, ghlMessageId: inbound.ghlMessageId },
+        'routeGhlInbound: mensaje ya guardado por otra entrega — sin reglas ni debounce',
+      );
+      return { conversationId, leadId, messageId: null, isAiPaused: false, duplicate: true };
+    }
+    insertedIds = res.ids;
+  } catch (err) {
+    throw new Error(`routeGhlInbound: insert message failed: ${errMsg(err)}`);
   }
-  const inserted = insertedRows[0]!;
+  const insertedId = insertedIds[0]!;
 
   if (attachments.length > 0) {
     logger.info(
@@ -544,7 +562,8 @@ export async function routeGhlInbound(
 
   // 7) Enqueue debounce solo si IA NO está pausada
   if (!isAiPaused) {
-    await enqueueDebounce(redis, conversationId, ctx.debounceWindowSeconds);
+    // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
+    await enqueueDebounceOrDefer(redis, conversationId, ctx.debounceWindowSeconds);
   } else {
     logger.info(
       { conversationId, tenantId: inbound.tenantId, pausedUntil: rawPausedUntil },
@@ -555,8 +574,9 @@ export async function routeGhlInbound(
   return {
     conversationId,
     leadId,
-    messageId: Number(inserted.id),
+    messageId: insertedId,
     isAiPaused,
+    duplicate: false,
   };
 }
 
@@ -646,7 +666,7 @@ export async function routeGhlOutbound(
       .eq('id', existing.conversationId)
       .is('conversation_source', null);
 
-    await supabase.from('conversation_messages').insert({
+    await insertOutboundMessageRow(supabase, outbound, {
       tenant_id: outbound.tenantId,
       conversation_id: existing.conversationId,
       source: 'system',
@@ -701,7 +721,7 @@ export async function routeGhlOutbound(
     })
     .eq('id', existing!.conversationId);
 
-  await supabase.from('conversation_messages').insert({
+  await insertOutboundMessageRow(supabase, outbound, {
     tenant_id: outbound.tenantId,
     conversation_id: existing!.conversationId,
     source: 'human',
@@ -833,7 +853,7 @@ async function createConversationFromOutbound(args: {
     })
     .eq('id', conversationId);
 
-  await supabase.from('conversation_messages').insert({
+  await insertOutboundMessageRow(supabase, outbound, {
     tenant_id: outbound.tenantId,
     conversation_id: conversationId,
     source: 'system',
@@ -852,6 +872,29 @@ async function createConversationFromOutbound(args: {
     conversationId,
     isPaused: false,
   };
+}
+
+/**
+ * INSERT de la fila que deja un OutboundMessage (system o human). Como antes,
+ * un fallo no corta el webhook, pero ahora queda en el log. Con el messageId de
+ * GHL va con ON CONFLICT DO NOTHING (migration 080): un reintento que se cuele
+ * a la vez que la entrega original no duplica la fila.
+ */
+async function insertOutboundMessageRow(
+  supabase: SupabaseClient,
+  outbound: GhlParsedOutbound,
+  row: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await insertWebhookMessageRows(supabase, [
+      { ...row, ...providerMessageColumns('ghl', outbound.ghlMessageId) },
+    ]);
+  } catch (err) {
+    logger.warn(
+      { tenantId: outbound.tenantId, ghlContactId: outbound.ghlContactId, err: errMsg(err) },
+      'routeGhlOutbound: insert message failed (non-fatal)',
+    );
+  }
 }
 
 function errMsg(err: unknown): string {

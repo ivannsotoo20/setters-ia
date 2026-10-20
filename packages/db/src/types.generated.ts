@@ -449,6 +449,8 @@ export type Database = {
           id: number
           media_mime: string | null
           media_url: string | null
+          provider: Database["public"]["Enums"]["channel_provider"] | null
+          provider_message_id: string | null
           sent_at: string
           source: Database["public"]["Enums"]["message_source"]
           tenant_id: number
@@ -461,6 +463,8 @@ export type Database = {
           id?: number
           media_mime?: string | null
           media_url?: string | null
+          provider?: Database["public"]["Enums"]["channel_provider"] | null
+          provider_message_id?: string | null
           sent_at?: string
           source: Database["public"]["Enums"]["message_source"]
           tenant_id: number
@@ -473,6 +477,8 @@ export type Database = {
           id?: number
           media_mime?: string | null
           media_url?: string | null
+          provider?: Database["public"]["Enums"]["channel_provider"] | null
+          provider_message_id?: string | null
           sent_at?: string
           source?: Database["public"]["Enums"]["message_source"]
           tenant_id?: number

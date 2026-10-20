@@ -30,6 +30,10 @@ export function parseManyChatInbound(
     mediaUrl: payload.media_url ?? undefined,
     mediaType,
     timestampMs,
+    // ManyChat no manda id de mensaje. subscriber + timestamp del payload es
+    // estable entre reintentos; sin timestamp no hay nada estable (Date.now()).
+    providerMessageId:
+      payload.timestamp != null ? `${payload.subscriber.id}:${payload.timestamp}` : undefined,
     rawPayload: payload,
   };
 

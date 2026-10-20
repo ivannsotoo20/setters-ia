@@ -331,6 +331,115 @@ ${field('Threshold rojo', `${thresholdHours}h`)}
 }
 
 // =============================================================================
+// Avisos técnicos para la agencia (Iván), no para el entrenador
+// =============================================================================
+//
+// 2026-10-20 — el "canal admin separado" que dejó pendiente el Sprint 2.5b/A al
+// sacar `error_motor` del set público. Estos eventos los envía notify-trainer a
+// los agency admins (`profiles.is_agency_admin`), nunca al trainer.
+
+export type AgencyNotificationEventType = 'error_motor';
+
+export const AGENCY_NOTIFICATION_EVENT_TYPES: ReadonlySet<string> = new Set<AgencyNotificationEventType>([
+  'error_motor',
+]);
+
+const CHANNEL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp',
+  instagram_dm: 'Instagram',
+  facebook_messenger: 'Facebook',
+};
+
+function madridTime(iso: unknown): string {
+  const t = typeof iso === 'string' ? Date.parse(iso) : Number.NaN;
+  if (!Number.isFinite(t)) return '—';
+  return new Date(t).toLocaleString('es-ES', {
+    timeZone: 'Europe/Madrid',
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
+/** Aviso de IA muda (services/silent-ai-check.ts). */
+function renderAiSilent(args: RenderArgs): RenderedEmail {
+  const p = args.payload;
+  const total = Number(p.total_silent ?? 0);
+  const fresh = Number(p.new_silent ?? 0);
+  const threshold = Number(p.threshold_minutes ?? 15);
+  const convs = Array.isArray(p.conversations)
+    ? (p.conversations as Array<Record<string, unknown>>)
+    : [];
+
+  const subject = `[Fyzon] La IA no contesta en ${args.tenantName}: ${total} ${
+    total === 1 ? 'conversación' : 'conversaciones'
+  } sin respuesta`;
+
+  const items = convs
+    .map((c) => {
+      const id = Number(c.conversation_id);
+      const channel = CHANNEL_LABELS[String(c.channel_type ?? '')] ?? String(c.channel_type ?? '—');
+      return `<li style="margin:4px 0;"><a href="${esc(panelUrl(`/conversations/${id}`))}" style="color:#0f172a;">#${esc(id)}</a> · ${esc(channel)} · último mensaje del lead: ${esc(madridTime(c.last_lead_at))}</li>`;
+    })
+    .join('');
+
+  const body = `<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">Hay <strong style="color:#0f172a;">${esc(total)}</strong> ${
+    total === 1 ? 'conversación' : 'conversaciones'
+  } con la IA activa y mensajes del lead sin respuesta desde hace más de <strong>${esc(threshold)} min</strong>${
+    fresh < total ? ` (${esc(fresh)} ${fresh === 1 ? 'nueva' : 'nuevas'} desde el último aviso)` : ''
+  }. Más antiguo: ${esc(madridTime(p.oldest_unanswered_at))} (hora de Madrid).</p>
+<ul style="margin:0 0 14px 0;padding-left:20px;color:#374151;font-size:14px;line-height:1.6;">${items}</ul>
+<p style="margin:14px 0 6px 0;color:#374151;font-size:14px;line-height:1.6;">Qué mirar primero:</p>
+<ul style="margin:0 0 14px 0;padding-left:20px;color:#374151;font-size:14px;line-height:1.6;">
+  <li><code>https://setter.fyzon.es/health</code>: <code>redis_reachable</code>, <code>debounce_overdue</code>, <code>debounce_deferred_in_memory</code>.</li>
+  <li>En el VPS, <code>docker ps</code>: ¿Redis y el motor arriba?</li>
+  <li>Logs del motor: <code>processDebounced failed</code>, <code>debounce:</code>, <code>[redis]</code>.</li>
+</ul>
+<p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">No se vuelve a avisar de estas conversaciones salvo que el lead escriba de nuevo.</p>`;
+
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'admin',
+      variant: 'notification',
+      preheader: `${total} sin respuesta de la IA en ${args.tenantName}`,
+      badge: tenantContext(args.tenantName, 'IA muda'),
+      title: subject,
+      body,
+      cta: { url: panelUrl('/conversations'), label: 'Abrir conversaciones' },
+      showCopyUrl: false,
+    }),
+  };
+}
+
+/** Cualquier otro `error_motor`: el payload tal cual, para no perderlo. */
+function renderGenericMotorError(args: RenderArgs): RenderedEmail {
+  const subject = `[Fyzon] Aviso técnico del motor en ${args.tenantName}`;
+  const body = `<pre style="margin:0;white-space:pre-wrap;font-size:12px;color:#374151;">${esc(
+    JSON.stringify(args.payload, null, 2),
+  )}</pre>`;
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'admin',
+      variant: 'notification',
+      preheader: subject,
+      badge: tenantContext(args.tenantName, 'Aviso técnico'),
+      title: subject,
+      body,
+      showCopyUrl: false,
+    }),
+  };
+}
+
+export function renderAgencyEmailTemplate(
+  _eventType: AgencyNotificationEventType,
+  args: RenderArgs,
+): RenderedEmail {
+  if (args.payload.kind === 'ai_silent') return renderAiSilent(args);
+  return renderGenericMotorError(args);
+}
+
+// =============================================================================
 // Dispatcher
 // =============================================================================
 

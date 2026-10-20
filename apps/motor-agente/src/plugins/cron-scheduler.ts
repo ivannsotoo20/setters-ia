@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
-import { dropDebounce, enqueueDebounce, getExpiredDebounces } from '../lib/debounce-buffer.js';
-import { getRedis } from '../lib/redis.js';
+import {
+  dropDebounce,
+  enqueueDebounceOrDefer,
+  flushDeferredDebounces,
+  getExpiredDebounces,
+} from '../lib/debounce-buffer.js';
+import { createThrottledLog, getRedis } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { processDebounced } from '../services/process-debounced.js';
 import { sendNextBatch } from '../services/outbound-sender.js';
@@ -8,6 +13,7 @@ import { processNotificationQueue } from '../services/notify-trainer.js';
 import { evaluateInactivityRules } from '../services/labels/index.js';
 import { runAutoFollowupCron } from '../services/auto-followup-cron.js';
 import { checkIntegrationsHealth } from '../services/integration-health-check.js';
+import { checkSilentAi } from '../services/silent-ai-check.js';
 import { syncCalendarAppointments } from '../services/calendar-sync.js';
 import { env } from '../config/env.js';
 
@@ -17,6 +23,11 @@ const NOTIFY_TICK_MS = 10_000;
 const INACTIVITY_TICK_MS = 60 * 60 * 1_000; // 1h
 const AUTO_FOLLOWUP_TICK_MS = 15 * 60 * 1_000; // 15min
 const INTEGRATION_HEALTH_TICK_MS = 30 * 60 * 1_000; // 30min (Sprint Iota.5 PR-D)
+/**
+ * 2026-10-20 — alerta de IA muda. Con umbral de 15 min y tick de 5, el aviso
+ * sale como mucho ~20 min después del primer mensaje sin respuesta.
+ */
+const SILENT_AI_TICK_MS = 5 * 60 * 1_000;
 /**
  * 2026-09-12 — sondeo de citas GHL. Diez minutos es el tope que tarda una
  * reserva en aparecer como F7 en el panel para las cuentas sin webhook (PIT).
@@ -38,15 +49,27 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let inactivityTimer: NodeJS.Timeout | null = null;
   let autoFollowupTimer: NodeJS.Timeout | null = null;
   let integrationHealthTimer: NodeJS.Timeout | null = null;
+  let silentAiTimer: NodeJS.Timeout | null = null;
+  let silentAiRunning = false;
   let calendarSyncTimer: NodeJS.Timeout | null = null;
   let calendarSyncFirstTimer: NodeJS.Timeout | null = null;
   let calendarSyncRunning = false;
   let stopping = false;
+  // Con Redis caído el tick falla cada 5 s; basta un aviso por minuto.
+  const logTickDebounceError = createThrottledLog(60_000);
 
   const tickDebounce = async () => {
     if (stopping) return;
     try {
       const redis = getRedis();
+      // Lo que los webhooks no pudieron encolar mientras Redis no respondía.
+      const recovered = await flushDeferredDebounces(redis);
+      if (recovered.flushed > 0) {
+        app.log.warn(
+          { flushed: recovered.flushed, stillDeferred: recovered.pending },
+          'debounce: conversaciones aplazadas devueltas a la cola tras volver Redis',
+        );
+      }
       const expired = await getExpiredDebounces(redis, Date.now(), 25);
       if (expired.length === 0) return;
       const supabase = getSupabase();
@@ -95,11 +118,13 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
             { err, conversationId: entry.conversationId, retryDelayS: DEBOUNCE_RETRY_DELAY_S },
             'processDebounced failed; re-queueing with delay',
           );
-          await enqueueDebounce(redis, entry.conversationId, DEBOUNCE_RETRY_DELAY_S);
+          // Ya se reclamó (ZREM): si Redis tampoco acepta el re-encolado, se
+          // aplaza en memoria en vez de perder la conversación.
+          await enqueueDebounceOrDefer(redis, entry.conversationId, DEBOUNCE_RETRY_DELAY_S);
         }
       }
     } catch (err) {
-      app.log.error({ err }, 'tickDebounce error');
+      logTickDebounceError((suppressed) => app.log.error({ err, suppressed }, 'tickDebounce error'));
     }
   };
 
@@ -226,6 +251,29 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  const tickSilentAi = async () => {
+    if (stopping || silentAiRunning) return;
+    silentAiRunning = true;
+    try {
+      const result = await checkSilentAi({
+        supabase: getSupabase(),
+        thresholdMinutes: env.SILENT_AI_THRESHOLD_MINUTES,
+        log: app.log as unknown as {
+          info: (obj: unknown, msg?: string) => void;
+          warn: (obj: unknown, msg?: string) => void;
+          error: (obj: unknown, msg?: string) => void;
+        },
+      });
+      if (result.silent > 0 || result.errors > 0) {
+        app.log.info({ ...result }, 'silent-ai-check completed');
+      }
+    } catch (err) {
+      app.log.error({ err }, 'tickSilentAi error');
+    } finally {
+      silentAiRunning = false;
+    }
+  };
+
   const tickCalendarSync = async () => {
     if (stopping || calendarSyncRunning) return;
     calendarSyncRunning = true;
@@ -273,6 +321,9 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   };
 
   app.addHook('onReady', async () => {
+    // Abre la conexión a Redis ya, no con el primer webhook: sin cola offline,
+    // un comando que llega antes de que la conexión esté lista falla al momento.
+    getRedis();
     debounceTimer = setInterval(tickDebounce, DEBOUNCE_TICK_MS);
     // SPIKE Trigger.dev (2026-05-19): si TRIGGER_OUTBOUND_ENABLED=true, el envío
     // de mensajes lo gestiona la task `outboundBatchTick` en Trigger; aquí lo
@@ -284,6 +335,9 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     inactivityTimer = setInterval(tickInactivity, INACTIVITY_TICK_MS);
     autoFollowupTimer = setInterval(tickAutoFollowup, AUTO_FOLLOWUP_TICK_MS);
     integrationHealthTimer = setInterval(tickIntegrationHealth, INTEGRATION_HEALTH_TICK_MS);
+    if (env.SILENT_AI_ALERT_ENABLED) {
+      silentAiTimer = setInterval(tickSilentAi, SILENT_AI_TICK_MS);
+    }
     if (env.CALENDAR_SYNC_ENABLED) {
       calendarSyncFirstTimer = setTimeout(() => {
         void tickCalendarSync();
@@ -298,6 +352,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
         inactivityMs: INACTIVITY_TICK_MS,
         autoFollowupMs: AUTO_FOLLOWUP_TICK_MS,
         integrationHealthMs: INTEGRATION_HEALTH_TICK_MS,
+        silentAiMs: env.SILENT_AI_ALERT_ENABLED ? SILENT_AI_TICK_MS : 'disabled',
         calendarSyncMs: env.CALENDAR_SYNC_ENABLED ? CALENDAR_SYNC_TICK_MS : 'disabled',
       },
       'cron-scheduler started',
@@ -312,6 +367,7 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     if (inactivityTimer) clearInterval(inactivityTimer);
     if (autoFollowupTimer) clearInterval(autoFollowupTimer);
     if (integrationHealthTimer) clearInterval(integrationHealthTimer);
+    if (silentAiTimer) clearInterval(silentAiTimer);
     if (calendarSyncFirstTimer) clearTimeout(calendarSyncFirstTimer);
     if (calendarSyncTimer) clearInterval(calendarSyncTimer);
     app.log.info('cron-scheduler stopped');

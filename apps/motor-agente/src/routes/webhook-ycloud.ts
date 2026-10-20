@@ -3,11 +3,12 @@ import { ZodError } from 'zod';
 import { parseYCloudInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
-import { enqueueDebounce } from '../lib/debounce-buffer.js';
+import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
 import { verifyYCloudSignature } from '../lib/webhook-verify.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import { env } from '../config/env.js';
 import {
+  findMessageByProviderId,
   getOrCreateChannel,
   getOrCreateConversation,
   hasConversationWithSource,
@@ -150,6 +151,28 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(200).send({ ack: true, deduped: true, tenant_id: tenantId });
       }
 
+      // 4.1. Antiduplicado en BD (2026-10-20, migration 080). El de Redis dura
+      //      60 s; YCloud reintenta hasta ~5,5 h. Si el mensaje ya está
+      //      guardado, se acusa recibo sin tocar nada ni encolar el debounce.
+      const stored = await findMessageByProviderId(
+        supabase,
+        tenantId,
+        'ycloud',
+        message.providerMessageId,
+      );
+      if (stored) {
+        request.log.info(
+          { tenantId, conversationId: stored.conversationId, messageId: stored.messageId },
+          'webhook-ycloud: mensaje ya guardado (reintento del proveedor) — ack sin procesar',
+        );
+        return reply.code(200).send({
+          ack: true,
+          deduped: true,
+          tenant_id: tenantId,
+          conversation_id: stored.conversationId,
+        });
+      }
+
       // 4.5. Hito 10 sub-fase 3 — Gate WA inbound mode.
       //   - 'all'        → flow normal (sin gate). Default backwards-compat.
       //   - 'form_only'  → solo procesa si el lead ya tiene conv con
@@ -234,17 +257,28 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
         channelId,
       });
 
-      const { messageId } = await insertInboundMessage({
+      const { messageId, duplicate } = await insertInboundMessage({
         supabase,
         tenantId,
         conversationId,
         message,
+        provider: 'ycloud',
       });
+      if (duplicate) {
+        // Otra entrega del mismo mensaje ganó la carrera: ya encoló ella.
+        return reply.code(200).send({
+          ack: true,
+          deduped: true,
+          tenant_id: tenantId,
+          conversation_id: conversationId,
+        });
+      }
 
       // 6. Encolar/extender debounce
       try {
         const debounceWindowSeconds = await loadDebounceWindow(supabase, tenantId);
-        await enqueueDebounce(getRedis(), conversationId, debounceWindowSeconds);
+        // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
+        await enqueueDebounceOrDefer(getRedis(), conversationId, debounceWindowSeconds);
       } catch (err) {
         request.log.warn({ err }, 'enqueueDebounce failed (non-fatal)');
       }

@@ -146,6 +146,17 @@ const envSchema = z.object({
     .string()
     .transform((v) => v !== 'false' && v !== '0')
     .default('true'),
+  /**
+   * 2026-10-20 — alerta de IA muda (services/silent-ai-check.ts): avisa a los
+   * agency admins si hay conversaciones con la IA activa y el lead sin
+   * respuesta más de SILENT_AI_THRESHOLD_MINUTES. Default `true`; `false` la
+   * apaga sin desplegar.
+   */
+  SILENT_AI_ALERT_ENABLED: z
+    .string()
+    .transform((v) => v !== 'false' && v !== '0')
+    .default('true'),
+  SILENT_AI_THRESHOLD_MINUTES: z.coerce.number().int().positive().default(15),
 });
 
 const parsed = envSchema.safeParse(process.env);
