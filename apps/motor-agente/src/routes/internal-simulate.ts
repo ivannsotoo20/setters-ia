@@ -362,7 +362,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
           },
           cost_usd: out.totals?.costUsd ?? null,
           // Reglas que pidieron un reintento en este turno (V17, V19, V22, V23…).
-          retries: out.stages
+          retries: (out.stages ?? [])
             .map((s) => s.notes ?? '')
             .filter((n) => n.includes('_retry')),
           latency_ms: Date.now() - startedAt,
