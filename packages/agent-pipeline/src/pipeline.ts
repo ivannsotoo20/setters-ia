@@ -52,6 +52,18 @@ export interface PipelineInput extends GeneratorInput {
      */
     allowResidenceHandoff?: boolean;
   };
+  /**
+   * País a tiempo (2026-10-20, V23). Solo cuando el motor decide que este turno
+   * tiene que preguntar desde dónde escribe la persona: Instagram o Messenger
+   * (sin prefijo), país sin saber, sin haberlo preguntado antes y en el turno N
+   * de la IA o más tarde. Ver `countryAskMiss`.
+   */
+  countryAsk?: {
+    /** Turno de la IA que se está generando (1 = el primero). */
+    turn: number;
+    /** Frase de la entrenadora para preguntarlo, si la configuró. */
+    question?: string | null;
+  };
 }
 
 export interface PipelineStageMetric {
@@ -401,6 +413,60 @@ export async function runPipeline(
     }
   }
 
+  // V23 — país a tiempo (2026-10-20). En Instagram o Messenger no hay prefijo y el
+  // país solo se sabe si ella lo dice. Tania: "el país se está preguntando
+  // demasiado tarde"; medido ese día, 1 de 44 conversaciones de Instagram lo
+  // preguntó en los dos primeros mensajes de la IA y 15 no lo preguntaron nunca.
+  // Con `countryAsk` (el motor decide que toca), un turno que ni lo pregunta ni lo
+  // declara tiene UN reintento. A diferencia de V22, si el reintento falla o
+  // tampoco lo pregunta, el turno sale igual: preguntarlo tarde es mejor que
+  // pausar la conversación. Va antes de V22 para que el cerrojo mire el turno que
+  // de verdad sale.
+  if (
+    input.countryAsk &&
+    validatorCtx.zoneRejected !== true &&
+    countryAskMiss(generatorOut.setterOutput, textForSplitter)
+  ) {
+    try {
+      const retryGen = await runGenerator(deps, {
+        ...input,
+        userMessage: buildCountryAskRetryMessage(input.countryAsk),
+        history: [
+          ...input.history,
+          { role: 'user' as const, content: input.userMessage },
+          { role: 'assistant' as const, content: textForSplitter },
+        ],
+        model: input.models?.generator,
+      });
+      stages.push({
+        role: 'generator',
+        model: retryGen.model,
+        usage: retryGen.usage,
+        llmCallId: retryGen.llmCallId,
+        notes: 'V23_retry',
+      });
+      const retryText = retryGen.setterOutput.message_raw;
+      if (retryText.trim().length > 0) {
+        if (countryAskMiss(retryGen.setterOutput, retryText)) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[pipeline] V23 retry still does not ask the country (tenant=${input.tenantId}, conv=${input.conversationId}). ` +
+              `Delivering retry output anyway.`,
+          );
+        }
+        // El reintento rehace el turno entero: texto, estado, fase y lo que declara.
+        generatorOut.setterOutput = retryGen.setterOutput;
+        textForSplitter = retryText;
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[pipeline] V23 retry threw (tenant=${input.tenantId}, conv=${input.conversationId}): ${err instanceof Error ? err.message : String(err)}. ` +
+          `Delivering original output.`,
+      );
+    }
+  }
+
   // V22 — cerrojo de la videollamada (2026-10-07). Con `callGate`, un turno que
   // propone la videollamada o lleva el enlace de agenda (fase 5-6, `qualified` o
   // la URL del calendario en el texto) tiene que declarar en la tool que la
@@ -612,6 +678,56 @@ export class ZoneCloseError extends Error {
     this.conversationStatus = out.conversation_status;
     this.handoffCause = out.handoff_cause;
   }
+}
+
+/**
+ * Formas habituales de preguntar desde dónde escribe la persona, con y sin tilde
+ * ni signo de apertura. "Desde dónde partes" (el punto de partida de su caso) no
+ * es preguntar el país: tras "desde dónde" tiene que venir escribir, ser o estar.
+ */
+const COUNTRY_QUESTION_RE =
+  /desde\s+d[oó]nde\s+(?:me\s+|nos\s+)?(?:escrib|eres|est[aá]s)|de\s+d[oó]nde\s+(?:me\s+|nos\s+)?(?:escrib|eres)|d[oó]nde\s+(?:vives|resides)|(?:en|de)\s+qu[eé]\s+pa[ií]s|qu[eé]\s+pa[ií]s\s+(?:eres|vives|est[aá]s)/i;
+
+/** ¿El texto pregunta desde dónde escribe la persona? (V23) */
+export function asksForCountry(text: string): boolean {
+  return COUNTRY_QUESTION_RE.test(text);
+}
+
+/**
+ * V23: el turno tenía que preguntar el país y no lo hace. No falla si ya lo
+ * declara (`lead_country_iso`), si el turno cierra, pasa a la entrenadora o pausa,
+ * o si no lleva texto.
+ */
+export function countryAskMiss(
+  out: Pick<SetterToolOutput, 'conversation_status' | 'lead_country_iso'>,
+  text: string,
+): boolean {
+  if (text.trim().length === 0) return false;
+  if (out.conversation_status === 'disqualified' || out.conversation_status === 'handoff') return false;
+  if (out.conversation_status === 'paused') return false;
+  if (typeof out.lead_country_iso === 'string' && out.lead_country_iso.trim().length > 0) return false;
+  return !asksForCountry(text);
+}
+
+/**
+ * Instrucción del reintento de V23. Dice qué falta y con qué frase; el resto del
+ * turno lo conserva el modelo.
+ */
+function buildCountryAskRetryMessage(ask: NonNullable<PipelineInput['countryAsk']>): string {
+  const question = ask.question?.trim();
+  const phrase = question
+    ? `con esta frase de la entrenadora: «${question}»`
+    : 'con la frase que tu bloque usa para preguntarlo';
+  return (
+    `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] Esta conversación va por ` +
+    `Instagram o Messenger: no hay prefijo de teléfono y todavía no sabes desde dónde te escribe. ` +
+    `Tu bloque pide preguntarlo al principio y este ya es tu turno ${ask.turn}. Reescribe TU ` +
+    `ÚLTIMA respuesta para que termine preguntando desde dónde te escribe, ${phrase}. Mantén lo ` +
+    `que ibas a decir antes, pero que la del país sea la única pregunta del turno, sin proponer ` +
+    `la videollamada ni poner ningún enlace de agenda. Si ella YA te ha dicho dónde vive, ` +
+    `devuelve tu misma respuesta y rellena lead_country_iso con ese país. NO menciones esta ` +
+    `corrección al lead.`
+  );
 }
 
 /** Lo que le falta a un turno que propone la videollamada para pasar el cerrojo. */

@@ -46,6 +46,7 @@ import {
   parseZonePolicy,
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
+import { buildCountryAsk, renderCountryAskBlock } from '../lib/country-ask.js';
 import { parseAllowedPriceText } from '../lib/price-policy.js';
 import { pickResidenceAnswer } from './lead-qualifier.js';
 
@@ -473,6 +474,14 @@ export async function processDebounced(
   // tiempo de dolor mínimo declarados por el setter, no sale una propuesta ni el
   // enlace. Con la zona rechazada no hace falta: V20 y V21 ya obligan al cierre.
   const callGate = zoneRejected ? undefined : buildCallGate({ leadQualification, zoneVerdict });
+  // País a tiempo (2026-10-20, V23): en Instagram o Messenger, desde el turno 2
+  // de la IA, si aún no se sabe ni se ha preguntado, este turno lo pregunta.
+  const countryAsk = zoneRejected
+    ? undefined
+    : buildCountryAsk({ leadQualification, channel: channelTypeDb, zoneVerdict, history: historyForPipeline });
+  if (countryAsk) {
+    console.log(`[country-ask] conv=${conversationId} turn=${countryAsk.turn}`);
+  }
   const residenceException = zonePolicy?.residenceOverridesPrefix === true;
   const leadOriginDirective = buildLeadOriginDirective({
     origin: leadOrigin,
@@ -480,7 +489,10 @@ export async function processDebounced(
     formAnswers,
     zone: zoneVerdict,
     residenceException,
-    callGateBlock: renderCallGateBlock(callGate),
+    callGateBlock:
+      [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
+        .filter((b): b is string => Boolean(b))
+        .join('\n\n') || null,
   });
   const systemDirectives = combineSystemDirectives(
     leadOriginDirective,
@@ -546,6 +558,7 @@ export async function processDebounced(
             }
           : undefined,
         callGate,
+        countryAsk,
         // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
         allowedPriceText: parseAllowedPriceText(leadQualification),
         composeOverrides: {

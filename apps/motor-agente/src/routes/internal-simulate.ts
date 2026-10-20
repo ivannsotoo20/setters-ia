@@ -72,6 +72,7 @@ import {
   type ZoneVerdict,
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
+import { buildCountryAsk, renderCountryAskBlock } from '../lib/country-ask.js';
 import { parseAllowedPriceText } from '../lib/price-policy.js';
 import { pickResidenceAnswer } from '../services/lead-qualifier.js';
 import { loadSchedulingConfig } from '../services/process-debounced.js';
@@ -235,6 +236,10 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
 
       // Cerrojo de la videollamada (V22), como en producción.
       const callGate = zoneRejected ? undefined : buildCallGate({ leadQualification, zoneVerdict });
+      // País a tiempo (V23), como en producción.
+      const countryAsk = zoneRejected
+        ? undefined
+        : buildCountryAsk({ leadQualification, channel: body.channel, zoneVerdict, history: body.history });
       const residenceException = zonePolicy?.residenceOverridesPrefix === true;
 
       // En el simulador el origen dice quién abrió: 'inbound' es que escribió
@@ -248,7 +253,10 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         formAnswers: body.form_answers ?? null,
         zone: zoneVerdict,
         residenceException,
-        callGateBlock: renderCallGateBlock(callGate),
+        callGateBlock:
+          [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
+            .filter((b): b is string => Boolean(b))
+            .join('\n\n') || null,
       });
       const systemDirectives = combineSystemDirectives(
         leadOriginDirective,
@@ -291,6 +299,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
                 }
               : undefined,
             callGate,
+            countryAsk,
             // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
             allowedPriceText: parseAllowedPriceText(leadQualification),
             composeOverrides: {
@@ -333,6 +342,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
                 previous_episode: setterOut.previous_episode ?? null,
               }
             : null,
+          // País a tiempo (V23): si este turno tenía que preguntar el país.
+          country_ask: countryAsk ? { turn: countryAsk.turn } : null,
           // Transparencia: qué se le inyectó por venir de donde viene. Es lo que
           // explica que el mismo mensaje se responda distinto según el origen.
           injected_directive: systemDirectives,
@@ -350,6 +361,10 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             simulated_slug: SIMULATION_TRACKING_SLUG,
           },
           cost_usd: out.totals?.costUsd ?? null,
+          // Reglas que pidieron un reintento en este turno (V17, V19, V22, V23…).
+          retries: out.stages
+            .map((s) => s.notes ?? '')
+            .filter((n) => n.includes('_retry')),
           latency_ms: Date.now() - startedAt,
           simulated: true,
         });
