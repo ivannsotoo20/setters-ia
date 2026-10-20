@@ -10,7 +10,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { dropDebounce, getExpiredDebounces } from '../src/lib/debounce-buffer.js';
 import { getAnthropic } from '../src/lib/anthropic.js';
-import { getRedis } from '../src/lib/redis.js';
+import { getRedis, waitForRedisReady } from '../src/lib/redis.js';
 import { getSupabase } from '../src/lib/supabase.js';
 import { processDebounced } from '../src/services/process-debounced.js';
 
@@ -29,6 +29,11 @@ function parseArgs(argv: string[]): Argv {
 async function main(): Promise<void> {
   const args = parseArgs(process.argv);
   const redis = getRedis();
+  // El cliente no tiene cola offline (lib/redis.ts): un comando antes de que la
+  // conexión esté lista falla al momento, así que se espera a que lo esté.
+  if (!(await waitForRedisReady(redis))) {
+    throw new Error('Redis no responde: no se puede leer ni reclamar la cola de debounce');
+  }
   const supabase = getSupabase();
   const anthropic = getAnthropic() as unknown as Anthropic;
 
