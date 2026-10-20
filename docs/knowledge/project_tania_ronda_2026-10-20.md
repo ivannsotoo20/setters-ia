@@ -24,6 +24,12 @@ https://claude.ai/artifact/9scmjLG21769eL4rKXfLF3
 - Ojo al restaurar con Redis vacío: los reintentos pendientes de los proveedores entran como
   mensajes nuevos y disparan la IA. Para evitar doble respuesta se marcaron como recibidos los
   `ghl_oauth:7:<messageId>` pendientes (los `messageId` salen del log `payload received (raw)`).
+- Efecto en Tally: un email "Your Webhooks integration needs attention" con 5 envíos del formulario
+  marcados como fallidos ("timeout of 10000ms exceeded") desde el 19 oct a las 12:12 (hora de
+  Madrid, la `lead_form_submissions` 296). `automation-lead-form.ts` comprueba duplicados en Redis
+  antes de nada y, con Redis caído, la respuesta pasaba de los 10 s de Tally. No se perdió ninguno:
+  todos están guardados y evaluados. Tras restaurar, cada envío tarda 0,3-1,7 s. No hay que
+  reenviarlos desde Tally: un aprobado no recibe otra bienvenida, pero un rechazado se duplicaría.
 - Prevención (endurecer Redis, antiduplicado en BD, `/health` con Redis, alerta de IA muda): rama
   `claude/admiring-albattani-ce0c91`, pendiente del OK de Iván a la migración 080 y al 503 de `/health`.
 - Pendiente: borrar las 114 copias de las 16 conversaciones afectadas. La confirmación del MCP
