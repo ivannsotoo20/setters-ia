@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   enrichWithLeadReplies,
+  enrichWithTeamReplies,
   loadLastMessageBySource,
   loadTestLeadIds,
   loadWindowAppointments,
@@ -78,6 +79,73 @@ describe('enrichWithLeadReplies', () => {
   it('sin outbound no consulta nada', async () => {
     const sb = makeSupabase([]);
     await enrichWithLeadReplies(sb.client, [conv(1, 'inbound')]);
+    expect(sb.batches).toEqual([]);
+  });
+});
+
+/**
+ * Supabase falso para `enrichWithTeamReplies`: registra los lotes de ids y los
+ * orígenes pedidos, y devuelve como "contestadas" las que declara el test.
+ */
+function makeTeamSupabase(answeredIds: number[]): {
+  batches: number[][];
+  sources: string[][];
+  client: any;
+} {
+  const batches: number[][] = [];
+  const sources: string[][] = [];
+  const answered = new Set(answeredIds);
+  const client = {
+    from(table: string) {
+      if (table !== 'conversation_messages') throw new Error(`tabla inesperada ${table}`);
+      let ids: number[] = [];
+      const b: any = {
+        select: () => b,
+        in: (col: string, values: any[]) => {
+          if (col === 'conversation_id') {
+            ids = values as number[];
+            batches.push(values as number[]);
+            return b;
+          }
+          sources.push(values as string[]);
+          return Promise.resolve({
+            data: ids.filter((id) => answered.has(id)).map((id) => ({ conversation_id: id })),
+            error: null,
+          });
+        },
+      };
+      return b;
+    },
+  };
+  return { batches, sources, client };
+}
+
+describe('enrichWithTeamReplies', () => {
+  it('marca solo las inbound, y solo las que tienen mensaje de la entrenadora o de la IA', async () => {
+    const convs = [conv(1, 'inbound'), conv(2, 'inbound'), conv(3, 'outbound')];
+    const sb = makeTeamSupabase([2, 3]);
+    const r = await enrichWithTeamReplies(sb.client, convs);
+    expect(r.error).toBeNull();
+    expect(convs[0]!.has_team_reply).toBe(false);
+    expect(convs[1]!.has_team_reply).toBe(true);
+    // La outbound no se consulta ni se marca: "¿le contestaron?" no aplica.
+    expect(convs[2]!.has_team_reply).toBeUndefined();
+    expect(sb.batches).toEqual([[1, 2]]);
+    expect(sb.sources).toEqual([['ai', 'human']]);
+  });
+
+  it('trocea la consulta en lotes de 200 ids', async () => {
+    const convs = Array.from({ length: 401 }, (_, i) => conv(i + 1, 'inbound'));
+    const sb = makeTeamSupabase([401]);
+    await enrichWithTeamReplies(sb.client, convs);
+    expect(sb.batches.map((b) => b.length)).toEqual([200, 200, 1]);
+    expect(convs[400]!.has_team_reply).toBe(true);
+    expect(convs[0]!.has_team_reply).toBe(false);
+  });
+
+  it('sin inbound no consulta nada', async () => {
+    const sb = makeTeamSupabase([]);
+    await enrichWithTeamReplies(sb.client, [conv(1, 'outbound')]);
     expect(sb.batches).toEqual([]);
   });
 });

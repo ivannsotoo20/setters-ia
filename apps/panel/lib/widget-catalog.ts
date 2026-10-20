@@ -293,6 +293,26 @@ export const WIDGET_CATALOG: WidgetMetricDef[] = [
     category: 'rate',
     supportsChannel: true,
   },
+  // --------------------------------------------------------------------------
+  // Inbound (2026-10-20, petición de Tania desde septiembre): las conversaciones
+  // que abre la persona escribiendo primero por privado, con palabra clave o sin
+  // ella, y si alguien le contestó. Hasta hoy el dashboard solo medía outbound.
+  // --------------------------------------------------------------------------
+  {
+    key: 'inbound_total',
+    label: 'Inbound recibidos',
+    description:
+      'Conversaciones que abrió la persona escribiéndote primero por privado en el periodo, con palabra clave o sin ella.',
+    category: 'volume',
+    supportsChannel: true,
+  },
+  {
+    key: 'inbound_answered_rate',
+    label: 'Inbound atendidos',
+    description: 'De los inbound recibidos, qué % recibió al menos una respuesta tuya o de la IA.',
+    category: 'rate',
+    supportsChannel: true,
+  },
 ];
 
 // ----------------------------------------------------------------------------
@@ -324,6 +344,16 @@ export function isKeywordOutboundConv(c: ConvSnapshot): boolean {
 
 export function hasLeadReply(c: ConvSnapshot): boolean {
   return c.has_lead_reply === true;
+}
+
+/** La persona escribió primero. "Inbound" aquí es la dirección, no la etiqueta de la palabra clave. */
+export function isInboundConv(c: ConvSnapshot): boolean {
+  return c.direction === 'inbound';
+}
+
+/** La entrenadora o la IA le contestaron al menos una vez. */
+export function hasTeamReply(c: ConvSnapshot): boolean {
+  return c.has_team_reply === true;
 }
 
 function replyRate(
@@ -558,6 +588,27 @@ export function computeWidget(
       };
     case 'outbound_keyword_reply_rate':
       return { category: 'rate', value: replyRate(curConvs, prevConvs, isKeywordOutboundConv) };
+    case 'inbound_total':
+      return {
+        category: 'volume',
+        value: toKpi(
+          curConvs.filter(isInboundConv).length,
+          prevConvs.filter(isInboundConv).length,
+        ),
+      };
+    case 'inbound_answered_rate': {
+      const curDen = curConvs.filter(isInboundConv);
+      const prevDen = prevConvs.filter(isInboundConv);
+      return {
+        category: 'rate',
+        value: toRateKpi(
+          curDen.filter(hasTeamReply).length,
+          curDen.length,
+          prevDen.filter(hasTeamReply).length,
+          prevDen.length,
+        ),
+      };
+    }
     default:
       return {
         category: 'volume',
@@ -669,6 +720,12 @@ export function selectWidgetMembers(
     case 'outbound_keyword_reply_rate': {
       const den = curConvs.filter(isKeywordOutboundConv);
       return rate(ids(den), repliedOf(den));
+    }
+    case 'inbound_total':
+      return volume(ids(curConvs.filter(isInboundConv)));
+    case 'inbound_answered_rate': {
+      const den = curConvs.filter(isInboundConv);
+      return rate(ids(den), new Set(den.filter(hasTeamReply).map((c) => c.id)));
     }
     default:
       return volume([]);

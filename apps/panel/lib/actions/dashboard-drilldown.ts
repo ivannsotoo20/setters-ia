@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
 import {
   enrichWithLeadReplies,
+  enrichWithTeamReplies,
   loadChannelMap,
   loadWindowAppointments,
   loadWindowConvs,
@@ -108,8 +109,12 @@ export async function listWidgetMembers(input: {
   if (convsRes.error) return { ok: false, error: convsRes.error };
   if (eventsRes.error) return { ok: false, error: eventsRes.error };
   if (apptRes.error) return { ok: false, error: apptRes.error };
-  const enrich = await enrichWithLeadReplies(supabase, convsRes.convs);
+  const [enrich, enrichTeam] = await Promise.all([
+    enrichWithLeadReplies(supabase, convsRes.convs),
+    enrichWithTeamReplies(supabase, convsRes.convs),
+  ]);
   if (enrich.error) return { ok: false, error: enrich.error };
+  if (enrichTeam.error) return { ok: false, error: enrichTeam.error };
 
   const members = selectWidgetMembers(
     input.metricKey,

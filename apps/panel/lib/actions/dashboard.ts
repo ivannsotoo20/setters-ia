@@ -34,6 +34,7 @@ import type { WidgetRow } from '@/lib/actions/dashboard-widgets';
 import {
   CONV_SNAPSHOT_SELECT,
   enrichWithLeadReplies,
+  enrichWithTeamReplies,
   loadLastMessageBySource,
   loadTestLeadIds,
   loadWindowAppointments,
@@ -266,10 +267,23 @@ export async function loadDashboardData(input: {
   //     de cada conversación vigilada (activas + handoffs) y los leads de prueba.
   //     Y las citas reales del calendario vinculado (2026-09-12): "Citas
   //     agendadas" sale de `calendar_appointments`, no del proxy F6/F7.
+  //     Y para las que abrió la persona (inbound, 2026-10-20): ¿le contestó
+  //     alguien? Alimenta "Inbound atendidos".
   const monitoredIds = Array.from(new Set([...activeConvs, ...handoffConvs].map((c) => c.id)));
-  const [replyCur, replyPrev, lastMsgRes, testLeadsRes, apptCur, apptPrev] = await Promise.all([
+  const [
+    replyCur,
+    replyPrev,
+    teamCur,
+    teamPrev,
+    lastMsgRes,
+    testLeadsRes,
+    apptCur,
+    apptPrev,
+  ] = await Promise.all([
     enrichWithLeadReplies(supabase, convs),
     enrichWithLeadReplies(supabase, prevConvs),
+    enrichWithTeamReplies(supabase, convs),
+    enrichWithTeamReplies(supabase, prevConvs),
     loadLastMessageBySource(supabase, monitoredIds),
     loadTestLeadIds(supabase, tenantId),
     loadWindowAppointments(supabase, {
@@ -289,6 +303,8 @@ export async function loadDashboardData(input: {
   ]);
   if (replyCur.error) return { ok: false, error: replyCur.error };
   if (replyPrev.error) return { ok: false, error: replyPrev.error };
+  if (teamCur.error) return { ok: false, error: teamCur.error };
+  if (teamPrev.error) return { ok: false, error: teamPrev.error };
   if (lastMsgRes.error) return { ok: false, error: lastMsgRes.error };
   if (testLeadsRes.error) return { ok: false, error: testLeadsRes.error };
   if (apptCur.error) return { ok: false, error: apptCur.error };

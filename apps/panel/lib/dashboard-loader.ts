@@ -203,6 +203,39 @@ export async function enrichWithLeadReplies(
   return { error: null };
 }
 
+/**
+ * Rellena `has_team_reply` en las conversaciones INBOUND (las que abrió la
+ * persona escribiendo primero): ¿le contestó la entrenadora o la IA? Muta el
+ * array recibido. Mismo troceo por lotes que `enrichWithLeadReplies`.
+ *
+ * 2026-10-20: un inbound sin palabra clave deja la IA en pausa y, si la
+ * entrenadora no entra, nadie contesta (21 de 25 en el tenant 7 desde el 8 oct).
+ * Este campo es lo que deja verlo en el dashboard.
+ */
+export async function enrichWithTeamReplies(
+  supabase: SupabaseClient,
+  convs: ConvSnapshot[],
+): Promise<{ error: string | null }> {
+  const inbound = convs.filter((c) => c.direction === 'inbound');
+  for (const c of inbound) c.has_team_reply = false;
+  if (inbound.length === 0) return { error: null };
+
+  const ids = inbound.map((c) => c.id);
+  const answered = new Set<number>();
+  for (let i = 0; i < ids.length; i += REPLY_LOOKUP_CHUNK) {
+    const chunk = ids.slice(i, i + REPLY_LOOKUP_CHUNK);
+    const { data, error } = await supabase
+      .from('conversation_messages')
+      .select('conversation_id')
+      .in('conversation_id', chunk)
+      .in('source', ['ai', 'human']);
+    if (error) return { error: error.message };
+    for (const row of data ?? []) answered.add(Number(row.conversation_id));
+  }
+  for (const c of inbound) c.has_team_reply = answered.has(c.id);
+  return { error: null };
+}
+
 const MESSAGE_PAGE_SIZE = 1000;
 
 /**

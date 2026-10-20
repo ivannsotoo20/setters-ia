@@ -56,6 +56,13 @@ export interface ConvSnapshot {
    */
   has_lead_reply?: boolean;
   /**
+   * La entrenadora o la IA han escrito al menos un mensaje (`source` 'human' o
+   * 'ai') en una conversación que abrió la persona. Es lo que convierte en
+   * "atendido" un inbound. Se calcula desde `conversation_messages`, igual que
+   * `has_lead_reply`. Opcional: solo se rellena en las inbound del dashboard.
+   */
+  has_team_reply?: boolean;
+  /**
    * Lead detrás de la conversación (`conversations.lead_id`). Opcional: el
    * dashboard lo usa para dejar fuera de las alertas las conversaciones de
    * prueba (las de Iván).
