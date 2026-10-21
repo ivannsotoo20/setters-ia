@@ -43,6 +43,7 @@ const BUTTON_REPLIES = new Set(
     'si por favor',
     'si gracias',
     'ok gracias',
+    'claro que si',
     'empezar',
     'get started',
     'demarrer',
@@ -68,12 +69,27 @@ export function normalizeOpening(text: string): string {
     .trim();
 }
 
-/** ¿El mensaje es solo una palabra clave o la respuesta de un botón? */
+/**
+ * Saludos y cortesía que van delante del botón y no lo convierten en un mensaje
+ * suyo: «Hola, Si», «Buen día si», «Buenas tardes, si por favor» (Facebook,
+ * tenant 7, 21 oct). Normalizados.
+ */
+const COURTESY_WORDS = new Set(
+  ['hola', 'ola', 'buenas', 'buenos', 'buen', 'dia', 'dias', 'tardes', 'noches', 'gracias'].map((w) =>
+    normalizeOpening(w),
+  ),
+);
+
+/**
+ * ¿El mensaje es solo una palabra clave o la respuesta de un botón, con algún
+ * saludo delante o detrás como mucho? Un saludo solo («Hola») no lo es.
+ */
 export function isBareKeywordOpening(text: string | null | undefined, keywordPatterns: readonly string[]): boolean {
   if (typeof text !== 'string') return false;
-  const norm = normalizeOpening(text);
-  if (norm.length === 0) return false;
-  if (norm.split(' ').length > MAX_BARE_WORDS) return false;
+  const words = normalizeOpening(text).split(' ').filter((w) => w.length > 0);
+  const core = words.filter((w) => !COURTESY_WORDS.has(w));
+  if (core.length === 0 || core.length > MAX_BARE_WORDS) return false;
+  const norm = core.join(' ');
   if (BUTTON_REPLIES.has(norm)) return true;
   return keywordPatterns.some((p) => {
     const k = normalizeOpening(p);
