@@ -30,12 +30,23 @@ https://claude.ai/artifact/9scmjLG21769eL4rKXfLF3
   antes de nada y, con Redis caído, la respuesta pasaba de los 10 s de Tally. No se perdió ninguno:
   todos están guardados y evaluados. Tras restaurar, cada envío tarda 0,3-1,7 s. No hay que
   reenviarlos desde Tally: un aprobado no recibe otra bienvenida, pero un rechazado se duplicaría.
-- Prevención (endurecer Redis, antiduplicado en BD, `/health` con Redis, alerta de IA muda): rama
-  `claude/admiring-albattani-ce0c91`, pendiente del OK de Iván a la migración 080 y al 503 de `/health`.
-- Pendiente: borrar las 114 copias de las 16 conversaciones afectadas. La confirmación del MCP
-  rechazó el `DELETE` dos veces; la consulta y la copia de seguridad están en `.tmp/` del worktree.
-  Regla usada: misma conversación, origen, texto y adjunto que una fila anterior de menos de 25 h,
-  conservando siempre la primera.
+- Prevención en producción desde el 20 oct, 18:00 UTC (`2c8aafe`, PR #12): Redis falla a los 2 s
+  en vez de colgar el motor, antiduplicado en BD (migración 080), `/health` con Redis (503 si cae) y
+  alerta de IA muda por email a Iván. El primer aviso llegó a las 18:05 UTC.
+- La cola de la caída: GHL reintenta cada webhook fallido con el mismo `messageId` a +20 s, 45 s,
+  2 min, 5 min, 15 min, 30 min, 1 h, 3 h, 6 h y 12 h, y luego cada 24 h hasta recibir un 200. El
+  motor guardaba la hora de la entrega, así que mensajes del 17-18 oct entraban como nuevos. La IA
+  intentaba contestar, GHL lo rechazaba con 400 (ventana de Instagram cerrada) y la alerta mandó
+  6 avisos la noche del 20 oct.
+- Desde el 21 oct, 03:45 UTC (`767b1f9`), `sent_at` es `dateAdded`, y lo escrito hace más de 24 h
+  se guarda sin despertar a la IA ni contar para la alerta. La migración 081 impide que
+  `conversations.last_message_at` retroceda.
+- Las 8 conversaciones de Instagram del aviso no estaban paradas por un fallo: llevaban días con la
+  ventana cerrada y solo Tania puede contestarlas, a mano desde la app.
+- Borrado de copias en marcha el 21 oct: se regenera la lista con la regla corregida y Iván ejecuta
+  el `DELETE` en Supabase (la confirmación del MCP lo rechazó dos veces). Regla: misma conversación
+  y origen que una fila anterior de menos de 25 h, con el mismo texto o, en adjuntos, la misma URL.
+  Se conserva siempre la primera.
 
 ## 2. Diagnóstico medido el 20 oct
 
@@ -71,7 +82,10 @@ https://claude.ai/artifact/9scmjLG21769eL4rKXfLF3
 - **D4.** Ya: guía de lo que puede tocar ella y ronda semanal fija. Después: «Mis textos»
   editables en el panel y probados en el simulador.
 
-## 4. Lo hecho en la rama `feat/tania-ronda-20-oct` (sin desplegar)
+## 4. En producción desde el 20 oct (`bd23e50`)
+
+Tarjetas añadidas a su dashboard por canal (`dashboard_widgets` 51-54: recibidos y atendidos de
+`ig-in` y `fb`).
 
 - `72bebfb` **Tarjetas de inbound**: `inbound_total` («Inbound recibidos», `direction='inbound'`)
   e `inbound_answered_rate` («Inbound atendidos», `has_team_reply`: algún mensaje `ai` o `human`).
@@ -88,12 +102,36 @@ https://claude.ai/artifact/9scmjLG21769eL4rKXfLF3
   turno 2; con «Te escribo desde Madrid» no lo pregunta y declara ES. Visto para el v30: si no
   contesta, lo vuelve a preguntar y a veces dice «para saber si puedo acompañarte».
 
-## 5. Pendiente
+## 5. Pendiente (al 21 oct)
 
-1. Respuestas de Tania al mensaje de seis preguntas: qué apertura es bienvenida, inbound sin
-   palabra clave, precio, cierre con recurso, implicación y qué cambió en los calendarios hacia el
-   15-17 oct.
-2. Fase 1 restante: recuento del histórico (D3) y aviso de aperturas sin clasificar en `/keywords`.
-3. Fase 2: coach v30 (precio, encaje, cierre con recurso) y la comprobación del precio en código (D2).
-4. Fase 3: guía, ronda semanal y «Mis textos».
-5. Despliegue de la rama: juntar con `main`, push (deploy del motor y del panel) y añadir las tarjetas.
+1. **Respuestas de Tania.** El 21 oct no había contestado.
+   - Bienvenidas, inbound y citas de madrugada se le reenvían en un mensaje de tres preguntas.
+   - Precio, cierre con recurso e implicación entran en el coach v30, que necesita primero el OK de
+     Iván y después el de Tania a las frases.
+2. **Sin esperar a Tania: desplegado el 21 oct (rama `feat/tania-fase-1-2` en `main`, migración
+   082 aplicada), con el v30 y su configuración SIN cargar.** Lo que actúa ya: el aviso de
+   `/keywords` y la regla de la respuesta al país. D1 y D2 están en el código pero dormidos hasta
+   que se cargue su configuración.
+   - aviso de aperturas sin clasificar en `/keywords` (el motor guarda el Caso C en
+     `unmatched_openings`);
+   - guía de lo que puede tocar ella (`setters_ia/.tmp/ronda-tania-20-oct/guia-tania.md`, sin
+     enviar);
+   - D2 en código. La cifra autorizada solo sale si la primera frase ya salió o si ya había
+     preguntado el precio en un turno contestado; se busca por sus números, porque V11 no ve
+     «€» ni «$». Si la adelanta tras el reintento, sale solo la primera frase (decisión de Iván);
+   - D1 en código. `zone_close_resources` guarda las variantes del cierre 8 con su vídeo; el modelo
+     escribe el cierre y el motor manda la variante cuya URL eligió. Las directivas dicen «ni
+     enlace de agenda» solo a los tenants con recursos;
+   - la respuesta corta a nuestra pregunta del país («De Perú», «Soy de Cuba») es residencia
+     declarada y la cierra el motor. Antes era mención y el modelo improvisaba: en la batería
+     escribió «Cuba está fuera de las zonas donde puedo llevar casos»;
+   - coach v30 escrito, con el OK de Iván al contenido, y probado con la batería local (envuelve el
+     cliente de Supabase: el bloque y la configuración nuevos sin cargar nada). Configuración a
+     cargar con él: `allowed_price_text` «entre 200 y 1.200 €», `price_first_step_text` (el primer
+     literal) y `zone_close_resources` (las tres variantes).
+3. **Lo que depende de sus respuestas:**
+   - recuento del histórico (D3);
+   - alta de sus bienvenidas en `/keywords`;
+   - activar las palabras clave `inbound`;
+   - cargar el v30.
+4. **Fase 3:** ronda semanal y «Mis textos».
