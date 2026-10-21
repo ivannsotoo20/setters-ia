@@ -87,9 +87,10 @@ Lo que sigue haciendo falta a mano está abajo.
    `provider_message_id`. Quedan dos huecos:
    - **Filas guardadas sin id** (todo lo anterior a la migration 080): de cada mensaje entra una
      copia más, la primera entrega buena, y después GHL para.
-   - **La hora de GHL:** el motor guarda como `sent_at` la hora de la entrega, no la de creación
-     (`dateAdded`). Un mensaje de hace días entra como nuevo y despierta a la IA. Hay arreglo en
-     curso.
+   - **La hora de GHL** (resuelto en `767b1f9`, 21-oct): hasta entonces el motor guardaba como
+     `sent_at` la hora de la entrega, y un mensaje de hace días entraba como nuevo y despertaba a la
+     IA. Ahora guarda `dateAdded`, y lo escrito hace más de 24 h entra en su sitio sin despertarla
+     (log `routeGhlInbound: mensaje viejo`). Las filas anteriores conservan la hora de entrega.
 
    Si una de esas copias puede despertar a la IA en una conversación ya contestada y con la ventana
    abierta, marcar antes el mensaje como recibido: `SET ghl_oauth:<tenant>:<messageId> 1 EX 172800
@@ -97,15 +98,17 @@ Lo que sigue haciendo falta a mano está abajo.
    Redis del VPS necesita una petición explícita de Iván.
 8. **Recuperar las conversaciones sin respuesta.** Listar las que tienen IA activa y mensajes de la
    lead después del último mensaje nuestro. **La ventana de 24 h cuenta desde el mensaje original,
-   no desde la última copia reenviada.** En GHL, la hora original es el `dateAdded` del log, no la
-   `sent_at` guardada. Meter en la cola solo las que tienen la ventana abierta, empezando por la que
+   no desde la última copia reenviada.** En GHL es la `sent_at` desde `767b1f9`; en filas
+   anteriores, el `dateAdded` del log. Meter en la cola solo las que tienen la ventana abierta, empezando por la que
    cierra antes y con 15 s entre una y otra:
    `docker exec fyzon-redis redis-cli ZADD fyzon:debounce:conversations <ms> <conversation_id>`.
    Comprobar que salen en `message_schedules` (`status='sent'`). Las de ventana cerrada, al trainer:
    Instagram a mano desde la app; WhatsApp necesita plantilla.
-9. **La cola de las 24 h siguientes.** Al restaurar, cada mensaje de GHL que seguía fallando vuelve
-   una vez más, en su siguiente paso del calendario. Los que llevaban más de un día fallando vuelven
-   a las 24 h justas de su último intento.
+9. **La cola de las 24 h siguientes.** Desde `767b1f9` lo escrito hace más de 24 h ya no despierta
+   a la IA ni entra en la alerta: este paso vale para reintentos de filas guardadas antes. Al
+   restaurar, cada mensaje de GHL que seguía fallando vuelve una vez más, en su siguiente paso del
+   calendario. Los que llevaban más de un día fallando vuelven a las 24 h justas de su último
+   intento.
    - **Si la conversación tiene la IA activa**, la copia la despierta: un turno de unos 0,15 $.
    - **Con la ventana cerrada**, GHL rechaza el envío con 400. A la lead no le llega nada y al
      trainer no se le avisa: el horario acaba en `failed`, sin notificación.
@@ -173,8 +176,9 @@ Lo que sigue haciendo falta a mano está abajo.
 - Buscar el fallo en los canales cuando es la cola interna: los webhooks llegan aunque la IA no
   conteste.
 - Reiniciar o vaciar Redis sin mirar qué había en `dump.rdb` (aquí era un ataque).
-- Contar la ventana de 24 h desde la última copia o desde la `sent_at` de GHL, que es la hora de la
-  entrega: dos conversaciones de WhatsApp se dieron por abiertas y llevaban horas cerradas.
+- Contar la ventana de 24 h desde la última copia, o desde la `sent_at` de las filas de GHL
+  anteriores a `767b1f9` (hora de la entrega): dos conversaciones de WhatsApp se dieron por abiertas
+  y llevaban horas cerradas.
 - Que la IA conteste dos veces al mismo mensaje cuando entran los reintentos tras restaurar.
 - Tomar por una caída nueva la cola de avisos de las 24 h siguientes a restaurar.
 - Dar por hecho que el antiduplicado en BD frena las copias de lo guardado antes de la migration 080.
@@ -184,11 +188,10 @@ Lo que sigue haciendo falta a mano está abajo.
 
 ## Próxima revisión
 
-Revisado el 20-oct-2026, tras desplegar la prevención (`2c8aafe`) y ver su primer aviso. La
-siguiente toca en dos momentos:
-- cuando se despliegue el arreglo de la hora de GHL (`dateAdded` como `sent_at` y sin IA para
-  mensajes de más de 24 h), que acorta los pasos 7 y 9;
-- tras el primer aviso real que no sea la cola de este incidente.
+Revisado el 20-oct-2026 tras desplegar la prevención (`2c8aafe`) y el 21-oct con el arreglo de la
+hora de GHL (`767b1f9`, migration 081). La siguiente revisión toca en dos momentos:
+- tras el primer aviso real que no sea la cola de este incidente;
+- si aparecen copias de YCloud fechadas con la hora de entrega: hoy no se lee su `sendTime`.
 
 ## Relacionado
 
@@ -196,7 +199,8 @@ siguiente toca en dos momentos:
   `routes/health.ts`, `routes/automation-lead-form.ts`.
 - `services/silent-ai-check.ts` (la alerta), `services/notify-trainer.ts` y `lib/email-templates.ts`
   (el email), `services/ghl-message-router.ts` (la `sent_at` de GHL).
-- Migration `schema/v1/migrations/080-conversation-messages-provider-message-id.sql`.
+- Migrations `schema/v1/migrations/080-conversation-messages-provider-message-id.sql` y
+  `081-conversation-last-message-at-monotonic.sql`.
 - SOP [queja de producción sobre el setter](queja-produccion-setter.md).
 - Skill `fyzon-security-audit` si hay indicios de intrusión más allá del contenedor.
 - Memorias: `project_incidente_redis_expuesto_2026_10`, `reference_git_en_modo_auto`.
