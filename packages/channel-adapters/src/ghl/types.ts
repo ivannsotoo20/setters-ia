@@ -35,8 +35,16 @@ export interface GhlWebhookPayload {
   direction: GhlWebhookDirection;
   /** ID interno del mensaje en GHL. */
   messageId?: string;
-  /** Timestamp ISO 8601. */
+  /**
+   * Timestamp ISO 8601. En el webhook de la App Marketplace es la hora de la
+   * ENTREGA: cambia en cada reintento de GHL. La del mensaje es `dateAdded`.
+   */
   timestamp?: string;
+  /**
+   * Cuándo se creó el mensaje en GHL (ISO 8601). Es la misma en todos los
+   * reintentos del webhook (caso real: escrito el 17-oct, entregado el 20).
+   */
+  dateAdded?: string;
   /** Lista de URLs de adjuntos (imágenes, audios, etc). */
   attachments?: string[];
   /**
@@ -60,7 +68,10 @@ export interface GhlParsedInbound {
   message: string;
   attachments: string[];
   ghlMessageId: string | null;
+  /** En la App Marketplace, hora de la entrega del webhook: cambia en cada reintento. */
   timestamp: string | null;
+  /** Cuándo se escribió el mensaje (`dateAdded` de GHL): igual en cada reintento. */
+  dateAdded: string | null;
   /** Datos opcionales del contacto si vinieron en el payload (Workflow webhook). */
   contactInfo?: {
     firstName?: string | null;
@@ -81,5 +92,8 @@ export interface GhlParsedOutbound {
   /** True si el body contiene ZWSP — significa que es nuestro propio mensaje IA. */
   isAiSelfEcho: boolean;
   ghlMessageId: string | null;
+  /** En la App Marketplace, hora de la entrega del webhook: cambia en cada reintento. */
   timestamp: string | null;
+  /** Cuándo se escribió el mensaje (`dateAdded` de GHL): igual en cada reintento. */
+  dateAdded: string | null;
 }

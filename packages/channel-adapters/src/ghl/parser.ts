@@ -93,6 +93,9 @@ const marketplaceSchema = z.object({
   direction: z.enum(['inbound', 'outbound']),
   messageId: z.string().optional(),
   timestamp: z.string().optional(),
+  /** Solo fecha el mensaje: si GHL lo mandara con otra forma se descarta, en
+   *  vez de rechazar el webhook entero (eso tiraría el mensaje). */
+  dateAdded: z.string().optional().catch(undefined),
   attachments: z.array(z.string()).optional(),
 });
 
@@ -298,7 +301,7 @@ function normalizeWorkflowToInternal(
     direction,
     ...(conversationSource ? { conversationSource } : {}),
     ...(attachments.length > 0 ? { attachments } : {}),
-    // Workflow webhook no expone conversationId / messageId / timestamp en body estándar
+    // Workflow webhook no expone conversationId / messageId / timestamp / dateAdded en body estándar
   };
 }
 
@@ -394,6 +397,7 @@ export function parseGhlInboundMessage(
     attachments: payload.attachments ?? [],
     ghlMessageId: payload.messageId ?? null,
     timestamp: payload.timestamp ?? null,
+    dateAdded: payload.dateAdded ?? null,
     contactInfo: contactInfo ?? undefined,
     ...(payload.conversationSource ? { conversationSource: payload.conversationSource } : {}),
   };
@@ -418,6 +422,7 @@ export function parseGhlOutboundMessage(
     isAiSelfEcho: containsZwsp(payload.body),
     ghlMessageId: payload.messageId ?? null,
     timestamp: payload.timestamp ?? null,
+    dateAdded: payload.dateAdded ?? null,
   };
 }
 
