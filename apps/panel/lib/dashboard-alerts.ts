@@ -48,6 +48,11 @@ export interface Alert {
   channel?: ChannelKey;
   metric?: string;
   weight: number;
+  /**
+   * Las conversaciones que cuenta la alerta, para abrirlas desde el dashboard
+   * (2026-10-21, Tania: "al pulsar en las alertas no me da acceso").
+   */
+  convIds?: number[];
 }
 
 const SEVERITY_WEIGHT: Record<AlertSeverity, number> = {
@@ -140,6 +145,7 @@ function awaitingReplyAlert(r: WaitingResult): Alert | null {
     message,
     metric: 'awaitingReply',
     weight: SEVERITY_WEIGHT.critical + r.count,
+    convIds: r.convIds,
   };
 }
 
@@ -157,6 +163,7 @@ function handoffUnattendedAlert(r: WaitingResult): Alert | null {
     message,
     metric: 'handoffUnattended',
     weight: SEVERITY_WEIGHT.warning + r.count,
+    convIds: r.convIds,
   };
 }
 

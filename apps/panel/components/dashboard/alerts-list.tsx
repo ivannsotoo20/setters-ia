@@ -1,8 +1,16 @@
 'use client';
 
-import { AlertCircle, AlertTriangle, Info as InfoIcon, TrendingUp } from 'lucide-react';
+import Link from 'next/link';
+import {
+  AlertCircle,
+  AlertTriangle,
+  ChevronRight,
+  Info as InfoIcon,
+  TrendingUp,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Alert, AlertSeverity } from '@/lib/dashboard-alerts';
+import { MAX_FILTER_IDS } from '@/lib/conversation-list-query';
 
 interface Props {
   alerts: Alert[];
@@ -40,14 +48,14 @@ export function AlertsList({ alerts }: Props) {
       <div className="flex flex-col gap-1.5">
         {alerts.map((alert) => {
           const Icon = SEVERITY_STYLES[alert.severity].icon;
-          return (
-            <div
-              key={alert.id}
-              className={cn(
-                'rounded-lg border px-3 py-2 flex items-start gap-2.5 text-xs',
-                SEVERITY_STYLES[alert.severity].bg,
-              )}
-            >
+          const href = alertHref(alert);
+          const className = cn(
+            'rounded-lg border px-3 py-2 flex items-start gap-2.5 text-xs',
+            SEVERITY_STYLES[alert.severity].bg,
+            href && 'transition-colors hover:border-foreground/30',
+          );
+          const content = (
+            <>
               <Icon
                 className={cn(
                   'size-3.5 shrink-0 mt-0.5',
@@ -55,10 +63,36 @@ export function AlertsList({ alerts }: Props) {
                 )}
               />
               <span className="flex-1 leading-relaxed">{alert.message}</span>
+              {href ? (
+                <span className="inline-flex items-center gap-0.5 shrink-0 font-medium text-muted-foreground">
+                  Ver
+                  <ChevronRight className="size-3" />
+                </span>
+              ) : null}
+            </>
+          );
+          return href ? (
+            <Link key={alert.id} href={href} className={className}>
+              {content}
+            </Link>
+          ) : (
+            <div key={alert.id} className={className}>
+              {content}
             </div>
           );
         })}
       </div>
     </div>
   );
+}
+
+/**
+ * Las alertas que cuentan conversaciones concretas abren esa lista (2026-10-21,
+ * Tania: "al pulsar en las alertas no me da acceso"). El resto siguen siendo texto.
+ */
+function alertHref(alert: Alert): string | null {
+  const ids = alert.convIds ?? [];
+  if (ids.length === 0) return null;
+  if (alert.type !== 'awaiting_reply' && alert.type !== 'handoff_unattended') return null;
+  return `/conversations?ids=${ids.slice(0, MAX_FILTER_IDS).join(',')}&alert=${alert.type}`;
 }

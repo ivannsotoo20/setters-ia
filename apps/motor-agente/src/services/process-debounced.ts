@@ -4,6 +4,7 @@ import {
   runPipeline,
   loadConversationHistory,
   asksForCountry,
+  closeAlreadySent,
   CallGateError,
   CALL_GATE_ERROR_PREFIX,
   ZoneCloseError,
@@ -46,6 +47,7 @@ import {
   isZoneRejectVerdict,
   loadLeadQualification,
   parseZonePolicy,
+  zoneExploreTurnsLeft,
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
 import { buildCountryAsk, renderCountryAskBlock } from '../lib/country-ask.js';
@@ -452,16 +454,21 @@ export async function processDebounced(
   // cierre (ver `currentPhaseFocus` más abajo).
   const leadQualification = await loadLeadQualification(supabase, tenantId);
   const zonePolicy = parseZonePolicy(leadQualification);
-  const zoneVerdict = evaluateZone({
-    phone: (lead.phone as string | null | undefined) ?? null,
-    leadMessages: allHistory.filter((m) => m.role === 'user').map((m) => m.content),
-    // 2026-10-21: lo que contestó a nuestra pregunta del país es su residencia.
-    countryAnswers: countryAnswersOf(allHistory, asksForCountry),
-    policy: zonePolicy,
-    // D1 (2026-09-26): la residencia que declaró en el formulario decide la
-    // excepción "prefijo de fuera, vive en zona" sin depender del modelo.
-    declaredResidence: formAnswers ? pickResidenceAnswer(formAnswers, RESIDENCE_LABEL, null)?.value ?? null : null,
-  });
+  // D1 (2026-09-26): la residencia que declaró en el formulario decide la
+  // excepción "prefijo de fuera, vive en zona" sin depender del modelo.
+  const declaredResidence = formAnswers
+    ? pickResidenceAnswer(formAnswers, RESIDENCE_LABEL, null)?.value ?? null
+    : null;
+  const zoneVerdictAt = (history: ReadonlyArray<{ role: string; content: string }>) =>
+    evaluateZone({
+      phone: (lead.phone as string | null | undefined) ?? null,
+      leadMessages: history.filter((m) => m.role === 'user').map((m) => m.content),
+      // 2026-10-21: lo que contestó a nuestra pregunta del país es su residencia.
+      countryAnswers: countryAnswersOf(history, asksForCountry),
+      policy: zonePolicy,
+      declaredResidence,
+    });
+  const zoneVerdict = zoneVerdictAt(allHistory);
   // `zoneRejected` enciende V20 (ningún enlace) en los dos modos; el modo dice si
   // el turno cierra o pasa a la entrenadora (V21 y la focal).
   const zoneHandoff = zoneVerdict.kind === 'prefix_out_residence_in';
@@ -489,6 +496,19 @@ export async function processDebounced(
   const residenceException = zonePolicy?.residenceOverridesPrefix === true;
   // D1 (2026-10-21): cierres de zona con recurso. El cierre puede llevar su vídeo.
   const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0;
+  // Margen antes del cierre (2026-10-21, Tania): con la residencia de fuera dicha
+  // por ella, hasta `zone_explore_turns` turnos para entender qué le pasa. Con el
+  // cierre ya enviado no hay margen que dar.
+  const zoneCloseSent = [zonePolicy?.closeParts ?? [], ...(zonePolicy?.closeVariants ?? [])].some(
+    (parts) => parts.length > 0 && closeAlreadySent(historyForPipeline, parts),
+  );
+  const zoneExploreLeft =
+    zoneRejected && !zoneHandoff && !zoneCloseSent
+      ? zoneExploreTurnsLeft({ policy: zonePolicy, verdict: zoneVerdict, history: allHistory, verdictAt: zoneVerdictAt })
+      : 0;
+  if (zoneExploreLeft > 0) {
+    console.log(`[zone] conv=${conversationId} margen antes del cierre: ${zoneExploreLeft} turno(s)`);
+  }
   const leadOriginDirective = buildLeadOriginDirective({
     origin: leadOrigin,
     channel: channelTypeDb,
@@ -496,6 +516,7 @@ export async function processDebounced(
     zone: zoneVerdict,
     residenceException,
     closeWithResource,
+    zoneExploreTurnsLeft: zoneExploreLeft,
     callGateBlock:
       [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
         .filter((b): b is string => Boolean(b))
@@ -522,6 +543,7 @@ export async function processDebounced(
   const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false, {
     zoneClose: zoneRejected,
     zoneCloseWithResource: closeWithResource,
+    zoneExploreTurnsLeft: zoneExploreLeft,
     zoneHandoff,
   });
 
@@ -564,6 +586,8 @@ export async function processDebounced(
               closeParts: zonePolicy?.closeParts ?? null,
               closeVariants: zonePolicy?.closeVariants ?? null,
               allowResidenceHandoff: residenceException,
+              exploreTurnsLeft: zoneExploreLeft,
+              term: zoneVerdict.kind === 'reject_by_declaration' ? zoneVerdict.term : null,
             }
           : undefined,
         callGate,

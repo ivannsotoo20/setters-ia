@@ -8,6 +8,7 @@ import {
   type MessageSource,
 } from './dashboard-query';
 import type { PipelineEvent } from './pipeline-metrics';
+import { isKeywordFlowOpening } from './inbound-opening';
 
 /**
  * Carga compartida del dashboard (2026-09-02).
@@ -313,4 +314,69 @@ export async function loadTestLeadIds(
     if (isTestLeadName(row.first_name as string | null)) testLeadIds.add(Number(row.id));
   }
   return { testLeadIds, error: null };
+}
+
+/**
+ * Rellena `inbound_keyword_flow` en las conversaciones INBOUND: si empezaron con
+ * la palabra clave suelta o el botón de una automatización, o si la automatización
+ * de la entrenadora las contestó en segundos (ver lib/inbound-opening.ts). Muta el
+ * array recibido.
+ *
+ * Las palabras clave son todas las del tenant, activas o no: las de ManyChat no
+ * viven aquí y las que sí («hernia», «lumbar»…) son las mismas que usa ella.
+ */
+export async function enrichWithInboundOpenings(
+  supabase: SupabaseClient,
+  convs: ConvSnapshot[],
+  tenantId: number,
+): Promise<{ error: string | null }> {
+  const inbound = convs.filter((c) => c.direction === 'inbound');
+  for (const c of inbound) c.inbound_keyword_flow = false;
+  if (inbound.length === 0) return { error: null };
+
+  const kw = await supabase.from('automation_keywords').select('pattern').eq('tenant_id', tenantId);
+  if (kw.error) return { error: kw.error.message };
+  const patterns = (kw.data ?? []).map((r) => String(r.pattern ?? '')).filter((p) => p.length > 0);
+
+  const firstLead = new Map<number, { text: string; at: string }>();
+  const firstAuto = new Map<number, string>();
+  const ids = inbound.map((c) => c.id);
+  for (let i = 0; i < ids.length; i += REPLY_LOOKUP_CHUNK) {
+    const chunk = ids.slice(i, i + REPLY_LOOKUP_CHUNK);
+    let offset = 0;
+    for (;;) {
+      const { data, error } = await supabase
+        .from('conversation_messages')
+        .select('conversation_id, source, content, sent_at')
+        .in('conversation_id', chunk)
+        .in('source', ['lead', 'system'])
+        .order('sent_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(offset, offset + MESSAGE_PAGE_SIZE - 1);
+      if (error) return { error: error.message };
+      const rows = data ?? [];
+      for (const row of rows) {
+        const convId = Number(row.conversation_id);
+        const sentAt = String(row.sent_at);
+        if (row.source === 'lead') {
+          if (!firstLead.has(convId)) firstLead.set(convId, { text: String(row.content ?? ''), at: sentAt });
+        } else if (firstLead.has(convId) && !firstAuto.has(convId)) {
+          firstAuto.set(convId, sentAt);
+        }
+      }
+      if (rows.length < MESSAGE_PAGE_SIZE) break;
+      offset += MESSAGE_PAGE_SIZE;
+    }
+  }
+
+  for (const c of inbound) {
+    const lead = firstLead.get(c.id);
+    c.inbound_keyword_flow = isKeywordFlowOpening({
+      firstLeadText: lead?.text ?? null,
+      firstLeadAt: lead?.at ?? null,
+      firstAutoReplyAt: firstAuto.get(c.id) ?? null,
+      keywordPatterns: patterns,
+    });
+  }
+  return { error: null };
 }

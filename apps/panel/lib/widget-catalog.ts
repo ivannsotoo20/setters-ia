@@ -302,7 +302,7 @@ export const WIDGET_CATALOG: WidgetMetricDef[] = [
     key: 'inbound_total',
     label: 'Inbound recibidos',
     description:
-      'Conversaciones que abrió la persona escribiéndote primero por privado en el periodo, con palabra clave o sin ella.',
+      'Conversaciones que abrió la persona escribiéndote primero por privado con un mensaje suyo. No cuentan las que empiezan con una palabra clave suelta («espalda», «hernia») o el botón de una automatización («sí», «empezar»), ni las que contesta tu automatización.',
     category: 'volume',
     supportsChannel: true,
   },
@@ -346,9 +346,14 @@ export function hasLeadReply(c: ConvSnapshot): boolean {
   return c.has_lead_reply === true;
 }
 
-/** La persona escribió primero. "Inbound" aquí es la dirección, no la etiqueta de la palabra clave. */
+/**
+ * La persona escribió primero, con un mensaje suyo. "Inbound" aquí es la
+ * dirección, no la etiqueta de la palabra clave. 2026-10-21 (Tania): la palabra
+ * clave suelta, el botón de una automatización y lo que contesta su
+ * automatización no cuentan (`inbound_keyword_flow`, lib/inbound-opening.ts).
+ */
 export function isInboundConv(c: ConvSnapshot): boolean {
-  return c.direction === 'inbound';
+  return c.direction === 'inbound' && c.inbound_keyword_flow !== true;
 }
 
 /** La entrenadora o la IA le contestaron al menos una vez. */

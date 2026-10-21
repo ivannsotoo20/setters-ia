@@ -57,6 +57,20 @@ export interface PipelineInput extends GeneratorInput {
      * `residence_overrides_prefix`): por defecto el prefijo descalifica sin más.
      */
     allowResidenceHandoff?: boolean;
+    /**
+     * Turnos de margen antes del cierre, contando este (2026-10-21, Tania: "que
+     * no corte en seco, que entienda lo que necesita"). Con más de 0 y sin el
+     * cierre enviado, un turno que pregunta por lo suyo sale normal (sin V21);
+     * uno que cierra, lleva un enlace o va hacia la videollamada sale como el
+     * cierre literal. Con 0 o sin el campo, el turno cierra como siempre.
+     */
+    exploreTurnsLeft?: number;
+    /**
+     * Lo que dijo de su residencia («colombia», «lima»), con la residencia de fuera
+     * dicha por ella. En el margen, un turno que lo nombra se reescribe una vez
+     * (ver `revealsZoneReason`).
+     */
+    term?: string | null;
   };
   /**
    * País a tiempo (2026-10-20, V23). Solo cuando el motor decide que este turno
@@ -178,6 +192,9 @@ export async function runPipeline(
   const closeSent =
     closeParts.length > 0 &&
     [closeParts, ...closeVariants].some((parts) => closeAlreadySent(input.history, parts));
+  // Margen antes del cierre (2026-10-21): este turno puede ser una pregunta.
+  const exploring =
+    zoneMode === 'close' && closeParts.length > 0 && !closeSent && (input.zone?.exploreTurnsLeft ?? 0) > 0;
   if (
     zoneMode === 'close' &&
     closeParts.length > 0 &&
@@ -189,11 +206,51 @@ export async function runPipeline(
     // gastar un reintento que volvería a pedir "el cierre tal cual".
     // 2026-10-21 (D1): con variantes de recurso, la que eligió el modelo por su URL.
     if (!closeSent) {
-      const parts =
-        pickZoneCloseVariant(generatorOut.setterOutput.message_raw, closeVariants) ?? closeParts;
-      return literalZoneCloseResult(generatorOut, parts, stages, startedAt);
-    }
-    if (!isZoneClose(generatorOut.setterOutput)) {
+      const variant = pickZoneCloseVariant(generatorOut.setterOutput.message_raw, closeVariants);
+      // Con margen, el turno que solo pregunta sigue su curso. Cualquier otra
+      // cosa (cierre, un enlace, un paso hacia la videollamada) sale como el
+      // cierre de la entrenadora: es lo único que puede pasar con quien no
+      // cualifica por residencia.
+      if (exploring && !variant && !zoneTurnWantsToClose(generatorOut.setterOutput, input)) {
+        // El turno del margen lo escribe el modelo, y en la batería del v31 le dijo a
+        // una lead «Ahora mismo no trabajo con personas que residan en Colombia»: el
+        // motivo, que es justo lo que no se dice. Un reintento; si vuelve a dejarlo
+        // ver, o cierra, sale el cierre de la entrenadora.
+        if (revealsZoneReason(generatorOut.setterOutput.message_raw, input.zone?.term)) {
+          const retryGen = await runGenerator(deps, {
+            ...input,
+            userMessage: ZONE_EXPLORE_RETRY_MESSAGE,
+            history: [
+              ...input.history,
+              { role: 'user' as const, content: input.userMessage },
+              { role: 'assistant' as const, content: generatorOut.setterOutput.message_raw },
+            ],
+            model: input.models?.generator,
+          });
+          stages.push({
+            role: 'generator',
+            model: retryGen.model,
+            usage: retryGen.usage,
+            llmCallId: retryGen.llmCallId,
+            notes: 'zone_explore_retry',
+          });
+          const retried = retryGen.setterOutput;
+          const retriedVariant = pickZoneCloseVariant(retried.message_raw, closeVariants);
+          if (
+            retriedVariant ||
+            retried.message_raw.length === 0 ||
+            zoneTurnWantsToClose(retried, input) ||
+            revealsZoneReason(retried.message_raw, input.zone?.term)
+          ) {
+            return literalZoneCloseResult(generatorOut, retriedVariant ?? closeParts, stages, startedAt);
+          }
+          generatorOut.setterOutput = retried;
+        }
+        clearBookingProposal(generatorOut.setterOutput);
+      } else {
+        return literalZoneCloseResult(generatorOut, variant ?? closeParts, stages, startedAt);
+      }
+    } else if (!isZoneClose(generatorOut.setterOutput)) {
       generatorOut.setterOutput.message_raw = '';
       generatorOut.setterOutput.conversation_status = 'disqualified';
       generatorOut.setterOutput.handoff_cause = undefined;
@@ -432,7 +489,7 @@ export async function runPipeline(
   if (validatorCtx.zoneRejected === true) {
     const hasLink =
       validateMessage(textForSplitter, validatorCtx, { only: ['V20'] }).violations.length > 0;
-    if (hasLink || !zoneDone(generatorOut.setterOutput)) {
+    if (hasLink || (!exploring && !zoneDone(generatorOut.setterOutput))) {
       const ruleId = hasLink ? 'V20' : 'V21';
       const retryUserMessage =
         zoneMode === 'handoff'
@@ -608,7 +665,7 @@ export async function runPipeline(
   // un mensaje que sigue cualificando a quien no cualifica por residencia no sale,
   // por bien escrito que esté. Va detrás de `hasErrors` para que un turno que
   // además insiste en la URL se reporte como V20, que es el fallo más grave.
-  if (validatorCtx.zoneRejected === true && !zoneDone(generatorOut.setterOutput)) {
+  if (validatorCtx.zoneRejected === true && !exploring && !zoneDone(generatorOut.setterOutput)) {
     throw new ZoneCloseError(generatorOut.setterOutput);
   }
 
@@ -672,6 +729,47 @@ export function isZoneClose(
 function clearBookingProposal(out: SetterToolOutput): void {
   if (out.proposed_booking_slot !== undefined) out.proposed_booking_slot = undefined;
 }
+
+/**
+ * Con margen antes del cierre de zona: ¿este turno ha dejado de ser una pregunta
+ * sobre lo suyo? Sí si cierra (`disqualified`), si lleva cualquier enlace o si va
+ * hacia la videollamada (`isCallStep`). En una fase de propuesta ya se sabe lo que
+ * le pasa, así que ahí el margen no se usa y cierra.
+ */
+function zoneTurnWantsToClose(out: SetterToolOutput, input: PipelineInput): boolean {
+  if (out.conversation_status === 'disqualified') return true;
+  if (/https?:\/\//i.test(out.message_raw)) return true;
+  return isCallStep(out, out.message_raw, input.composeOverrides?.trackedCalendarUrl ?? null);
+}
+
+/**
+ * ¿El texto deja ver por qué no se lleva su caso? Nombra lo que dijo de su
+ * residencia (`term`), habla de residir o del país, o dice que no trabaja con
+ * personas de ahí. Se mira sin tildes y por palabras enteras. "Zona" no cuenta:
+ * con Tania es "zona lumbar".
+ */
+export function revealsZoneReason(text: string, term?: string | null): boolean {
+  const t = foldAccents(text);
+  if (ZONE_REASON_RE.test(t)) return true;
+  const k = term ? foldAccents(term).trim() : '';
+  if (!k) return false;
+  const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(t);
+}
+
+function foldAccents(s: string): string {
+  return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+}
+
+const ZONE_REASON_RE =
+  /(?<![a-z])(?:resid(?:e|es|en|a|as|an|ir|encia|encias)|pais(?:es)?|no (?:trabajo|puedo trabajar) con|no (?:llevo|puedo llevar) (?:tu |su )?caso|no (?:acompano|puedo acompanar))(?![a-z])/;
+
+const ZONE_EXPLORE_RETRY_MESSAGE =
+  '[INSTRUCCIÓN DEL SISTEMA, no es un mensaje de la persona] Tu mensaje deja ver por qué no ' +
+  'puedes llevar su caso (su país, su residencia o que no trabajas con personas de allí). Eso ' +
+  'no se dice nunca. Reescribe este turno: si ya sabes qué le pasa, el cierre de residencia ' +
+  'fuera de zona de tu bloque con el recurso que encaja, tal cual; si no, solo una pregunta ' +
+  'sobre lo que le pasa, sin mencionar el país, la residencia ni ningún motivo.';
 
 /** La excepción de zona: residencia en zona declarada → la confirma la entrenadora. */
 export function isZoneHandoffB(
