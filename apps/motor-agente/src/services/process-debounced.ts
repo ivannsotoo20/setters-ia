@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   runPipeline,
   loadConversationHistory,
+  asksForCountry,
   CallGateError,
   CALL_GATE_ERROR_PREFIX,
   ZoneCloseError,
@@ -40,6 +41,7 @@ import {
   mapConversationSourceToOrigin,
 } from '../lib/lead-origin.js';
 import {
+  countryAnswersOf,
   evaluateZone,
   isZoneRejectVerdict,
   loadLeadQualification,
@@ -47,7 +49,7 @@ import {
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
 import { buildCountryAsk, renderCountryAskBlock } from '../lib/country-ask.js';
-import { parseAllowedPriceText } from '../lib/price-policy.js';
+import { buildPriceGate, parseAllowedPriceText } from '../lib/price-policy.js';
 import { pickResidenceAnswer } from './lead-qualifier.js';
 
 /**
@@ -453,6 +455,8 @@ export async function processDebounced(
   const zoneVerdict = evaluateZone({
     phone: (lead.phone as string | null | undefined) ?? null,
     leadMessages: allHistory.filter((m) => m.role === 'user').map((m) => m.content),
+    // 2026-10-21: lo que contestó a nuestra pregunta del país es su residencia.
+    countryAnswers: countryAnswersOf(allHistory, asksForCountry),
     policy: zonePolicy,
     // D1 (2026-09-26): la residencia que declaró en el formulario decide la
     // excepción "prefijo de fuera, vive en zona" sin depender del modelo.
@@ -483,12 +487,15 @@ export async function processDebounced(
     console.log(`[country-ask] conv=${conversationId} turn=${countryAsk.turn}`);
   }
   const residenceException = zonePolicy?.residenceOverridesPrefix === true;
+  // D1 (2026-10-21): cierres de zona con recurso. El cierre puede llevar su vídeo.
+  const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0;
   const leadOriginDirective = buildLeadOriginDirective({
     origin: leadOrigin,
     channel: channelTypeDb,
     formAnswers,
     zone: zoneVerdict,
     residenceException,
+    closeWithResource,
     callGateBlock:
       [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
         .filter((b): b is string => Boolean(b))
@@ -514,6 +521,7 @@ export async function processDebounced(
   // escribimos" + handoff). El enlace ya lo impide V20.
   const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false, {
     zoneClose: zoneRejected,
+    zoneCloseWithResource: closeWithResource,
     zoneHandoff,
   });
 
@@ -554,6 +562,7 @@ export async function processDebounced(
           ? {
               mode: zoneHandoff ? 'handoff' : 'close',
               closeParts: zonePolicy?.closeParts ?? null,
+              closeVariants: zonePolicy?.closeVariants ?? null,
               allowResidenceHandoff: residenceException,
             }
           : undefined,
@@ -561,6 +570,8 @@ export async function processDebounced(
         countryAsk,
         // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
         allowedPriceText: parseAllowedPriceText(leadQualification),
+        // D2: la cifra solo después de la primera frase del precio.
+        priceGate: buildPriceGate({ leadQualification, history: historyForPipeline }),
         composeOverrides: {
           // Enrutado por canal: si el entrenador tiene coach de WhatsApp y la
           // conversacion va por WhatsApp, se usa ese; si no, el generico.

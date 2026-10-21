@@ -1,4 +1,4 @@
-import { listKeywords } from '@/lib/actions/keywords';
+import { listKeywords, listUnclassifiedOpenings } from '@/lib/actions/keywords';
 import {
   Card,
   CardContent,
@@ -8,11 +8,12 @@ import {
 } from '@/components/ui/card';
 import { KeywordsList } from './keywords-list';
 import { AddKeywordDialog } from './add-keyword-dialog';
+import { UnclassifiedOpeningsCard } from './unclassified-openings';
 
 export const dynamic = 'force-dynamic';
 
 export default async function KeywordsPage() {
-  const result = await listKeywords();
+  const [result, openings] = await Promise.all([listKeywords(), listUnclassifiedOpenings()]);
   const keywords = result.ok ? result.data ?? [] : [];
 
   const counts = {
@@ -60,6 +61,8 @@ export default async function KeywordsPage() {
           </CardContent>
         </Card>
       ) : null}
+
+      {openings.ok && openings.data ? <UnclassifiedOpeningsCard data={openings.data} /> : null}
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>

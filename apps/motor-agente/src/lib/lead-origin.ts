@@ -99,6 +99,11 @@ export interface LeadOriginContext {
    * Apagada salvo `true` desde 2026-10-07 (Iván: el prefijo descalifica directamente).
    */
   residenceException?: boolean;
+  /**
+   * El tenant tiene cierres de zona con recurso (`zone_close_resources`, D1 de
+   * Tania): el cierre puede llevar su vídeo, nunca el enlace de agenda.
+   */
+  closeWithResource?: boolean;
   /** Cerrojo de la videollamada (lib/call-gate.ts). Sin él no se declara nada. */
   callGateBlock?: string | null;
 }
@@ -254,7 +259,10 @@ export function buildLeadOriginDirective(ctx: LeadOriginContext): string | null 
   const channelLine = renderChannelLine(channel);
   // Las respuestas solo se declaran si sabemos que vino de formulario.
   const answersBlock = origin === 'form' ? renderFormAnswers(formAnswers) : null;
-  const zoneBlock = renderZoneBlock(zone, { residenceException: ctx.residenceException === true });
+  const zoneBlock = renderZoneBlock(zone, {
+    residenceException: ctx.residenceException === true,
+    closeWithResource: ctx.closeWithResource === true,
+  });
   const gateBlock = ctx.callGateBlock ?? null;
 
   if (!originLine && !channelLine && !zoneBlock && !gateBlock) return null;
@@ -327,12 +335,25 @@ const DECLARED_RESIDENCE_OUTWEIGHS_PREFIX =
   'declarada y se cierra igual.';
 
 /**
+ * Qué enlaces no caben en el cierre por zona. Por defecto, ninguno. Con cierres
+ * con recurso (D1 de Tania, 2026-10-21: `zone_close_resources`) el cierre lleva
+ * el vídeo que encaja con lo que contó, y lo que no cabe es el enlace de agenda.
+ * El motor manda luego el literal de la variante cuyo vídeo eligió el modelo.
+ */
+export function zoneCloseLinkRule(opts: { closeWithResource?: boolean }): string {
+  return opts.closeWithResource
+    ? 'sin propuesta de videollamada ni enlace de agenda; si tu bloque tiene un cierre con un ' +
+        'vídeo que encaja con lo que te ha contado, es ese, con su vídeo'
+    : 'sin propuesta de videollamada y sin ningún enlace';
+}
+
+/**
  * Zona geográfica como HECHO del motor. El cierre (qué literal, con qué tono) es
  * del coach: aquí solo se dice qué se sabe y qué no puede pasar en este turno.
  */
 export function renderZoneBlock(
   zone: ZoneVerdict | null | undefined,
-  opts: { residenceException?: boolean } = {},
+  opts: { residenceException?: boolean; closeWithResource?: boolean } = {},
 ): string | null {
   if (!zone || zone.kind === 'clear') return null;
   switch (zone.kind) {
@@ -358,7 +379,7 @@ export function renderZoneBlock(
         '**no cualifica por residencia** y no hace falta preguntarle el país. En este turno, ' +
         'tu mensaje es el cierre de residencia fuera de zona que define tu bloque ' +
         '(coach_qualification_doesnt), escrito tal cual: sin nombrar el país, sin explicar el ' +
-        'motivo, sin propuesta de videollamada y sin ningún enlace. No abras preguntas nuevas ' +
+        `motivo, ${zoneCloseLinkRule(opts)}. No abras preguntas nuevas ` +
         'ni sigas cualificando, aunque la fase te pida avanzar.' +
         // La excepción es la decisión D1 de Iván (2026-09-26): residencia en zona
         // declarada por ella (+502 con "En Canadá" en el formulario) no la cierra
@@ -397,8 +418,7 @@ export function renderZoneBlock(
         'la entrenadora NO lleva. Es residencia declarada, no una pista: no hace falta ' +
         'preguntarle nada y manda sobre la fase en la que estés. En este turno, tu mensaje es el ' +
         'cierre de residencia fuera de zona que define tu bloque (coach_qualification_doesnt), ' +
-        'escrito tal cual: sin nombrar el país, sin explicar el motivo, sin propuesta de ' +
-        'videollamada y sin ningún enlace.'
+        `escrito tal cual: sin nombrar el país, sin explicar el motivo, ${zoneCloseLinkRule(opts)}.`
       );
     case 'in_zone_by_prefix':
       if (zone.tier === 'filtered') {

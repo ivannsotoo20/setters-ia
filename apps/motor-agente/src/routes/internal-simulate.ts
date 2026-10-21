@@ -51,7 +51,7 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z, ZodError } from 'zod';
-import { runPipeline } from '@fyzon/agent-pipeline';
+import { asksForCountry, runPipeline } from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
 import { getAnthropicForTenant } from '../lib/anthropic.js';
 import { getSupabase } from '../lib/supabase.js';
@@ -65,6 +65,7 @@ import {
   type LeadChannel,
 } from '../lib/lead-origin.js';
 import {
+  countryAnswersOf,
   evaluateZone,
   isZoneRejectVerdict,
   loadLeadQualification,
@@ -73,7 +74,7 @@ import {
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
 import { buildCountryAsk, renderCountryAskBlock } from '../lib/country-ask.js';
-import { parseAllowedPriceText } from '../lib/price-policy.js';
+import { buildPriceGate, parseAllowedPriceText } from '../lib/price-policy.js';
 import { pickResidenceAnswer } from '../services/lead-qualifier.js';
 import { loadSchedulingConfig } from '../services/process-debounced.js';
 import {
@@ -187,6 +188,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
           ...body.history.filter((h) => h.role === 'user').map((h) => h.content),
           body.message,
         ],
+        // Como en producción: lo que contestó a la pregunta del país es su residencia.
+        countryAnswers: countryAnswersOf([...body.history, { role: 'user', content: body.message }], asksForCountry),
         policy: zonePolicy,
         declaredResidence: body.form_answers
           ? pickResidenceAnswer(body.form_answers, /vives|pa[ií]s|residencia|resides/i, null)?.value ?? null
@@ -197,8 +200,11 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
 
       // Con la zona rechazada, la focal es la del cierre por residencia (o la del
       // paso a la entrenadora) y no la de la fase, igual que en producción.
+      // D1 (2026-10-21): con cierres con recurso, el cierre puede llevar su vídeo.
+      const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0;
       const currentPhaseFocus = buildPhaseFocusInstruction(body.phase, false, {
         zoneClose: zoneRejected,
+        zoneCloseWithResource: closeWithResource,
         zoneHandoff,
       });
 
@@ -240,6 +246,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       const countryAsk = zoneRejected
         ? undefined
         : buildCountryAsk({ leadQualification, channel: body.channel, zoneVerdict, history: body.history });
+      // D2: la cifra del precio solo después de la primera frase, como en producción.
+      const priceGate = buildPriceGate({ leadQualification, history: body.history });
       const residenceException = zonePolicy?.residenceOverridesPrefix === true;
 
       // En el simulador el origen dice quién abrió: 'inbound' es que escribió
@@ -253,6 +261,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         formAnswers: body.form_answers ?? null,
         zone: zoneVerdict,
         residenceException,
+        closeWithResource,
         callGateBlock:
           [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
             .filter((b): b is string => Boolean(b))
@@ -295,6 +304,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
               ? {
                   mode: zoneHandoff ? 'handoff' : 'close',
                   closeParts: zonePolicy?.closeParts ?? null,
+                  closeVariants: zonePolicy?.closeVariants ?? null,
                   allowResidenceHandoff: residenceException,
                 }
               : undefined,
@@ -302,6 +312,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             countryAsk,
             // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
             allowedPriceText: parseAllowedPriceText(leadQualification),
+            priceGate,
             composeOverrides: {
               // Mismo enrutado por canal que produccion: el entrenador prueba
               // el coach que de verdad se usaria en ese canal.
@@ -344,6 +355,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             : null,
           // País a tiempo (V23): si este turno tenía que preguntar el país.
           country_ask: countryAsk ? { turn: countryAsk.turn } : null,
+          // D2: si la cifra del precio estaba bloqueada en este turno.
+          price_gate: priceGate ? { first_step_done: priceGate.firstStepDone } : null,
           // Transparencia: qué se le inyectó por venir de donde viene. Es lo que
           // explica que el mismo mensaje se responda distinto según el origen.
           injected_directive: systemDirectives,

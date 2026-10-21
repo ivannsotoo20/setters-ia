@@ -92,6 +92,15 @@ export interface ZonePolicy {
    */
   closeParts?: string[];
   /**
+   * Cierre con recurso (2026-10-21, decisión D1 de Iván para Tania): variantes del
+   * cierre, cada una con el vídeo que encaja con lo que contó la persona
+   * (`lead_qualification.zone_close_resources`, array de cierres burbuja a
+   * burbuja, cada uno con su URL). El modelo escribe el cierre que toca y el
+   * motor manda la variante cuya URL aparece en él, tal cual; sin URL o con
+   * otra, sale `closeParts`. Así el texto sigue siendo siempre de la entrenadora.
+   */
+  closeVariants?: string[][];
+  /**
    * Excepción D1 (`lead_qualification.residence_overrides_prefix`): un prefijo de
    * fuera con residencia en zona declarada en el formulario no cierra, pasa a la
    * entrenadora. Apagada salvo `true` explícito desde 2026-10-07 (ver el tipo
@@ -202,8 +211,27 @@ export function parseZonePolicy(raw: unknown): ZonePolicy | null {
   if (allowlist) policy.allowlist = allowlist;
   const closeParts = parseCloseParts(cfg.zone_close_message);
   if (closeParts) policy.closeParts = closeParts;
+  const closeVariants = parseCloseVariants(cfg.zone_close_resources);
+  if (closeParts && closeVariants) policy.closeVariants = closeVariants;
   if (cfg.residence_overrides_prefix === true) policy.residenceOverridesPrefix = true;
   return policy;
+}
+
+const MAX_CLOSE_VARIANTS = 6;
+const URL_RE = /https?:\/\/\S+/i;
+
+/**
+ * `zone_close_resources`: array de cierres, cada uno como `zone_close_message`
+ * (burbujas) y con una URL en alguna burbuja, que es lo que lo distingue. Solo
+ * cuenta si hay también `zone_close_message`, que es el cierre por defecto.
+ */
+function parseCloseVariants(raw: unknown): string[][] | null {
+  if (!Array.isArray(raw)) return null;
+  const variants = raw
+    .map((v) => parseCloseParts(v))
+    .filter((v): v is string[] => v !== null && v.some((p) => URL_RE.test(p)))
+    .slice(0, MAX_CLOSE_VARIANTS);
+  return variants.length > 0 ? variants : null;
 }
 
 /**
@@ -264,6 +292,11 @@ export function evaluateZone(input: {
    * para la excepción D1.
    */
   declaredResidence?: string | null;
+  /**
+   * Lo que contestó a NUESTRA pregunta del país (el mensaje de la persona que va
+   * justo después de un turno del setter que la hizo). Ver `countryAnswersOf`.
+   */
+  countryAnswers?: string[];
 }): ZoneVerdict {
   const { phone, leadMessages, policy } = input;
   if (!policy) return { kind: 'clear' };
@@ -299,6 +332,7 @@ export function evaluateZone(input: {
     //    mensaje al primero y el primero que declara dónde vive decide. Si declara
     //    un sitio de fuera sin ambigüedad, cierra; si declara otra cosa ("ahora vivo
     //    en Madrid") o es ambiguo, las declaraciones anteriores ya no cuentan.
+    let declaredOtherPlace = false;
     for (let i = leadMessages.length - 1; i >= 0; i--) {
       const message = leadMessages[i];
       if (typeof message !== 'string' || message.trim() === '') continue;
@@ -306,7 +340,25 @@ export function evaluateZone(input: {
       if (statement?.kind === 'out') {
         return { kind: 'reject_by_declaration', term: statement.term, excerpt: excerptAround(message) };
       }
-      if (statement?.kind === 'other') break;
+      if (statement?.kind === 'other') {
+        declaredOtherPlace = true;
+        break;
+      }
+    }
+    // 1b. 2026-10-21 — la respuesta corta a NUESTRA pregunta del país es su
+    //     residencia (Iván, 03-oct: en Instagram "su respuesta decide, cierre 8
+    //     directo"). Antes contaba como mención y el cierre lo escribía el modelo:
+    //     en la batería del v30 de Tania, a «Soy de Cuba» contestó "Cuba está fuera
+    //     de las zonas donde puedo llevar casos", justo lo que no se dice, y a «De
+    //     Perú» siguió preguntando. Solo respuestas cortas y sin matices; si después
+    //     dijo que vive en otro sitio, manda eso.
+    if (!declaredOtherPlace) {
+      const answers = input.countryAnswers ?? [];
+      for (let i = answers.length - 1; i >= 0; i--) {
+        const answer = answers[i]!;
+        const term = shortCountryAnswerTerm(answer, policy);
+        if (term) return { kind: 'reject_by_declaration', term, excerpt: excerptAround(answer) };
+      }
     }
     // 2. Si no, la primera mención suelta obliga a preguntar.
     for (const message of leadMessages) {
@@ -317,6 +369,55 @@ export function evaluateZone(input: {
   }
 
   return { kind: 'clear' };
+}
+
+const MAX_COUNTRY_ANSWER_WORDS = 8;
+const NUANCE_RE = /(?<![a-z0-9])(?:pero|aunque)(?![a-z0-9])/;
+
+/**
+ * El término de fuera de zona de una respuesta corta a la pregunta del país
+ * («De Perú», «Soy de Cuba», «Desde Lima»), o null si no lo es: más de 8
+ * palabras, matices ("pero", "aunque"), una frase de residencia (eso lo decide
+ * el paso 1), un homónimo de un sitio de España o un país de zona en el mismo
+ * mensaje. En la duda, null: decide el modelo, como antes.
+ */
+function shortCountryAnswerTerm(message: string, policy: ZonePolicy): string | null {
+  const text = normalizeText(message);
+  const words = text.split(/\s+/).filter((w) => w.length > 0);
+  if (words.length === 0 || words.length > MAX_COUNTRY_ANSWER_WORDS) return null;
+  if (NUANCE_RE.test(text)) return null;
+  if (classifyResidenceStatement(message, policy.countryRejectTerms) !== null) return null;
+  const term = findWholeWordTerm(text, policy.countryRejectTerms);
+  if (!term || HOMONYMS_IN_ZONE.has(normalizeText(term))) return null;
+  if (policy.allowlist && findCountryNames(message).some((iso) => zoneOfIso(iso, policy.allowlist!) !== 'out')) {
+    return null;
+  }
+  return term;
+}
+
+/**
+ * Los mensajes de la persona que contestan a una pregunta del país del setter:
+ * los que van detrás de un turno suyo que la hizo (`asksCountry`, el detector de
+ * V23), hasta el siguiente turno del setter. Varias burbujas seguidas de un lado
+ * u otro cuentan como un turno.
+ */
+export function countryAnswersOf(
+  history: ReadonlyArray<{ role: string; content: string }>,
+  asksCountry: (text: string) => boolean,
+): string[] {
+  const answers: string[] = [];
+  let askedInLastTurn = false;
+  let prevRole: string | null = null;
+  for (const m of history) {
+    if (m.role === 'assistant') {
+      const asks = asksCountry(m.content);
+      askedInLastTurn = prevRole === 'assistant' ? askedInLastTurn || asks : asks;
+    } else if (m.role === 'user' && askedInLastTurn && typeof m.content === 'string') {
+      answers.push(m.content);
+    }
+    prevRole = m.role;
+  }
+  return answers;
 }
 
 /**

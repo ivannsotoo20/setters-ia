@@ -45,6 +45,12 @@ export interface PipelineInput extends GeneratorInput {
     mode: 'close' | 'handoff';
     closeParts?: string[] | null;
     /**
+     * Cierres con recurso (2026-10-21, D1 de Tania), cada uno con su URL. Si el
+     * cierre que escribe el modelo lleva la URL de una variante, sale esa
+     * variante tal cual; si no, `closeParts`. Ver `pickZoneCloseVariant`.
+     */
+    closeVariants?: string[][] | null;
+    /**
      * Excepción de residencia en zona declarada (formulario o chat) con un
      * prefijo de fuera: el reintento de cierre ofrece pasarla a la entrenadora
      * (handoff B). Desde 2026-10-07 solo con `true` (config
@@ -63,6 +69,19 @@ export interface PipelineInput extends GeneratorInput {
     turn: number;
     /** Frase de la entrenadora para preguntarlo, si la configuró. */
     question?: string | null;
+  };
+  /**
+   * D2 (2026-10-21, Tania). El precio va en dos pasos: la primera vez, una frase
+   * sin cifra; la cifra autorizada (`allowedPriceText`), solo si insiste. Con
+   * Elena (9 oct) la IA dio la cifra a la primera. El motor decide si la primera
+   * frase ya salió en esta conversación (`firstStepDone`); mientras no, la cifra
+   * autorizada cuenta como filtración para V11 y tiene un reintento. Sin esto,
+   * todo como antes.
+   */
+  priceGate?: {
+    /** La primera frase del precio, tal cual la escribió la entrenadora. */
+    firstStepText: string;
+    firstStepDone: boolean;
   };
 }
 
@@ -155,7 +174,10 @@ export async function runPipeline(
   // la entrenadora, burbuja a burbuja.
   const zoneMode = input.validationContext?.zoneRejected === true ? (input.zone?.mode ?? 'close') : null;
   const closeParts = input.zone?.closeParts?.filter((p) => p.trim().length > 0) ?? [];
-  const closeSent = closeParts.length > 0 && closeAlreadySent(input.history, closeParts);
+  const closeVariants = closeParts.length > 0 ? (input.zone?.closeVariants ?? []) : [];
+  const closeSent =
+    closeParts.length > 0 &&
+    [closeParts, ...closeVariants].some((parts) => closeAlreadySent(input.history, parts));
   if (
     zoneMode === 'close' &&
     closeParts.length > 0 &&
@@ -165,8 +187,11 @@ export async function runPipeline(
     // su despedida (más abajo, con Judge y validador); si sigue la conversación,
     // no sale nada y el estado queda cerrado. Nunca un segundo literal, y sin
     // gastar un reintento que volvería a pedir "el cierre tal cual".
+    // 2026-10-21 (D1): con variantes de recurso, la que eligió el modelo por su URL.
     if (!closeSent) {
-      return literalZoneCloseResult(generatorOut, closeParts, stages, startedAt);
+      const parts =
+        pickZoneCloseVariant(generatorOut.setterOutput.message_raw, closeVariants) ?? closeParts;
+      return literalZoneCloseResult(generatorOut, parts, stages, startedAt);
     }
     if (!isZoneClose(generatorOut.setterOutput)) {
       generatorOut.setterOutput.message_raw = '';
@@ -222,7 +247,8 @@ export async function runPipeline(
     // no sobre el texto): además, el turno tiene que cerrar.
     zoneRejected: input.validationContext?.zoneRejected,
     // 2026-10-07 — el precio autorizado por el entrenador no es filtración (V11).
-    allowedPriceText: input.allowedPriceText ?? undefined,
+    // 2026-10-21 (D2) — salvo que aún no haya salido la primera frase del precio.
+    allowedPriceText: priceFigureLocked(input) ? undefined : (input.allowedPriceText ?? undefined),
   };
   let validatorOut = validateMessage(textAfterJudge, validatorCtx);
 
@@ -337,6 +363,50 @@ export async function runPipeline(
         `[pipeline] V19 retry threw (tenant=${input.tenantId}, conv=${input.conversationId}): ${err instanceof Error ? err.message : String(err)}. ` +
           `Se mantiene el texto original y el turno se tumbará por V19.`,
       );
+    }
+  }
+
+  // D2 (2026-10-21) — la cifra autorizada antes de la primera frase del precio.
+  // Se busca por sus números (`mentionsAllowedPrice`) y no con V11, que no ve las
+  // cifras con «€» o «$» detrás. Un reintento pidiendo la primera frase tal cual;
+  // si vuelve con la cifra, sale solo la primera frase (decisión de Iván: mejor
+  // eso que dejar a la persona sin respuesta).
+  if (priceFigureLocked(input) && mentionsAllowedPrice(textForSplitter, input.allowedPriceText!)) {
+    try {
+      const retryGen = await runGenerator(deps, {
+        ...input,
+        userMessage: buildPriceFirstStepRetryMessage(input.priceGate!.firstStepText, input.allowedPriceText!),
+        history: [
+          ...input.history,
+          { role: 'user' as const, content: input.userMessage },
+          { role: 'assistant' as const, content: textForSplitter },
+        ],
+        model: input.models?.generator,
+      });
+      stages.push({
+        role: 'generator',
+        model: retryGen.model,
+        usage: retryGen.usage,
+        llmCallId: retryGen.llmCallId,
+        notes: 'V11_retry',
+      });
+      textForSplitter = retryGen.setterOutput.message_raw;
+      generatorOut.setterOutput.message_raw = textForSplitter;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[pipeline] D2 retry threw (tenant=${input.tenantId}, conv=${input.conversationId}): ${err instanceof Error ? err.message : String(err)}. ` +
+          `Se mantiene el texto original.`,
+      );
+    }
+    if (mentionsAllowedPrice(textForSplitter, input.allowedPriceText!)) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[pipeline] D2: la cifra sigue tras el reintento (tenant=${input.tenantId}, conv=${input.conversationId}). ` +
+          `Sale solo la primera frase del precio.`,
+      );
+      textForSplitter = input.priceGate!.firstStepText;
+      generatorOut.setterOutput.message_raw = textForSplitter;
     }
   }
 
@@ -629,6 +699,29 @@ function normalizeForCompare(s: string): string {
   return s.toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
+const URL_IN_TEXT = /https?:\/\/[^\s"'<>)]+/gi;
+
+/**
+ * D1 (2026-10-21): de las variantes de cierre con recurso, la que eligió el
+ * modelo, reconocida por su URL (cada variante lleva la de su vídeo). Sin URL,
+ * o con una que no es de ninguna variante, null: sale el cierre por defecto. Lo
+ * que sale es siempre el texto de la entrenadora, nunca el del modelo.
+ */
+export function pickZoneCloseVariant(
+  modelText: string,
+  variants: readonly (readonly string[])[] | null | undefined,
+): string[] | null {
+  if (!variants || variants.length === 0) return null;
+  const urlKey = (u: string) => u.replace(/[.,;:!?]+$/, '').toLowerCase();
+  const chosen = new Set((modelText.match(URL_IN_TEXT) ?? []).map(urlKey));
+  if (chosen.size === 0) return null;
+  for (const variant of variants) {
+    const urls = variant.flatMap((p) => p.match(URL_IN_TEXT) ?? []).map(urlKey);
+    if (urls.some((u) => chosen.has(u))) return [...variant];
+  }
+  return null;
+}
+
 /**
  * Turno de cierre por zona con el literal configurado. El estado lo fija el
  * motor (`disqualified`), no el modelo; la fase se conserva (el motor la topa
@@ -691,6 +784,41 @@ const COUNTRY_QUESTION_RE =
 /** ¿El texto pregunta desde dónde escribe la persona? (V23) */
 export function asksForCountry(text: string): boolean {
   return COUNTRY_QUESTION_RE.test(text);
+}
+
+/**
+ * D2: ¿la cifra autorizada está bloqueada en este turno? Solo si hay precio
+ * autorizado y `priceGate` dice que la primera frase aún no ha salido.
+ */
+export function priceFigureLocked(input: Pick<PipelineInput, 'allowedPriceText' | 'priceGate'>): boolean {
+  return Boolean(input.allowedPriceText && input.priceGate && !input.priceGate.firstStepDone);
+}
+
+const NUMBER_RE = /\d{1,3}(?:[.,]\d{3})+|\d+/g;
+
+/**
+ * D2: ¿el texto da la cifra autorizada? Basta con uno de sus números de tres
+ * cifras o más («entre 200 y 1.200 €» → 200 o 1200), escrito con o sin punto de
+ * miles y con el símbolo pegado o no: el modelo no siempre copia el rango igual.
+ */
+export function mentionsAllowedPrice(text: string, allowedPriceText: string): boolean {
+  const digits = (s: string) => (s.match(NUMBER_RE) ?? []).map((n) => n.replace(/[.,]/g, ''));
+  const allowed = digits(allowedPriceText).filter((n) => n.length >= 3);
+  if (allowed.length === 0) return false;
+  const present = new Set(digits(text));
+  return allowed.some((n) => present.has(n));
+}
+
+/** Instrucción del reintento de D2: sin cifra, con la primera frase tal cual. */
+function buildPriceFirstStepRetryMessage(firstStepText: string, figure: string): string {
+  const found = figure ? ` ("${figure}")` : '';
+  return (
+    `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] Tu respuesta anterior da una ` +
+    `cifra de precio${found}, y en esta conversación todavía no ha salido la primera respuesta ` +
+    `sobre el precio. La primera vez no se da ninguna cifra: se responde con esta frase de la ` +
+    `entrenadora, tal cual: «${firstStepText}». Reescribe TU ÚLTIMA respuesta sin ninguna cifra ` +
+    `de precio, manteniendo el resto si encaja. NO menciones esta corrección al lead.`
+  );
 }
 
 /**

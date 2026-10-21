@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, type ReactNode } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -44,9 +44,22 @@ const TYPES: { value: KeywordType; label: string; hint: string; placeholder: str
   },
 ];
 
-export function AddKeywordDialog() {
+interface AddKeywordDialogProps {
+  /** Situación preseleccionada al abrir (por defecto, bienvenida). */
+  defaultType?: KeywordType;
+  /** Texto propuesto, editable (p. ej. desde una apertura sin clasificar). */
+  defaultPattern?: string;
+  /** Botón que abre el diálogo; por defecto, «Añadir palabra». */
+  trigger?: ReactNode;
+}
+
+export function AddKeywordDialog({
+  defaultType = 'bienvenida',
+  defaultPattern,
+  trigger,
+}: AddKeywordDialogProps = {}) {
   const [open, setOpen] = useState(false);
-  const [type, setType] = useState<KeywordType>('bienvenida');
+  const [type, setType] = useState<KeywordType>(defaultType);
   const [pending, startTransition] = useTransition();
 
   const onSubmit = (formData: FormData) => {
@@ -63,17 +76,19 @@ export function AddKeywordDialog() {
       }
       toast.success('Palabra guardada');
       setOpen(false);
-      setType('bienvenida');
+      setType(defaultType);
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="size-4" />
-          Añadir palabra
-        </Button>
+        {trigger ?? (
+          <Button>
+            <Plus className="size-4" />
+            Añadir palabra
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
@@ -110,6 +125,7 @@ export function AddKeywordDialog() {
             <Input
               id="pattern"
               name="pattern"
+              defaultValue={defaultPattern}
               placeholder={TYPES.find((t) => t.value === type)?.placeholder}
               required
               autoFocus
