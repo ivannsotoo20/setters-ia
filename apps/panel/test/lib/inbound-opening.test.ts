@@ -32,6 +32,18 @@ describe('isBareKeywordOpening', () => {
     }
   });
 
+  it('el botón con un saludo delante tampoco (Facebook, 21 oct)', () => {
+    for (const t of ['Hola, Si', 'Buen día si', 'Buenas tardes, si por favor', 'Hola buenas tardes si , por favor', 'Hola gracias si', 'Claro que sí', 'Hola, espalda']) {
+      expect(isBareKeywordOpening(t, KEYWORDS), t).toBe(true);
+    }
+  });
+
+  it('un saludo solo sí cuenta: es alguien que te escribe', () => {
+    for (const t of ['Hola', 'Buenas tardes', 'Hola 👋', 'Buenos días']) {
+      expect(isBareKeywordOpening(t, KEYWORDS), t).toBe(false);
+    }
+  });
+
   it('un mensaje suyo sí lo es, aunque lleve una palabra clave dentro', () => {
     for (const t of [
       'Tengo una hernia y me gustaría saber cómo me puedes ayudar',
