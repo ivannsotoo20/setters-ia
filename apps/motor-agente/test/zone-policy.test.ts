@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  countryAnswersOf,
   evaluateZone,
   isZoneRejectVerdict,
   parseZonePolicy,
@@ -417,5 +418,80 @@ describe('parseZonePolicy — zone_close_message (2026-09-26)', () => {
     for (const bad of [[], ['', '  '], ['a', 'b', 'c', 'd', 'e'], 42, null]) {
       expect(parseZonePolicy({ zone_allowlist: { always: ['ES'] }, zone_close_message: bad })!.closeParts).toBeUndefined();
     }
+  });
+});
+
+describe('parseZonePolicy — zone_close_resources (D1 de Tania, 2026-10-21)', () => {
+  const base = {
+    zone_allowlist: { always: ['ES'] },
+    zone_close_message: ['En mi perfil tienes mucho contenido', 'Cualquier duda, escríbeme'],
+  };
+  const movilidad = ['Te dejo una rutina de movilidad: https://www.youtube.com/watch?v=ug3D7LWf5Oo', 'Aquí me tienes 😊'];
+
+  it('lee las variantes con su URL, burbuja a burbuja', () => {
+    expect(parseZonePolicy({ ...base, zone_close_resources: [movilidad] })!.closeVariants).toEqual([movilidad]);
+  });
+
+  it('una variante sin URL no sirve para distinguirla: se descarta', () => {
+    const p = parseZonePolicy({ ...base, zone_close_resources: [['Sin enlace', 'Aquí me tienes'], movilidad] })!;
+    expect(p.closeVariants).toEqual([movilidad]);
+  });
+
+  it('sin cierre por defecto (zone_close_message) no hay variantes', () => {
+    const p = parseZonePolicy({ zone_allowlist: { always: ['ES'] }, zone_close_resources: [movilidad] })!;
+    expect(p.closeVariants).toBeUndefined();
+  });
+
+  it('basura, vacío o ninguna válida: sin variantes', () => {
+    for (const bad of [[], [[]], 'texto', 42, null, [['', ' ']]]) {
+      expect(parseZonePolicy({ ...base, zone_close_resources: bad })!.closeVariants).toBeUndefined();
+    }
+  });
+});
+
+describe('evaluateZone — respuesta a nuestra pregunta del país (2026-10-21)', () => {
+  // Batería del v30: «Soy de Cuba» contó como mención y el modelo cerró con "Cuba
+  // está fuera de las zonas donde puedo llevar casos"; «De Perú», ni cerró.
+  const PREGUNTA = 'Por cierto, de dónde me escribes? Te pregunto porque acompaño a personas de distintos países';
+  const asks = (t: string) => /de\s+d[oó]nde\s+me\s+escrib/i.test(t);
+  const ai = (content: string) => ({ role: 'assistant', content });
+  const lead = (content: string) => ({ role: 'user', content });
+
+  it('countryAnswersOf: lo que va detrás del turno que preguntó, también en varias burbujas', () => {
+    const history = [ai('Hola 😊'), lead('Me duele al agacharme'), ai('Vaya'), ai(PREGUNTA), lead('Hola'), lead('De Cuba'), ai('Gracias')];
+    expect(countryAnswersOf(history, asks)).toEqual(['Hola', 'De Cuba']);
+  });
+
+  it('una respuesta corta con un sitio de fuera es residencia declarada', () => {
+    for (const answer of ['Soy de Cuba', 'De Cuba', 'Cuba', 'desde Buenos Aires 😊']) {
+      const v = evaluateZone({ phone: null, leadMessages: ['Me duele', answer], countryAnswers: [answer], policy: TANIA });
+      expect(v.kind).toBe('reject_by_declaration');
+    }
+  });
+
+  it('con matices, larga o diciendo dónde vive, no: decide el paso 1 o el modelo', () => {
+    for (const answer of [
+      'Soy de Cuba pero vivo en Madrid',
+      'Soy cubana aunque llevo veinte años en Valencia',
+      'Pues mira, nací en Cuba, me vine de pequeña con mis padres y desde entonces aquí',
+    ]) {
+      const v = evaluateZone({ phone: null, leadMessages: [answer], countryAnswers: [answer], policy: TANIA });
+      expect(v.kind).not.toBe('reject_by_declaration');
+    }
+  });
+
+  it('si después dice que vive en zona, manda eso', () => {
+    const v = evaluateZone({
+      phone: null,
+      leadMessages: ['De Cuba', 'bueno, ahora vivo en Madrid'],
+      countryAnswers: ['De Cuba'],
+      policy: TANIA,
+    });
+    expect(v.kind).not.toBe('reject_by_declaration');
+  });
+
+  it('el mismo «Cuba» sin haberle preguntado sigue siendo mención', () => {
+    const v = evaluateZone({ phone: null, leadMessages: ['Soy de Cuba'], countryAnswers: [], policy: TANIA });
+    expect(v.kind).toBe('mention');
   });
 });

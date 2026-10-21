@@ -2664,6 +2664,48 @@ export type Database = {
           },
         ]
       }
+      unmatched_openings: {
+        Row: {
+          channel: string | null
+          ghl_contact_id: string | null
+          id: number
+          preview: string
+          seen_at: string
+          tenant_id: number
+        }
+        Insert: {
+          channel?: string | null
+          ghl_contact_id?: string | null
+          id?: number
+          preview: string
+          seen_at?: string
+          tenant_id: number
+        }
+        Update: {
+          channel?: string | null
+          ghl_contact_id?: string | null
+          id?: number
+          preview?: string
+          seen_at?: string
+          tenant_id?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unmatched_openings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unmatched_openings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "v_tenant_health"
+            referencedColumns: ["tenant_id"]
+          },
+        ]
+      }
     }
     Views: {
       v_tenant_health: {

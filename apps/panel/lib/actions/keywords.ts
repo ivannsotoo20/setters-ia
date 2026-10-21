@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { getEffectiveTenant } from '@/lib/effective-tenant';
+import { groupOpenings, type OpeningGroup, type OpeningSample } from '@/lib/unclassified-openings';
 
 /**
  * Server Actions para `automation_keywords` — patrones que clasifican mensajes
@@ -163,6 +164,92 @@ export async function toggleKeywordActive(
   if (error) return { ok: false, error: error.message };
   revalidatePath('/keywords');
   return { ok: true };
+}
+
+/**
+ * Aperturas sin clasificar (2026-10-21): los primeros mensajes de la entrenadora
+ * en los últimos 30 días que el motor no reconoce como su bienvenida. Dos listas:
+ *
+ * - `notRecognized`: no casan con ninguna palabra clave, así que no se abre la
+ *   conversación (Caso C de `routeGhlOutbound`, tabla `unmatched_openings`). Sin
+ *   la migration 082 aplicada, la lista sale vacía.
+ * - `countedAsKeyword`: conversaciones que abrió ella (`direction='outbound'`)
+ *   cuyo origen es una palabra clave de recurso o de inbound: el dashboard las
+ *   cuenta como «palabra clave», no como bienvenida.
+ */
+export interface UnclassifiedOpenings {
+  notRecognized: OpeningGroup[];
+  countedAsKeyword: OpeningGroup[];
+  sinceDays: number;
+}
+
+const UNCLASSIFIED_WINDOW_DAYS = 30;
+const UNCLASSIFIED_MAX_GROUPS = 8;
+/** Conversaciones por consulta de mensajes: pocas, para no rozar el tope de filas de PostgREST. */
+const UNCLASSIFIED_CHUNK = 50;
+
+export async function listUnclassifiedOpenings(): Promise<ActionResult<UnclassifiedOpenings>> {
+  const effective = await getEffectiveTenant();
+  if (!effective) return { ok: false, error: 'unauthenticated' };
+
+  const supabase = getServiceRoleClient();
+  const since = new Date(Date.now() - UNCLASSIFIED_WINDOW_DAYS * 86_400_000).toISOString();
+
+  const { data: unmatched, error: unmatchedErr } = await supabase
+    .from('unmatched_openings')
+    .select('preview, seen_at')
+    .eq('tenant_id', effective.tenantId)
+    .gte('seen_at', since)
+    .order('seen_at', { ascending: false })
+    .limit(1000);
+  const notRecognized = unmatchedErr
+    ? []
+    : groupOpenings(
+        ((unmatched ?? []) as Array<{ preview: string; seen_at: string }>).map((r) => ({
+          text: r.preview,
+          at: r.seen_at,
+        })),
+      );
+
+  const { data: convs, error: convErr } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('tenant_id', effective.tenantId)
+    .eq('direction', 'outbound')
+    .in('conversation_source', ['lm', 'inbound'])
+    .gte('created_at', since)
+    .limit(1000);
+  if (convErr) return { ok: false, error: convErr.message };
+
+  const ids = ((convs ?? []) as Array<{ id: number }>).map((c) => Number(c.id));
+  const firstOpening = new Map<number, OpeningSample>();
+  for (let i = 0; i < ids.length; i += UNCLASSIFIED_CHUNK) {
+    const { data: msgs, error: msgErr } = await supabase
+      .from('conversation_messages')
+      .select('conversation_id, content, sent_at')
+      .in('conversation_id', ids.slice(i, i + UNCLASSIFIED_CHUNK))
+      .eq('source', 'system')
+      .order('sent_at', { ascending: true });
+    if (msgErr) return { ok: false, error: msgErr.message };
+    for (const m of (msgs ?? []) as Array<{
+      conversation_id: number;
+      content: string | null;
+      sent_at: string;
+    }>) {
+      const cid = Number(m.conversation_id);
+      if (firstOpening.has(cid) || typeof m.content !== 'string' || m.content.trim() === '') continue;
+      firstOpening.set(cid, { text: m.content, at: m.sent_at });
+    }
+  }
+
+  return {
+    ok: true,
+    data: {
+      notRecognized: notRecognized.slice(0, UNCLASSIFIED_MAX_GROUPS),
+      countedAsKeyword: groupOpenings([...firstOpening.values()]).slice(0, UNCLASSIFIED_MAX_GROUPS),
+      sinceDays: UNCLASSIFIED_WINDOW_DAYS,
+    },
+  };
 }
 
 export async function deleteKeyword(keywordId: number): Promise<ActionResult> {

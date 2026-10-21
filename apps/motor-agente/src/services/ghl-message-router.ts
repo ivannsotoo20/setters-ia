@@ -35,6 +35,7 @@ import {
   upsertLead,
 } from './lead-ingest.js';
 import { buildSourceTags, type TagChannel } from '../lib/source-tags.js';
+import { recordUnmatchedOpening } from './unmatched-openings.js';
 
 /**
  * Escribe la procedencia como etiquetas en el contacto de GHL.
@@ -756,8 +757,9 @@ export async function routeGhlOutbound(
   // por primera vez sin que el lead haya iniciado y sin patrón de bienvenida).
   // Skipeamos para evitar ruido — cuando el lead responda, se crea normalmente.
   if (!matchedType && !existing) {
-    // El principio del mensaje va al log porque aquí no se guarda nada: es la
-    // única forma de ver qué bienvenida no casó con ninguna palabra clave.
+    // No se crea conversación, pero el texto se guarda en `unmatched_openings`
+    // para que la entrenadora lo vea en /keywords y lo dé de alta si es su
+    // bienvenida. El log sigue por si la tabla aún no existe.
     logger.warn(
       {
         tenantId: outbound.tenantId,
@@ -766,6 +768,7 @@ export async function routeGhlOutbound(
       },
       'routeGhlOutbound: outbound humano sin keyword match y sin conversación previa — skip',
     );
+    await recordUnmatchedOpening(supabase, outbound, ghlMessageSentAt(outbound));
     return { classification: 'no_conversation_skip', conversationId: null, isPaused: false };
   }
 

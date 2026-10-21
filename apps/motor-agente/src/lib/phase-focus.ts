@@ -20,6 +20,8 @@
  * Sprint Iota.4 (2026-05-18).
  */
 
+import { zoneCloseLinkRule } from './lead-origin.js';
+
 /**
  * Dónde vive el enlace de agenda, repetido en las focales de F1 a F4.
  *
@@ -61,6 +63,11 @@ export interface PhaseFocusOptions {
    */
   zoneClose?: boolean;
   /**
+   * Con `zoneClose`: el tenant tiene cierres con recurso (`zone_close_resources`,
+   * D1 de Tania, 2026-10-21), así que el cierre puede llevar su vídeo, nunca la agenda.
+   */
+  zoneCloseWithResource?: boolean;
+  /**
    * Prefijo fuera de zona pero residencia EN zona declarada en su formulario
    * (`prefix_out_residence_in`, decisión D1 de Iván): el turno no cierra, pasa a
    * la entrenadora con handoff B. Manda sobre `zoneClose`.
@@ -100,18 +107,22 @@ const ZONE_HANDOFF_FOCUS =
  * `disqualified` (el estado 'stopped' no pausa la IA): si ella vuelve a escribir,
  * el turno sigue cerrando, pero sin repetirle el mismo literal.
  */
-const ZONE_CLOSE_FOCUS =
-  'PRIORIDAD ABSOLUTA — ESTE TURNO CIERRA POR RESIDENCIA. Esta instrucción manda sobre la fase ' +
-  'en la que ibas y sobre cualquier objetivo de fase: el motor ha comprobado que esta persona no ' +
-  'cualifica por residencia (sección "Zona geográfica"). No sigas cualificando ni esperes a otro ' +
-  'turno para cerrar. Tu mensaje de este turno es el cierre de residencia fuera de zona que define ' +
-  'tu bloque (coach_qualification_doesnt), escrito tal cual: sin nombrar el país ni el motivo, sin ' +
-  'preguntas, sin propuesta de videollamada y sin ningún enlace. Devuelve ' +
-  'conversation_status="disqualified". Si ese cierre ya se lo enviaste en un turno anterior, no lo ' +
-  'repitas: una frase breve de despedida, sin preguntas, y conversation_status="disqualified". ' +
-  'Única excepción: si ella ha escrito, en el formulario o en el chat, que reside en un país de la ' +
-  'zona de contacto, no la cierras tú: conversation_status="handoff" con ' +
-  'handoff_cause="B_derivacion" y un mensaje breve de que le escribe la entrenadora, sin enlace.';
+function zoneCloseFocus(closeWithResource: boolean): string {
+  return (
+    'PRIORIDAD ABSOLUTA — ESTE TURNO CIERRA POR RESIDENCIA. Esta instrucción manda sobre la fase ' +
+    'en la que ibas y sobre cualquier objetivo de fase: el motor ha comprobado que esta persona no ' +
+    'cualifica por residencia (sección "Zona geográfica"). No sigas cualificando ni esperes a otro ' +
+    'turno para cerrar. Tu mensaje de este turno es el cierre de residencia fuera de zona que define ' +
+    'tu bloque (coach_qualification_doesnt), escrito tal cual: sin nombrar el país ni el motivo, sin ' +
+    `preguntas, ${zoneCloseLinkRule({ closeWithResource })}. Devuelve ` +
+    'conversation_status="disqualified". Si ese cierre ya se lo enviaste en un turno anterior, no lo ' +
+    'repitas: una frase breve de despedida, sin preguntas y sin enlaces, y ' +
+    'conversation_status="disqualified". Única excepción: si ella ha escrito, en el formulario o en ' +
+    'el chat, que reside en un país de la zona de contacto, no la cierras tú: ' +
+    'conversation_status="handoff" con handoff_cause="B_derivacion" y un mensaje breve de que le ' +
+    'escribe la entrenadora, sin enlace.'
+  );
+}
 
 /**
  * Devuelve la instrucción focal para la fase activa.
@@ -131,7 +142,7 @@ export function buildPhaseFocusInstruction(
     return ZONE_HANDOFF_FOCUS;
   }
   if (options.zoneClose === true) {
-    return ZONE_CLOSE_FOCUS;
+    return zoneCloseFocus(options.zoneCloseWithResource === true);
   }
   if (isHandoff) {
     return (
