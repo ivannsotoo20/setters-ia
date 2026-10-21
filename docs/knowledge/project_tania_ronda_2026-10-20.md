@@ -135,3 +135,51 @@ Tarjetas añadidas a su dashboard por canal (`dashboard_widgets` 51-54: recibido
    - activar las palabras clave `inbound`;
    - cargar el v30.
 4. **Fase 3:** ronda semanal y «Mis textos».
+
+## 6. Su respuesta del 21 oct y lo que cambió (rama `feat/tania-ronda-21-oct`, sin desplegar)
+
+Contestó por número. Lo que fija:
+
+- **Bienvenidas.** La A y la B son sus bienvenidas y las manda a mano. La C y la D son respuestas
+  de ManyChat a palabra clave. La E es un segundo mensaje dentro de una conversación ya abierta.
+  Coincide con cómo se contaba, así que D3 sobra. Sigue abierto por qué no entra ninguna A ni B
+  desde el 8 oct (se le pregunta si las sigue mandando y desde dónde).
+- **Inbound.** Inbound es quien escribe directamente con interés real. La palabra suelta y lo que
+  abre su mensaje de palabra clave no cuentan, aunque después contesten. Medido: con «Espalda» a
+  secas, ManyChat abre con la D en 2 s y la IA sigue cuando la persona contesta; no hay doble
+  respuesta.
+- **Citas de madrugada.** Rehízo su disponibilidad desde cero (12-19 h). Cerrado.
+- **País.** Sin explicación: «Por cierto, desde dónde me escribes?» (ella lo escribió con «¿»; va
+  sin él por su voiceprint). Fuera de zona, sin cortar en seco: entender qué necesita y mandar el
+  vídeo que encaje.
+- **Idioma.** Si escriben en inglés, contestar en inglés. Pendiente: si puede hacer la videollamada
+  en inglés.
+- **Alertas.** No se podían abrir.
+- **Precio.** Confirma la regla del v30 y D2.
+
+Cambios (Iván, 21 oct: «arranca con el punto 4, las alertas y la tarjeta de inbound sin las
+palabras sueltas»):
+
+- **Coach v31** (sin cargar): la pregunta del país sin razón y la repregunta con la misma frase. El
+  cierre 8 con margen: hasta dos turnos de pregunta sobre lo suyo antes del cierre con recurso.
+- **Margen en el motor** (`zone_explore_turns`, 1-3; para Tania, 2). Solo con la residencia de
+  fuera DICHA por ella; el prefijo de WhatsApp sigue cerrando en el mismo turno. El motor recalcula
+  con el historial desde qué mensaje suyo el veredicto es `reject_by_declaration` y cuenta las
+  tandas nuestras posteriores. Mientras queda margen, un turno que pregunta sale normal (sin V21).
+  Uno que cierra, lleva cualquier enlace o va hacia la videollamada sale como el cierre literal.
+  El turno del margen lo escribe el modelo, y en la batería uno dijo «Ahora mismo no trabajo con
+  personas que residan en Colombia». Desde entonces, si nombra lo que dijo de su residencia, habla
+  de residir o del país, o dice «no trabajo con / no llevo tu caso», se reescribe una vez
+  (`revealsZoneReason`); si vuelve a hacerlo, sale el cierre literal. En el bloque, cada vídeo
+  del cierre 8 lleva para quién es: en la batería, a «muchas horas sentada» le mandó la rutina
+  de mañana, cuyo literal dice «sobre todo esa rigidez al levantarte».
+- **Alertas que se abren.** «Esperando respuesta» y «en tus manos sin respuesta» llevan sus
+  conversaciones y abren `/conversations?ids=…&alert=…`. Con `ids`, la lista se carga por ids, no
+  por las 100 últimas, y avisa de que está filtrada.
+- **Tarjeta de inbound.** Deja fuera la palabra clave suelta o el botón de una automatización
+  («Siii😊», «Empezar», «Get started»…), comparando el mensaje entero normalizado, y lo que
+  contesta su automatización en menos de 2 minutos (`lib/inbound-opening.ts`). En Facebook la
+  semana pasa de 651 a unos 24, que eran casi todo botones. Pendiente de que Tania diga de dónde
+  sale ese «Sí».
+- **Configuración a cargar con el v31:** la del v30 más `zone_explore_turns: 2`
+  (`setters_ia/.tmp/ronda-tania-20-oct/cargar-v31-config.sql`).
