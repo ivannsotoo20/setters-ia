@@ -68,6 +68,12 @@ export interface PhaseFocusOptions {
    */
   zoneCloseWithResource?: boolean;
   /**
+   * Con `zoneClose`: turnos de margen antes del cierre, contando este
+   * (`zone_explore_turns`, Tania 21-oct). Con más de 0, la focal permite una
+   * pregunta sobre lo suyo en vez de exigir el cierre.
+   */
+  zoneExploreTurnsLeft?: number;
+  /**
    * Prefijo fuera de zona pero residencia EN zona declarada en su formulario
    * (`prefix_out_residence_in`, decisión D1 de Iván): el turno no cierra, pasa a
    * la entrenadora con handoff B. Manda sobre `zoneClose`.
@@ -125,6 +131,32 @@ function zoneCloseFocus(closeWithResource: boolean): string {
 }
 
 /**
+ * Focal de fuera de zona con margen (2026-10-21, Tania: "no quiero que salte
+ * directamente; puede continuar un poco para entender lo que necesita"). Sigue
+ * mandando sobre la fase, como la de cierre: la diferencia es que este turno
+ * puede ser una pregunta sobre lo suyo. El motor cuenta los turnos y, al
+ * agotarse, vuelve la focal de cierre.
+ */
+function zoneExploreFocus(turnsLeft: number, closeWithResource: boolean): string {
+  return (
+    'PRIORIDAD ABSOLUTA — ESTA PERSONA NO CUALIFICA POR RESIDENCIA. Esta instrucción manda sobre la ' +
+    'fase en la que ibas: el motor ha comprobado que vive fuera de la zona (sección "Zona ' +
+    'geográfica"), así que no sigues cualificando ni vas hacia la videollamada. Antes del cierre ' +
+    'puedes entender qué necesita. Si ya sabes qué le pasa, tu mensaje es el cierre de residencia ' +
+    'fuera de zona de tu bloque (coach_qualification_doesnt), tal cual y ' +
+    `${zoneCloseLinkRule({ closeWithResource })}, con conversation_status="disqualified". Si aún ` +
+    'no lo sabes, tu mensaje es UNA pregunta sobre lo suyo (qué le pasa, en qué momentos lo nota), ' +
+    'lo justo para elegir el recurso: nada que cualifique (ni el tiempo ni el país), con ' +
+    'conversation_status="active". Te ' +
+    `${turnsLeft === 1 ? 'queda 1 turno' : `quedan ${turnsLeft} turnos`} antes de cerrar. Sin ` +
+    'nombrar el país ni el motivo, sin propuesta de videollamada y sin enlace de agenda. Única ' +
+    'excepción: si ha escrito que reside en un país de la zona de contacto, ' +
+    'conversation_status="handoff" con handoff_cause="B_derivacion" y un mensaje breve de que le ' +
+    'escribe la entrenadora, sin enlace.'
+  );
+}
+
+/**
  * Devuelve la instrucción focal para la fase activa.
  *
  * @param currentPhase - fase activa 1..6 (la fase 7 del output schema mapea a F6 + cierre)
@@ -142,6 +174,8 @@ export function buildPhaseFocusInstruction(
     return ZONE_HANDOFF_FOCUS;
   }
   if (options.zoneClose === true) {
+    const left = options.zoneExploreTurnsLeft ?? 0;
+    if (left > 0) return zoneExploreFocus(left, options.zoneCloseWithResource === true);
     return zoneCloseFocus(options.zoneCloseWithResource === true);
   }
   if (isHandoff) {

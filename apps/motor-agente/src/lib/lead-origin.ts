@@ -104,6 +104,11 @@ export interface LeadOriginContext {
    * Tania): el cierre puede llevar su vídeo, nunca el enlace de agenda.
    */
   closeWithResource?: boolean;
+  /**
+   * Turnos de margen antes del cierre de zona, contando este (`zone_explore_turns`,
+   * Tania 21-oct). Solo cambia el bloque con la residencia de fuera dicha por ella.
+   */
+  zoneExploreTurnsLeft?: number;
   /** Cerrojo de la videollamada (lib/call-gate.ts). Sin él no se declara nada. */
   callGateBlock?: string | null;
 }
@@ -262,6 +267,7 @@ export function buildLeadOriginDirective(ctx: LeadOriginContext): string | null 
   const zoneBlock = renderZoneBlock(zone, {
     residenceException: ctx.residenceException === true,
     closeWithResource: ctx.closeWithResource === true,
+    exploreTurnsLeft: ctx.zoneExploreTurnsLeft ?? 0,
   });
   const gateBlock = ctx.callGateBlock ?? null;
 
@@ -353,7 +359,7 @@ export function zoneCloseLinkRule(opts: { closeWithResource?: boolean }): string
  */
 export function renderZoneBlock(
   zone: ZoneVerdict | null | undefined,
-  opts: { residenceException?: boolean; closeWithResource?: boolean } = {},
+  opts: { residenceException?: boolean; closeWithResource?: boolean; exploreTurnsLeft?: number } = {},
 ): string | null {
   if (!zone || zone.kind === 'clear') return null;
   switch (zone.kind) {
@@ -412,6 +418,23 @@ export function renderZoneBlock(
         'sin preguntarle dónde vive, sin propuesta de videollamada y sin enlace.'
       );
     case 'reject_by_declaration':
+      // 2026-10-21 (Tania): "no quiero que salte directamente". Con margen, antes
+      // del cierre puede entender qué le pasa para elegir el vídeo que encaja.
+      if ((opts.exploreTurnsLeft ?? 0) > 0) {
+        return (
+          '## Zona geográfica (dato del motor, no es una opinión)\n\n' +
+          `Ha dicho en el chat que vive en **«${zone.term}»** («${zone.excerpt}»), un sitio al que ` +
+          'la entrenadora NO lleva. Es residencia declarada, no una pista: no vuelvas a preguntarle ' +
+          'dónde vive y no sigas cualificando para la videollamada, aunque la fase te pida avanzar. ' +
+          'Lo que toca es el camino de fuera de zona de tu bloque (coach_qualification_doesnt) sin ' +
+          'cortar en seco: si ya sabes qué le pasa, tu mensaje es el cierre con el recurso que ' +
+          'encaja, tal cual; si aún no, una pregunta sobre lo que le pasa y cuándo lo nota, lo justo ' +
+          'para saber cuál le encaja (lo que cualifica, como el tiempo, ya no se pregunta). ' +
+          `Te ${opts.exploreTurnsLeft === 1 ? 'queda 1 turno' : `quedan ${opts.exploreTurnsLeft} turnos`} ` +
+          'antes de cerrar. Sin nombrar el país ni el motivo, sin propuesta de videollamada y sin ' +
+          'enlace de agenda.'
+        );
+      }
       return (
         '## Zona geográfica (dato del motor, no es una opinión)\n\n' +
         `Ha dicho en el chat que vive en **«${zone.term}»** («${zone.excerpt}»), un sitio al que ` +

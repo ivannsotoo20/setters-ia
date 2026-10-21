@@ -51,7 +51,7 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z, ZodError } from 'zod';
-import { asksForCountry, runPipeline } from '@fyzon/agent-pipeline';
+import { asksForCountry, closeAlreadySent, runPipeline } from '@fyzon/agent-pipeline';
 import { env } from '../config/env.js';
 import { getAnthropicForTenant } from '../lib/anthropic.js';
 import { getSupabase } from '../lib/supabase.js';
@@ -70,6 +70,7 @@ import {
   isZoneRejectVerdict,
   loadLeadQualification,
   parseZonePolicy,
+  zoneExploreTurnsLeft,
   type ZoneVerdict,
 } from '../lib/zone-policy.js';
 import { buildCallGate, renderCallGateBlock } from '../lib/call-gate.js';
@@ -182,19 +183,20 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       // del chat: lo que la persona escribió en los turnos anteriores y en este.
       const leadQualification = await loadLeadQualification(supabase, body.tenant_id);
       const zonePolicy = parseZonePolicy(leadQualification);
-      const zoneVerdict = evaluateZone({
-        phone: body.phone ?? null,
-        leadMessages: [
-          ...body.history.filter((h) => h.role === 'user').map((h) => h.content),
-          body.message,
-        ],
-        // Como en producción: lo que contestó a la pregunta del país es su residencia.
-        countryAnswers: countryAnswersOf([...body.history, { role: 'user', content: body.message }], asksForCountry),
-        policy: zonePolicy,
-        declaredResidence: body.form_answers
-          ? pickResidenceAnswer(body.form_answers, /vives|pa[ií]s|residencia|resides/i, null)?.value ?? null
-          : null,
-      });
+      const declaredResidence = body.form_answers
+        ? pickResidenceAnswer(body.form_answers, /vives|pa[ií]s|residencia|resides/i, null)?.value ?? null
+        : null;
+      const zoneVerdictAt = (history: ReadonlyArray<{ role: string; content: string }>) =>
+        evaluateZone({
+          phone: body.phone ?? null,
+          leadMessages: history.filter((h) => h.role === 'user').map((h) => h.content),
+          // Como en producción: lo que contestó a la pregunta del país es su residencia.
+          countryAnswers: countryAnswersOf(history, asksForCountry),
+          policy: zonePolicy,
+          declaredResidence,
+        });
+      const fullHistory = [...body.history, { role: 'user' as const, content: body.message }];
+      const zoneVerdict = zoneVerdictAt(fullHistory);
       const zoneHandoff = zoneVerdict.kind === 'prefix_out_residence_in';
       const zoneRejected = isZoneRejectVerdict(zoneVerdict) || zoneHandoff;
 
@@ -202,9 +204,18 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       // paso a la entrenadora) y no la de la fase, igual que en producción.
       // D1 (2026-10-21): con cierres con recurso, el cierre puede llevar su vídeo.
       const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0;
+      // Margen antes del cierre (Tania, 21-oct), como en producción.
+      const zoneCloseSent = [zonePolicy?.closeParts ?? [], ...(zonePolicy?.closeVariants ?? [])].some(
+        (parts) => parts.length > 0 && closeAlreadySent(body.history, parts),
+      );
+      const zoneExploreLeft =
+        zoneRejected && !zoneHandoff && !zoneCloseSent
+          ? zoneExploreTurnsLeft({ policy: zonePolicy, verdict: zoneVerdict, history: fullHistory, verdictAt: zoneVerdictAt })
+          : 0;
       const currentPhaseFocus = buildPhaseFocusInstruction(body.phase, false, {
         zoneClose: zoneRejected,
         zoneCloseWithResource: closeWithResource,
+        zoneExploreTurnsLeft: zoneExploreLeft,
         zoneHandoff,
       });
 
@@ -262,6 +273,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         zone: zoneVerdict,
         residenceException,
         closeWithResource,
+        zoneExploreTurnsLeft: zoneExploreLeft,
         callGateBlock:
           [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
             .filter((b): b is string => Boolean(b))
@@ -306,6 +318,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
                   closeParts: zonePolicy?.closeParts ?? null,
                   closeVariants: zonePolicy?.closeVariants ?? null,
                   allowResidenceHandoff: residenceException,
+                  exploreTurnsLeft: zoneExploreLeft,
+                  term: zoneVerdict.kind === 'reject_by_declaration' ? zoneVerdict.term : null,
                 }
               : undefined,
             callGate,
@@ -357,6 +371,8 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
           country_ask: countryAsk ? { turn: countryAsk.turn } : null,
           // D2: si la cifra del precio estaba bloqueada en este turno.
           price_gate: priceGate ? { first_step_done: priceGate.firstStepDone } : null,
+          // Margen antes del cierre de zona que tenía este turno (0 = cerraba).
+          zone_explore_turns_left: zoneRejected ? zoneExploreLeft : null,
           // Transparencia: qué se le inyectó por venir de donde viene. Es lo que
           // explica que el mismo mensaje se responda distinto según el origen.
           injected_directive: systemDirectives,

@@ -107,6 +107,16 @@ export interface ZonePolicy {
    * `prefix_out_residence_in`).
    */
   residenceOverridesPrefix?: boolean;
+  /**
+   * Turnos que la IA puede usar, cuando la persona ha DICHO que vive fuera de
+   * zona, para entender qué le pasa antes del cierre con recurso
+   * (`lead_qualification.zone_explore_turns`, 1-3). Tania, 21-oct: "no quiero
+   * que salte directamente a «en mi perfil tienes contenido…»; puede continuar
+   * un poco para entender lo que necesita y ofrecerle el recurso que encaje".
+   * Sin la clave, el cierre va en el mismo turno, como hasta ahora. El prefijo
+   * de WhatsApp no lo usa: ese sigue descalificando directamente (Iván, 03-oct).
+   */
+  exploreTurns?: number;
 }
 
 /** Tramo de zona de un prefijo que cualifica. Solo existe con lista blanca. */
@@ -214,7 +224,46 @@ export function parseZonePolicy(raw: unknown): ZonePolicy | null {
   const closeVariants = parseCloseVariants(cfg.zone_close_resources);
   if (closeParts && closeVariants) policy.closeVariants = closeVariants;
   if (cfg.residence_overrides_prefix === true) policy.residenceOverridesPrefix = true;
+  // Sin cierre literal no hay nada que garantice el final: el margen no se da.
+  const explore = cfg.zone_explore_turns;
+  if (closeParts && typeof explore === 'number' && Number.isInteger(explore) && explore > 0) {
+    policy.exploreTurns = Math.min(explore, MAX_EXPLORE_TURNS);
+  }
   return policy;
+}
+
+const MAX_EXPLORE_TURNS = 3;
+
+/**
+ * Cuántos turnos de margen le quedan a la IA antes del cierre de zona, contando
+ * el que se va a generar (0 = este turno cierra). Solo con `exploreTurns` y con
+ * la residencia de fuera DICHA por ella (`reject_by_declaration`): el margen
+ * empieza en el primer mensaje suyo a partir del cual el veredicto ya era ese, y
+ * cada tanda de mensajes nuestros posterior gasta uno.
+ *
+ * Se recalcula con el historial en vez de guardarse: `verdictAt` evalúa la zona
+ * sobre el historial hasta cada mensaje suyo, con la misma regla que el turno.
+ */
+export function zoneExploreTurnsLeft(args: {
+  policy: ZonePolicy | null;
+  verdict: ZoneVerdict;
+  /** Historial completo, con los mensajes suyos que este turno contesta al final. */
+  history: ReadonlyArray<{ role: string; content: string }>;
+  verdictAt: (prefix: ReadonlyArray<{ role: string; content: string }>) => ZoneVerdict;
+}): number {
+  const max = args.policy?.exploreTurns ?? 0;
+  if (max <= 0 || args.verdict.kind !== 'reject_by_declaration') return 0;
+  const h = args.history;
+  for (let i = 0; i < h.length; i++) {
+    if (h[i]!.role !== 'user') continue;
+    if (args.verdictAt(h.slice(0, i + 1)).kind !== 'reject_by_declaration') continue;
+    let used = 0;
+    for (let j = i + 1; j < h.length; j++) {
+      if (h[j]!.role === 'assistant' && h[j - 1]!.role !== 'assistant') used += 1;
+    }
+    return Math.max(0, max - used);
+  }
+  return max;
 }
 
 const MAX_CLOSE_VARIANTS = 6;
