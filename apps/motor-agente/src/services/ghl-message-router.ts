@@ -3,7 +3,8 @@
  *
  * Recibe payloads ya parseados (GhlParsedInbound / GhlParsedOutbound) y orquesta:
  *   - Inbound: crea/actualiza lead + conversation + INSERT message source='lead'
- *              + enqueue debounce (con respeto a ai_paused_until).
+ *              + enqueue debounce (con respeto a ai_paused_until y salvo que el
+ *              mensaje se escribiera hace más de GHL_STALE_INBOUND_MS).
  *   - Outbound: clasifica el origen via tabla automation_keywords + ZWSP detection.
  *               Si es IA propia (ZWSP) → no-op.
  *               Si es bienvenida/lm/inbound → INSERT source='system' + setea
@@ -307,6 +308,42 @@ export async function findExistingConversationByContact(
 }
 
 // ============================================================================
+// Fecha de un mensaje de GHL
+// ============================================================================
+
+/**
+ * Pasada esta edad, un mensaje entrante de GHL se guarda pero no despierta a la
+ * IA. Solo llega tan tarde en un reintento (el de +22 h 53 m aún entra; los de
+ * cada 24 h que vienen detrás, no), y contestarlo sería responder a algo de hace
+ * días con la ventana de 24 h de Instagram cerrada: GHL rechaza el envío con un
+ * 400. Va a la par que la ventana de la alerta de IA muda (24 h).
+ */
+export const GHL_STALE_INBOUND_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Cuándo se escribió un mensaje de GHL: lo que se guarda en `sent_at`.
+ *
+ * GHL reintenta un webhook fallido con el mismo messageId (+20 s, 45 s, 2 m,
+ * 5 m, 15 m, 30 m, 1 h, 3 h, 6 h, 12 h y después cada 24 h) y su `timestamp` es
+ * la hora de cada entrega. En el incidente del 17-20 oct, un mensaje escrito el
+ * 17 se guardó con fecha del 20: parecía nuevo, despertaba a la IA y la alerta
+ * de IA muda lo contaba como reciente. `dateAdded` no cambia entre reintentos;
+ * `timestamp` queda de respaldo y la hora actual de último recurso. Una fecha
+ * ilegible se salta y una futura se recorta a ahora: nada se escribe después de
+ * llegarnos.
+ */
+export function ghlMessageSentAt(
+  msg: { dateAdded: string | null; timestamp: string | null },
+  nowMs: number = Date.now(),
+): string {
+  for (const candidate of [msg.dateAdded, msg.timestamp]) {
+    const ms = candidate ? Date.parse(candidate) : Number.NaN;
+    if (Number.isFinite(ms)) return new Date(Math.min(ms, nowMs)).toISOString();
+  }
+  return new Date(nowMs).toISOString();
+}
+
+// ============================================================================
 // routeGhlInbound
 // ============================================================================
 
@@ -327,6 +364,11 @@ export interface RouteGhlInboundResult {
   isAiPaused: boolean;
   /** El mensaje ya estaba guardado (carrera entre dos entregas): ni reglas ni debounce. */
   duplicate: boolean;
+  /**
+   * Escrito hace más de `GHL_STALE_INBOUND_MS` (lo trae un reintento tardío de
+   * GHL): se guarda con su fecha, pero no se encola el debounce.
+   */
+  stale: boolean;
 }
 
 export async function routeGhlInbound(
@@ -458,7 +500,11 @@ export async function routeGhlInbound(
   //    1 row por cada parte (1 text si no vacío, 1 por cada URL adjunta) para
   //    que el archivo histórico refleje exactamente lo que llegó. La pipeline
   //    multimodal vendrá en bloque dedicado — por ahora solo persistencia.
-  const sentAt = inbound.timestamp ?? new Date().toISOString();
+  //    `sent_at` es cuándo se escribió, no cuándo nos llegó (`ghlMessageSentAt`).
+  const receivedAtMs = Date.now();
+  const sentAt = ghlMessageSentAt(inbound, receivedAtMs);
+  const ageMs = receivedAtMs - Date.parse(sentAt);
+  const stale = ageMs > GHL_STALE_INBOUND_MS;
   const hasText = typeof inbound.message === 'string' && inbound.message.trim().length > 0;
   const attachments = inbound.attachments ?? [];
 
@@ -506,7 +552,7 @@ export async function routeGhlInbound(
         { tenantId: inbound.tenantId, conversationId, ghlMessageId: inbound.ghlMessageId },
         'routeGhlInbound: mensaje ya guardado por otra entrega — sin reglas ni debounce',
       );
-      return { conversationId, leadId, messageId: null, isAiPaused: false, duplicate: true };
+      return { conversationId, leadId, messageId: null, isAiPaused: false, duplicate: true, stale };
     }
     insertedIds = res.ids;
   } catch (err) {
@@ -560,8 +606,22 @@ export async function routeGhlInbound(
   const rawPausedUntil = (convCheck?.ai_paused_until as string | null | undefined) ?? null;
   const isAiPaused = isAiPausedFromDb(rawPausedUntil);
 
-  // 7) Enqueue debounce solo si IA NO está pausada
-  if (!isAiPaused) {
+  // 7) Enqueue debounce solo si IA NO está pausada y el mensaje no es viejo.
+  //    El viejo queda en su sitio del historial (si la persona vuelve a
+  //    escribir, la IA lo verá junto al nuevo), pero no se contesta aparte.
+  if (stale) {
+    logger.warn(
+      {
+        tenantId: inbound.tenantId,
+        conversationId,
+        ghlMessageId: inbound.ghlMessageId,
+        sentAt,
+        ageHours: Math.round(ageMs / 360_000) / 10,
+        maxAgeHours: GHL_STALE_INBOUND_MS / 3_600_000,
+      },
+      'routeGhlInbound: mensaje viejo (reintento tardío de GHL) — guardado sin encolar debounce',
+    );
+  } else if (!isAiPaused) {
     // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
     await enqueueDebounceOrDefer(redis, conversationId, ctx.debounceWindowSeconds);
   } else {
@@ -577,6 +637,7 @@ export async function routeGhlInbound(
     messageId: insertedId,
     isAiPaused,
     duplicate: false,
+    stale,
   };
 }
 
@@ -672,7 +733,7 @@ export async function routeGhlOutbound(
       source: 'system',
       content_type: 'text',
       content: outbound.message,
-      sent_at: outbound.timestamp ?? new Date().toISOString(),
+      sent_at: ghlMessageSentAt(outbound),
     });
 
     await tagGhlContact({
@@ -727,7 +788,7 @@ export async function routeGhlOutbound(
     source: 'human',
     content_type: 'text',
     content: outbound.message,
-    sent_at: outbound.timestamp ?? new Date().toISOString(),
+    sent_at: ghlMessageSentAt(outbound),
   });
 
   // Sprint Eta — evaluar reglas trigger_who='trainer'/'any' post-INSERT human.
@@ -859,7 +920,7 @@ async function createConversationFromOutbound(args: {
     source: 'system',
     content_type: 'text',
     content: outbound.message,
-    sent_at: outbound.timestamp ?? new Date().toISOString(),
+    sent_at: ghlMessageSentAt(outbound),
   });
 
   logger.info(

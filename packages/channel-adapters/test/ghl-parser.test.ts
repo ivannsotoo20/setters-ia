@@ -444,6 +444,54 @@ describe('parseGhlWebhookPayload — customData passthrough (legacy "clase" Work
   });
 });
 
+describe('dateAdded: cuándo se escribió el mensaje, no cuándo se entregó', () => {
+  // Incidente 17-20 oct 2026: GHL reintentó durante días un webhook con el
+  // mismo messageId. `timestamp` es la hora de cada entrega; `dateAdded`, la
+  // del mensaje, que no cambia entre reintentos.
+  const retried = {
+    type: 'InboundMessage',
+    locationId: 'loc_7',
+    contactId: 'contact_1',
+    conversationId: 'gc1',
+    body: 'Me interesa, ¿cómo funciona?',
+    messageType: 'IG',
+    direction: 'inbound',
+    messageId: 'ghl_msg_1',
+    dateAdded: '2026-10-17T19:09:12.000Z',
+    timestamp: '2026-10-20T18:03:41.000Z',
+  };
+
+  it('el inbound expone dateAdded sin pisar timestamp', () => {
+    const inbound = parseGhlInboundMessage(parseGhlWebhookPayload(retried), 7);
+    expect(inbound.dateAdded).toBe('2026-10-17T19:09:12.000Z');
+    expect(inbound.timestamp).toBe('2026-10-20T18:03:41.000Z');
+  });
+
+  it('el outbound también', () => {
+    const payload = parseGhlWebhookPayload({ ...retried, type: 'OutboundMessage', direction: 'outbound' });
+    const outbound = parseGhlOutboundMessage(payload, 7);
+    expect(outbound.dateAdded).toBe('2026-10-17T19:09:12.000Z');
+    expect(outbound.timestamp).toBe('2026-10-20T18:03:41.000Z');
+  });
+
+  it('sin dateAdded queda null', () => {
+    const withoutDate: Record<string, unknown> = { ...retried };
+    delete withoutDate.dateAdded;
+    const inbound = parseGhlInboundMessage(parseGhlWebhookPayload(withoutDate), 7);
+    expect(inbound.dateAdded).toBeNull();
+    expect(inbound.timestamp).toBe('2026-10-20T18:03:41.000Z');
+  });
+
+  it('un dateAdded con otra forma se descarta y el mensaje entra igual', () => {
+    const inbound = parseGhlInboundMessage(
+      parseGhlWebhookPayload({ ...retried, dateAdded: 1760728152000 }),
+      7,
+    );
+    expect(inbound.dateAdded).toBeNull();
+    expect(inbound.message).toBe('Me interesa, ¿cómo funciona?');
+  });
+});
+
 describe('alias de messageType que manda GHL de verdad', () => {
   // Caso real (2026-08-24): GHL envio un webhook de Facebook con
   // messageType "FB" y el enum lo tiro con invalid_enum_value. El mensaje se
