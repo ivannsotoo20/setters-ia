@@ -83,7 +83,21 @@ export interface FilterParams {
   viewerId?: string | null;
   /** Sprint Eta — IDs de labels para filtrar. Match si la row tiene AL MENOS una. */
   labelIds?: number[];
+  /**
+   * Conversaciones concretas (2026-10-21): las de una alerta del dashboard
+   * ("11 personas esperando respuesta"). Tania pulsaba la alerta y no llevaba a
+   * ninguna parte. Con ids, la lista se carga por ids y no por las 100 últimas.
+   */
+  ids?: number[];
+  /** La alerta de la que vienen los ids, para el aviso de encima de la lista. */
+  alert?: ConversationAlertFilter | null;
 }
+
+/** Alertas del dashboard que abren su lista de conversaciones. */
+export type ConversationAlertFilter = 'awaiting_reply' | 'handoff_unattended';
+
+/** Tope de ids por URL: más que cualquier alerta real y la URL sigue siendo corta. */
+export const MAX_FILTER_IDS = 200;
 
 export function classifyTab(row: Pick<ConversationListRow, 'is_handoff_to_human' | 'phase_number' | 'state' | 'is_qualified'>): TabKey {
   // Precedencia: handoff > phase final > bought (proxy hasta Sprint Eta).
@@ -147,6 +161,7 @@ export function applyFilters(
   const viewerId = filters.viewerId ?? null;
 
   const labelIds = filters.labelIds ?? [];
+  const ids = filters.ids && filters.ids.length > 0 ? new Set(filters.ids) : null;
 
   return rows.filter((row) => {
     if (unread && row.is_unread !== true) return false;
@@ -173,6 +188,7 @@ export function applyFilters(
       const rowLabelIds = (row.labels ?? []).map((l) => l.id);
       if (!labelIds.some((id) => rowLabelIds.includes(id))) return false;
     }
+    if (ids && !ids.has(row.id)) return false;
     return true;
   });
 }
@@ -192,6 +208,15 @@ export function parseLabelIds(value: string | null | undefined): number[] {
     .split(',')
     .map((s) => Number(s.trim()))
     .filter((n) => Number.isFinite(n) && n > 0);
+}
+
+/** `?ids=1,2,3` → ids únicos y válidos, como mucho `MAX_FILTER_IDS`. */
+export function parseConversationIds(value: string | null | undefined): number[] {
+  return [...new Set(parseLabelIds(value).filter((n) => Number.isInteger(n)))].slice(0, MAX_FILTER_IDS);
+}
+
+export function parseAlertFilter(value: string | null | undefined): ConversationAlertFilter | null {
+  return value === 'awaiting_reply' || value === 'handoff_unattended' ? value : null;
 }
 
 const VALID_TABS: readonly TabKey[] = ['chats', 'hot', 'done', 'bought'] as const;

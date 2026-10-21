@@ -1,4 +1,5 @@
-import { Inbox } from 'lucide-react';
+import Link from 'next/link';
+import { Inbox, X } from 'lucide-react';
 import {
   type ConversationListRow,
   type FilterParams,
@@ -15,6 +16,12 @@ interface Props {
   assigneeMap: Record<string, string>;
   allLabels: LabelRow[];
 }
+
+const ALERT_FILTER_LABELS: Record<NonNullable<FilterParams['alert']> | 'none', string> = {
+  awaiting_reply: 'Esperando respuesta: nadie les ha contestado',
+  handoff_unattended: 'En tus manos sin respuesta desde hace más de 24 h',
+  none: 'Conversaciones de una alerta del dashboard',
+};
 
 export function ConversationListPane({
   rows,
@@ -39,6 +46,20 @@ export function ConversationListPane({
           {rows.length} totales · {visible.length} en vista
         </p>
       </header>
+      {(filters.ids ?? []).length > 0 ? (
+        <div className="shrink-0 border-b border-border bg-primary/8 px-3 py-2 flex items-start gap-2 text-xs">
+          <span className="flex-1 leading-relaxed">
+            {ALERT_FILTER_LABELS[filters.alert ?? 'none']} · {visible.length}
+          </span>
+          <Link
+            href="/conversations"
+            className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0"
+          >
+            <X className="size-3" />
+            Ver todas
+          </Link>
+        </div>
+      ) : null}
       <div className="shrink-0">
         <ConversationListFilters
           q={filters.q ?? ''}

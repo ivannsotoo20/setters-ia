@@ -63,6 +63,13 @@ export interface ConvSnapshot {
    */
   has_team_reply?: boolean;
   /**
+   * La abrió la persona, pero con la palabra clave suelta o el botón de una
+   * automatización, o se la contestó la automatización de la entrenadora
+   * (lib/inbound-opening.ts). Tania, 2026-10-21: eso no es inbound. Opcional:
+   * solo se rellena en las inbound del dashboard.
+   */
+  inbound_keyword_flow?: boolean;
+  /**
    * Lead detrás de la conversación (`conversations.lead_id`). Opcional: el
    * dashboard lo usa para dejar fuera de las alertas las conversaciones de
    * prueba (las de Iván).

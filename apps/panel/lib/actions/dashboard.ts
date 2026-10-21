@@ -35,6 +35,7 @@ import {
   CONV_SNAPSHOT_SELECT,
   enrichWithLeadReplies,
   enrichWithTeamReplies,
+  enrichWithInboundOpenings,
   loadLastMessageBySource,
   loadTestLeadIds,
   loadWindowAppointments,
@@ -275,6 +276,8 @@ export async function loadDashboardData(input: {
     replyPrev,
     teamCur,
     teamPrev,
+    openingCur,
+    openingPrev,
     lastMsgRes,
     testLeadsRes,
     apptCur,
@@ -284,6 +287,8 @@ export async function loadDashboardData(input: {
     enrichWithLeadReplies(supabase, prevConvs),
     enrichWithTeamReplies(supabase, convs),
     enrichWithTeamReplies(supabase, prevConvs),
+    enrichWithInboundOpenings(supabase, convs, tenantId),
+    enrichWithInboundOpenings(supabase, prevConvs, tenantId),
     loadLastMessageBySource(supabase, monitoredIds),
     loadTestLeadIds(supabase, tenantId),
     loadWindowAppointments(supabase, {
@@ -305,6 +310,8 @@ export async function loadDashboardData(input: {
   if (replyPrev.error) return { ok: false, error: replyPrev.error };
   if (teamCur.error) return { ok: false, error: teamCur.error };
   if (teamPrev.error) return { ok: false, error: teamPrev.error };
+  if (openingCur.error) return { ok: false, error: openingCur.error };
+  if (openingPrev.error) return { ok: false, error: openingPrev.error };
   if (lastMsgRes.error) return { ok: false, error: lastMsgRes.error };
   if (testLeadsRes.error) return { ok: false, error: testLeadsRes.error };
   if (apptCur.error) return { ok: false, error: apptCur.error };

@@ -44,7 +44,10 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
   if (!effective) notFound();
 
   // ---- Carga lista (siempre) ----------------------------------------------
-  const listPromise = supabase
+  // Con `ids` (una alerta del dashboard) se cargan esas y solo esas: pueden ser
+  // más antiguas que las 100 últimas, y la lista se quedaría vacía.
+  const filterIds = filters.ids ?? [];
+  let listQuery = supabase
     .from('conversations')
     .select(
       `id, lead_id, channel_id, phase_number, state, conversation_source, direction,
@@ -53,9 +56,11 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
        leads(first_name, last_name, username, external_id),
        channels(channel_type, via_provider)`,
     )
-    .eq('tenant_id', effective.tenantId)
+    .eq('tenant_id', effective.tenantId);
+  if (filterIds.length > 0) listQuery = listQuery.in('id', filterIds);
+  const listPromise = listQuery
     .order('updated_at', { ascending: false })
-    .limit(LIST_LIMIT);
+    .limit(filterIds.length > 0 ? filterIds.length : LIST_LIMIT);
 
   // ---- Carga miembros tenant (siempre — para dropdown asignar + map) ------
   const membersPromise = listMembers({ tenantId: effective.tenantId });
