@@ -146,6 +146,13 @@ export interface GeneratorInput {
    */
   aiMessagesPerTurnMax?: 1 | 2 | 3 | 4;
   /**
+   * 2026-11-04 — Idioma en el que escribe la persona (el motor lo resuelve con
+   * `resolveConversationLanguage`). El pipeline lo usa para no exigir frases en
+   * castellano en los reintentos (V23, D2) cuando la conversación va en otro
+   * idioma. Sin él, castellano.
+   */
+  leadLanguage?: 'es' | 'pt' | 'en' | 'fr';
+  /**
    * Cerrojo de la videollamada. Con él, la tool pide además país, meses de dolor
    * y episodio anterior, y el pipeline no deja salir una propuesta ni un enlace
    * sin ellos (ver `callGateMiss` en pipeline.ts).

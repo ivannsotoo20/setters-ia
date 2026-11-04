@@ -44,3 +44,28 @@ describe('directivas de cierre por zona con recurso', () => {
     expect(buildPhaseFocusInstruction(2, false, { zoneClose: true })).toContain('sin ningún enlace');
   });
 });
+
+describe('D5 — cierre en texto libre (2026-11-04)', () => {
+  it('la regla de enlaces deja redactar con 1 o 2 vídeos sin CTA y sigue sin agenda', () => {
+    const rule = zoneCloseLinkRule({ closeWithResource: true, freeClose: true });
+    expect(rule).toContain('con tus palabras');
+    expect(rule).toContain('ni enlace de agenda');
+    expect(rule).not.toContain('es ese, con su vídeo');
+  });
+
+  it('las directivas y la focal dejan de pedir el literal tal cual', () => {
+    for (const zone of [PREFIJO_FUERA, DECLARADA]) {
+      const libre = renderZoneBlock(zone as any, { closeWithResource: true, freeClose: true })!;
+      expect(libre).toContain('con tus palabras');
+      expect(libre).not.toContain('escrito tal cual');
+    }
+    const margen = renderZoneBlock(DECLARADA as any, { closeWithResource: true, freeClose: true, exploreTurnsLeft: 1 })!;
+    expect(margen).toContain('con tus palabras');
+    const focal = buildPhaseFocusInstruction(2, false, { zoneClose: true, zoneCloseWithResource: true, zoneCloseFreeText: true });
+    expect(focal).toContain('con tus palabras');
+    expect(focal).not.toContain('escrito tal cual');
+    const focalMargen = buildPhaseFocusInstruction(2, false, { zoneClose: true, zoneCloseWithResource: true, zoneCloseFreeText: true, zoneExploreTurnsLeft: 1 });
+    expect(focalMargen).toContain('con tus palabras');
+    expect(buildPhaseFocusInstruction(2, false, { zoneClose: true, zoneCloseWithResource: true })).toContain('escrito tal cual');
+  });
+});

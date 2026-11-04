@@ -68,6 +68,12 @@ export interface PhaseFocusOptions {
    */
   zoneCloseWithResource?: boolean;
   /**
+   * D5 (2026-11-04, Iván): con `zoneClose`, el cierre lo redacta el modelo con sus
+   * palabras y 1 o 2 vídeos sin CTA de su bloque (`zone_close_mode='free'`).
+   * La focal deja de exigir el literal «tal cual».
+   */
+  zoneCloseFreeText?: boolean;
+  /**
    * Con `zoneClose`: turnos de margen antes del cierre, contando este
    * (`zone_explore_turns`, Tania 21-oct). Con más de 0, la focal permite una
    * pregunta sobre lo suyo en vez de exigir el cierre.
@@ -113,14 +119,15 @@ const ZONE_HANDOFF_FOCUS =
  * `disqualified` (el estado 'stopped' no pausa la IA): si ella vuelve a escribir,
  * el turno sigue cerrando, pero sin repetirle el mismo literal.
  */
-function zoneCloseFocus(closeWithResource: boolean): string {
+function zoneCloseFocus(closeWithResource: boolean, freeText = false): string {
+  const wording = freeText ? 'redactado con tus palabras según el patrón de tu bloque' : 'escrito tal cual';
   return (
     'PRIORIDAD ABSOLUTA — ESTE TURNO CIERRA POR RESIDENCIA. Esta instrucción manda sobre la fase ' +
     'en la que ibas y sobre cualquier objetivo de fase: el motor ha comprobado que esta persona no ' +
     'cualifica por residencia (sección "Zona geográfica"). No sigas cualificando ni esperes a otro ' +
     'turno para cerrar. Tu mensaje de este turno es el cierre de residencia fuera de zona que define ' +
-    'tu bloque (coach_qualification_doesnt), escrito tal cual: sin nombrar el país ni el motivo, sin ' +
-    `preguntas, ${zoneCloseLinkRule({ closeWithResource })}. Devuelve ` +
+    `tu bloque (coach_qualification_doesnt), ${wording}: sin nombrar el país ni el motivo, sin ` +
+    `preguntas, ${zoneCloseLinkRule({ closeWithResource, freeClose: freeText })}. Devuelve ` +
     'conversation_status="disqualified". Si ese cierre ya se lo enviaste en un turno anterior, no lo ' +
     'repitas: una frase breve de despedida, sin preguntas y sin enlaces, y ' +
     'conversation_status="disqualified". Única excepción: si ella ha escrito, en el formulario o en ' +
@@ -137,14 +144,14 @@ function zoneCloseFocus(closeWithResource: boolean): string {
  * puede ser una pregunta sobre lo suyo. El motor cuenta los turnos y, al
  * agotarse, vuelve la focal de cierre.
  */
-function zoneExploreFocus(turnsLeft: number, closeWithResource: boolean): string {
+function zoneExploreFocus(turnsLeft: number, closeWithResource: boolean, freeText = false): string {
   return (
     'PRIORIDAD ABSOLUTA — ESTA PERSONA NO CUALIFICA POR RESIDENCIA. Esta instrucción manda sobre la ' +
     'fase en la que ibas: el motor ha comprobado que vive fuera de la zona (sección "Zona ' +
     'geográfica"), así que no sigues cualificando ni vas hacia la videollamada. Antes del cierre ' +
     'puedes entender qué necesita. Si ya sabes qué le pasa, tu mensaje es el cierre de residencia ' +
-    'fuera de zona de tu bloque (coach_qualification_doesnt), tal cual y ' +
-    `${zoneCloseLinkRule({ closeWithResource })}, con conversation_status="disqualified". Si aún ` +
+    `fuera de zona de tu bloque (coach_qualification_doesnt), ${freeText ? 'con tus palabras' : 'tal cual'} y ` +
+    `${zoneCloseLinkRule({ closeWithResource, freeClose: freeText })}, con conversation_status="disqualified". Si aún ` +
     'no lo sabes, tu mensaje es UNA pregunta sobre lo suyo (qué le pasa, en qué momentos lo nota), ' +
     'lo justo para elegir el recurso: nada que cualifique (ni el tiempo ni el país), con ' +
     'conversation_status="active". Te ' +
@@ -175,8 +182,9 @@ export function buildPhaseFocusInstruction(
   }
   if (options.zoneClose === true) {
     const left = options.zoneExploreTurnsLeft ?? 0;
-    if (left > 0) return zoneExploreFocus(left, options.zoneCloseWithResource === true);
-    return zoneCloseFocus(options.zoneCloseWithResource === true);
+    const freeText = options.zoneCloseFreeText === true;
+    if (left > 0) return zoneExploreFocus(left, options.zoneCloseWithResource === true, freeText);
+    return zoneCloseFocus(options.zoneCloseWithResource === true, freeText);
   }
   if (isHandoff) {
     return (

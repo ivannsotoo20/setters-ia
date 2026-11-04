@@ -280,6 +280,7 @@ describe('saveTrainerPreferences', () => {
       aiMessagesPerTurnMax: 4,
       addressingMode: 'mirror_lead',
       forbiddenPhrases: [],
+      singlePunctuation: false,
     };
 
     const r = await saveTrainerPreferences({ tenantId: 3, preferences: newPrefs });

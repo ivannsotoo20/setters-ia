@@ -49,3 +49,25 @@ describe('validator V20 enlace a persona fuera de zona', () => {
     expect(r.violations.find((x) => x.ruleId === 'V20')).toBeDefined();
   });
 });
+
+describe('V20 — lista de permitidos (cierre en texto libre, D5, 2026-11-04)', () => {
+  const SENTADA = 'https://www.youtube.com/shorts/gb2Ts6AoLUc';
+
+  it('un vídeo permitido pasa, en cualquiera de sus formas', () => {
+    const ctx = { ...base, zoneRejected: true, zoneAllowedUrls: ['https://youtu.be/gb2Ts6AoLUc'] };
+    expect(validateMessage(`Te la comparto: ${SENTADA}`, ctx).violations.find((x) => x.ruleId === 'V20')).toBeUndefined();
+  });
+
+  it('la agenda u otra URL siguen siendo error aunque haya permitidos', () => {
+    const ctx = { ...base, zoneRejected: true, zoneAllowedUrls: [SENTADA] };
+    const r = validateMessage(`Mira ${SENTADA} y reserva ${URL}`, ctx);
+    const v = r.violations.find((x) => x.ruleId === 'V20');
+    expect(v?.severity).toBe('error');
+    expect(v?.match).toBe(URL);
+  });
+
+  it('sin lista, cualquier URL sigue siendo error', () => {
+    const r = validateMessage(`Te la comparto: ${SENTADA}`, { ...base, zoneRejected: true, zoneAllowedUrls: [] });
+    expect(r.violations.find((x) => x.ruleId === 'V20')).toBeDefined();
+  });
+});

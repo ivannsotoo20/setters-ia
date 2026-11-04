@@ -21,6 +21,24 @@ export * from './rules/index.js';
 // Hito 12.1 — Heurística de tratamiento (tú/usted) usada por V18 y por el motor
 // (mirror_lead inyecta directiva dinámica al system prompt según la detección).
 export { detectAddressing, type AddressingResult } from './lib/detect-addressing.js';
+// 2026-11-04 — Idioma de la persona (castellano, portugués, inglés, francés): el
+// motor inyecta la directiva por turno y los seguimientos se escriben en su idioma.
+export {
+  detectLeadLanguage,
+  resolveConversationLanguage,
+  scoreLeadLanguage,
+  LEAD_LANGUAGES,
+  type LeadLanguage,
+  type LeadLanguageDetection,
+} from './lib/detect-language.js';
+// 2026-11-04 — Un solo signo de interrogación/exclamación (preferencia del trainer).
+export {
+  collapseRepeatedPunctuation,
+  normalizePartsPunctuation,
+  type PunctuationOptions,
+} from './lib/normalize-punctuation.js';
+// 2026-11-04 — Clave estable de un enlace (el mismo vídeo de YouTube en todas sus formas).
+export { canonicalLinkKey, extractUrls, urlsAllowed, URL_IN_TEXT_RE } from './lib/link-key.js';
 
 /**
  * Valida un mensaje del setter contra las reglas V0-V16.

@@ -105,6 +105,12 @@ export interface LeadOriginContext {
    */
   closeWithResource?: boolean;
   /**
+   * D5 (2026-11-04, Iván): el cierre de fuera de zona lo redacta el modelo con sus
+   * palabras y 1 o 2 vídeos sin CTA de su bloque (`zone_close_mode='free'`); el
+   * motor valida. Las directivas dejan de pedir el literal «tal cual».
+   */
+  zoneCloseFreeText?: boolean;
+  /**
    * Turnos de margen antes del cierre de zona, contando este (`zone_explore_turns`,
    * Tania 21-oct). Solo cambia el bloque con la residencia de fuera dicha por ella.
    */
@@ -267,6 +273,7 @@ export function buildLeadOriginDirective(ctx: LeadOriginContext): string | null 
   const zoneBlock = renderZoneBlock(zone, {
     residenceException: ctx.residenceException === true,
     closeWithResource: ctx.closeWithResource === true,
+    freeClose: ctx.zoneCloseFreeText === true,
     exploreTurnsLeft: ctx.zoneExploreTurnsLeft ?? 0,
   });
   const gateBlock = ctx.callGateBlock ?? null;
@@ -346,11 +353,25 @@ const DECLARED_RESIDENCE_OUTWEIGHS_PREFIX =
  * el vídeo que encaja con lo que contó, y lo que no cabe es el enlace de agenda.
  * El motor manda luego el literal de la variante cuyo vídeo eligió el modelo.
  */
-export function zoneCloseLinkRule(opts: { closeWithResource?: boolean }): string {
+export function zoneCloseLinkRule(opts: { closeWithResource?: boolean; freeClose?: boolean }): string {
+  // D5 (2026-11-04): en texto libre el cierre lo redacta el modelo con 1 o 2 vídeos
+  // sin CTA de su bloque; el motor valida que sean esos y que no vaya la agenda.
+  if (opts.freeClose) {
+    return (
+      'sin propuesta de videollamada ni enlace de agenda; el cierre lo redactas tú, con tus ' +
+      'palabras, con 1 o 2 vídeos sin CTA de tu bloque que encajen con lo que te ha contado, con ' +
+      'sus enlaces copiados tal cual'
+    );
+  }
   return opts.closeWithResource
     ? 'sin propuesta de videollamada ni enlace de agenda; si tu bloque tiene un cierre con un ' +
         'vídeo que encaja con lo que te ha contado, es ese, con su vídeo'
     : 'sin propuesta de videollamada y sin ningún enlace';
+}
+
+/** D5: cómo se escribe el cierre: tal cual (literal) o con las palabras del modelo. */
+function zoneCloseWording(opts: { freeClose?: boolean }): string {
+  return opts.freeClose ? 'redactado con tus palabras según el patrón de tu bloque' : 'escrito tal cual';
 }
 
 /**
@@ -359,7 +380,12 @@ export function zoneCloseLinkRule(opts: { closeWithResource?: boolean }): string
  */
 export function renderZoneBlock(
   zone: ZoneVerdict | null | undefined,
-  opts: { residenceException?: boolean; closeWithResource?: boolean; exploreTurnsLeft?: number } = {},
+  opts: {
+    residenceException?: boolean;
+    closeWithResource?: boolean;
+    freeClose?: boolean;
+    exploreTurnsLeft?: number;
+  } = {},
 ): string | null {
   if (!zone || zone.kind === 'clear') return null;
   switch (zone.kind) {
@@ -384,7 +410,7 @@ export function renderZoneBlock(
         'Este dato decide por sí solo y manda sobre la fase en la que estés: la persona ' +
         '**no cualifica por residencia** y no hace falta preguntarle el país. En este turno, ' +
         'tu mensaje es el cierre de residencia fuera de zona que define tu bloque ' +
-        '(coach_qualification_doesnt), escrito tal cual: sin nombrar el país, sin explicar el ' +
+        `(coach_qualification_doesnt), ${zoneCloseWording(opts)}: sin nombrar el país, sin explicar el ` +
         `motivo, ${zoneCloseLinkRule(opts)}. No abras preguntas nuevas ` +
         'ni sigas cualificando, aunque la fase te pida avanzar.' +
         // La excepción es la decisión D1 de Iván (2026-09-26): residencia en zona
@@ -428,7 +454,7 @@ export function renderZoneBlock(
           'dónde vive y no sigas cualificando para la videollamada, aunque la fase te pida avanzar. ' +
           'Lo que toca es el camino de fuera de zona de tu bloque (coach_qualification_doesnt) sin ' +
           'cortar en seco: si ya sabes qué le pasa, tu mensaje es el cierre con el recurso que ' +
-          'encaja, tal cual; si aún no, una pregunta sobre lo que le pasa y cuándo lo nota, lo justo ' +
+          `encaja, ${opts.freeClose ? 'con tus palabras' : 'tal cual'}; si aún no, una pregunta sobre lo que le pasa y cuándo lo nota, lo justo ` +
           'para saber cuál le encaja (lo que cualifica, como el tiempo, ya no se pregunta). ' +
           `Te ${opts.exploreTurnsLeft === 1 ? 'queda 1 turno' : `quedan ${opts.exploreTurnsLeft} turnos`} ` +
           'antes de cerrar. Sin nombrar el país ni el motivo, sin propuesta de videollamada y sin ' +
@@ -441,7 +467,7 @@ export function renderZoneBlock(
         'la entrenadora NO lleva. Es residencia declarada, no una pista: no hace falta ' +
         'preguntarle nada y manda sobre la fase en la que estés. En este turno, tu mensaje es el ' +
         'cierre de residencia fuera de zona que define tu bloque (coach_qualification_doesnt), ' +
-        `escrito tal cual: sin nombrar el país, sin explicar el motivo, ${zoneCloseLinkRule(opts)}.`
+        `${zoneCloseWording(opts)}: sin nombrar el país, sin explicar el motivo, ${zoneCloseLinkRule(opts)}.`
       );
     case 'in_zone_by_prefix':
       if (zone.tier === 'filtered') {

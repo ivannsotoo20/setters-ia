@@ -72,6 +72,12 @@ export function buildCountryAsk(args: {
   channel: string | null | undefined;
   zoneVerdict: ZoneVerdict;
   history: ConversationMessage[];
+  /**
+   * 2026-11-04 — Idioma en el que escribe la persona. Fuera del castellano no se
+   * impone la frase literal de la entrenadora (iría en castellano): el bloque
+   * pregunta con su pregunta, en el idioma de la persona.
+   */
+  leadLanguage?: 'es' | 'pt' | 'en' | 'fr' | null;
 }): PipelineInput['countryAsk'] {
   const cfg = parseCountryAskConfig(args.leadQualification);
   if (!cfg) return undefined;
@@ -82,7 +88,9 @@ export function buildCountryAsk(args: {
   if (turn < cfg.byTurn) return undefined;
   const askedBefore = args.history.some((m) => m.role === 'assistant' && asksForCountry(m.content));
   if (askedBefore) return undefined;
-  return { turn, question: cfg.question };
+  const language = args.leadLanguage ?? 'es';
+  if (language === 'es') return { turn, question: cfg.question };
+  return { turn, question: null, language };
 }
 
 /**
@@ -93,7 +101,9 @@ export function renderCountryAskBlock(ask: PipelineInput['countryAsk']): string 
   if (!ask) return null;
   const phrase = ask.question
     ? `con esta frase: «${ask.question}»`
-    : 'con la frase de tu bloque para preguntarlo';
+    : ask.language && ask.language !== 'es'
+      ? 'con la pregunta de tu bloque para preguntarlo, dicha en el idioma en que te escribe'
+      : 'con la frase de tu bloque para preguntarlo';
   return (
     '## Desde dónde te escribe (país a tiempo)\n\n' +
     'Esta conversación no trae prefijo de teléfono y todavía no sabes desde dónde te escribe. ' +

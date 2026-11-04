@@ -111,11 +111,49 @@ de la entrega 2a. Coach v32 listo para cargar: body 49.159 caracteres, md5 `3f44
 
 ## 5. Fase 2 (código, tres entregas) y siguientes
 
-- **2a motor** (esta sesión): idioma determinista (`detectLeadLanguage`, directiva por turno,
-  regex en pt/en/fr, literales validados en vez de sustituidos), cierre fuera de zona en texto libre
-  (`zone_close_mode='free'`, allowlist del Grupo A, V20 con allowlist), normalizador de signos
-  (`trainer_preferences.singlePunctuation`, que quita también «¿» y «¡» para este voiceprint) y
-  el país suelto sin pregunta como declaración (`zone-policy.ts`).
+- **2a motor** (esta sesión, rama `feat/tania-ronda-04-nov-2a`, hecha el 4-nov):
+  - **Idioma**: `packages/shared-validator/src/lib/detect-language.ts` (`detectLeadLanguage`,
+    `resolveConversationLanguage`: palabras funcionales + diacríticos, el último mensaje suyo no
+    ambiguo manda, default castellano); `apps/motor-agente/src/lib/lead-language.ts`
+    (`buildLeadLanguageDirective`, en `extraSystemSuffix` como la de tratamiento);
+    `PipelineInput.leadLanguage`; `asksForCountry`, `asksForPrice`, `ZONE_REASON_RE` y
+    `RESIDENCE_LEADS` en pt/en/fr; con otro idioma V23 no impone la frase castellana y el reintento
+    de D2 pide el sentido de la frase en su idioma (si aun así da la cifra, sale el literal
+    castellano con log `D2_fallback_lang`). El simulador devuelve `lead_language`.
+  - **Cierre fuera de zona en texto libre (D5)**: `lead_qualification.zone_close_mode='free'`
+    (+ `zone_close_max_urls`, default 2; `zone_close_allowed_urls` opcional). El motor pasa
+    `zone.freeClose` con las URLs de `zone_close_resources`; en `pipeline.ts`,
+    `validateFreeZoneClose` (URLs permitidas por `canonicalLinkKey`, ≤ máx, sin agenda, sin
+    motivo, cierra) con un reintento y la variante literal de respaldo; lo que pasa sigue a Judge,
+    validador (V20 con `zoneAllowedUrls`) y Splitter. Las directivas y la focal dicen «con tus
+    palabras» en vez de «tal cual». `zone.closeSent` llega del motor (`state='stopped'`) y un vídeo
+    permitido ya enviado también cuenta como cierre hecho.
+  - **País suelto = declaración**: `bareCountryStatementTerm` en `zone-policy.ts` («De Colombia»,
+    «Colombia», «Soy de Cuba», «desde Venezuela»; ≤4 palabras, sin «pero/aunque», país de fuera);
+    un gentilicio solo («soy colombiana») sigue siendo mención. Cambia el test del 21-oct que
+    esperaba mención.
+  - **Un solo signo**: la CAUSA de los «??» era la directriz universal del serializador
+    («usa `??` en lugar de `?`», Sprint 2.5b/A) que llevaba el `trainer_prefs_v1` de los tres
+    tenants. Ahora es `trainer_preferences.singlePunctuation` (default false = igual que hoy; con
+    true la directriz cambia de signo y el motor normaliza en código: `collapseRepeatedPunctuation`
+    quita `??`/`!!` y `¿¡` en `process-debounced.ts` antes de programar las burbujas y en el
+    simulador). Toggle en `/settings/preferences`, estricto.
+  - Activación para el tenant 7 tras el deploy: `.tmp/ronda-tania-04-nov/cargar-2a-config.sql`.
+  - Verificación: `pnpm typecheck` en verde; 855 tests del motor, 186 del pipeline, 126 del validador y
+    los del panel en verde. Batería local `bateria-2a-local.mts` (8 escenarios, 0,95 $): 7/8 a la
+    primera. Ecuador, «De Colombia» suelto y «Soy de Cuba» cierran redactados con 1 o 2 vídeos del
+    Grupo A dentro del margen y sin nombrar el país; +51 cierra en el mismo turno redactado; el
+    portugués se contesta en portugués; precio y país sin cambios; ni un «??» ni un «¿» en 8
+    escenarios. El fallo: a «I live in Bogotá» el cierre en inglés decía «clients based in
+    Colombia»: `revealsZoneReason` solo conocía el término declarado («bogota») y frases en
+    castellano. Arreglo: el motor pasa todos los `country_reject_terms` (`zone.rejectTerms`) y la
+    regex entiende «not able to take on», «won't be able to help», «clients based in», y sus
+    equivalentes en portugués y francés. Segunda pasada de esos dos escenarios (0,16 $): 2/2; el
+    cierre en inglés sale sin motivo («I have some videos on my page that can really help you…
+    Give it a try, and if any questions come up just let me know 😊»). En total, 8/8.
+  - Fuera de 2a: los seguimientos (`personalize-followup.ts`, motor y panel) siguen diciendo
+    «castellano»; Tania los tiene apagados y el panel aún no depende de `shared-validator` en esta
+    rama (lo añade 2b). Queda para cuando se junten las ramas.
 - **2b motor** (sesión propia): gate de intención en la apertura (`classified_or_intent`,
   prefiltro + Haiku, etiqueta «Profesional», nunca «profesional» en `conversation_source`).
 - **2c panel** (sesión propia): alertas calculadas en SQL (RPC `dashboard_alerts`), tercera alerta
@@ -151,9 +189,21 @@ de la entrega 2a. Coach v32 listo para cargar: body 49.159 caracteres, md5 `3f44
   `request_payload.kind='inbound_intent_gate'`; `custom_fields.inbound_intent` se guarda en los tres veredictos.
   Activar: aplicar 083 y 084, desplegar motor y panel, y
   `UPDATE public.tenant_configs SET ghl_inbound_mode = 'classified_or_intent' WHERE tenant_id = 7`.
-- **2c alertas + velocidad** (rama `claude/elated-bose-7c0d22`): el proceso se cayó (exit 3221226505) con
-  `dashboard-loader.ts`, `dashboard-query.ts` y la RPC a medias; reanudada por mensaje con la numeración corregida
-  (**085** RPC, **087** índices).
+- **2c alertas + velocidad** (rama `claude/elated-bose-7c0d22`, worktree `.claude/worktrees/elated-bose-7c0d22`): el
+  proceso se cayó una vez (exit 3221226505) y, reanudada, terminó sin commit y sin tocar producción. Migración **085**
+  (`dashboard_alerts(p_tenant_id, …)`, `SECURITY DEFINER`, solo `service_role`, devuelve jsonb con las ids de cuatro
+  listas: esperando respuesta, en manos de la entrenadora, atascos e inbound sin atender) y **087** (índices
+  `conversations(tenant_id, updated_at DESC)` y `(tenant_id, state)`). Tercera alerta `inbound_unattended` («N personas te
+  escribieron y la IA no las atiende») que abre `/conversations?ids=…`. Velocidad: materialización de seguimientos solo si
+  están activos y dentro del `Promise.all`, los 200 mensajes más recientes con aviso, `listMembers` sin N+1, `listLabels`
+  con `count`, `loading.tsx` en dashboard y conversaciones. Medido en local con una conversación de 94 mensajes: abrirla
+  pasa de 3,8–5,5 s a 0,75–1,1 s de servidor; el refresco del hilo cada 10 s baja a 0,17 s. Tenant 7 con la RPC frente al
+  cálculo manual: 34 esperando respuesta (el dashboard decía 10–11 por el corte de 1.000 filas), 71 en manos de Tania,
+  1.415 inbound candidatas (≈432 tras quitar botones y palabra suelta: «Siii😊» 386, «Si» 230, «Empezar» 80…). Sin la 085
+  aplicada el dashboard enseña «falta aplicar la migración 085». Decisiones que deja a Iván: la alerta inbound exige
+  `state='active'` y no tiene umbral de horas; los atascos también pasan por la RPC; aviso en el hilo con más de 200
+  mensajes. Visto de paso: «Leads totales 1000» es el mismo corte de 1.000 filas en la carga de la ventana (Fase 4), y un
+  hydration mismatch en `conversation-list-item.tsx` (la inicial del avatar parte un emoji).
 - **Hardening RLS** (rama `claude/goofy-robinson-6015c3`): hecho, sin commit. Migración **086** (SELECT para miembros del
   tenant + agency admin; RESTRICTIVE que niega INSERT/UPDATE/DELETE por sesión en `tenant_configs`, `prompt_blocks` y
   `resources`; solo escribe service_role), `setAiEnabled` con rol, script RLS ampliado (20 pass). Inventario: el panel

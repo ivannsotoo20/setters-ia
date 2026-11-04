@@ -273,6 +273,28 @@ export function PreferencesForm({ tenantId, initial }: Props) {
               })}
             </div>
           </div>
+          <div className="border-t border-border/40" />
+
+          {/* 2026-11-04 — Un solo signo de interrogación/exclamación (ESTRICTO) */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <Label className="text-sm">Un solo signo de interrogación y exclamación</Label>
+                <EnforcementBadge level="strict" />
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Activado: el setter cierra las preguntas con un solo «?» y las exclamaciones con un
+                solo «!», sin signos de apertura («¿», «¡»). Desactivado: usa el doble «??» al final
+                de las preguntas, el estilo de WhatsApp informal. El motor normaliza cada mensaje
+                antes de enviarlo, así que se cumple siempre.
+              </p>
+            </div>
+            <Switch
+              checked={prefs.singlePunctuation}
+              onCheckedChange={(checked) => update('singlePunctuation', checked)}
+              aria-label="Un solo signo de interrogación y exclamación"
+            />
+          </div>
         </CardContent>
       </CollapsibleCard>
 

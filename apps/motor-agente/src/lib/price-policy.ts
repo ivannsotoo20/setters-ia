@@ -66,8 +66,10 @@ function priceAskedAndAnswered(history: ConversationMessage[]): boolean {
   return false;
 }
 
+// 2026-11-04: también en portugués, inglés y francés (Tania contesta en el idioma
+// de la persona). «valor» solo con «do/da» detrás: en castellano es otra cosa.
 const PRICE_QUESTION_RE =
-  /cu[aá]nto\s+(?:cuesta|cuestan|vale|valen|cobras|cobr[aá]is|sale|costar[ií]a|ser[ií]a)|precio|tarifa|cu[aá]nto\s+es\b/i;
+  /cu[aá]nto\s+(?:cuesta|cuestan|vale|valen|cobras|cobr[aá]is|sale|costar[ií]a|ser[ií]a)|precio|tarifa|cu[aá]nto\s+es\b|quanto\s+(?:custa|custam|[ée]\b|fica|cobra|sai)|pre[çc]o|valor\s+d[oa]\b|how\s+much|(?:what|whats|what's)\s+(?:is\s+)?the\s+(?:price|cost|fee)|\bprice\b|\bcost\b|combien\s+(?:ça\s+|ca\s+)?(?:co[uû]te|c'est|cest|est-ce|faut)|\bprix\b|\btarif/i;
 
 /** ¿La persona pregunta el precio en este mensaje? */
 export function asksForPrice(text: string): boolean {

@@ -65,10 +65,12 @@ import { escapeRegex, findWholeWordTerm, normalizeText } from './text-match.js';
 import {
   countryNameEs,
   findCountryNames,
+  isoFromCountryName,
   parseZoneAllowlist,
   zoneOfIso,
   type ZoneAllowlist,
 } from './zone-config.js';
+import { extractUrls } from '@fyzon/shared-validator';
 
 export interface ZonePolicy {
   /** ISO 3166-1 alpha-2 en mayúsculas. Lista negra: solo manda si no hay `allowlist`. */
@@ -117,6 +119,22 @@ export interface ZonePolicy {
    * de WhatsApp no lo usa: ese sigue descalificando directamente (Iván, 03-oct).
    */
   exploreTurns?: number;
+  /**
+   * D5 (2026-11-04, Iván): `lead_qualification.zone_close_mode`. Con 'free', el
+   * cierre lo redacta el modelo con 1 o 2 vídeos sin CTA de su bloque y el motor
+   * solo valida (ver `validateFreeZoneClose` en el pipeline); si falla dos veces,
+   * cae a la variante literal. Sin la clave o con 'literal', el cierre es la
+   * variante literal de siempre (D1). Solo con `closeParts`.
+   */
+  closeMode?: 'literal' | 'free';
+  /** Con 'free': vídeos como máximo en el cierre (`zone_close_max_urls`, 1-3; default 2). */
+  closeMaxUrls?: number;
+  /**
+   * Con 'free': URLs permitidas además de las de `closeVariants`
+   * (`zone_close_allowed_urls`, hasta 12). Cuando exista la biblioteca de
+   * recursos (Fase 3), la lista saldrá de ahí.
+   */
+  closeAllowedUrls?: string[];
 }
 
 /** Tramo de zona de un prefijo que cualifica. Solo existe con lista blanca. */
@@ -229,10 +247,55 @@ export function parseZonePolicy(raw: unknown): ZonePolicy | null {
   if (closeParts && typeof explore === 'number' && Number.isInteger(explore) && explore > 0) {
     policy.exploreTurns = Math.min(explore, MAX_EXPLORE_TURNS);
   }
+  // D5 (2026-11-04): cierre en texto libre, solo con el literal de respaldo.
+  if (closeParts && cfg.zone_close_mode === 'free') {
+    policy.closeMode = 'free';
+    const maxUrls = cfg.zone_close_max_urls;
+    policy.closeMaxUrls =
+      typeof maxUrls === 'number' && Number.isInteger(maxUrls) && maxUrls >= 1
+        ? Math.min(maxUrls, MAX_CLOSE_URLS)
+        : DEFAULT_CLOSE_URLS;
+    const allowed: string[] = [];
+    if (Array.isArray(cfg.zone_close_allowed_urls)) {
+      for (const u of cfg.zone_close_allowed_urls) {
+        if (typeof u !== 'string') continue;
+        const clean = u.trim();
+        if (/^https?:\/\/\S+$/i.test(clean) && allowed.length < MAX_ALLOWED_URLS) allowed.push(clean);
+      }
+    }
+    if (allowed.length > 0) policy.closeAllowedUrls = allowed;
+  } else if (closeParts && cfg.zone_close_mode === 'literal') {
+    policy.closeMode = 'literal';
+  }
   return policy;
 }
 
 const MAX_EXPLORE_TURNS = 3;
+const MAX_CLOSE_URLS = 3;
+const DEFAULT_CLOSE_URLS = 2;
+const MAX_ALLOWED_URLS = 12;
+
+/**
+ * D5: los vídeos que pueden salir en un cierre de fuera de zona en texto libre:
+ * los de las variantes literales (`zone_close_resources`) más los de
+ * `zone_close_allowed_urls`, sin repetir. Vacío si no hay ninguno.
+ */
+export function zoneCloseAllowedUrls(policy: ZonePolicy | null | undefined): string[] {
+  if (!policy) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const push = (u: string) => {
+    const key = u.trim().toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(u.trim());
+  };
+  for (const variant of policy.closeVariants ?? []) {
+    for (const part of variant) for (const u of extractUrls(part)) push(u);
+  }
+  for (const u of policy.closeAllowedUrls ?? []) push(u);
+  return out;
+}
 
 /**
  * Cuántos turnos de margen le quedan a la IA antes del cierre de zona, contando
@@ -408,6 +471,19 @@ export function evaluateZone(input: {
         const term = shortCountryAnswerTerm(answer, policy);
         if (term) return { kind: 'reject_by_declaration', term, excerpt: excerptAround(answer) };
       }
+      // 1c. 2026-11-04 — un mensaje que es SOLO el país («De Colombia», «Soy de
+      //     Cuba», «Colombia»), aunque no lo hayamos preguntado, es su residencia:
+      //     el bloque de Tania ya lo decía ("«Colombia» a secas es vivir en
+      //     Colombia") pero el motor lo dejaba en mención y, en la batería del v32,
+      //     un «De Colombia» tras «Hola, me duele la espalda» siguió cuatro turnos
+      //     sin cerrar. Un gentilicio suelto («soy colombiana») sigue siendo mención:
+      //     es origen, no residencia.
+      for (let i = leadMessages.length - 1; i >= 0; i--) {
+        const message = leadMessages[i];
+        if (typeof message !== 'string') continue;
+        const term = bareCountryStatementTerm(message, policy);
+        if (term) return { kind: 'reject_by_declaration', term, excerpt: excerptAround(message) };
+      }
     }
     // 2. Si no, la primera mención suelta obliga a preguntar.
     for (const message of leadMessages) {
@@ -441,6 +517,41 @@ function shortCountryAnswerTerm(message: string, policy: ZonePolicy): string | n
   if (policy.allowlist && findCountryNames(message).some((iso) => zoneOfIso(iso, policy.allowlist!) !== 'out')) {
     return null;
   }
+  return term;
+}
+
+/** Lo que puede ir delante de un país en un mensaje que es solo el país. */
+const BARE_COUNTRY_LEAD_RE =
+  /^(?:(?:hola|buenas|buenos dias|pues|yo|soy|vivo|estoy|resido|desde|de|del|en|aqui|aca|sou|moro|estou|eu|i am|i'm|im|from|in|je suis|j'habite|a|au|en|the|el|la)\s+)+/;
+const MAX_BARE_COUNTRY_WORDS = 4;
+
+/**
+ * 2026-11-04 — El término de un mensaje que es SOLO un país de fuera, con un
+ * arranque corto como mucho («De Colombia», «Soy de Cuba», «Colombia», «vivo en
+ * Perú»), o null. No cuenta un gentilicio solo («soy colombiana» es origen), ni
+ * un mensaje con matices, ni más de 4 palabras, ni un país de zona.
+ */
+export function bareCountryStatementTerm(message: string, policy: ZonePolicy): string | null {
+  if (policy.countryRejectTerms.length === 0) return null;
+  const text = normalizeText(message)
+    .replace(/[^\p{L}\p{N}'\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text) return null;
+  const words = text.split(' ');
+  if (words.length > MAX_BARE_COUNTRY_WORDS) return null;
+  if (NUANCE_RE.test(text)) return null;
+  const rest = text.replace(BARE_COUNTRY_LEAD_RE, '').trim();
+  if (!rest) return null;
+  const countryIso = isoFromCountryName(rest);
+  if (!countryIso) return null;
+  if (policy.allowlist) {
+    if (zoneOfIso(countryIso, policy.allowlist) !== 'out') return null;
+  } else if (policy.noContactCountries.size > 0 && !policy.noContactCountries.has(countryIso)) {
+    return null;
+  }
+  const term = findWholeWordTerm(rest, policy.countryRejectTerms);
+  if (!term || HOMONYMS_IN_ZONE.has(term)) return null;
   return term;
 }
 
@@ -501,6 +612,15 @@ const RESIDENCE_LEADS = [
   String.raw`(?<![a-z0-9])(?<!(?:^|[^a-z0-9])no\s{1,3})(?:vivo|resido|radico|vivimos|residimos|estoy\s+viviendo)\s+(?:(?:aqui|aca|ahora|actualmente)\s+)?en`,
   String.raw`(?<![a-z0-9])aca\s+en`,
   String.raw`(?<![a-z0-9])(?:te\s+|les\s+|os\s+)?escribo\s+desde`,
+  // 2026-11-04 — portugués, inglés y francés (la conversación puede ir en el
+  // idioma de la persona). Solo frases de residencia inequívocas: "I'm in London"
+  // queda fuera a propósito ("I'm in pain" la haría pasar por declaración).
+  String.raw`(?<![a-z0-9])(?<!(?:^|[^a-z0-9])nao\s{1,3})(?:moro|resido|estou\s+morando|vivo\s+e\s+moro)\s+(?:(?:aqui|agora|atualmente)\s+)?(?:em|no|na|nos|nas)`,
+  String.raw`(?<![a-z0-9])(?:te\s+|lhe\s+)?escrevo\s+(?:de|desde)`,
+  String.raw`(?<![a-z0-9])(?<!(?:^|[^a-z0-9])(?:don't|dont|do\s+not)\s{1,3})i(?:'m|\s+am)?\s+(?:live|living|based|located|staying)\s+in`,
+  String.raw`(?<![a-z0-9])(?:i'm\s+|i\s+am\s+)?writing\s+(?:to\s+you\s+)?from`,
+  String.raw`(?<![a-z0-9])(?<!(?:^|[^a-z0-9])n'\s{0,3})(?:j'habite|je\s+vis|je\s+reside)\s+(?:actuellement\s+)?(?:a|au|aux|en|dans)`,
+  String.raw`(?<![a-z0-9])je\s+(?:t'|vous\s+)?ecris\s+(?:de|depuis)`,
 ];
 
 /**
@@ -541,7 +661,7 @@ function classifyResidenceStatement(message: string, terms: string[]): Residence
     if (!t || HOMONYMS_IN_ZONE.has(t)) continue;
     for (const lead of RESIDENCE_LEADS) {
       const re = new RegExp(
-        `${lead}\\s+(?:el\\s+|la\\s+)?${escapeRegex(t)}(?![a-z0-9])(?!\\s+de\\s)`,
+        `${lead}\\s+(?:el\\s+|la\\s+|the\\s+)?${escapeRegex(t)}(?![a-z0-9])(?!\\s+de\\s)`,
         'g',
       );
       const hits = (text.match(re) ?? []).length;

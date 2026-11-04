@@ -249,9 +249,11 @@ describe('evaluateZone — prefijo contra la lista blanca', () => {
   });
 
   it('origen, pasado o negación NO son residencia: se quedan en mención (pregunta)', () => {
-    for (const msg of ['soy de Lima pero vivo fuera', 'me operaron en Cuba', 'ya no vivo en Lima', 'Colombia']) {
+    for (const msg of ['soy de Lima pero vivo fuera', 'me operaron en Cuba', 'ya no vivo en Lima', 'soy peruana']) {
       expect(evaluateZone({ phone: null, leadMessages: [msg], policy: TANIA_ALLOW }).kind, msg).toBe('mention');
     }
+    // 2026-11-04: un mensaje que es SOLO el país ya es residencia declarada (antes, mención).
+    expect(evaluateZone({ phone: null, leadMessages: ['Colombia'], policy: TANIA_ALLOW }).kind).toBe('reject_by_declaration');
   });
 
   it('revisión adversarial del 26-09: nada de esto cierra (se queda en mención y se pregunta)', () => {
@@ -314,9 +316,13 @@ describe('evaluateZone — prefijo contra la lista blanca', () => {
 
 describe('evaluateZone — menciones en el chat (Instagram, sin teléfono)', () => {
   it('detecta el país escrito a pelo ("Colombia", conv 10792) y el "vivo en Venezuela" (conv 10260)', () => {
+    // Hasta el 2026-11-04 el país a pelo era mención; desde entonces es residencia declarada
+    // (batería del v32: «De Colombia» siguió cuatro turnos sin cerrar). El gentilicio sigue en mención.
     const a = evaluateZone({ phone: null, leadMessages: ['Colombia'], policy: TANIA });
-    expect(a.kind).toBe('mention');
-    if (a.kind === 'mention') expect(a.term).toBe('colombia');
+    expect(a.kind).toBe('reject_by_declaration');
+    if (a.kind === 'reject_by_declaration') expect(a.term).toBe('colombia');
+    const g = evaluateZone({ phone: null, leadMessages: ['soy colombiana'], policy: TANIA });
+    expect(g.kind).toBe('mention');
 
     // Desde 2026-09-26 "yo vivo en Venezuela" es residencia declarada, no mención.
     const b = evaluateZone({
@@ -490,8 +496,41 @@ describe('evaluateZone — respuesta a nuestra pregunta del país (2026-10-21)',
     expect(v.kind).not.toBe('reject_by_declaration');
   });
 
-  it('el mismo «Cuba» sin haberle preguntado sigue siendo mención', () => {
+  it('el mismo «Cuba» sin haberle preguntado también cierra desde el 2026-11-04 (país suelto = residencia); un gentilicio no', () => {
+    // Hasta el 4-nov era mención y la conversación seguía turnos sin cerrar (batería del v32:
+    // «De Colombia» tras «Hola, me duele la espalda»). Ahora un mensaje que es solo el país
+    // es residencia declarada; «soy cubana» (origen) sigue siendo mención.
     const v = evaluateZone({ phone: null, leadMessages: ['Soy de Cuba'], countryAnswers: [], policy: TANIA });
-    expect(v.kind).toBe('mention');
+    expect(v.kind).toBe('reject_by_declaration');
+    const g = evaluateZone({ phone: null, leadMessages: ['soy colombiana'], countryAnswers: [], policy: TANIA });
+    expect(g.kind).toBe('mention');
+  });
+});
+
+describe('evaluateZone — país suelto sin pregunta y frases de residencia en otros idiomas (2026-11-04)', () => {
+  it('«De Colombia» o «Colombia» a secas, sin que lo hayamos preguntado, es residencia declarada', () => {
+    for (const m of ['De Colombia', 'Colombia', 'Soy de Cuba', 'desde Venezuela 🙂', 'Vivo en Argentina']) {
+      const v = evaluateZone({ phone: null, leadMessages: ['Hola, me duele la espalda', m], countryAnswers: [], policy: TANIA });
+      expect(v.kind, m).toBe('reject_by_declaration');
+    }
+  });
+
+  it('un gentilicio suelto o un país dentro de una frase siguen siendo mención', () => {
+    for (const m of ['soy colombiana', 'mi hermana vive en Colombia y me dijo que te escribiera', 'Colombia pero ahora estoy en Madrid']) {
+      const v = evaluateZone({ phone: null, leadMessages: [m], countryAnswers: [], policy: TANIA });
+      expect(v.kind, m).toBe('mention');
+    }
+  });
+
+  it('frases de residencia en portugués, inglés y francés cierran como «vivo en»', () => {
+    for (const m of ['moro em Caracas', 'I live in Bogotá', "j'habite à Caracas", 'Escrevo de Buenos Aires', "I'm based in Guatemala"]) {
+      const v = evaluateZone({ phone: null, leadMessages: [m], countryAnswers: [], policy: TANIA });
+      expect(v.kind, m).toBe('reject_by_declaration');
+    }
+  });
+
+  it("«I'm in pain» no es una declaración de residencia", () => {
+    const v = evaluateZone({ phone: null, leadMessages: ["I'm in pain every morning"], countryAnswers: [], policy: TANIA });
+    expect(v.kind).toBe('clear');
   });
 });

@@ -1,6 +1,12 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { validateMessage, type ValidationContext, type ValidationResult } from '@fyzon/shared-validator';
+import {
+  canonicalLinkKey,
+  extractUrls,
+  validateMessage,
+  type ValidationContext,
+  type ValidationResult,
+} from '@fyzon/shared-validator';
 import { runGenerator } from './generator.js';
 import { runJudge } from './judge.js';
 import { runSplitter } from './splitter.js';
@@ -71,6 +77,27 @@ export interface PipelineInput extends GeneratorInput {
      * (ver `revealsZoneReason`).
      */
     term?: string | null;
+    /**
+     * 2026-11-04 — Todos los términos de zona del tenant (países, gentilicios,
+     * ciudades). Un cierre que nombre cualquiera de ellos deja ver el motivo
+     * aunque no sea el que dijo ella: «I live in Bogotá» → el modelo escribió
+     * «clients based in Colombia».
+     */
+    rejectTerms?: string[] | null;
+    /**
+     * D5 (2026-11-04, Iván): cierre en TEXTO LIBRE. El modelo redacta el cierre
+     * con 1 o 2 vídeos sin CTA de su bloque y el motor solo valida: todas las URLs
+     * dentro de `allowedUrls` (por clave canónica), como mucho `maxUrls`, sin la
+     * agenda, sin dejar ver el motivo (`revealsZoneReason`) y cerrando. Un
+     * reintento; si vuelve a fallar, sale la variante literal de siempre. Solo
+     * actúa con `closeParts` (el respaldo). Sin este campo, modo literal (D1).
+     */
+    freeClose?: { allowedUrls: string[]; maxUrls: number } | null;
+    /**
+     * El motor ya sabe que el cierre se envió (la conversación está `stopped`):
+     * en texto libre el cierre no es un literal que se pueda buscar en el historial.
+     */
+    closeSent?: boolean;
   };
   /**
    * País a tiempo (2026-10-20, V23). Solo cuando el motor decide que este turno
@@ -83,6 +110,12 @@ export interface PipelineInput extends GeneratorInput {
     turn: number;
     /** Frase de la entrenadora para preguntarlo, si la configuró. */
     question?: string | null;
+    /**
+     * 2026-11-04 — Idioma en el que escribe la persona. Fuera del castellano el
+     * motor no manda la frase literal (iría en castellano) y el reintento pide la
+     * pregunta en su idioma.
+     */
+    language?: 'es' | 'pt' | 'en' | 'fr' | null;
   };
   /**
    * D2 (2026-10-21, Tania). El precio va en dos pasos: la primera vez, una frase
@@ -189,9 +222,18 @@ export async function runPipeline(
   const zoneMode = input.validationContext?.zoneRejected === true ? (input.zone?.mode ?? 'close') : null;
   const closeParts = input.zone?.closeParts?.filter((p) => p.trim().length > 0) ?? [];
   const closeVariants = closeParts.length > 0 ? (input.zone?.closeVariants ?? []) : [];
+  // D5 (2026-11-04, Iván): cierre en texto libre validado. Solo en modo 'close' y
+  // con el literal de respaldo configurado (sin él no hay a qué caer si falla dos veces).
+  const freeClose =
+    zoneMode === 'close' && closeParts.length > 0 && input.zone?.freeClose && input.zone.freeClose.allowedUrls.length > 0
+      ? input.zone.freeClose
+      : null;
   const closeSent =
-    closeParts.length > 0 &&
-    [closeParts, ...closeVariants].some((parts) => closeAlreadySent(input.history, parts));
+    input.zone?.closeSent === true ||
+    (closeParts.length > 0 &&
+      [closeParts, ...closeVariants].some((parts) => closeAlreadySent(input.history, parts))) ||
+    (freeClose != null && freeCloseAlreadySent(input.history, freeClose.allowedUrls));
+  let freeCloseAccepted = false;
   // Margen antes del cierre (2026-10-21): este turno puede ser una pregunta.
   const exploring =
     zoneMode === 'close' && closeParts.length > 0 && !closeSent && (input.zone?.exploreTurnsLeft ?? 0) > 0;
@@ -216,7 +258,7 @@ export async function runPipeline(
         // una lead «Ahora mismo no trabajo con personas que residan en Colombia»: el
         // motivo, que es justo lo que no se dice. Un reintento; si vuelve a dejarlo
         // ver, o cierra, sale el cierre de la entrenadora.
-        if (revealsZoneReason(generatorOut.setterOutput.message_raw, input.zone?.term)) {
+        if (revealsZoneReason(generatorOut.setterOutput.message_raw, input.zone?.term, input.zone?.rejectTerms)) {
           const retryGen = await runGenerator(deps, {
             ...input,
             userMessage: ZONE_EXPLORE_RETRY_MESSAGE,
@@ -240,13 +282,61 @@ export async function runPipeline(
             retriedVariant ||
             retried.message_raw.length === 0 ||
             zoneTurnWantsToClose(retried, input) ||
-            revealsZoneReason(retried.message_raw, input.zone?.term)
+            revealsZoneReason(retried.message_raw, input.zone?.term, input.zone?.rejectTerms)
           ) {
             return literalZoneCloseResult(generatorOut, retriedVariant ?? closeParts, stages, startedAt);
           }
           generatorOut.setterOutput = retried;
         }
         clearBookingProposal(generatorOut.setterOutput);
+      } else if (freeClose) {
+        // D5: el modelo redacta el cierre con 1 o 2 vídeos sin CTA de su bloque; el
+        // motor solo valida (URLs permitidas, sin agenda, sin motivo, cierra) y, si
+        // falla dos veces, cae a la variante literal de siempre. Lo que pasa sigue
+        // a Judge, validador (V20 con la lista de permitidos) y Splitter.
+        const calendarUrl = input.composeOverrides?.trackedCalendarUrl ?? null;
+        let miss = validateFreeZoneClose(
+          generatorOut.setterOutput,
+          freeClose,
+          input.zone?.term,
+          calendarUrl,
+          input.zone?.rejectTerms,
+        );
+        if (miss) {
+          const retryGen = await runGenerator(deps, {
+            ...input,
+            userMessage: buildFreeZoneCloseRetryMessage(miss, freeClose),
+            history: [
+              ...input.history,
+              { role: 'user' as const, content: input.userMessage },
+              { role: 'assistant' as const, content: generatorOut.setterOutput.message_raw },
+            ],
+            model: input.models?.generator,
+          });
+          stages.push({
+            role: 'generator',
+            model: retryGen.model,
+            usage: retryGen.usage,
+            llmCallId: retryGen.llmCallId,
+            notes: `zone_free_close_retry:${miss}`,
+          });
+          const retried = retryGen.setterOutput;
+          miss = validateFreeZoneClose(retried, freeClose, input.zone?.term, calendarUrl, input.zone?.rejectTerms);
+          if (miss) {
+            // eslint-disable-next-line no-console
+            console.warn(
+              `[pipeline] zona: el cierre libre sigue mal tras el reintento (${miss}); sale la variante literal ` +
+                `(tenant=${input.tenantId}, conv=${input.conversationId}).`,
+            );
+            const retriedVariant = pickZoneCloseVariant(retried.message_raw, closeVariants);
+            return literalZoneCloseResult(generatorOut, retriedVariant ?? variant ?? closeParts, stages, startedAt);
+          }
+          generatorOut.setterOutput = retried;
+        }
+        generatorOut.setterOutput.conversation_status = 'disqualified';
+        generatorOut.setterOutput.handoff_cause = undefined;
+        clearBookingProposal(generatorOut.setterOutput);
+        freeCloseAccepted = true;
       } else {
         return literalZoneCloseResult(generatorOut, variant ?? closeParts, stages, startedAt);
       }
@@ -307,6 +397,9 @@ export async function runPipeline(
     // 2026-10-21 (D2) — salvo que aún no haya salido la primera frase del precio.
     allowedPriceText: priceFigureLocked(input) ? undefined : (input.allowedPriceText ?? undefined),
   };
+  // D5 (2026-11-04): con el cierre libre aceptado, V20 deja pasar solo los vídeos
+  // sin CTA de la biblioteca; cualquier otra URL sigue siendo error.
+  if (freeCloseAccepted && freeClose) validatorCtx.zoneAllowedUrls = [...freeClose.allowedUrls];
   let validatorOut = validateMessage(textAfterJudge, validatorCtx);
 
   // Hito 12.1 — V17 retry logic. Si el output viola palabras prohibidas del trainer,
@@ -432,7 +525,11 @@ export async function runPipeline(
     try {
       const retryGen = await runGenerator(deps, {
         ...input,
-        userMessage: buildPriceFirstStepRetryMessage(input.priceGate!.firstStepText, input.allowedPriceText!),
+        userMessage: buildPriceFirstStepRetryMessage(
+          input.priceGate!.firstStepText,
+          input.allowedPriceText!,
+          input.leadLanguage,
+        ),
         history: [
           ...input.history,
           { role: 'user' as const, content: input.userMessage },
@@ -460,7 +557,10 @@ export async function runPipeline(
       // eslint-disable-next-line no-console
       console.warn(
         `[pipeline] D2: la cifra sigue tras el reintento (tenant=${input.tenantId}, conv=${input.conversationId}). ` +
-          `Sale solo la primera frase del precio.`,
+          `Sale solo la primera frase del precio.` +
+          (input.leadLanguage && input.leadLanguage !== 'es'
+            ? ` D2_fallback_lang: la conversación va en ${input.leadLanguage} y la frase sale en castellano.`
+            : ''),
       );
       textForSplitter = input.priceGate!.firstStepText;
       generatorOut.setterOutput.message_raw = textForSplitter;
@@ -748,21 +848,32 @@ function zoneTurnWantsToClose(out: SetterToolOutput, input: PipelineInput): bool
  * personas de ahí. Se mira sin tildes y por palabras enteras. "Zona" no cuenta:
  * con Tania es "zona lumbar".
  */
-export function revealsZoneReason(text: string, term?: string | null): boolean {
+export function revealsZoneReason(
+  text: string,
+  term?: string | null,
+  rejectTerms?: readonly string[] | null,
+): boolean {
   const t = foldAccents(text);
   if (ZONE_REASON_RE.test(t)) return true;
-  const k = term ? foldAccents(term).trim() : '';
-  if (!k) return false;
-  const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(t);
+  // El término que dijo ella y, desde el 2026-11-04, cualquier término de zona del
+  // tenant: a «I live in Bogotá» el modelo contestó «clients based in Colombia».
+  const candidates = [term ?? '', ...(rejectTerms ?? [])]
+    .map((s) => foldAccents(String(s)).trim())
+    .filter((s) => s.length > 0);
+  return candidates.some((k) => {
+    const escaped = k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'u').test(t);
+  });
 }
 
 function foldAccents(s: string): string {
   return s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 }
 
+// 2026-11-04: también en portugués, inglés y francés (la conversación puede ir en
+// el idioma de la persona). El texto llega sin tildes y en minúsculas.
 const ZONE_REASON_RE =
-  /(?<![a-z])(?:resid(?:e|es|en|a|as|an|ir|encia|encias)|pais(?:es)?|no (?:trabajo|puedo trabajar) con|no (?:llevo|puedo llevar) (?:tu |su )?caso|no (?:acompano|puedo acompanar))(?![a-z])/;
+  /(?<![a-z])(?:resid(?:e|es|en|a|as|an|ir|encia|encias|ence|ency|ente|entes)|pais(?:es)?|pays|country|countries|no (?:trabajo|puedo trabajar) con|no (?:llevo|puedo llevar) (?:tu |su )?caso|no (?:acompano|puedo acompanar)|nao (?:trabalho|posso trabalhar) com|nao (?:posso )?(?:acompanhar|pegar) (?:o )?(?:seu|teu) caso|(?:don'?t|do not|can'?t|cannot) (?:work|take) (?:with|on)|(?:don'?t|do not) (?:take|accept) (?:people|clients) from|(?:not able|unable) to (?:take|work|help)|won'?t be able to (?:help|take)|(?:can'?t|cannot) help you|(?:clients?|people) (?:based|living) in|no puedo ayudarte directamente|nao (?:consigo|posso) (?:te )?ajudar|ne peux pas (?:t'|vous )?aider)(?![a-z])/;
 
 const ZONE_EXPLORE_RETRY_MESSAGE =
   '[INSTRUCCIÓN DEL SISTEMA, no es un mensaje de la persona] Tu mensaje deja ver por qué no ' +
@@ -818,6 +929,76 @@ export function pickZoneCloseVariant(
     if (urls.some((u) => chosen.has(u))) return [...variant];
   }
   return null;
+}
+
+/** Por qué un cierre en texto libre no vale tal cual (D5, 2026-11-04). */
+export type FreeZoneCloseMiss =
+  | 'empty'
+  | 'not_closed'
+  | 'agenda_link'
+  | 'url_not_allowed'
+  | 'too_many_urls'
+  | 'reveals_reason';
+
+/**
+ * D5 (2026-11-04, Iván): ¿el cierre que ha redactado el modelo puede salir tal
+ * cual? Tiene que llevar solo vídeos de la lista de permitidos (clave canónica:
+ * `youtu.be/ID` y `watch?v=ID` son el mismo), como mucho `maxUrls` distintos,
+ * ningún enlace de agenda, nada que deje ver el motivo, y cerrar: un turno sin
+ * vídeo que no es `disqualified` sigue preguntando, que es justo lo que ya no toca.
+ */
+export function validateFreeZoneClose(
+  out: Pick<SetterToolOutput, 'message_raw' | 'conversation_status'>,
+  freeClose: { allowedUrls: readonly string[]; maxUrls: number },
+  term: string | null | undefined,
+  calendarUrl: string | null | undefined,
+  rejectTerms?: readonly string[] | null,
+): FreeZoneCloseMiss | null {
+  const text = out.message_raw ?? '';
+  if (text.trim().length === 0) return 'empty';
+  const base = (calendarUrl ?? '').split('?')[0]!.trim();
+  if (base.length > 0 && text.includes(base)) return 'agenda_link';
+  const urls = extractUrls(text);
+  const allowed = new Set(freeClose.allowedUrls.map(canonicalLinkKey));
+  if (urls.some((u) => !allowed.has(canonicalLinkKey(u)))) return 'url_not_allowed';
+  if (new Set(urls.map(canonicalLinkKey)).size > Math.max(1, freeClose.maxUrls)) return 'too_many_urls';
+  if (revealsZoneReason(text, term, rejectTerms)) return 'reveals_reason';
+  if (urls.length === 0 && out.conversation_status !== 'disqualified') return 'not_closed';
+  return null;
+}
+
+/** En texto libre, el cierre ya salió si algún turno nuestro llevaba uno de los vídeos permitidos. */
+function freeCloseAlreadySent(
+  history: ReadonlyArray<{ role: string; content: string }>,
+  allowedUrls: readonly string[],
+): boolean {
+  const allowed = new Set(allowedUrls.map(canonicalLinkKey));
+  return history.some(
+    (h) => h.role === 'assistant' && extractUrls(h.content).some((u) => allowed.has(canonicalLinkKey(u))),
+  );
+}
+
+/** Instrucción del reintento del cierre libre: qué falló y con qué vídeos se cierra. */
+function buildFreeZoneCloseRetryMessage(
+  miss: FreeZoneCloseMiss,
+  freeClose: { allowedUrls: readonly string[]; maxUrls: number },
+): string {
+  const why: Record<FreeZoneCloseMiss, string> = {
+    empty: 'ha salido vacío',
+    not_closed: 'no cierra: sigue preguntando o no lleva ningún vídeo',
+    agenda_link: 'lleva el enlace de la agenda, que aquí no cabe',
+    url_not_allowed: 'lleva un enlace que no es uno de los vídeos sin CTA de tu bloque',
+    too_many_urls: `lleva más de ${Math.max(1, freeClose.maxUrls)} vídeo(s)`,
+    reveals_reason:
+      'deja ver por qué no puedes llevar su caso (su país, su residencia o que no trabajas con personas de allí), que no se dice nunca',
+  };
+  return (
+    `[INSTRUCCIÓN DEL SISTEMA, no es un mensaje de la persona] Tu mensaje ${why[miss]}. Reescribe ` +
+    'este turno como el cierre de residencia fuera de zona de tu bloque, con tus palabras: una ' +
+    `línea de por qué le puede servir y 1 o ${Math.max(1, freeClose.maxUrls)} de estos vídeos, copiados tal cual: ` +
+    `${freeClose.allowedUrls.join(' · ')}. Sin nombrar el país ni el motivo, sin propuesta de ` +
+    'videollamada, sin enlace de agenda y sin preguntas; conversation_status="disqualified".'
+  );
 }
 
 /**
@@ -877,7 +1058,7 @@ export class ZoneCloseError extends Error {
  * es preguntar el país: tras "desde dónde" tiene que venir escribir, ser o estar.
  */
 const COUNTRY_QUESTION_RE =
-  /desde\s+d[oó]nde\s+(?:me\s+|nos\s+)?(?:escrib|eres|est[aá]s)|de\s+d[oó]nde\s+(?:me\s+|nos\s+)?(?:escrib|eres)|d[oó]nde\s+(?:vives|resides)|(?:en|de)\s+qu[eé]\s+pa[ií]s|qu[eé]\s+pa[ií]s\s+(?:eres|vives|est[aá]s)/i;
+  /desde\s+d[oó]nde\s+(?:me\s+|nos\s+)?(?:escrib|eres|est[aá]s)|de\s+d[oó]nde\s+(?:me\s+|nos\s+)?(?:escrib|eres)|d[oó]nde\s+(?:vives|resides)|(?:en|de)\s+qu[eé]\s+pa[ií]s|qu[eé]\s+pa[ií]s\s+(?:eres|vives|est[aá]s)|where\s+(?:are\s+you|do\s+you)\s+(?:writ|messag|liv|based|located|from)|where\s+are\s+you\s+from|(?:which|what)\s+country|de\s+onde\s+(?:voc[eê]\s+)?(?:me\s+)?(?:escreve|[eé]\b|fala|mora)|onde\s+(?:voc[eê]\s+)?mora|em\s+que\s+pa[ií]s|d['’]o[uù]\s+(?:m['’]|tu\s+m['’]|vous\s+m['’])?[ée]cri|o[uù]\s+(?:est-ce\s+que\s+)?(?:tu\s+)?(?:habites|vis|es)\b|tu\s+(?:habites|vis)\s+o[uù]|dans\s+quel\s+pays/i;
 
 /** ¿El texto pregunta desde dónde escribe la persona? (V23) */
 export function asksForCountry(text: string): boolean {
@@ -908,14 +1089,23 @@ export function mentionsAllowedPrice(text: string, allowedPriceText: string): bo
 }
 
 /** Instrucción del reintento de D2: sin cifra, con la primera frase tal cual. */
-function buildPriceFirstStepRetryMessage(firstStepText: string, figure: string): string {
+function buildPriceFirstStepRetryMessage(
+  firstStepText: string,
+  figure: string,
+  leadLanguage?: PipelineInput['leadLanguage'],
+): string {
   const found = figure ? ` ("${figure}")` : '';
+  // 2026-11-04: fuera del castellano la frase va con su sentido, en el idioma de la persona.
+  const how =
+    leadLanguage && leadLanguage !== 'es'
+      ? `con el sentido de esta frase de la entrenadora, dicha en el idioma en que te escribe la persona: «${firstStepText}»`
+      : `con esta frase de la entrenadora, tal cual: «${firstStepText}»`;
   return (
     `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] Tu respuesta anterior da una ` +
     `cifra de precio${found}, y en esta conversación todavía no ha salido la primera respuesta ` +
-    `sobre el precio. La primera vez no se da ninguna cifra: se responde con esta frase de la ` +
-    `entrenadora, tal cual: «${firstStepText}». Reescribe TU ÚLTIMA respuesta sin ninguna cifra ` +
-    `de precio, manteniendo el resto si encaja. NO menciones esta corrección al lead.`
+    `sobre el precio. La primera vez no se da ninguna cifra: se responde ${how}. Reescribe TU ` +
+    `ÚLTIMA respuesta sin ninguna cifra de precio, manteniendo el resto si encaja. NO menciones ` +
+    `esta corrección al lead.`
   );
 }
 
@@ -941,9 +1131,12 @@ export function countryAskMiss(
  */
 function buildCountryAskRetryMessage(ask: NonNullable<PipelineInput['countryAsk']>): string {
   const question = ask.question?.trim();
+  const otherLanguage = ask.language && ask.language !== 'es';
   const phrase = question
     ? `con esta frase de la entrenadora: «${question}»`
-    : 'con la frase que tu bloque usa para preguntarlo';
+    : otherLanguage
+      ? 'con la pregunta que tu bloque usa para preguntarlo, dicha en el idioma en que te escribe la persona'
+      : 'con la frase que tu bloque usa para preguntarlo';
   return (
     `[CORRECCIÓN AUTOMÁTICA DEL SISTEMA — NO ES MENSAJE DEL LEAD] Esta conversación va por ` +
     `Instagram o Messenger: no hay prefijo de teléfono y todavía no sabes desde dónde te escribe. ` +
