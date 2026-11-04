@@ -211,3 +211,11 @@ describe('pipeline — V23 país a tiempo', () => {
     expect(generatorCalls()).toHaveLength(1);
   });
 });
+
+describe('asksForCountry — portugués, inglés y francés (2026-11-04)', () => {
+  it('reconoce la pregunta del país en los idiomas de Tania', () => {
+    for (const t of ['By the way, where are you writing from?', 'Where do you live?', 'Which country are you in?', 'De onde você me escreve?', 'Onde você mora?', "D'où m'écris-tu?", 'Tu habites où?']) {
+      expect(asksForCountry(t), t).toBe(true);
+    }
+  });
+});

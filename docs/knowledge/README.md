@@ -103,6 +103,12 @@ valor, nunca el valor. Escanear antes de commitear.
   `dump.rdb`), restaurado con el puerto en loopback. Diagnóstico medido: sin bienvenidas a
   seguidores desde el 8 oct, 21 inbound sin respuesta y país en Instagram de media en el 10.º
   mensaje. Decisiones D1-D4 de Iván. Hecho en rama: tarjetas de inbound y V23 (país a tiempo).
+- [Ronda 2026-11-04: su respuesta por número, recursos A/B y plan por fases](project_tania_ronda_2026-11-04.md) —
+  la causa raíz de lo que veía: el v30/v31 y su configuración nunca se cargaron (producción
+  seguía en el v29). Medido: 49 inbound de Instagram de varias palabras con 30 sin respuesta, 24 %
+  de mensajes con «??», la alerta «esperando respuesta» calculada sobre 1.000 filas arbitrarias de
+  4.181. Decisiones D5-D8 (cierre fuera de zona en texto libre, profesionales solo en la apertura,
+  «Mis textos» antes que velocidad, normalizador de «??»). Fase 1: coach v32 + configuración.
 
 ### Autoría de coaches (coach-engineering)
 

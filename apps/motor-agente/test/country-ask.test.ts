@@ -126,3 +126,14 @@ describe('renderCountryAskBlock', () => {
     expect(renderCountryAskBlock({ turn: 2, question: null })).toContain('lead_country_iso');
   });
 });
+
+describe('buildCountryAsk — idioma de la persona (2026-11-04)', () => {
+  it('fuera del castellano no impone la frase literal y declara el idioma', () => {
+    const lq = { call_gate: { require_country: true, ask_country_question: 'Por cierto, desde dónde me escribes?' } };
+    const en = buildCountryAsk({ leadQualification: lq, channel: 'instagram_dm', zoneVerdict: CLEAR, history: IG_TURNO_2, leadLanguage: 'en' });
+    expect(en).toEqual({ turn: 2, question: null, language: 'en' });
+    expect(renderCountryAskBlock(en)).toContain('en el idioma en que te escribe');
+    const es = buildCountryAsk({ leadQualification: lq, channel: 'instagram_dm', zoneVerdict: CLEAR, history: IG_TURNO_2, leadLanguage: 'es' });
+    expect(es).toEqual({ turn: 2, question: 'Por cierto, desde dónde me escribes?' });
+  });
+});

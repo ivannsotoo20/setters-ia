@@ -48,6 +48,7 @@ describe('parseTrainerPreferences', () => {
       aiMessagesPerTurnMax: 4,
       addressingMode: 'mirror_lead',
       forbiddenPhrases: [],
+      singlePunctuation: false,
     };
     expect(parseTrainerPreferences(input)).toEqual(input);
   });
@@ -151,6 +152,7 @@ describe('serializeTrainerPreferences', () => {
       aiMessagesPerTurnMax: 4,
       addressingMode: 'mirror_lead',
       forbiddenPhrases: [],
+      singlePunctuation: false,
     });
     expect(md.length).toBeGreaterThan(400);
     expect(md).toContain('Doble interrogación');
@@ -630,6 +632,7 @@ describe('serializeTrainerPreferences — NO-ROTURA del prompt (Gamma 2.5b/B + 2
       aiMessagesPerTurnMax: 1,
       addressingMode: 'usted',
       forbiddenPhrases: ['genial', 'perfecto', 'súper', 'guay', 'colega', 'tío', 'amigo', 'cariño', 'jefe', 'maestro'],
+      singlePunctuation: false,
     };
     const md = serializeTrainerPreferences(maxConfig, []);
     // Hito 12.1: añadidas secciones máx mensajes (~280c), tratamiento usted (~270c),
@@ -1106,5 +1109,23 @@ describe('Hito 12.1 — forbiddenPhrases', () => {
     expect(md).toContain('"súper"');
     expect(md).toContain('REESCRIBE');
     expect(md).toContain('ESTRICTA');
+  });
+});
+
+describe('singlePunctuation (2026-11-04)', () => {
+  it('por defecto sale la directriz de siempre («??») y con la preferencia, un solo signo', () => {
+    const base = parseTrainerPreferences({});
+    expect(base.singlePunctuation).toBe(false);
+    expect(serializeTrainerPreferences(base)).toContain('Doble interrogación');
+    const single = parseTrainerPreferences({ singlePunctuation: true });
+    expect(single.singlePunctuation).toBe(true);
+    const md = serializeTrainerPreferences(single);
+    expect(md).toContain('un solo signo');
+    expect(md).not.toContain('Doble interrogación');
+  });
+
+  it('solo true explícito lo activa', () => {
+    expect(parseTrainerPreferences({ singlePunctuation: 'yes' }).singlePunctuation).toBe(false);
+    expect(parseTrainerPreferences({ singlePunctuation: 1 }).singlePunctuation).toBe(false);
   });
 });

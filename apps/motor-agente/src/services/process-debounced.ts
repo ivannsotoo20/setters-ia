@@ -35,6 +35,9 @@ import { timezoneToLabel } from '../lib/timezone-label.js';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
 import { detectAddressing, buildMirrorLeadDirective } from '../lib/detect-addressing.js';
+import { buildLeadLanguageDirective, resolveLeadLanguage } from '../lib/lead-language.js';
+import { zoneCloseAllowedUrls } from '../lib/zone-policy.js';
+import { collapseRepeatedPunctuation, normalizePartsPunctuation } from '@fyzon/shared-validator';
 import {
   buildLeadOriginDirective,
   combineSystemDirectives,
@@ -423,6 +426,14 @@ export async function processDebounced(
     const detected = detectAddressing(userMessage);
     addressingDirective = buildMirrorLeadDirective(detected);
   }
+  // 2026-11-04 — Idioma de la persona (Tania: la IA sigue en el idioma en que le
+  // escriben; hace la videollamada en castellano, portugués, inglés y francés).
+  // Directiva por turno, fuera de caché, como la de tratamiento.
+  const leadLanguage = resolveLeadLanguage(historyForPipeline, userMessage);
+  const languageDirective = buildLeadLanguageDirective(leadLanguage);
+  if (leadLanguage !== 'es') {
+    console.log(`[lang] conv=${conversationId} lead_language=${leadLanguage}`);
+  }
 
   // Procedencia de la lead → directiva runtime (origen + canal + respuestas del
   // formulario). Nada de esto llegaba antes al prompt: `conversation_source`
@@ -489,13 +500,19 @@ export async function processDebounced(
   // de la IA, si aún no se sabe ni se ha preguntado, este turno lo pregunta.
   const countryAsk = zoneRejected
     ? undefined
-    : buildCountryAsk({ leadQualification, channel: channelTypeDb, zoneVerdict, history: historyForPipeline });
+    : buildCountryAsk({ leadQualification, channel: channelTypeDb, zoneVerdict, history: historyForPipeline, leadLanguage });
   if (countryAsk) {
     console.log(`[country-ask] conv=${conversationId} turn=${countryAsk.turn}`);
   }
   const residenceException = zonePolicy?.residenceOverridesPrefix === true;
   // D1 (2026-10-21): cierres de zona con recurso. El cierre puede llevar su vídeo.
-  const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0;
+  // D5 (2026-11-04): con `zone_close_mode='free'` el cierre lo redacta el modelo con los
+  // vídeos permitidos y el motor valida; sin él, la variante literal (D1).
+  const zoneFreeClose =
+    zonePolicy?.closeMode === 'free' && zonePolicy.closeParts
+      ? { allowedUrls: zoneCloseAllowedUrls(zonePolicy), maxUrls: zonePolicy.closeMaxUrls ?? 2 }
+      : null;
+  const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0 || zoneFreeClose != null;
   // Margen antes del cierre (2026-10-21, Tania): con la residencia de fuera dicha
   // por ella, hasta `zone_explore_turns` turnos para entender qué le pasa. Con el
   // cierre ya enviado no hay margen que dar.
@@ -516,6 +533,7 @@ export async function processDebounced(
     zone: zoneVerdict,
     residenceException,
     closeWithResource,
+    zoneCloseFreeText: zoneFreeClose != null,
     zoneExploreTurnsLeft: zoneExploreLeft,
     callGateBlock:
       [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
@@ -525,6 +543,7 @@ export async function processDebounced(
   const systemDirectives = combineSystemDirectives(
     leadOriginDirective,
     addressingDirective,
+    languageDirective,
   );
 
   // Cerebro v5 — instrucción focal corta de la fase activa. El composer la emite
@@ -543,6 +562,7 @@ export async function processDebounced(
   const currentPhaseFocus = buildPhaseFocusInstruction(currentPhase, false, {
     zoneClose: zoneRejected,
     zoneCloseWithResource: closeWithResource,
+    zoneCloseFreeText: zoneFreeClose != null,
     zoneExploreTurnsLeft: zoneExploreLeft,
     zoneHandoff,
   });
@@ -588,10 +608,18 @@ export async function processDebounced(
               allowResidenceHandoff: residenceException,
               exploreTurnsLeft: zoneExploreLeft,
               term: zoneVerdict.kind === 'reject_by_declaration' ? zoneVerdict.term : null,
+              // Todos los términos de zona: un cierre que nombre cualquiera deja ver el motivo.
+              rejectTerms: zonePolicy?.countryRejectTerms ?? null,
+              // D5: cierre en texto libre validado, y si la conversación ya está
+              // cerrada el cierre no se repite (en texto libre no hay literal que buscar).
+              freeClose: zoneFreeClose,
+              closeSent: String(conv.state ?? '') === 'stopped',
             }
           : undefined,
         callGate,
         countryAsk,
+        // 2026-11-04 — idioma de la persona: los reintentos de V23 y D2 no exigen castellano.
+        leadLanguage,
         // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
         allowedPriceText: parseAllowedPriceText(leadQualification),
         // D2: la cifra solo después de la primera frase del precio.
@@ -786,6 +814,16 @@ export async function processDebounced(
     if (pipelineOut.generator.setterOutput.phase_decision >= 7) {
       pipelineOut.generator.setterOutput.phase_decision = 6;
     }
+  }
+
+  // 2026-11-04 — Un solo signo (preferencia ESTRICTA del trainer, Tania): «??» y
+  // «!!» a un signo y sin «¿¡», por debajo del modelo. Cubre también los cierres
+  // literales, que salen por aquí.
+  if (schedulingConfig.singlePunctuation) {
+    pipelineOut.parts = normalizePartsPunctuation(pipelineOut.parts);
+    pipelineOut.generator.setterOutput.message_raw = collapseRepeatedPunctuation(
+      pipelineOut.generator.setterOutput.message_raw,
+    );
   }
 
   // 8. Calcular tiempos y programar las partes
@@ -1236,6 +1274,12 @@ export async function loadSchedulingConfig(
    *    y construye directiva runtime via `buildMirrorLeadDirective`.
    */
   addressingMode: 'tu' | 'usted' | 'mirror_lead';
+  /**
+   * 2026-11-04 — Un solo signo de interrogación/exclamación y sin signos de
+   * apertura (`trainer_preferences.preferences.singlePunctuation`). Cumplimiento
+   * estricto: el motor normaliza las burbujas antes de programarlas.
+   */
+  singlePunctuation: boolean;
 }> {
   const { data } = await supabase
     .from('trainer_preferences')
@@ -1285,5 +1329,6 @@ export async function loadSchedulingConfig(
     aiMessagesPerTurnMax,
     forbiddenPhrases,
     addressingMode,
+    singlePunctuation: prefs.singlePunctuation === true,
   };
 }

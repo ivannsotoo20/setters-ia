@@ -104,3 +104,15 @@ describe('asksForPrice', () => {
     }
   });
 });
+
+describe('asksForPrice — portugués, inglés y francés (2026-11-04)', () => {
+  it('reconoce la pregunta del precio en los idiomas de Tania', () => {
+    for (const t of ['Quanto custa o acompanhamento?', 'Qual é o preço?', 'How much does it cost?', 'What is the price?', 'Combien ça coûte?', 'Quel est le prix?']) {
+      expect(asksForPrice(t), t).toBe(true);
+    }
+  });
+
+  it('«valor» a secas en castellano no es precio', () => {
+    expect(asksForPrice('Me da mucho valor lo que haces')).toBe(false);
+  });
+});

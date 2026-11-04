@@ -51,6 +51,14 @@ export interface ValidationContext {
    */
   zoneRejected?: boolean;
   /**
+   * 2026-11-04 — Con `zoneRejected`, los enlaces que SÍ pueden salir en el turno:
+   * los vídeos sin CTA de la biblioteca de la entrenadora (cierre de fuera de
+   * zona en texto libre, D5 de Iván). Se comparan por `canonicalLinkKey`, así que
+   * `youtu.be/ID` y `watch?v=ID` son el mismo. Cualquier otra URL sigue siendo
+   * error en V20. Vacío o undefined → ningún enlace, como antes.
+   */
+  zoneAllowedUrls?: string[];
+  /**
    * 2026-10-07 — El precio que el entrenador ha autorizado decir tal cual
    * (`lead_qualification.allowed_price_text`). V11 no lo cuenta como filtración;
    * cualquier otra cifra, sí.

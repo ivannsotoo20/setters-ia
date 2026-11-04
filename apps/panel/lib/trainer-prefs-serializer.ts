@@ -78,6 +78,13 @@ export interface TrainerPreferences {
   addressingMode: 'tu' | 'usted' | 'mirror_lead';
   /** Hito 12.1 — Palabras/frases que el setter NUNCA dirá al lead (0-10, cada una 1-40 chars, lowercase, dedupe). Enforce con instrucción + validador V17 post-LLM + 1 retry, luego degradación grácil. */
   forbiddenPhrases: string[];
+  /**
+   * 2026-11-04 — Un solo signo de interrogación/exclamación (`?`, `!`), nunca
+   * dobles, y sin signos de apertura (`¿`, `¡`). Default false = la directriz de
+   * siempre («usa `??`», Sprint 2.5b/A, la voz de Roberto o Bea). Con true, la
+   * directriz cambia de signo y el motor lo garantiza en código al enviar.
+   */
+  singlePunctuation: boolean;
 
   // ----- Sprint Gamma 2.1: datos de contacto -----
   /** Nombre que la IA usará al referirse al trainer en handoff. null = "el equipo". */
@@ -303,6 +310,8 @@ export const DEFAULT_TRAINER_PREFERENCES: TrainerPreferences = {
   aiMessagesPerTurnMax: 4,
   addressingMode: 'mirror_lead',
   forbiddenPhrases: [],
+  // 2026-11-04: false = la directriz «??» de siempre; true = un solo signo, sin «¿¡».
+  singlePunctuation: false,
 };
 
 const MAX_HANDOFF_CUSTOM_MESSAGE_CHARS = 250;
@@ -655,6 +664,8 @@ export function parseTrainerPreferences(raw: unknown): TrainerPreferences {
   out.aiMessagesPerTurnMax = parseAiMessagesPerTurnMax(r.aiMessagesPerTurnMax);
   out.addressingMode = parseAddressingMode(r.addressingMode);
   out.forbiddenPhrases = parseForbiddenPhrases(r.forbiddenPhrases);
+  // 2026-11-04 — un solo signo (solo `true` explícito lo activa).
+  out.singlePunctuation = r.singlePunctuation === true;
 
   return out;
 }
@@ -769,10 +780,21 @@ export function serializeTrainerPreferences(
   lines.push('');
 
   // Sprint 2.5b/A: directrices universalmente deseables — siempre activas.
-  lines.push(
-    '- **Doble interrogación**: cuando termines una frase con pregunta, usa `??` en lugar de `?` ' +
-      '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
-  );
+  // 2026-11-04 — Tania (voiceprint: un solo signo, sin «¿¡») pedía lo contrario de
+  // esta directriz, que salía en el 24 % de sus mensajes. Ahora es una preferencia:
+  // con `singlePunctuation` la directriz cambia de signo y el motor la garantiza en código.
+  if (prefs.singlePunctuation) {
+    lines.push(
+      '- **Signos de interrogación y exclamación**: un solo signo al final de la frase (`?`, `!`), ' +
+        'nunca dobles (`??`, `!!`), y sin signos de apertura (`¿`, `¡`). ESTA REGLA ES ESTRICTA: ' +
+        'el sistema normaliza el output antes de enviar.',
+    );
+  } else {
+    lines.push(
+      '- **Doble interrogación**: cuando termines una frase con pregunta, usa `??` en lugar de `?` ' +
+        '(p.ej. "¿qué tal??"). Aplica solo a preguntas explícitas, no a frases declarativas.',
+    );
+  }
   // Hito 12.1 (2026-05-20): líneas de longitud y tono ELIMINADAS — Iván las
   // gestiona desde core_v5_base + coach_v5.
   // Hito 12.1 — Máximo de mensajes por turno (cumplimiento ESTRICTO: instrucción + Generator maxLength + Splitter maxParts).

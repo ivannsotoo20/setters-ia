@@ -58,6 +58,9 @@ import { getSupabase } from '../lib/supabase.js';
 import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
 import { detectAddressing, buildMirrorLeadDirective } from '../lib/detect-addressing.js';
+import { buildLeadLanguageDirective, resolveLeadLanguage } from '../lib/lead-language.js';
+import { zoneCloseAllowedUrls } from '../lib/zone-policy.js';
+import { normalizePartsPunctuation } from '@fyzon/shared-validator';
 import {
   buildLeadOriginDirective,
   combineSystemDirectives,
@@ -203,7 +206,12 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       // Con la zona rechazada, la focal es la del cierre por residencia (o la del
       // paso a la entrenadora) y no la de la fase, igual que en producción.
       // D1 (2026-10-21): con cierres con recurso, el cierre puede llevar su vídeo.
-      const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0;
+      // D5 (2026-11-04): cierre en texto libre validado, como en producción.
+      const zoneFreeClose =
+        zonePolicy?.closeMode === 'free' && zonePolicy.closeParts
+          ? { allowedUrls: zoneCloseAllowedUrls(zonePolicy), maxUrls: zonePolicy.closeMaxUrls ?? 2 }
+          : null;
+      const closeWithResource = (zonePolicy?.closeVariants?.length ?? 0) > 0 || zoneFreeClose != null;
       // Margen antes del cierre (Tania, 21-oct), como en producción.
       const zoneCloseSent = [zonePolicy?.closeParts ?? [], ...(zonePolicy?.closeVariants ?? [])].some(
         (parts) => parts.length > 0 && closeAlreadySent(body.history, parts),
@@ -215,6 +223,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       const currentPhaseFocus = buildPhaseFocusInstruction(body.phase, false, {
         zoneClose: zoneRejected,
         zoneCloseWithResource: closeWithResource,
+        zoneCloseFreeText: zoneFreeClose != null,
         zoneExploreTurnsLeft: zoneExploreLeft,
         zoneHandoff,
       });
@@ -229,6 +238,9 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       } else {
         addressingDirective = buildMirrorLeadDirective(detectAddressing(body.message));
       }
+      // 2026-11-04 — Idioma de la persona, como en producción.
+      const leadLanguage = resolveLeadLanguage(body.history, body.message);
+      const languageDirective = buildLeadLanguageDirective(leadLanguage);
 
       // El enlace de agenda: mismo calendario y mismo builder que produccion,
       // con un slug de tracking de simulacion porque aqui no hay lead. Sin esto
@@ -256,7 +268,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       // País a tiempo (V23), como en producción.
       const countryAsk = zoneRejected
         ? undefined
-        : buildCountryAsk({ leadQualification, channel: body.channel, zoneVerdict, history: body.history });
+        : buildCountryAsk({ leadQualification, channel: body.channel, zoneVerdict, history: body.history, leadLanguage });
       // D2: la cifra del precio solo después de la primera frase, como en producción.
       const priceGate = buildPriceGate({ leadQualification, history: body.history });
       const residenceException = zonePolicy?.residenceOverridesPrefix === true;
@@ -273,6 +285,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         zone: zoneVerdict,
         residenceException,
         closeWithResource,
+        zoneCloseFreeText: zoneFreeClose != null,
         zoneExploreTurnsLeft: zoneExploreLeft,
         callGateBlock:
           [renderCallGateBlock(callGate), renderCountryAskBlock(countryAsk)]
@@ -282,6 +295,7 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
       const systemDirectives = combineSystemDirectives(
         leadOriginDirective,
         addressingDirective,
+        languageDirective,
       );
 
       const startedAt = Date.now();
@@ -320,10 +334,13 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
                   allowResidenceHandoff: residenceException,
                   exploreTurnsLeft: zoneExploreLeft,
                   term: zoneVerdict.kind === 'reject_by_declaration' ? zoneVerdict.term : null,
+                  rejectTerms: zonePolicy?.countryRejectTerms ?? null,
+                  freeClose: zoneFreeClose,
                 }
               : undefined,
             callGate,
             countryAsk,
+            leadLanguage,
             // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
             allowedPriceText: parseAllowedPriceText(leadQualification),
             priceGate,
@@ -339,10 +356,14 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         );
 
         const setterOut = out.generator.setterOutput;
+        // 2026-11-04 — Un solo signo, como en producción (preferencia estricta del trainer).
+        const finalParts = schedulingConfig.singlePunctuation ? normalizePartsPunctuation(out.parts) : out.parts;
         return reply.code(200).send({
           ok: true,
           // Las burbujas tal y como saldrían, en orden.
-          parts: out.parts,
+          parts: finalParts,
+          // Idioma en el que el motor ha visto que escribe la persona.
+          lead_language: leadLanguage,
           decision: {
             phase: setterOut.phase_decision,
             status: setterOut.conversation_status,
