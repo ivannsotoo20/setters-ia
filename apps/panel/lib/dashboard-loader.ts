@@ -1,11 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { AppointmentSnapshot, ConvSnapshot } from './dashboard-metrics';
 import {
-  isTestLeadName,
+  parseDashboardAlertsRpc,
   type ChannelInfo,
   type ChannelKey,
-  type LastMessageInfo,
-  type MessageSource,
+  type DashboardAlertsRpcResult,
 } from './dashboard-query';
 import type { PipelineEvent } from './pipeline-metrics';
 import { isKeywordFlowOpening } from './inbound-opening';
@@ -240,80 +239,56 @@ export async function enrichWithTeamReplies(
 const MESSAGE_PAGE_SIZE = 1000;
 
 /**
- * Último mensaje de cada conversación (quién lo escribió y cuándo) más la
- * fecha del último mensaje de la entrenadora. Alimenta las tres alertas de
- * conversación de `dashboard-query.ts`.
+ * Alertas de conversación calculadas en la base de datos: la RPC
+ * `dashboard_alerts` (migración 085) devuelve en un solo jsonb las cuatro
+ * listas —esperando respuesta, en manos de la entrenadora, atascos e inbound
+ * que la IA no atiende— con sus ids. Sustituye a cargar todas las activas y
+ * sus mensajes en el panel, que PostgREST cortaba en 1.000 filas (2026-11-04).
  *
- * Se leen `conversation_messages` por lotes de 200 conversaciones (límite de
- * URL de PostgREST) y, dentro de cada lote, por páginas de 1000 filas:
- * Supabase corta cada respuesta en 1000 (max-rows) y 200 conversaciones con
- * todos sus mensajes lo superan de sobra. El "último" se calcula en JS; el
- * orden solo hace estable la paginación. Las conversaciones sin mensajes no
- * aparecen en el mapa.
+ * Los umbrales se pasan desde `ALERT_THRESHOLDS` para que la fuente única siga
+ * en TS; la RPC los tiene como default por si se llama a mano.
  */
-export async function loadLastMessageBySource(
+export async function loadDashboardAlerts(
   supabase: SupabaseClient,
-  convIds: number[],
-): Promise<{ lastMessages: Map<number, LastMessageInfo>; error: string | null }> {
-  const lastMessages = new Map<number, LastMessageInfo>();
-  const ids = Array.from(new Set(convIds));
-  for (let i = 0; i < ids.length; i += REPLY_LOOKUP_CHUNK) {
-    const chunk = ids.slice(i, i + REPLY_LOOKUP_CHUNK);
-    let offset = 0;
-    for (;;) {
-      const { data, error } = await supabase
-        .from('conversation_messages')
-        .select('conversation_id, source, sent_at')
-        .in('conversation_id', chunk)
-        .order('sent_at', { ascending: true })
-        .order('id', { ascending: true })
-        .range(offset, offset + MESSAGE_PAGE_SIZE - 1);
-      if (error) return { lastMessages, error: error.message };
-      const rows = data ?? [];
-      for (const row of rows) {
-        const convId = Number(row.conversation_id);
-        const source = String(row.source) as MessageSource;
-        const sentAt = String(row.sent_at);
-        const prev = lastMessages.get(convId);
-        const lastHumanAt =
-          source === 'human' &&
-          (!prev?.lastHumanAt || Date.parse(sentAt) >= Date.parse(prev.lastHumanAt))
-            ? sentAt
-            : (prev?.lastHumanAt ?? null);
-        if (!prev || Date.parse(sentAt) >= Date.parse(prev.sentAt)) {
-          lastMessages.set(convId, { source, sentAt, lastHumanAt });
-        } else {
-          lastMessages.set(convId, { ...prev, lastHumanAt });
-        }
-      }
-      if (rows.length < MESSAGE_PAGE_SIZE) break;
-      offset += rows.length;
-    }
+  params: {
+    tenantId: number;
+    awaitingHours: number;
+    handoffHours: number;
+    stallDays: number;
+  },
+): Promise<{ alerts: DashboardAlertsRpcResult; error: string | null }> {
+  const empty = parseDashboardAlertsRpc(null);
+  const { data, error } = await supabase.rpc('dashboard_alerts', {
+    p_tenant_id: params.tenantId,
+    p_awaiting_hours: params.awaitingHours,
+    p_handoff_hours: params.handoffHours,
+    p_stall_days: params.stallDays,
+  });
+  if (error) {
+    // PGRST202: PostgREST no encuentra la función → falta aplicar la migración.
+    const hint =
+      error.code === 'PGRST202'
+        ? ' (falta aplicar la migración 085-dashboard-alerts-rpc.sql)'
+        : '';
+    return { alerts: empty, error: `dashboard_alerts: ${error.message}${hint}` };
   }
-  return { lastMessages, error: null };
+  return { alerts: parseDashboardAlertsRpc(data), error: null };
 }
 
 /**
- * Ids de los leads de prueba del tenant (los de Iván), para dejar sus
- * conversaciones fuera de las alertas. El filtro va en la consulta
- * (`first_name` = ivan / iván sin distinguir mayúsculas) y se repasa en JS
- * con `isTestLeadName`, que es quien fija el criterio.
+ * Palabras clave del tenant (`automation_keywords.pattern`), activas o no: las
+ * de ManyChat no viven aquí y las que sí («hernia», «lumbar»…) son las mismas
+ * que usa ella. Las comparten la tarjeta «Inbound» y la alerta de inbound sin
+ * atender, para que las dos digan lo mismo.
  */
-export async function loadTestLeadIds(
+export async function loadKeywordPatterns(
   supabase: SupabaseClient,
   tenantId: number,
-): Promise<{ testLeadIds: Set<number>; error: string | null }> {
-  const { data, error } = await supabase
-    .from('leads')
-    .select('id, first_name')
-    .eq('tenant_id', tenantId)
-    .or('first_name.ilike.ivan,first_name.ilike.iván');
-  if (error) return { testLeadIds: new Set(), error: error.message };
-  const testLeadIds = new Set<number>();
-  for (const row of data ?? []) {
-    if (isTestLeadName(row.first_name as string | null)) testLeadIds.add(Number(row.id));
-  }
-  return { testLeadIds, error: null };
+): Promise<{ patterns: string[]; error: string | null }> {
+  const kw = await supabase.from('automation_keywords').select('pattern').eq('tenant_id', tenantId);
+  if (kw.error) return { patterns: [], error: kw.error.message };
+  const patterns = (kw.data ?? []).map((r) => String(r.pattern ?? '')).filter((p) => p.length > 0);
+  return { patterns, error: null };
 }
 
 /**
@@ -322,21 +297,27 @@ export async function loadTestLeadIds(
  * de la entrenadora las contestó en segundos (ver lib/inbound-opening.ts). Muta el
  * array recibido.
  *
- * Las palabras clave son todas las del tenant, activas o no: las de ManyChat no
- * viven aquí y las que sí («hernia», «lumbar»…) son las mismas que usa ella.
+ * `keywordPatterns`: las del tenant (`loadKeywordPatterns`). Si no se pasan, se
+ * cargan aquí.
  */
 export async function enrichWithInboundOpenings(
   supabase: SupabaseClient,
   convs: ConvSnapshot[],
   tenantId: number,
+  keywordPatterns?: readonly string[],
 ): Promise<{ error: string | null }> {
   const inbound = convs.filter((c) => c.direction === 'inbound');
   for (const c of inbound) c.inbound_keyword_flow = false;
   if (inbound.length === 0) return { error: null };
 
-  const kw = await supabase.from('automation_keywords').select('pattern').eq('tenant_id', tenantId);
-  if (kw.error) return { error: kw.error.message };
-  const patterns = (kw.data ?? []).map((r) => String(r.pattern ?? '')).filter((p) => p.length > 0);
+  let patterns: readonly string[];
+  if (keywordPatterns) {
+    patterns = keywordPatterns;
+  } else {
+    const kw = await loadKeywordPatterns(supabase, tenantId);
+    if (kw.error) return { error: kw.error };
+    patterns = kw.patterns;
+  }
 
   const firstLead = new Map<number, { text: string; at: string }>();
   const firstAuto = new Map<number, string>();

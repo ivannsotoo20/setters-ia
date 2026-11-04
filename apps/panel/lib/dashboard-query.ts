@@ -9,6 +9,7 @@
 
 import type { PipelineEvent } from './pipeline-metrics';
 import { isBookedAppointment, type AppointmentSnapshot, type ConvSnapshot } from './dashboard-metrics';
+import { isKeywordFlowOpening } from './inbound-opening';
 
 export type ChannelKey = 'wa' | 'fb' | 'ig-in' | 'ig-out';
 export type MatrixColumnKey = ChannelKey | 'total';
@@ -287,35 +288,39 @@ export function aggregateMatrix(input: {
 }
 
 /**
- * Alertas de conversación (2026-09-03).
+ * Alertas de conversación (2026-09-03; a SQL el 2026-11-04).
  *
- * Las tres detecciones de abajo miden desde el ÚLTIMO MENSAJE de la
- * conversación y quién lo escribió, no desde el último cambio de fase. La
- * versión anterior ("bottleneck") agrupaba por la fecha del último
- * `phase_change`, y como F1→F2 salta con el primer mensaje de la persona, F2
- * acumulaba a todo el que había contestado una vez: la alerta del tenant 7
- * decía 31 cuando las atribuibles eran 3.
+ * Las detecciones de abajo miden desde el ÚLTIMO MENSAJE de la conversación y
+ * quién lo escribió, no desde el último cambio de fase. La versión anterior
+ * ("bottleneck") agrupaba por la fecha del último `phase_change`, y como F1→F2
+ * salta con el primer mensaje de la persona, F2 acumulaba a todo el que había
+ * contestado una vez: la alerta del tenant 7 decía 31 cuando las atribuibles
+ * eran 3.
  *
- * Son funciones puras: el caller carga `lastMessages` con
- * `loadLastMessageBySource` (dashboard-loader.ts) y pasa `now` en los tests.
+ * Desde 2026-11-04 el último mensaje por conversación y las cuatro listas las
+ * calcula la base de datos: la RPC `dashboard_alerts` (migración 085). Antes el
+ * panel cargaba todas las conversaciones activas del tenant, PostgREST cortaba
+ * la respuesta en 1.000 filas arbitrarias (el tenant 7 tiene 4.181) y las
+ * alertas salían de ese subconjunto: «11 personas esperando respuesta» cuando
+ * eran 34. Las funciones de aquí reciben las filas de la RPC
+ * (`loadDashboardAlerts` en dashboard-loader.ts) y dejan en JS lo que no vive en
+ * SQL: el umbral de horas (el mismo que recibe la RPC), las horas de espera, la
+ * agrupación por canal × fase de los atascos y, en los inbound, el filtro de
+ * apertura de palabra clave (`isKeywordFlowOpening`, lib/inbound-opening.ts),
+ * que es la misma regla que usa la tarjeta «Inbound» del dashboard.
+ *
+ * Son funciones puras: el caller pasa `now` en los tests.
  */
 
 export type MessageSource = 'lead' | 'ai' | 'human' | 'system';
 
-export interface LastMessageInfo {
-  /** Quién escribió el último mensaje de la conversación. */
-  source: MessageSource;
-  sentAt: string;
-  /** Último mensaje de la entrenadora (`source='human'`), o null si nunca escribió. */
-  lastHumanAt: string | null;
-}
-
 /**
  * Conversaciones de prueba: las de Iván. Se identifican por el `first_name`
- * del lead ('Ivan' / 'Iván', sin distinguir mayúsculas ni acentos). La otra
- * marca posible —que el primer mensaje contenga 'fyzontest'— exigiría cargar
- * el contenido de los mensajes de todas las conversaciones vigiladas, así que
- * no se aplica.
+ * del lead ('Ivan' / 'Iván', sin distinguir mayúsculas ni acentos). La RPC
+ * aplica el mismo criterio en SQL (`lower(btrim(first_name)) IN ('ivan','iván')`);
+ * esta función queda como definición documentada y para quien lo necesite en
+ * JS. La otra marca posible —que el primer mensaje contenga 'fyzontest'—
+ * exigiría cargar el contenido de los mensajes, así que no se aplica.
  */
 export function isTestLeadName(firstName: string | null | undefined): boolean {
   if (!firstName) return false;
@@ -331,20 +336,110 @@ function hoursSince(iso: string, now: Date): number {
   return (now.getTime() - Date.parse(iso)) / 3600000;
 }
 
-function isTestConv(conv: ConvSnapshot, testLeadIds: Set<number> | undefined): boolean {
-  return testLeadIds != null && conv.lead_id != null && testLeadIds.has(conv.lead_id);
+/** Una conversación de una lista de la RPC: su id y cuándo fue el último mensaje. */
+export interface AlertConvRow {
+  conversation_id: number;
+  /** `sent_at` del último mensaje de la conversación. */
+  last_message_at: string;
+}
+
+/** Atasco candidato: conversación activa cuyo último mensaje es de la IA y lleva días. */
+export interface StallConvRow extends AlertConvRow {
+  channel_id: number;
+  direction: string;
+  phase_number: number;
+}
+
+/** Inbound con la IA pausada por el gate de palabras clave, con su apertura. */
+export interface InboundUnattendedRow extends AlertConvRow {
+  /** Primer mensaje de la persona (recortado a 160 caracteres), o null si fue solo media. */
+  first_lead_text: string | null;
+  first_lead_at: string | null;
+  /** Primer mensaje automático nuestro (`source='system'`) tras el primero de la persona. */
+  first_auto_reply_at: string | null;
+}
+
+/** Resultado tipado de la RPC `dashboard_alerts` (migración 085). */
+export interface DashboardAlertsRpcResult {
+  computedAt: string | null;
+  awaitingReply: AlertConvRow[];
+  handoffUnattended: AlertConvRow[];
+  stalls: StallConvRow[];
+  inboundUnattended: InboundUnattendedRow[];
+}
+
+function asRecord(v: unknown): Record<string, unknown> | null {
+  return v != null && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+}
+
+function asArray(v: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(v)) return [];
+  return v.map(asRecord).filter((r): r is Record<string, unknown> => r != null);
+}
+
+function numberOf(v: unknown): number | null {
+  const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function stringOrNull(v: unknown): string | null {
+  return typeof v === 'string' && v.length > 0 ? v : null;
+}
+
+function baseRow(r: Record<string, unknown>): AlertConvRow | null {
+  const id = numberOf(r.conversation_id);
+  const at = stringOrNull(r.last_message_at);
+  if (id == null || at == null || !Number.isFinite(Date.parse(at))) return null;
+  return { conversation_id: id, last_message_at: at };
 }
 
 /**
- * Conversación en la que el setter sigue al mando: activa, sin handoff a la
- * entrenadora y sin la IA pausada. Base común de "sin respuesta de la persona"
- * y de "esperando respuesta".
+ * Convierte el jsonb de la RPC en filas tipadas. Tolerante: una lista que no
+ * venga o una fila sin id o sin fecha se descarta, nunca rompe el dashboard.
  */
-function isSetterOwned(conv: ConvSnapshot): boolean {
-  if (conv.state !== 'active') return false;
-  if (conv.is_handoff_to_human) return false;
-  if (conv.ai_paused_until != null) return false;
-  return true;
+export function parseDashboardAlertsRpc(raw: unknown): DashboardAlertsRpcResult {
+  const obj = asRecord(raw) ?? {};
+  const awaitingReply: AlertConvRow[] = [];
+  for (const r of asArray(obj.awaiting_reply)) {
+    const row = baseRow(r);
+    if (row) awaitingReply.push(row);
+  }
+  const handoffUnattended: AlertConvRow[] = [];
+  for (const r of asArray(obj.handoff_unattended)) {
+    const row = baseRow(r);
+    if (row) handoffUnattended.push(row);
+  }
+  const stalls: StallConvRow[] = [];
+  for (const r of asArray(obj.stalls)) {
+    const row = baseRow(r);
+    const channelId = numberOf(r.channel_id);
+    const phase = numberOf(r.phase_number);
+    if (!row || channelId == null || phase == null) continue;
+    stalls.push({
+      ...row,
+      channel_id: channelId,
+      direction: typeof r.direction === 'string' ? r.direction : 'untagged',
+      phase_number: phase,
+    });
+  }
+  const inboundUnattended: InboundUnattendedRow[] = [];
+  for (const r of asArray(obj.inbound_unattended)) {
+    const row = baseRow(r);
+    if (!row) continue;
+    inboundUnattended.push({
+      ...row,
+      first_lead_text: typeof r.first_lead_text === 'string' ? r.first_lead_text : null,
+      first_lead_at: stringOrNull(r.first_lead_at),
+      first_auto_reply_at: stringOrNull(r.first_auto_reply_at),
+    });
+  }
+  return {
+    computedAt: stringOrNull(obj.computed_at),
+    awaitingReply,
+    handoffUnattended,
+    stalls,
+    inboundUnattended,
+  };
 }
 
 export interface StallInput {
@@ -362,33 +457,29 @@ export interface StallInput {
 /**
  * "Sin respuesta de la persona": conversaciones activas, sin outcome, sin
  * handoff ni pausa, cuyo último mensaje es del setter (`source='ai'`) y lleva
- * ≥ `daysThreshold` días sin contestación. Agrupadas por (canal × fase actual
- * `phase_number`, F1–F6); solo salen los grupos con ≥ `countThreshold`.
+ * ≥ `daysThreshold` días sin contestación. La RPC ya devuelve solo las que
+ * cumplen estado, pausa, handoff, F1–F6 y días; aquí se quitan las que tienen
+ * un outcome aplicado, se agrupan por (canal × fase actual) y solo salen los
+ * grupos con ≥ `countThreshold`.
  */
 export function detectStalls(input: {
-  convs: ConvSnapshot[];
-  lastMessages: Map<number, LastMessageInfo>;
+  rows: readonly StallConvRow[];
   channelMap: Map<number, ChannelInfo>;
   daysThreshold: number;
   countThreshold: number;
   /** Conversaciones con un outcome aplicado (etiqueta de bucket): ya salieron del embudo. */
   outcomeConvIds?: Set<number>;
-  testLeadIds?: Set<number>;
   now?: Date;
 }): StallInput[] {
   const now = input.now ?? new Date();
   const buckets = new Map<string, { count: number; daysMin: number; daysMax: number }>();
-  for (const conv of input.convs) {
-    if (!isSetterOwned(conv)) continue;
-    if (input.outcomeConvIds?.has(conv.id)) continue;
-    if (isTestConv(conv, input.testLeadIds)) continue;
-    const last = input.lastMessages.get(conv.id);
-    if (!last || last.source !== 'ai') continue;
-    const days = Math.floor(hoursSince(last.sentAt, now) / 24);
+  for (const row of input.rows) {
+    if (input.outcomeConvIds?.has(row.conversation_id)) continue;
+    const days = Math.floor(hoursSince(row.last_message_at, now) / 24);
     if (days < input.daysThreshold) continue;
-    const phase = conv.phase_number;
+    const phase = row.phase_number;
     if (!Number.isFinite(phase) || phase < 1 || phase > 6) continue;
-    const channelKey = classifyChannel(input.channelMap.get(conv.channel_id), conv.direction);
+    const channelKey = classifyChannel(input.channelMap.get(row.channel_id), row.direction);
     if (!channelKey) continue;
     const k = `${channelKey}:${phase}`;
     const existing = buckets.get(k);
@@ -418,69 +509,90 @@ export interface WaitingResult {
   count: number;
   /** Horas que lleva esperando la que más lleva (0 si no hay ninguna). */
   hoursWaitingMax: number;
+  /** Ordenadas de la que más lleva esperando a la que menos. */
   convIds: number[];
 }
 
+function waitingFromRows(
+  rows: readonly AlertConvRow[],
+  hoursThreshold: number,
+  now: Date,
+): WaitingResult {
+  const kept: Array<{ id: number; hours: number }> = [];
+  for (const row of rows) {
+    const hours = hoursSince(row.last_message_at, now);
+    if (hours <= hoursThreshold) continue;
+    kept.push({ id: row.conversation_id, hours });
+  }
+  kept.sort((a, b) => b.hours - a.hours);
+  return {
+    count: kept.length,
+    hoursWaitingMax: kept[0]?.hours ?? 0,
+    convIds: kept.map((k) => k.id),
+  };
+}
+
 /**
- * "Esperando respuesta": conversaciones en manos del setter cuyo último
- * mensaje es de la persona y nadie —ni la IA ni la entrenadora— ha contestado
- * en más de `hoursThreshold` horas. Que el último mensaje sea de la persona ya
- * implica que no hay ninguno de `ai` ni de `human` detrás.
+ * "Esperando respuesta": conversaciones en manos del setter (activas, sin
+ * handoff, IA sin pausar) cuyo último mensaje es de la persona y nadie —ni la
+ * IA ni la entrenadora— ha contestado en más de `hoursThreshold` horas. Que el
+ * último mensaje sea de la persona ya implica que no hay ninguno de `ai` ni de
+ * `human` detrás. Esas condiciones las aplica la RPC; aquí se repasa el umbral
+ * (el mismo número que recibió la RPC) y se calculan las horas.
  */
 export function detectAwaitingReply(input: {
-  convs: ConvSnapshot[];
-  lastMessages: Map<number, LastMessageInfo>;
+  rows: readonly AlertConvRow[];
   hoursThreshold: number;
-  testLeadIds?: Set<number>;
   now?: Date;
 }): WaitingResult {
-  const now = input.now ?? new Date();
-  const convIds: number[] = [];
-  let hoursMax = 0;
-  for (const conv of input.convs) {
-    if (!isSetterOwned(conv)) continue;
-    if (isTestConv(conv, input.testLeadIds)) continue;
-    const last = input.lastMessages.get(conv.id);
-    if (!last || last.source !== 'lead') continue;
-    const hours = hoursSince(last.sentAt, now);
-    if (hours <= input.hoursThreshold) continue;
-    convIds.push(conv.id);
-    hoursMax = Math.max(hoursMax, hours);
-  }
-  return { count: convIds.length, hoursWaitingMax: hoursMax, convIds };
+  return waitingFromRows(input.rows, input.hoursThreshold, input.now ?? new Date());
 }
 
 /**
  * "Handoffs sin atender": conversaciones pasadas a la entrenadora
- * (`is_handoff_to_human=true`) cuyo último mensaje es de la persona o del
- * setter y llevan más de `hoursThreshold` horas sin un mensaje suyo detrás.
- *
- * No se filtra por `state`: el motor cierra la conversación para el bot al
- * hacer el handoff (`state='closed'`) y sigue abierta para la entrenadora, así
- * que el caller las carga por el flag y no por el estado. Se excluye F7 (cita
- * agendada): ese handoff no espera ninguna respuesta por chat.
+ * (`is_handoff_to_human=true`, F7 excluida: ese handoff no espera ninguna
+ * respuesta por chat) cuyo último mensaje es de la persona o del setter y
+ * llevan más de `hoursThreshold` horas sin un mensaje suyo detrás. Sin filtro
+ * por `state`: el motor cierra la conversación para el bot al hacer el handoff
+ * (`state='closed'`) y sigue abierta para la entrenadora. Esas condiciones las
+ * aplica la RPC; aquí el umbral y las horas.
  */
 export function detectUnattendedHandoffs(input: {
-  convs: ConvSnapshot[];
-  lastMessages: Map<number, LastMessageInfo>;
+  rows: readonly AlertConvRow[];
   hoursThreshold: number;
-  testLeadIds?: Set<number>;
   now?: Date;
 }): WaitingResult {
-  const now = input.now ?? new Date();
-  const convIds: number[] = [];
-  let hoursMax = 0;
-  for (const conv of input.convs) {
-    if (!conv.is_handoff_to_human) continue;
-    if (conv.phase_number === 7) continue;
-    if (isTestConv(conv, input.testLeadIds)) continue;
-    const last = input.lastMessages.get(conv.id);
-    if (!last || (last.source !== 'lead' && last.source !== 'ai')) continue;
-    if (last.lastHumanAt && Date.parse(last.lastHumanAt) >= Date.parse(last.sentAt)) continue;
-    const hours = hoursSince(last.sentAt, now);
-    if (hours <= input.hoursThreshold) continue;
-    convIds.push(conv.id);
-    hoursMax = Math.max(hoursMax, hours);
-  }
-  return { count: convIds.length, hoursWaitingMax: hoursMax, convIds };
+  return waitingFromRows(input.rows, input.hoursThreshold, input.now ?? new Date());
+}
+
+/**
+ * "Te escribieron y la IA no las atiende" (2026-11-04, Tania): conversaciones
+ * que abrió la persona (`direction='inbound'`), activas, sin handoff, con la IA
+ * pausada por el gate de palabras clave (`ai_paused_until='infinity'`) y cuyo
+ * último mensaje es suyo. Caían entre las otras dos alertas: no son «esperando
+ * respuesta» (exige IA sin pausar) ni «en manos de la entrenadora» (exige
+ * handoff), y nadie las atendía.
+ *
+ * La RPC aplica esas condiciones, deja fuera las de prueba y las que llevan la
+ * etiqueta «Profesional». Aquí se descartan las que empezaron como el flujo de
+ * una palabra clave («Siii😊», «Empezar», «espalda»…) con `isKeywordFlowOpening`:
+ * la misma regla que decide qué es un inbound en la tarjeta del dashboard. Sin
+ * umbral de horas: con la IA pausada nadie va a contestar, da igual cuánto lleve.
+ */
+export function detectInboundUnattended(input: {
+  rows: readonly InboundUnattendedRow[];
+  /** Palabras clave del tenant (`automation_keywords.pattern`), activas o no. */
+  keywordPatterns: readonly string[];
+  now?: Date;
+}): WaitingResult {
+  const kept = input.rows.filter(
+    (row) =>
+      !isKeywordFlowOpening({
+        firstLeadText: row.first_lead_text,
+        firstLeadAt: row.first_lead_at,
+        firstAutoReplyAt: row.first_auto_reply_at,
+        keywordPatterns: input.keywordPatterns,
+      }),
+  );
+  return waitingFromRows(kept, -Infinity, input.now ?? new Date());
 }

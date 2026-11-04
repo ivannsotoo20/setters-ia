@@ -94,7 +94,7 @@ export interface FilterParams {
 }
 
 /** Alertas del dashboard que abren su lista de conversaciones. */
-export type ConversationAlertFilter = 'awaiting_reply' | 'handoff_unattended';
+export type ConversationAlertFilter = 'awaiting_reply' | 'handoff_unattended' | 'inbound_unattended';
 
 /** Tope de ids por URL: más que cualquier alerta real y la URL sigue siendo corta. */
 export const MAX_FILTER_IDS = 200;
@@ -216,7 +216,9 @@ export function parseConversationIds(value: string | null | undefined): number[]
 }
 
 export function parseAlertFilter(value: string | null | undefined): ConversationAlertFilter | null {
-  return value === 'awaiting_reply' || value === 'handoff_unattended' ? value : null;
+  return value === 'awaiting_reply' || value === 'handoff_unattended' || value === 'inbound_unattended'
+    ? value
+    : null;
 }
 
 const VALID_TABS: readonly TabKey[] = ['chats', 'hot', 'done', 'bought'] as const;

@@ -16,6 +16,13 @@ import type { LabelRow } from '@/lib/actions/labels';
 interface Props {
   detail: SelectedConversationDetail | null;
   messages: TimelineMessage[];
+  /**
+   * La conversación tiene más mensajes de los que se cargan (los más recientes):
+   * se avisa arriba del hilo para que nadie crea que empezó ahí (2026-11-04).
+   */
+  olderMessagesHidden?: boolean;
+  /** Cuántos mensajes se cargan como máximo, para el aviso. */
+  messagesShown?: number;
   notes: ConversationNote[];
   viewer: ConversationViewer;
   members: TenantMember[];
@@ -25,6 +32,8 @@ interface Props {
 export function ThreadPane({
   detail,
   messages,
+  olderMessagesHidden = false,
+  messagesShown,
   notes,
   viewer,
   members,
@@ -67,7 +76,15 @@ export function ThreadPane({
             Sin mensajes todavía.
           </p>
         ) : (
-          <MessagesTimeline messages={messages} />
+          <>
+            {olderMessagesHidden ? (
+              <p className="text-xs text-muted-foreground italic text-center pb-3">
+                Esta conversación tiene más mensajes. Se muestran los{' '}
+                {messagesShown ?? messages.length} más recientes.
+              </p>
+            ) : null}
+            <MessagesTimeline messages={messages} />
+          </>
         )}
       </ThreadScrollContainer>
       <ThreadComposer

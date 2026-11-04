@@ -93,6 +93,12 @@ export function AlertsList({ alerts }: Props) {
 function alertHref(alert: Alert): string | null {
   const ids = alert.convIds ?? [];
   if (ids.length === 0) return null;
-  if (alert.type !== 'awaiting_reply' && alert.type !== 'handoff_unattended') return null;
+  if (
+    alert.type !== 'awaiting_reply' &&
+    alert.type !== 'handoff_unattended' &&
+    alert.type !== 'inbound_unattended'
+  ) {
+    return null;
+  }
   return `/conversations?ids=${ids.slice(0, MAX_FILTER_IDS).join(',')}&alert=${alert.type}`;
 }

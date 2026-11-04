@@ -3,14 +3,17 @@ import {
   classifyChannel,
   aggregateMatrix,
   detectAwaitingReply,
+  detectInboundUnattended,
   detectStalls,
   detectUnattendedHandoffs,
   isTestLeadName,
+  parseDashboardAlertsRpc,
   ALL_CHANNEL_KEYS,
   ALL_MATRIX_COLUMNS,
+  type AlertConvRow,
   type ChannelInfo,
-  type LastMessageInfo,
-  type MessageSource,
+  type InboundUnattendedRow,
+  type StallConvRow,
 } from '../../lib/dashboard-query';
 import type { PipelineEvent } from '../../lib/pipeline-metrics';
 import type { ConvSnapshot } from '../../lib/dashboard-metrics';
@@ -248,23 +251,6 @@ describe('aggregateMatrix — qualified row', () => {
   });
 });
 
-function lastMsg(
-  source: MessageSource,
-  sentAt: string,
-  lastHumanAt: string | null = null,
-): LastMessageInfo {
-  return { source, sentAt, lastHumanAt };
-}
-
-/** Mismo último mensaje para todas las conversaciones dadas. */
-function sameLast(
-  convs: ConvSnapshot[],
-  source: MessageSource,
-  sentAt: string,
-): Map<number, LastMessageInfo> {
-  return new Map(convs.map((c): [number, LastMessageInfo] => [c.id, lastMsg(source, sentAt)]));
-}
-
 describe('isTestLeadName', () => {
   it('Ivan, Iván, ivan, IVÁN → conversación de prueba', () => {
     for (const n of ['Ivan', 'Iván', 'ivan', 'IVÁN', ' Iván ']) {
@@ -279,245 +265,290 @@ describe('isTestLeadName', () => {
   });
 });
 
+/**
+ * Alertas de conversación sobre las filas de la RPC `dashboard_alerts`
+ * (migración 085). La RPC ya aplica estado, pausa, handoff y umbral en SQL; aquí
+ * se prueba lo que queda en JS: el parseo tolerante del jsonb, el repaso del
+ * umbral, las horas, la agrupación de atascos y, en los inbound, qué aperturas
+ * son el flujo de una palabra clave y cuáles son una persona de verdad.
+ */
+const NOW = new Date('2026-09-03T12:00:00Z');
+
+function hoursAgo(h: number): string {
+  return new Date(NOW.getTime() - h * 3600000).toISOString();
+}
+
+function alertRow(id: number, hoursSince: number): AlertConvRow {
+  return { conversation_id: id, last_message_at: hoursAgo(hoursSince) };
+}
+
+function stallRow(
+  id: number,
+  daysSince: number,
+  o: Partial<StallConvRow> = {},
+): StallConvRow {
+  return {
+    conversation_id: id,
+    last_message_at: hoursAgo(daysSince * 24),
+    channel_id: 1,
+    direction: 'inbound',
+    phase_number: 2,
+    ...o,
+  };
+}
+
+function inboundRow(
+  id: number,
+  firstText: string | null,
+  o: Partial<InboundUnattendedRow> = {},
+): InboundUnattendedRow {
+  return {
+    conversation_id: id,
+    last_message_at: hoursAgo(id),
+    first_lead_text: firstText,
+    first_lead_at: hoursAgo(id + 1),
+    first_auto_reply_at: null,
+    ...o,
+  };
+}
+
+describe('parseDashboardAlertsRpc — el jsonb de la RPC a filas tipadas', () => {
+  it('lee las cuatro listas con sus campos', () => {
+    const r = parseDashboardAlertsRpc({
+      computed_at: '2026-09-03T12:00:00+00:00',
+      awaiting_reply: [{ conversation_id: 1, last_message_at: '2026-09-03T09:00:00+00:00' }],
+      handoff_unattended: [{ conversation_id: '2', last_message_at: '2026-09-02T06:00:00+00:00' }],
+      stalls: [
+        {
+          conversation_id: 3,
+          channel_id: 10,
+          direction: 'outbound',
+          phase_number: 2,
+          last_message_at: '2026-08-30T12:00:00+00:00',
+        },
+      ],
+      inbound_unattended: [
+        {
+          conversation_id: 4,
+          last_message_at: '2026-09-01T10:00:00+00:00',
+          first_lead_text: 'Como tratar una hernia discal',
+          first_lead_at: '2026-09-01T10:00:00+00:00',
+          first_auto_reply_at: null,
+        },
+      ],
+    });
+    expect(r.computedAt).toBe('2026-09-03T12:00:00+00:00');
+    expect(r.awaitingReply).toEqual([
+      { conversation_id: 1, last_message_at: '2026-09-03T09:00:00+00:00' },
+    ]);
+    // Los ids pueden venir como texto (bigint en jsonb): se convierten.
+    expect(r.handoffUnattended[0]!.conversation_id).toBe(2);
+    expect(r.stalls[0]).toEqual({
+      conversation_id: 3,
+      last_message_at: '2026-08-30T12:00:00+00:00',
+      channel_id: 10,
+      direction: 'outbound',
+      phase_number: 2,
+    });
+    expect(r.inboundUnattended[0]).toMatchObject({
+      conversation_id: 4,
+      first_lead_text: 'Como tratar una hernia discal',
+      first_auto_reply_at: null,
+    });
+  });
+
+  it('descarta filas sin id o sin fecha y tolera listas que falten', () => {
+    const r = parseDashboardAlertsRpc({
+      awaiting_reply: [
+        { conversation_id: 1 },
+        { last_message_at: '2026-09-03T09:00:00+00:00' },
+        { conversation_id: 2, last_message_at: 'no es una fecha' },
+        { conversation_id: 3, last_message_at: '2026-09-03T09:00:00+00:00' },
+        'basura',
+      ],
+      stalls: [{ conversation_id: 9, last_message_at: '2026-09-03T09:00:00+00:00' }],
+    });
+    expect(r.awaitingReply.map((x) => x.conversation_id)).toEqual([3]);
+    // Un atasco sin canal ni fase no se puede agrupar: fuera.
+    expect(r.stalls).toEqual([]);
+    expect(r.handoffUnattended).toEqual([]);
+    expect(r.inboundUnattended).toEqual([]);
+    expect(r.computedAt).toBeNull();
+  });
+
+  it('null, texto o array → todo vacío, nunca lanza', () => {
+    for (const raw of [null, undefined, 'x', 42, [1, 2]]) {
+      const r = parseDashboardAlertsRpc(raw);
+      expect(r.awaitingReply).toEqual([]);
+      expect(r.handoffUnattended).toEqual([]);
+      expect(r.stalls).toEqual([]);
+      expect(r.inboundUnattended).toEqual([]);
+    }
+  });
+});
+
 describe('detectStalls — sin respuesta de la persona', () => {
-  const channelMap = new Map<number, ChannelInfo>([[1, { kind: 'whatsapp' }]]);
-  const now = new Date('2026-09-03T12:00:00Z');
-  const fourDaysAgo = '2026-08-30T12:00:00Z';
-  const twoDaysAgo = '2026-09-01T12:00:00Z';
+  const channelMap = new Map<number, ChannelInfo>([
+    [1, { kind: 'whatsapp' }],
+    [2, { kind: 'instagram_dm' }],
+  ]);
 
-  function activeConvs(n: number, phase = 2): ConvSnapshot[] {
-    return Array.from({ length: n }, (_, i) =>
-      conv({
-        id: i + 1,
-        channel_id: 1,
-        phase_number: phase,
-        ai_paused_until: null,
-        is_handoff_to_human: false,
-      }),
-    );
-  }
-
-  it('F2 con último mensaje de la IA hace 4 días → grupo wa:2', () => {
-    const convs = activeConvs(5);
-    const result = detectStalls({
-      convs,
-      lastMessages: sameLast(convs, 'ai', fourDaysAgo),
-      channelMap,
-      daysThreshold: 3,
-      countThreshold: 5,
-      now,
-    });
-    expect(result).toEqual([
-      { channel: 'wa', phase: 2, count: 5, daysStuckMin: 4, daysStuckMax: 4 },
-    ]);
-  });
-
-  it('mide desde el último mensaje: si la persona escribió la última, no está sin contestar', () => {
-    const convs = activeConvs(5);
-    const lastMessages = new Map<number, LastMessageInfo>();
-    for (const c of convs) lastMessages.set(c.id, lastMsg(c.id <= 3 ? 'ai' : 'lead', fourDaysAgo));
+  it('5 en F2 con el último mensaje de la IA hace 4 días → grupo wa:2', () => {
+    const rows = [1, 2, 3, 4, 5].map((id) => stallRow(id, 4));
     expect(
-      detectStalls({ convs, lastMessages, channelMap, daysThreshold: 3, countThreshold: 5, now }),
-    ).toEqual([]);
-    const r = detectStalls({
-      convs,
-      lastMessages,
-      channelMap,
-      daysThreshold: 3,
-      countThreshold: 3,
-      now,
-    });
-    expect(r).toHaveLength(1);
-    expect(r[0]!.count).toBe(3);
+      detectStalls({ rows, channelMap, daysThreshold: 3, countThreshold: 5, now: NOW }),
+    ).toEqual([{ channel: 'wa', phase: 2, count: 5, daysStuckMin: 4, daysStuckMax: 4 }]);
   });
 
-  it('por debajo del umbral de días no cuenta', () => {
-    const convs = activeConvs(5);
-    const result = detectStalls({
-      convs,
-      lastMessages: sameLast(convs, 'ai', twoDaysAgo),
+  it('daysStuckMin es el del que menos lleva: "más de N días" vale para todos', () => {
+    const rows = [stallRow(1, 3), stallRow(2, 5), stallRow(3, 9)];
+    const r = detectStalls({ rows, channelMap, daysThreshold: 3, countThreshold: 3, now: NOW });
+    expect(r).toEqual([{ channel: 'wa', phase: 2, count: 3, daysStuckMin: 3, daysStuckMax: 9 }]);
+  });
+
+  it('menos del mínimo por grupo → no sale; bajando el mínimo, sí', () => {
+    const rows = [1, 2, 3].map((id) => stallRow(id, 4));
+    expect(detectStalls({ rows, channelMap, daysThreshold: 3, countThreshold: 5, now: NOW })).toEqual([]);
+    expect(detectStalls({ rows, channelMap, daysThreshold: 3, countThreshold: 3, now: NOW })).toHaveLength(1);
+  });
+
+  it('con un outcome aplicado ya salió del embudo → no cuenta', () => {
+    const rows = [1, 2, 3, 4, 5].map((id) => stallRow(id, 4));
+    const r = detectStalls({
+      rows,
       channelMap,
       daysThreshold: 3,
       countThreshold: 5,
-      now,
+      outcomeConvIds: new Set([5]),
+      now: NOW,
     });
-    expect(result).toEqual([]);
+    expect(r).toEqual([]);
   });
 
-  it('excluye pausadas, handoffs, con outcome, de prueba, cerradas y sin mensajes', () => {
-    const convs = activeConvs(7);
-    convs[0]!.ai_paused_until = 'infinity';
-    convs[1]!.is_handoff_to_human = true;
-    // convs[2] lleva outcome (ver outcomeConvIds)
-    convs[3]!.lead_id = 99; // la de Iván
-    convs[4]!.state = 'closed';
-    // convs[6] no tiene mensajes
-    const lastMessages = sameLast(convs.slice(0, 6), 'ai', fourDaysAgo);
-    const r = detectStalls({
-      convs,
-      lastMessages,
-      channelMap,
-      daysThreshold: 3,
-      countThreshold: 1,
-      outcomeConvIds: new Set([3]),
-      testLeadIds: new Set([99]),
-      now,
-    });
-    expect(r).toEqual([{ channel: 'wa', phase: 2, count: 1, daysStuckMin: 4, daysStuckMax: 4 }]);
-  });
-
-  it('agrupa por la fase actual (phase_number), no por el último cambio de fase', () => {
-    const convs = [
-      ...activeConvs(2, 2),
-      ...activeConvs(3, 3).map((c) => ({ ...c, id: c.id + 10 })),
+  it('Instagram se parte por quién abrió: ig-in e ig-out son grupos distintos', () => {
+    const rows = [
+      ...[1, 2, 3].map((id) => stallRow(id, 4, { channel_id: 2, direction: 'inbound' })),
+      ...[4, 5, 6].map((id) => stallRow(id, 6, { channel_id: 2, direction: 'outbound' })),
     ];
-    const r = detectStalls({
-      convs,
-      lastMessages: sameLast(convs, 'ai', fourDaysAgo),
-      channelMap,
-      daysThreshold: 3,
-      countThreshold: 1,
-      now,
-    });
-    expect(r.map((g) => [g.phase, g.count]).sort()).toEqual([
-      [2, 2],
-      [3, 3],
-    ]);
+    const r = detectStalls({ rows, channelMap, daysThreshold: 3, countThreshold: 3, now: NOW });
+    expect(r.map((s) => s.channel).sort()).toEqual(['ig-in', 'ig-out']);
+  });
+
+  it('canal desconocido, fase fuera de F1–F6 o menos días que el umbral → fuera', () => {
+    const rows = [
+      ...[1, 2, 3].map((id) => stallRow(id, 4, { channel_id: 99 })),
+      ...[4, 5, 6].map((id) => stallRow(id, 4, { phase_number: 7 })),
+      ...[7, 8, 9].map((id) => stallRow(id, 2)),
+    ];
+    expect(detectStalls({ rows, channelMap, daysThreshold: 3, countThreshold: 1, now: NOW })).toEqual([]);
   });
 });
 
 describe('detectAwaitingReply — esperando respuesta', () => {
-  const now = new Date('2026-09-03T12:00:00Z');
-  const threeHoursAgo = '2026-09-03T09:00:00Z';
-  const oneHourAgo = '2026-09-03T11:00:00Z';
-  const base = (o: Partial<ConvSnapshot> = {}) =>
-    conv({ id: 1, ai_paused_until: null, is_handoff_to_human: false, lead_id: 5, ...o });
-
-  it('último mensaje de la persona hace 3 h sin respuesta → cuenta', () => {
-    const r = detectAwaitingReply({
-      convs: [base()],
-      lastMessages: new Map([[1, lastMsg('lead', threeHoursAgo)]]),
-      hoursThreshold: 2,
-      now,
-    });
+  it('último mensaje de la persona hace 3 h → cuenta, con sus horas', () => {
+    const r = detectAwaitingReply({ rows: [alertRow(1, 3)], hoursThreshold: 2, now: NOW });
     expect(r.count).toBe(1);
     expect(r.convIds).toEqual([1]);
     expect(r.hoursWaitingMax).toBeCloseTo(3, 5);
   });
 
-  it('hace 1 h → todavía no', () => {
+  it('ordena de la que más lleva esperando a la que menos (la URL se queda con las primeras)', () => {
     const r = detectAwaitingReply({
-      convs: [base()],
-      lastMessages: new Map([[1, lastMsg('lead', oneHourAgo)]]),
+      rows: [alertRow(1, 3), alertRow(2, 48), alertRow(3, 7)],
       hoursThreshold: 2,
-      now,
+      now: NOW,
     });
-    expect(r.count).toBe(0);
+    expect(r.convIds).toEqual([2, 3, 1]);
+    expect(r.hoursWaitingMax).toBeCloseTo(48, 5);
   });
 
-  it('la IA o la entrenadora ya contestaron → no cuenta', () => {
-    for (const source of ['ai', 'human'] as const) {
-      const r = detectAwaitingReply({
-        convs: [base()],
-        lastMessages: new Map([[1, lastMsg(source, threeHoursAgo)]]),
-        hoursThreshold: 2,
-        now,
-      });
-      expect(r.count).toBe(0);
-    }
+  it('"más de 2 h": a las 2 h justas o antes todavía no', () => {
+    const r = detectAwaitingReply({
+      rows: [alertRow(1, 2), alertRow(2, 1), alertRow(3, 2.01)],
+      hoursThreshold: 2,
+      now: NOW,
+    });
+    expect(r.convIds).toEqual([3]);
   });
 
-  it('pausada, handoff, cerrada o de prueba (first_name Ivan) → no cuenta', () => {
-    const convs = [
-      base({ id: 1, ai_paused_until: 'infinity' }),
-      base({ id: 2, is_handoff_to_human: true }),
-      base({ id: 3, state: 'closed' }),
-      base({ id: 4, lead_id: 99 }),
-    ];
-    const r = detectAwaitingReply({
-      convs,
-      lastMessages: sameLast(convs, 'lead', threeHoursAgo),
-      hoursThreshold: 2,
-      testLeadIds: new Set([99]),
-      now,
+  it('sin filas → vacío con horas 0', () => {
+    expect(detectAwaitingReply({ rows: [], hoursThreshold: 2, now: NOW })).toEqual({
+      count: 0,
+      hoursWaitingMax: 0,
+      convIds: [],
     });
-    expect(r.count).toBe(0);
   });
 });
 
 describe('detectUnattendedHandoffs — handoffs sin atender', () => {
-  const now = new Date('2026-09-03T12:00:00Z');
-  const thirtyHoursAgo = '2026-09-02T06:00:00Z';
-  const tenHoursAgo = '2026-09-03T02:00:00Z';
-  const handoff = (o: Partial<ConvSnapshot> = {}) =>
-    conv({
-      id: 1,
-      state: 'closed',
-      is_handoff_to_human: true,
-      ai_paused_until: 'infinity',
-      phase_number: 4,
-      lead_id: 5,
-      ...o,
-    });
-
-  it('handoff con 30 h sin mensaje de la entrenadora → cuenta, aunque el motor la dejara en state=closed', () => {
+  it('30 h sin mensaje de la entrenadora → cuenta; 10 h → todavía no', () => {
     const r = detectUnattendedHandoffs({
-      convs: [handoff()],
-      lastMessages: new Map([[1, lastMsg('lead', thirtyHoursAgo)]]),
+      rows: [alertRow(1, 30), alertRow(2, 10)],
       hoursThreshold: 24,
-      now,
+      now: NOW,
     });
     expect(r.count).toBe(1);
     expect(r.convIds).toEqual([1]);
     expect(r.hoursWaitingMax).toBeCloseTo(30, 5);
   });
+});
 
-  it('también si el último mensaje es del setter (el te-paso-con-ella sin que nadie siga)', () => {
-    const r = detectUnattendedHandoffs({
-      convs: [handoff()],
-      lastMessages: new Map([[1, lastMsg('ai', thirtyHoursAgo)]]),
-      hoursThreshold: 24,
-      now,
-    });
-    expect(r.count).toBe(1);
-  });
+describe('detectInboundUnattended — te escribieron y la IA no las atiende', () => {
+  // Las del tenant 7: activas o no, se comparan normalizadas.
+  const patterns = ['Espalda', 'Hernia', 'Información', 'cervical'];
 
-  it('la entrenadora contestó → no cuenta', () => {
-    const r = detectUnattendedHandoffs({
-      convs: [handoff()],
-      lastMessages: new Map([[1, lastMsg('human', tenHoursAgo, tenHoursAgo)]]),
-      hoursThreshold: 24,
-      now,
-    });
-    expect(r.count).toBe(0);
-  });
-
-  it('hace 10 h → todavía no', () => {
-    const r = detectUnattendedHandoffs({
-      convs: [handoff()],
-      lastMessages: new Map([[1, lastMsg('lead', tenHoursAgo)]]),
-      hoursThreshold: 24,
-      now,
-    });
-    expect(r.count).toBe(0);
-  });
-
-  it('sin handoff, F7 (cita agendada) o de prueba → no cuenta', () => {
-    const convs = [
-      handoff({ id: 1, is_handoff_to_human: false }),
-      handoff({ id: 2, phase_number: 7, state: 'active' }),
-      handoff({ id: 3, lead_id: 99 }),
+  it('entra quien escribió con interés real; no el flujo de una palabra clave ni un botón', () => {
+    const rows = [
+      inboundRow(1, 'Tengo una hernia y me gustaría saber cómo me puedes ayudar'),
+      inboundRow(2, 'espalda'),
+      inboundRow(3, 'Siii😊'),
+      inboundRow(4, 'Hola, si por favor'),
+      inboundRow(5, 'hola! cervical también?'),
+      inboundRow(6, 'Empezar'),
+      inboundRow(7, 'Hérnia'),
     ];
-    const r = detectUnattendedHandoffs({
-      convs,
-      lastMessages: sameLast(convs, 'lead', thirtyHoursAgo),
-      hoursThreshold: 24,
-      testLeadIds: new Set([99]),
-      now,
-    });
-    expect(r.count).toBe(0);
+    const r = detectInboundUnattended({ rows, keywordPatterns: patterns, now: NOW });
+    // Ordenadas de la que más lleva (id 5: hoursAgo(5)) a la que menos.
+    expect(r.convIds).toEqual([5, 1]);
+    expect(r.count).toBe(2);
+    expect(r.hoursWaitingMax).toBeCloseTo(5, 5);
+  });
+
+  it('un saludo solo o un audio sin texto son una persona, no una automatización', () => {
+    const rows = [inboundRow(1, 'Hola'), inboundRow(2, null), inboundRow(3, '👍')];
+    const r = detectInboundUnattended({ rows, keywordPatterns: patterns, now: NOW });
+    expect(r.convIds.sort()).toEqual([1, 2, 3]);
+  });
+
+  it('si una automatización nuestra contestó en segundos, es flujo de palabra clave aunque la palabra no esté en la lista', () => {
+    const at = hoursAgo(10);
+    const rows = [
+      inboundRow(1, 'rodilla', {
+        first_lead_at: at,
+        first_auto_reply_at: new Date(Date.parse(at) + 45_000).toISOString(),
+      }),
+      inboundRow(2, 'rodilla', {
+        first_lead_at: at,
+        first_auto_reply_at: new Date(Date.parse(at) + 10 * 60_000).toISOString(),
+      }),
+    ];
+    const r = detectInboundUnattended({ rows, keywordPatterns: patterns, now: NOW });
+    expect(r.convIds).toEqual([2]);
+  });
+
+  it('sin umbral de horas: con la IA pausada nadie va a contestar, una de hace 5 minutos ya cuenta', () => {
+    const rows = [inboundRow(1, 'Quiero información del programa', { last_message_at: hoursAgo(5 / 60) })];
+    const r = detectInboundUnattended({ rows, keywordPatterns: patterns, now: NOW });
+    expect(r.count).toBe(1);
+    expect(r.hoursWaitingMax).toBeCloseTo(5 / 60, 5);
+  });
+
+  it('sin palabras clave del tenant, los botones siguen fuera', () => {
+    const rows = [inboundRow(1, 'Si'), inboundRow(2, 'Me duele la espalda desde hace meses')];
+    expect(detectInboundUnattended({ rows, keywordPatterns: [], now: NOW }).convIds).toEqual([2]);
   });
 });
+
 
 describe('ALL_CHANNEL_KEYS / ALL_MATRIX_COLUMNS exports', () => {
   it('canales son 4', () => {

@@ -55,6 +55,10 @@ vi.mock('@supabase/supabase-js', () => ({
             eq: (_col: string, _val: unknown) => {
               const sub2 = {
                 eq: (_c2: string, _v2: unknown) => sub2,
+                // 2026-11-04: listLabels cuenta con `count: 'exact', head: true`
+                // → `.select(..).eq(tenant).eq(label)[.eq(is_active)]` se await-ea.
+                then: (resolve: (v: { data: never[]; count: number; error: null }) => unknown) =>
+                  Promise.resolve({ data: [] as never[], count: 0, error: null }).then(resolve),
                 in: (_c3: string, _v3: unknown) => ({
                   eq: (_c4: string, _v4: unknown) => ({
                     eq: (_c5: string, _v5: unknown) => ({

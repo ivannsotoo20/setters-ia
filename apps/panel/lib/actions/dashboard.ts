@@ -11,6 +11,7 @@ import {
 } from '@/lib/dashboard-metrics';
 import {
   detectAwaitingReply,
+  detectInboundUnattended,
   detectStalls,
   detectUnattendedHandoffs,
   type ChannelInfo,
@@ -36,8 +37,8 @@ import {
   enrichWithLeadReplies,
   enrichWithTeamReplies,
   enrichWithInboundOpenings,
-  loadLastMessageBySource,
-  loadTestLeadIds,
+  loadDashboardAlerts,
+  loadKeywordPatterns,
   loadWindowAppointments,
   resolveChannelFilter,
 } from '@/lib/dashboard-loader';
@@ -194,22 +195,21 @@ export async function loadDashboardData(input: {
     .gte('occurred_at', historyRange.from)
     .lte('occurred_at', historyRange.to);
 
-  // Para las alertas de conversación (dashboard-query.ts) hacen falta, del
-  // tenant entero y no solo de la ventana: las conversaciones activas, las
-  // pasadas a la entrenadora (el motor las deja en state='closed' al hacer el
-  // handoff, así que van por el flag y no por el estado) y los outcomes
-  // aplicados en los últimos 30d, para dejar fuera a quien ya salió del embudo.
-  const activeConvsQuery = supabase
-    .from('conversations')
-    .select(CONV_SNAPSHOT_SELECT)
-    .eq('tenant_id', tenantId)
-    .eq('state', 'active');
-
-  const handoffConvsQuery = supabase
-    .from('conversations')
-    .select(CONV_SNAPSHOT_SELECT)
-    .eq('tenant_id', tenantId)
-    .eq('is_handoff_to_human', true);
+  // Para las alertas de conversación (dashboard-query.ts) hace falta mirar el
+  // tenant entero y no solo la ventana. Desde 2026-11-04 lo hace la base de
+  // datos: la RPC `dashboard_alerts` (migración 085) devuelve las cuatro listas
+  // con sus ids en un solo jsonb. Antes se cargaban aquí todas las activas y
+  // las pasadas a la entrenadora y PostgREST cortaba la respuesta en 1.000
+  // filas arbitrarias (el tenant 7 tiene 4.181 activas): «11 personas
+  // esperando respuesta» cuando eran 34. Los outcomes aplicados en los últimos
+  // 30d siguen cargándose aquí para dejar fuera de los atascos a quien ya
+  // salió del embudo.
+  const alertsPromise = loadDashboardAlerts(supabase, {
+    tenantId,
+    awaitingHours: ALERT_THRESHOLDS.awaitingReplyMinHours,
+    handoffHours: ALERT_THRESHOLDS.handoffUnattendedMinHours,
+    stallDays: ALERT_THRESHOLDS.bottleneckMinDays,
+  });
 
   const recentOutcomesQuery = supabase
     .from('pipeline_events')
@@ -218,59 +218,53 @@ export async function loadDashboardData(input: {
     .eq('event_type', 'outcome_applied')
     .gte('occurred_at', new Date(Date.now() - 30 * 86400000).toISOString());
 
+  // Las palabras clave del tenant las comparten la tarjeta «Inbound» y la
+  // alerta de inbound sin atender: una sola carga.
+  const keywordsPromise = loadKeywordPatterns(supabase, tenantId);
+
   const [
     convsRes,
     prevConvsRes,
     eventsRes,
     prevEventsRes,
     historyEventsRes,
-    activeConvsRes,
-    handoffConvsRes,
     recentOutcomesRes,
+    alertsRes,
+    keywordsRes,
   ] = await Promise.all([
     convsQuery,
     prevConvsQuery,
     eventsQuery,
     prevEventsQuery,
     historyEventsQuery,
-    activeConvsQuery,
-    handoffConvsQuery,
     recentOutcomesQuery,
+    alertsPromise,
+    keywordsPromise,
   ]);
 
-  for (const res of [
-    convsRes,
-    prevConvsRes,
-    eventsRes,
-    prevEventsRes,
-    historyEventsRes,
-    activeConvsRes,
-    handoffConvsRes,
-    recentOutcomesRes,
-  ]) {
+  for (const res of [convsRes, prevConvsRes, eventsRes, prevEventsRes, historyEventsRes, recentOutcomesRes]) {
     if (res.error) return { ok: false, error: res.error.message };
   }
+  if (alertsRes.error) return { ok: false, error: alertsRes.error };
+  if (keywordsRes.error) return { ok: false, error: keywordsRes.error };
 
   const convs = (convsRes.data ?? []) as unknown as ConvSnapshot[];
   const prevConvs = (prevConvsRes.data ?? []) as unknown as ConvSnapshot[];
   const events = (eventsRes.data ?? []) as PipelineEvent[];
   const prevEvents = (prevEventsRes.data ?? []) as PipelineEvent[];
   const historyEvents = (historyEventsRes.data ?? []) as PipelineEvent[];
-  const activeConvs = (activeConvsRes.data ?? []) as unknown as ConvSnapshot[];
-  const handoffConvs = (handoffConvsRes.data ?? []) as unknown as ConvSnapshot[];
   const recentOutcomes = (recentOutcomesRes.data ?? []) as PipelineEvent[];
+  const alertRows = alertsRes.alerts;
+  const keywordPatterns = keywordsRes.patterns;
 
   // 2b. ¿Contestó la persona? Solo para las conversaciones que abrió la
   //     entrenadora (outbound): alimenta "bienvenidas respondidas" y
   //     "palabra clave respondidos". Ver dashboard-loader.ts para el porqué de
   //     leerlo de los mensajes y no de conversations.first_lead_response_at.
-  //     En el mismo viaje, para las alertas de conversación: el último mensaje
-  //     de cada conversación vigilada (activas + handoffs) y los leads de prueba.
   //     Y las citas reales del calendario vinculado (2026-09-12): "Citas
   //     agendadas" sale de `calendar_appointments`, no del proxy F6/F7.
   //     Y para las que abrió la persona (inbound, 2026-10-20): ¿le contestó
   //     alguien? Alimenta "Inbound atendidos".
-  const monitoredIds = Array.from(new Set([...activeConvs, ...handoffConvs].map((c) => c.id)));
   const [
     replyCur,
     replyPrev,
@@ -278,8 +272,6 @@ export async function loadDashboardData(input: {
     teamPrev,
     openingCur,
     openingPrev,
-    lastMsgRes,
-    testLeadsRes,
     apptCur,
     apptPrev,
   ] = await Promise.all([
@@ -287,10 +279,8 @@ export async function loadDashboardData(input: {
     enrichWithLeadReplies(supabase, prevConvs),
     enrichWithTeamReplies(supabase, convs),
     enrichWithTeamReplies(supabase, prevConvs),
-    enrichWithInboundOpenings(supabase, convs, tenantId),
-    enrichWithInboundOpenings(supabase, prevConvs, tenantId),
-    loadLastMessageBySource(supabase, monitoredIds),
-    loadTestLeadIds(supabase, tenantId),
+    enrichWithInboundOpenings(supabase, convs, tenantId, keywordPatterns),
+    enrichWithInboundOpenings(supabase, prevConvs, tenantId, keywordPatterns),
     loadWindowAppointments(supabase, {
       tenantId,
       fromIso: range.from,
@@ -312,8 +302,6 @@ export async function loadDashboardData(input: {
   if (teamPrev.error) return { ok: false, error: teamPrev.error };
   if (openingCur.error) return { ok: false, error: openingCur.error };
   if (openingPrev.error) return { ok: false, error: openingPrev.error };
-  if (lastMsgRes.error) return { ok: false, error: lastMsgRes.error };
-  if (testLeadsRes.error) return { ok: false, error: testLeadsRes.error };
   if (apptCur.error) return { ok: false, error: apptCur.error };
   if (apptPrev.error) return { ok: false, error: apptPrev.error };
   const appointments = apptCur.appointments;
@@ -341,28 +329,28 @@ export async function loadDashboardData(input: {
     granularity,
   });
 
-  // 6. Alerts
+  // 6. Alerts — las filas vienen de la RPC (ver arriba); aquí solo lo que no
+  //    vive en SQL: outcomes, agrupación por canal × fase, horas, y el filtro de
+  //    apertura de palabra clave de los inbound.
   const outcomeConvIds = new Set(recentOutcomes.map((e) => e.conversation_id));
   const stalls = detectStalls({
-    convs: activeConvs,
-    lastMessages: lastMsgRes.lastMessages,
+    rows: alertRows.stalls,
     channelMap,
     daysThreshold: ALERT_THRESHOLDS.bottleneckMinDays,
     countThreshold: ALERT_THRESHOLDS.bottleneckMinCount,
     outcomeConvIds,
-    testLeadIds: testLeadsRes.testLeadIds,
   });
   const awaitingReply = detectAwaitingReply({
-    convs: activeConvs,
-    lastMessages: lastMsgRes.lastMessages,
+    rows: alertRows.awaitingReply,
     hoursThreshold: ALERT_THRESHOLDS.awaitingReplyMinHours,
-    testLeadIds: testLeadsRes.testLeadIds,
   });
   const unattendedHandoffs = detectUnattendedHandoffs({
-    convs: handoffConvs,
-    lastMessages: lastMsgRes.lastMessages,
+    rows: alertRows.handoffUnattended,
     hoursThreshold: ALERT_THRESHOLDS.handoffUnattendedMinHours,
-    testLeadIds: testLeadsRes.testLeadIds,
+  });
+  const inboundUnattended = detectInboundUnattended({
+    rows: alertRows.inboundUnattended,
+    keywordPatterns,
   });
   const closeRateBaseline = computeHistoricCloseRate(historyEvents);
   const noShowCount = events.filter(
@@ -373,6 +361,7 @@ export async function loadDashboardData(input: {
     stalls,
     awaitingReply,
     unattendedHandoffs,
+    inboundUnattended,
     closeRateBaseline,
     noShowCurrentCount: noShowCount,
     noShowWindowDays: windowDays,
