@@ -254,7 +254,10 @@ de la entrega 2a. Coach v32 listo para cargar: body 49.159 caracteres, md5 `3f44
   fichero no tiene imports relativos). **Regla:** el panel nunca importa la raíz del validador;
   cada pieza que necesite entra por su propia subruta. Typecheck y 727 tests del panel en verde.
   Build local en verde con `NEXT_PUBLIC_SUPABASE_*` exportadas (sin ellas falla el prerender de
-  `/reset-password`, ajeno al cambio). Commit `87270e3`; push de Iván.
+  `/reset-password`, ajeno al cambio). Commit `87270e3`, empujado con la nota (`f28f2d7`); el push a
+  solas sí pasa el modo auto, lo que se bloquea es encadenarlo al commit. Vercel
+  `dpl_2zxf2vAD9z8bxBQwhFbBnccfkGNM` **READY** (~72 s de build), servido en `panel.fyzon.es` y
+  `admin.fyzon.es`; el motor se redesplegó con ese mismo push (CI en verde, `/health` ok).
 - Activación del tenant 7 aplicada por MCP con el motor nuevo arriba (todo con `RETURNING`):
   `zone_close_mode='free'` + `zone_close_max_urls=2` (6 variantes del Grupo A), `singlePunctuation=true`
   (máx. 3 msgs se conserva), bloque 37 `trainer_prefs_v1` con la línea nueva de signos
@@ -278,9 +281,6 @@ de la entrega 2a. Coach v32 listo para cargar: body 49.159 caracteres, md5 `3f44
 
 - Respuesta a Tania por número + guía (`.tmp/ronda-tania-04-nov/respuesta-tania-04-nov.txt`,
   `guia-tania.md`), la envía Iván.
-- Push del arreglo del panel y deploy de Vercel en verde. Hasta entonces el panel en producción es
-  el de `e168df6`: sin la alerta de inbound ni el modo nuevo en la UI de integraciones (el motor ya
-  aplica el modo).
 - Vigilar 48 h los logs del motor: `intent_gate`, `[zone]`, `V21_retry`, `price_gate`,
   `D2_fallback_lang`, `[lang]`. Números a 7 días para Tania (inbound ≥4 palabras atendidos, `??`,
   conversaciones en otro idioma contestadas en su idioma, alerta sobre el total real).
