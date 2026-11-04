@@ -27,7 +27,7 @@ const SECURITY_HEADERS = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@fyzon/db', '@fyzon/prompt-composer'],
+  transpilePackages: ['@fyzon/db', '@fyzon/prompt-composer', '@fyzon/shared-validator'],
   experimental: {},
   async headers() {
     return [

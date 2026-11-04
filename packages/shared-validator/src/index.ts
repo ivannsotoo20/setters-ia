@@ -21,6 +21,15 @@ export * from './rules/index.js';
 // Hito 12.1 — Heurística de tratamiento (tú/usted) usada por V18 y por el motor
 // (mirror_lead inyecta directiva dinámica al system prompt según la detección).
 export { detectAddressing, type AddressingResult } from './lib/detect-addressing.js';
+// 2026-10-21 (Tania) — apertura de conversación: palabra suelta, botón de una
+// automatización o auto-respuesta en <2 min. La usan el panel (tarjeta de
+// inbound) y el motor (gate de intención en la apertura, 2026-11-04).
+export {
+  AUTO_REPLY_WINDOW_MS,
+  isBareKeywordOpening,
+  isKeywordFlowOpening,
+  normalizeOpening,
+} from './lib/inbound-opening.js';
 
 /**
  * Valida un mensaje del setter contra las reglas V0-V16.

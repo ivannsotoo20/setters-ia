@@ -41,6 +41,12 @@ describe('loadGhlInboundMode', () => {
     expect(mode).toBe('all');
   });
 
+  it('devuelve classified_or_intent cuando tenant_configs tiene ese valor (gate de intención, 2026-11-04)', async () => {
+    const supabase = buildSupabaseMock({ ghlInboundMode: 'classified_or_intent' });
+    const mode = await loadGhlInboundMode(supabase, 7);
+    expect(mode).toBe('classified_or_intent');
+  });
+
   it('fallback classified_only cuando tenant_configs no tiene row', async () => {
     const supabase = buildSupabaseMock({});
     const mode = await loadGhlInboundMode(supabase, 999);

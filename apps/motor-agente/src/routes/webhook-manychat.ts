@@ -13,10 +13,11 @@ import {
   resolveTenantByToken,
   upsertLead,
 } from '../services/lead-ingest.js';
+import { getAnthropicForTenant } from '../lib/anthropic.js';
 import {
-  classifyInboundOnly,
-  loadAutomationKeywords,
-} from '../services/ghl-message-router.js';
+  applyInboundIntentGate,
+  parseInboundGateMode,
+} from '../services/inbound-intent-gate.js';
 
 const DEFAULT_DEBOUNCE_SECONDS = 25;
 
@@ -131,77 +132,51 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
         });
       }
 
-      // 4.7. Sprint Iota.3 (Iván 2026-05-12) + Iván (2026-05-25) — Gate
-      // manychat_inbound_mode análogo a `ghl_inbound_mode='classified_only'`.
-      //
-      // Si conv NO tiene `conversation_source` clasificada y el modo es
-      // 'classified_only':
-      //   a) Intentar matchear el texto del inbound contra keywords
-      //      type='inbound' del tenant. Si matchea → setear
-      //      conversation_source='inbound' y continuar (IA entra).
-      //   b) Si no matchea → pausar IA infinity. Lead + mensaje quedan
-      //      persistidos para que el trainer los vea en panel, pero pipeline
-      //      NO dispara. Trainer activa IA manual si decide responder.
+      // 4.7. Gate de apertura. Sprint Iota.3 (Iván 2026-05-12) + Iván (2026-05-25)
+      // + intención (2026-11-04, Tania). `manychat_inbound_mode` con la misma
+      // semántica que `ghl_inbound_mode`: `all` no toca nada; `classified_only`
+      // clasifica `inbound` si casa una palabra clave de ese tipo y si no pausa;
+      // `classified_or_intent` además deja el botón y la palabra suelta sin
+      // palabra clave a su flujo y manda al modelo el mensaje de 4+ palabras;
+      // la palabra clave `inbound` suelta activa la IA en los dos modos (Iván
+      // 4-nov). Solo actúa en el PRIMER mensaje
+      // (sin origen ni pausa). Detalle en `services/inbound-intent-gate.ts`.
       //
       // Doctrina unificada: tras un GDPR delete + re-write del mismo
-      // subscriber_id, el motor crea lead+conv nuevos sin source → bajo este
-      // gate la IA queda pausada (a) o se reclasifica (b) según contenido.
+      // subscriber_id, el motor crea lead+conv nuevos sin source → pasan por
+      // este gate otra vez.
       const { data: cfg } = await supabase
         .from('tenant_configs')
         .select('manychat_inbound_mode')
         .eq('tenant_id', tenantId)
         .maybeSingle();
-      const manychatMode =
-        ((cfg as { manychat_inbound_mode?: string } | null)?.manychat_inbound_mode) ??
-        'classified_only';
-      if (manychatMode === 'classified_only') {
-        const { data: convCheck } = await supabase
-          .from('conversations')
-          .select('conversation_source, ai_paused_until')
-          .eq('id', conversationId)
-          .maybeSingle();
-        const row = convCheck as
-          | { conversation_source: string | null; ai_paused_until: string | null }
-          | null;
-        if (row && row.conversation_source == null && row.ai_paused_until == null) {
-          const inboundText = typeof message.text === 'string' ? message.text : '';
-          let classifiedByInboundKeyword: 'inbound' | null = null;
-          if (inboundText.trim().length > 0) {
-            const keywords = await loadAutomationKeywords(supabase, tenantId);
-            classifiedByInboundKeyword = classifyInboundOnly(inboundText, keywords);
-          }
-          if (classifiedByInboundKeyword === 'inbound') {
-            await supabase
-              .from('conversations')
-              .update({ conversation_source: 'inbound' })
-              .eq('id', conversationId);
-            request.log.info(
-              { tenantId, conversationId, mode: manychatMode },
-              'webhook-manychat: inbound matched keyword type=inbound — conv clasificada inbound, IA activa',
-            );
-          } else {
-            await supabase
-              .from('conversations')
-              .update({ ai_paused_until: 'infinity' })
-              .eq('id', conversationId);
-            request.log.info(
-              { tenantId, conversationId, mode: manychatMode },
-              'webhook-manychat: conv sin source clasificada — IA pausada (classified_only)',
-            );
-            // 5b. Toca last_webhook_at + ack 200 sin encolar debounce.
-            await touchIntegrationLastWebhook(supabase, tenantId, 'manychat');
-            return reply.code(200).send({
-              ack: true,
-              deduped: false,
-              tenant_id: tenantId,
-              lead_id: leadId,
-              conversation_id: conversationId,
-              message_id: messageId,
-              skipped: 'manychat_inbound_classified_only',
-              received_at: new Date().toISOString(),
-            });
-          }
-        }
+      const manychatMode = parseInboundGateMode(
+        (cfg as { manychat_inbound_mode?: unknown } | null)?.manychat_inbound_mode,
+      );
+      const gate = await applyInboundIntentGate({
+        supabase,
+        tenantId,
+        conversationId,
+        channelId,
+        mode: manychatMode,
+        text: message.text,
+        provider: 'manychat',
+        anthropic: () => getAnthropicForTenant(supabase, tenantId),
+      });
+      if (gate.evaluated && gate.paused) {
+        // 5b. Toca last_webhook_at + ack 200 sin encolar debounce.
+        await touchIntegrationLastWebhook(supabase, tenantId, 'manychat');
+        return reply.code(200).send({
+          ack: true,
+          deduped: false,
+          tenant_id: tenantId,
+          lead_id: leadId,
+          conversation_id: conversationId,
+          message_id: messageId,
+          skipped: `manychat_inbound_${manychatMode}`,
+          gate_outcome: gate.outcome,
+          received_at: new Date().toISOString(),
+        });
       }
 
       // 5. Encolar/extender debounce: el cron levantará el pipeline al expirar.

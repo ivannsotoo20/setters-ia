@@ -17,6 +17,7 @@
  *   - El caller (route handler) maneja errores HTTP y responde al webhook.
  */
 
+import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Redis } from 'ioredis';
 import type {
@@ -36,6 +37,12 @@ import {
 } from './lead-ingest.js';
 import { buildSourceTags, type TagChannel } from '../lib/source-tags.js';
 import { recordUnmatchedOpening } from './unmatched-openings.js';
+import { loadAutomationKeywords, matchKeyword } from './automation-keywords.js';
+import {
+  applyInboundIntentGate,
+  parseInboundGateMode,
+  type InboundGateMode,
+} from './inbound-intent-gate.js';
 
 /**
  * Escribe la procedencia como etiquetas en el contacto de GHL.
@@ -75,200 +82,20 @@ async function tagGhlContact(args: {
 }
 
 // ============================================================================
-// loadAutomationKeywords
+// Palabras clave (automation_keywords) — viven en automation-keywords.ts
+// desde 2026-11-04; se re-exportan para no mover a los importadores.
 // ============================================================================
 
-export interface AutomationKeywordRow {
-  type: 'bienvenida' | 'lm' | 'inbound' | 'wa_open';
-  pattern: string;
-}
-
-export async function loadAutomationKeywords(
-  supabase: SupabaseClient,
-  tenantId: number,
-): Promise<AutomationKeywordRow[]> {
-  const { data, error } = await supabase
-    .from('automation_keywords')
-    .select('type, pattern')
-    .eq('tenant_id', tenantId)
-    .eq('is_active', true);
-
-  if (error) {
-    logger.warn({ tenantId, err: error.message }, 'loadAutomationKeywords failed');
-    return [];
-  }
-  if (!data) return [];
-  return data
-    .filter(
-      (r): r is AutomationKeywordRow =>
-        (r.type === 'bienvenida' ||
-          r.type === 'lm' ||
-          r.type === 'inbound' ||
-          r.type === 'wa_open') &&
-        typeof r.pattern === 'string' &&
-        r.pattern.length > 0,
-    )
-    .map((r) => ({ type: r.type, pattern: r.pattern }));
-}
-
-// ============================================================================
-// classifyByKeywords (pure, exported for tests)
-// ============================================================================
-
-/**
- * Devuelve el primer tipo cuyo `pattern` aparece dentro del `body` (ver
- * `matchesKeywordPattern`). Replica el comportamiento del flow legacy
- * `System - GHL - Bienvenidas a mano` switch.
- */
-export function classifyByKeywords(
-  body: string,
-  keywords: AutomationKeywordRow[],
-): 'bienvenida' | 'lm' | 'inbound' | null {
-  return matchKeyword(body, keywords)?.type ?? null;
-}
-
-/**
- * Igual que `classifyByKeywords` pero devuelve TAMBIÉN el patrón que casó.
- *
- * Hace falta para el etiquetado en GHL: con un lead magnet no basta saber que
- * vino de un recurso, interesa de CUÁL, y eso solo lo sabe la keyword concreta.
- */
-export function matchKeyword(
-  body: string,
-  keywords: AutomationKeywordRow[],
-): { type: 'bienvenida' | 'lm' | 'inbound'; pattern: string } | null {
-  if (!body || typeof body !== 'string') return null;
-  const prepared = prepareBody(body);
-  // Ordering: bienvenida > lm > inbound (mismo orden que el switch legacy).
-  // wa_open NO entra aquí — solo lo usa el gate WA en webhook-ycloud.
-  for (const type of ['bienvenida', 'lm', 'inbound'] as const) {
-    const matches = keywords.filter((k) => k.type === type);
-    for (const k of matches) {
-      if (patternMatches(prepared, k.pattern)) {
-        return { type, pattern: k.pattern };
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Devuelve true si `body` contiene alguna de las keywords (ver
- * `matchesKeywordPattern`). Usada por el gate WA inbound (`webhook-ycloud.ts`)
- * cuando `wa_inbound_mode='keyword'`. Las keywords ya vienen pre-filtradas por
- * type (típicamente `'wa_open'`).
- */
-export function matchesAnyKeyword(body: string, keywords: AutomationKeywordRow[]): boolean {
-  if (!body || typeof body !== 'string' || keywords.length === 0) return false;
-  const prepared = prepareBody(body);
-  return keywords.some((k) => patternMatches(prepared, k.pattern));
-}
-
-/**
- * Devuelve 'inbound' si `body` matchea con alguna keyword type='inbound'
- * registrada para el tenant. Usada por el gate classified_only en
- * `routeGhlInbound` y `webhook-manychat` para reconocer leads orgánicos que
- * llegan directamente con palabras clave del trainer (ej. "info", "programa",
- * "precio"). Resultado: conv clasificada como 'inbound' + IA activa sin
- * intervención humana.
- */
-export function classifyInboundOnly(
-  body: string,
-  keywords: AutomationKeywordRow[],
-): 'inbound' | null {
-  const inboundKeywords = keywords.filter((k) => k.type === 'inbound');
-  if (inboundKeywords.length === 0) return null;
-  return matchesAnyKeyword(body, inboundKeywords) ? 'inbound' : null;
-}
-
-/**
- * Cómo casa una palabra clave con un mensaje. Dos pasadas:
- *
- * 1. Trozo literal: minúsculas, sin acentos ni espacios; emojis y signos cuentan.
- *    Es la regla de siempre más los acentos, que el panel ya prometía ("ni cuidar
- *    mayúsculas o acentos de más") y el código no hacía: la palabra clave
- *    «Información» no casaba con quien escribe "informacion".
- *
- * 2. Frase (2026-10-07), solo para palabras clave de 4 palabras o más: sus
- *    palabras en orden, sin mirar emojis, signos ni letras alargadas ("Holaaa"),
- *    con hasta 2 palabras de más por medio (3 desde 6 palabras: el nombre de la
- *    persona) y, desde 6 palabras, una que falte o cambie. Caso real: Tania guardó
- *    sus bienvenidas enteras, con su emoji («Hola, te doy la bienvenida a esta
- *    comunidad 🎉»); escritas con el nombre delante o con otro emoji no casaban,
- *    así que no se contaban y la conversación no nacía como bienvenida.
- *
- * Una palabra clave corta no pasa por la 2: «Hola! 👋» sin su emoji sería "hola",
- * y casaría con cualquier mensaje a mano de la entrenadora, que tiene que pausar
- * la IA (Caso D de `routeGhlOutbound`).
- */
-export function matchesKeywordPattern(body: string, pattern: string): boolean {
-  if (!body || typeof body !== 'string' || typeof pattern !== 'string') return false;
-  return patternMatches(prepareBody(body), pattern);
-}
-
-export function normalizeForMatch(s: string): string {
-  return stripAccents(s.toLowerCase()).replace(/\s+/g, '');
-}
-
-const PHRASE_MIN_WORDS = 4;
-
-interface PreparedBody {
-  squashed: string;
-  words: string[];
-}
-
-function prepareBody(body: string): PreparedBody {
-  return { squashed: normalizeForMatch(body), words: phraseWords(body) };
-}
-
-function patternMatches(body: PreparedBody, pattern: string): boolean {
-  const squashedPattern = normalizeForMatch(pattern);
-  if (squashedPattern.length === 0) return false;
-  if (body.squashed.includes(squashedPattern)) return true;
-  const words = phraseWords(pattern);
-  return words.length >= PHRASE_MIN_WORDS && containsPhrase(body.words, words);
-}
-
-function stripAccents(s: string): string {
-  return s.normalize('NFD').replace(/\p{M}/gu, '');
-}
-
-/** Palabras (letras y números) en minúscula, sin acentos y sin letras repetidas seguidas. */
-function phraseWords(s: string): string[] {
-  return stripAccents(s.toLowerCase())
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((w) => w.length > 0)
-    .map((w) => w.replace(/(\p{L})\1+/gu, '$1'));
-}
-
-/**
- * ¿Aparecen las palabras de `phrase` en orden dentro de `words`, con como mucho
- * `maxInserted` palabras ajenas por medio y `maxMissing` de la frase sin
- * aparecer? Para cada inicio posible se alarga la ventana palabra a palabra
- * llevando la subsecuencia común más larga (LCS) entre la frase y la ventana.
- */
-function containsPhrase(words: string[], phrase: string[]): boolean {
-  const n = phrase.length;
-  const maxInserted = n >= 6 ? 3 : 2;
-  const maxMissing = n >= 6 ? Math.max(1, Math.floor(n / 7)) : 0;
-  const needed = n - maxMissing;
-  const maxWindow = n + maxInserted;
-  for (let start = 0; start + needed <= words.length; start++) {
-    let prev = new Array<number>(n + 1).fill(0);
-    const end = Math.min(words.length, start + maxWindow);
-    for (let j = start; j < end; j++) {
-      const cur = new Array<number>(n + 1).fill(0);
-      for (let i = 1; i <= n; i++) {
-        cur[i] =
-          phrase[i - 1] === words[j] ? prev[i - 1]! + 1 : Math.max(prev[i]!, cur[i - 1]!);
-      }
-      const common = cur[n]!;
-      if (common >= needed && j - start + 1 - common <= maxInserted) return true;
-      prev = cur;
-    }
-  }
-  return false;
-}
+export {
+  classifyByKeywords,
+  classifyInboundOnly,
+  loadAutomationKeywords,
+  matchKeyword,
+  matchesAnyKeyword,
+  matchesKeywordPattern,
+  normalizeForMatch,
+  type AutomationKeywordRow,
+} from './automation-keywords.js';
 
 // ============================================================================
 // findExistingConversationByContact
@@ -354,6 +181,12 @@ export interface RouteGhlInboundContext {
   ghlClient: GhlClient | null;
   inbound: GhlParsedInbound;
   debounceWindowSeconds: number;
+  /**
+   * Cliente Anthropic perezoso (`getAnthropicForTenant`): el gate de apertura
+   * solo lo construye si el modo es `classified_or_intent` y el primer mensaje
+   * necesita al modelo. Sin él, ese caso se pausa (fail-closed).
+   */
+  anthropic?: () => Promise<Anthropic>;
 }
 
 export interface RouteGhlInboundResult {
@@ -434,67 +267,37 @@ export async function routeGhlInbound(
       .eq('id', conversationId);
   }
 
-  // 4.7) Sprint B (Hito 9, 2026-05-12) + Iván (2026-05-25) — Gate
-  //      `ghl_inbound_mode='classified_only'`. Si el tenant tiene el modo y la
-  //      conv NO tiene origen clasificado:
-  //        a) Intentar clasificar por keywords type='inbound' contra el texto
-  //           del mensaje. Si matchea ("info", "programa", "precio"...) →
-  //           setear conversation_source='inbound' y continuar (IA entra).
-  //        b) Si no matchea → pausar IA infinity. Resultado: conv creada +
-  //           lead persistido + mensaje guardado, pero pipeline NO dispara.
-  //           Trainer interviene a mano desde panel si decide responder.
-  //      Análogo a wa_inbound_mode form_only.
+  // 4.7) Gate de apertura. Sprint B (Hito 9, 2026-05-12) + Iván (2026-05-25) +
+  //      intención (2026-11-04, Tania). Solo actúa en el PRIMER mensaje de una
+  //      conversación sin origen clasificado y sin pausa. Según el modo del
+  //      tenant (`ghl_inbound_mode`): `all` no toca nada; `classified_only`
+  //      clasifica `inbound` si casa una palabra clave de ese tipo y si no
+  //      pausa; `classified_or_intent` además deja el botón y la palabra suelta
+  //      sin palabra clave a su flujo de ManyChat y manda al modelo el mensaje
+  //      de 4+ palabras (interés → IA; profesional/otro → pausa). La palabra
+  //      clave `inbound` suelta activa la IA en los dos modos (Iván 4-nov).
+  //      Todo queda escrito en BD (`conversation_source`
+  //      o `ai_paused_until`): el paso 6 lee la pausa de ahí. Detalle y porqué en
+  //      `inbound-intent-gate.ts`.
   const ghlInboundMode = await loadGhlInboundMode(supabase, inbound.tenantId);
-  if (ghlInboundMode === 'classified_only') {
-    const { data: convSourceCheck } = await supabase
-      .from('conversations')
-      .select('conversation_source, ai_paused_until')
-      .eq('id', conversationId)
-      .maybeSingle();
-    const currentSource =
-      (convSourceCheck?.conversation_source as string | null | undefined) ?? null;
-    const alreadyPaused = Boolean(convSourceCheck?.ai_paused_until);
-    if (!currentSource && !alreadyPaused) {
-      const inboundText = typeof inbound.message === 'string' ? inbound.message : '';
-      let classifiedByInboundKeyword: 'inbound' | null = null;
-      if (inboundText.trim().length > 0) {
-        const keywords = await loadAutomationKeywords(supabase, inbound.tenantId);
-        classifiedByInboundKeyword = classifyInboundOnly(inboundText, keywords);
-      }
-      if (classifiedByInboundKeyword === 'inbound') {
-        await supabase
-          .from('conversations')
-          .update({
-            conversation_source: 'inbound',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', conversationId);
-        logger.info(
-          { tenantId: inbound.tenantId, conversationId, mode: 'classified_only' },
-          'routeGhlInbound: inbound matched keyword type=inbound — conv clasificada inbound, IA activa',
-        );
-        await tagGhlContact({
-          ghlClient,
-          ghlContactId: inbound.ghlContactId,
-          source: 'inbound',
-          channel: channelType as TagChannel,
-          tenantId: inbound.tenantId,
-        });
-      } else {
-        await supabase
-          .from('conversations')
-          .update({
-            ai_paused_until: 'infinity',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', conversationId);
-        logger.info(
-          { tenantId: inbound.tenantId, conversationId, mode: 'classified_only' },
-          'routeGhlInbound: conv sin source clasificada — IA pausada (modo classified_only)',
-        );
-      }
-    }
-  }
+  await applyInboundIntentGate({
+    supabase,
+    tenantId: inbound.tenantId,
+    conversationId,
+    channelId,
+    mode: ghlInboundMode,
+    text: inbound.message,
+    provider: 'ghl',
+    anthropic: ctx.anthropic,
+    onClassifiedInbound: () =>
+      tagGhlContact({
+        ghlClient,
+        ghlContactId: inbound.ghlContactId,
+        source: 'inbound',
+        channel: channelType as TagChannel,
+        tenantId: inbound.tenantId,
+      }),
+  });
 
   // 5) INSERT conversation_messages source='lead'.
   //    El Workflow webhook puede pasar texto + attachments a la vez. Insertamos
@@ -1028,13 +831,15 @@ export function inferContentTypeFromUrl(url: string): 'audio' | 'image' | 'video
 // loadGhlInboundMode — gate de IA para inbound GHL (Sprint B, migration 039)
 // ============================================================================
 
-export type GhlInboundMode = 'classified_only' | 'all';
+export type GhlInboundMode = InboundGateMode;
 
 /**
  * Carga `tenant_configs.ghl_inbound_mode` para un tenant.
  *
  * Default `'classified_only'` (doctrina 2026-05-12): IA solo dispara si la
  * conversación tiene origen calificado (bienvenida, lm, inbound, manual).
+ * `'classified_or_intent'` (2026-11-04, migración 084) añade el gate de
+ * intención del primer mensaje; `'all'` es el escape legacy.
  *
  * Si la columna no existe (BD desactualizada) o el valor está fuera del enum,
  * devuelve 'classified_only' (fail-safe: doctrina actual por default).
@@ -1056,7 +861,5 @@ export async function loadGhlInboundMode(
     );
     return 'classified_only';
   }
-  const raw = (data as { ghl_inbound_mode?: unknown } | null)?.ghl_inbound_mode;
-  if (raw === 'all') return 'all';
-  return 'classified_only';
+  return parseInboundGateMode((data as { ghl_inbound_mode?: unknown } | null)?.ghl_inbound_mode);
 }
