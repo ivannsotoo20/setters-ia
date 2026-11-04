@@ -20,6 +20,10 @@
  *   - filas devueltas en un UPDATE/INSERT → se escribió de verdad → FAIL ruidoso.
  * No hay sonda DELETE: un DELETE que la policy permita borra de verdad.
  *
+ * Migration 088 (profiles): mismas sondas sobre `profiles`. is_agency_admin y role son
+ * NOT NULL, así que ponerlos a null nunca escribe: antes de la 088 responde 23502 (la
+ * policy dejó pasar), después 42501 (REVOKE UPDATE por columna) o 0 filas (fila ajena).
+ *
  * Uso:
  *   NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... \
  *     node apps/motor-agente/test/security/test-rls-anon-leaks.mjs
@@ -290,6 +294,31 @@ async function runAuthenticatedWriteProbes(jwt, counters) {
     run: () => rest(jwt, 'POST', 'resources', { tenant_id: tid, name: null }, 'return=representation'),
   });
 
+  // --- profiles (migration 088): columnas de privilegio y filas ajenas ------------------
+  // is_agency_admin y role son NOT NULL: ponerlos a null nunca escribe. Pre-088 la policy
+  // dejaba pasar y lo paraba la constraint (23502 → OPEN); post-088 lo para el REVOKE de
+  // columna (42501) y, en la fila de un compañero, la policy (0 filas).
+  probes.push({
+    label: 'UPDATE profiles (own row) is_agency_admin',
+    run: () =>
+      rest(jwt, 'PATCH', `profiles?id=eq.${sub}`, { is_agency_admin: null }, 'return=representation'),
+  });
+  probes.push({
+    label: 'UPDATE profiles (own row) role',
+    run: () => rest(jwt, 'PATCH', `profiles?id=eq.${sub}`, { role: null }, 'return=representation'),
+  });
+  const other = await rest(jwt, 'GET', `profiles?select=id&tenant_id=eq.${tid}&id=neq.${sub}&limit=1`);
+  const otherId = Array.isArray(other.data) ? other.data[0]?.id : null;
+  if (otherId) {
+    probes.push({
+      label: 'UPDATE profiles (other member) is_agency_admin',
+      run: () =>
+        rest(jwt, 'PATCH', `profiles?id=eq.${otherId}`, { is_agency_admin: null }, 'return=representation'),
+    });
+  } else {
+    console.log('  - SKIP UPDATE profiles (other member): el tenant no tiene más miembros visibles');
+  }
+
   for (const p of probes) {
     const r = await p.run();
     const verdict = classifyWrite(r);
@@ -343,7 +372,7 @@ async function main() {
   }
 
   console.log();
-  console.log('=== Authenticated Write Probes (migration 086) ===');
+  console.log('=== Authenticated Write Probes (migrations 086 + 088) ===');
   const jwt = await obtainUserJwt();
   if (!jwt) {
     console.log('  - SKIP: sin RLS_TEST_USER_JWT ni RLS_TEST_USER_EMAIL/PASSWORD. Ver README.md para la prueba a mano con curl.');
