@@ -21,7 +21,7 @@ principal y está gitignored): exporta las dos variables públicas antes de ejec
 
 | Script | Qué prueba | Requiere |
 |---|---|---|
-| `test-rls-anon-leaks.mjs` | Tablas con RLS no devuelven datos a anon key; con un JWT de usuario, que la sesión NO puede escribir `tenant_configs` / `prompt_blocks` / `resources` (migration 086) | NEXT_PUBLIC_SUPABASE_URL + ANON_KEY (+ `RLS_TEST_USER_JWT` opcional) |
+| `test-rls-anon-leaks.mjs` | Tablas con RLS no devuelven datos a anon key; con un JWT de usuario, que la sesión NO puede escribir `tenant_configs` / `prompt_blocks` / `resources` (migration 086) ni las columnas de privilegio de `profiles` (migration 088) | NEXT_PUBLIC_SUPABASE_URL + ANON_KEY (+ `RLS_TEST_USER_JWT` opcional) |
 | `test-bearer-timing.mjs` | Bearer timing-safe en `/internal/*` | MOTOR_BASE_URL + INTERNAL_STATS_TOKEN |
 | `test-dev-login-blocked.mjs` | `/api/dev-login` 404 fuera de dev local | PANEL_BASE_URL |
 
@@ -126,12 +126,41 @@ curl -s "$URL/rest/v1/tenant_configs?select=tenant_id,ai_enabled&tenant_id=eq.$T
   -H "apikey: $ANON" -H "Authorization: Bearer $JWT"
 ```
 
-Y en SQL, el estado de las policies tras aplicar la 086:
+### profiles (migration 088)
+
+Hasta la 088, `profiles` tenía la misma policy `FOR ALL` sin `WITH CHECK` y `authenticated`
+podía hacer UPDATE de **todas** sus columnas: cualquier usuario podía ponerse
+`is_agency_admin = true` o cambiar el `role` de un compañero. La 088 deja la lectura
+tenant-wide (más agency admin), el UPDATE solo de la propia fila y solo sobre
+`full_name`, `phone`, `bio`, `avatar_url` (GRANT por columna); el resto es service_role.
+
+Las sondas del script sobre `profiles` siguen la misma lógica (nunca escriben):
+
+| Sonda | Pre-088 | Post-088 |
+|---|---|---|
+| `PATCH profiles?id=eq.<yo> {"is_agency_admin": null}` | `23502` → **FAIL** (la policy dejó pasar) | `42501` permission denied for table profiles → OK |
+| `PATCH profiles?id=eq.<yo> {"role": null}` | `23502` → **FAIL** | `42501` → OK |
+| `PATCH profiles?id=eq.<compañero> {"is_agency_admin": null}` | `23502` → **FAIL** | `[]` / 204 (la policy oculta la fila) → OK |
+
+```bash
+# A mano (JWT y TID como en la sección anterior; SUB = uuid del usuario, sale en el JWT)
+curl -s -X PATCH "$URL/rest/v1/profiles?id=eq.$SUB"   -H "apikey: $ANON" -H "Authorization: Bearer $JWT"   -H "Content-Type: application/json" -H "Prefer: return=representation"   -d '{"is_agency_admin": null}'
+```
+
+Que la edición legítima del perfil sigue viva se comprueba en el panel (`/settings/profile`:
+nombre, bio, teléfono, avatar) o en SQL:
+
+```sql
+SELECT has_column_privilege('authenticated', 'public.profiles', 'full_name', 'UPDATE')        AS can_edit_name,   -- true
+       has_column_privilege('authenticated', 'public.profiles', 'is_agency_admin', 'UPDATE')  AS can_promote;     -- false
+```
+
+Y en SQL, el estado de las policies tras aplicar la 086 y la 088:
 
 ```sql
 SELECT tablename, policyname, cmd, permissive, with_check IS NOT NULL AS has_with_check
 FROM pg_policies
 WHERE schemaname = 'public'
-  AND tablename IN ('tenant_configs', 'prompt_blocks', 'resources')
+  AND tablename IN ('tenant_configs', 'prompt_blocks', 'resources', 'profiles')
 ORDER BY tablename, policyname;
 ```
