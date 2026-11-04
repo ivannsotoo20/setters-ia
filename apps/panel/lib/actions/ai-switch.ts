@@ -39,13 +39,25 @@ export async function getAiEnabled(): Promise<boolean> {
 /**
  * Enciende o apaga el setter del tenant efectivo.
  *
- * Permitido al owner del tenant y al agency admin. NO se restringe solo al
- * owner: si un miembro ve algo raro un sábado, el coste de que pueda parar es
- * mucho menor que el de que no pueda.
+ * Permitido al owner y al admin del tenant, y al agency admin. NO se restringe
+ * solo al owner: si un miembro ve algo raro un sábado, el coste de que pueda
+ * parar es mucho menor que el de que no pueda. El viewer no: mira, no toca
+ * (mismo criterio que setGhlInboundMode / setAnthropicKey, que además excluyen
+ * al admin porque ahí no hay prisa que justifique la excepción).
+ *
+ * El control de rol vive aquí porque la escritura va con service_role y RLS no
+ * lo ve. Hasta la migration 086 la policy de tenant_configs tampoco lo veía
+ * desde el navegador; desde 086 la sesión de usuario solo lee.
  */
 export async function setAiEnabled(enabled: boolean): Promise<AiSwitchResult> {
   const effective = await getEffectiveTenant();
   if (!effective) return { ok: false, error: 'unauthenticated' };
+  if (!effective.isAgencyAdmin && effective.role !== 'owner' && effective.role !== 'admin') {
+    return {
+      ok: false,
+      error: 'forbidden — solo el owner o un admin del tenant pueden encender o apagar el setter',
+    };
+  }
 
   const admin = getServiceRoleClient();
   const { error } = await admin
