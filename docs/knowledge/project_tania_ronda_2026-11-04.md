@@ -213,7 +213,41 @@ de la entrega 2a. Coach v32 listo para cargar: body 49.159 caracteres, md5 `3f44
   `/admin/cerebro`. Verificado solo leyendo el catálogo. Esa sesión dejó tarjetas para arreglarlo y para barrer las otras
   17 tablas con la misma forma de policy.
 
-## 8. Pendiente
+## 8. Puesta en producción (4-nov, con el OK de Iván a cada paso)
+
+- Decisiones de Iván antes de los merges: la palabra clave `inbound` suelta sigue activando la IA en
+  el modo nuevo (invierte la precedencia que traía 2b); la alerta de inbound sin umbral de horas;
+  los commits de las sesiones los hace esta sesión; el agujero de `profiles` entra en la tanda
+  (migración 088, encargada a la sesión RLS en su rama).
+- Commits: 2a `ecc2f25`, 2c `26c6ed8`, RLS `caf9491`. Merges en main local, sin conflictos: 2a
+  (`168469b`), RLS (`cf0ace5`), 2c (`9d107dc`). Typecheck 9/9 y 2.102 tests en verde sobre main.
+  2b se mergea cuando su sesión commitee la precedencia nueva (el hook de carpetas no deja editar
+  ese worktree desde aquí).
+- Migraciones aplicadas por MCP: **085** y **087** tal cual; **086** SIN los `DROP POLICY` (la
+  confirmación del MCP los rechaza): las tres policies RESTRICTIVE por tabla ya niegan
+  INSERT/UPDATE/DELETE a toda sesión aunque la `*_tenant_isolation` antigua siga ahí, y la lectura
+  para agency admin va en `*_tenant_read`. Los `DROP POLICY … _tenant_isolation` quedan para el SQL
+  editor, como limpieza. `test-rls-anon-leaks.mjs` tras aplicar: 20 pass, 0 fail.
+- 2b commiteó en su sesión la precedencia nueva (`43b8032`) y la sesión RLS la migración 088 de
+  `profiles` (`aebdf0f`). Merges en main: 2b (`e22d94f`, un conflicto de exports en
+  `packages/shared-validator/src/index.ts`, resuelto quedándose los dos bloques) y RLS
+  (`1af5b67`). Tras el merge hace falta `pnpm install --frozen-lockfile --offline` (2b añade
+  `@fyzon/shared-validator` al panel). Verificado en main: typecheck 9/9; tests motor 885, panel
+  727, pipeline 186, validador 134, composer 81, adaptadores 68, ghl-client 52.
+- Migraciones aplicadas por MCP: **083** y **084** sin su `BEGIN/COMMIT` interno; **088** sin el
+  `DROP POLICY profiles_own_tenant` (mismo motivo que la 086): la escalada queda cerrada por el
+  privilegio por columna (`authenticated` solo puede hacer UPDATE de `full_name, phone, bio,
+  avatar_url`; `is_agency_admin` y `role` → false), y la policy antigua se borra a mano. Comprobado:
+  etiqueta «Profesional» en los 4 tenants, CHECK con `classified_or_intent`, `dashboard_alerts(7)`
+  → 34 / 71 / 1.415, sonda RLS 20/20.
+- Limpieza pendiente en el SQL editor (cosmética, no abre nada): `DROP POLICY
+  tenant_configs_tenant_isolation`, `prompt_blocks_tenant_isolation`, `resources_tenant_isolation`
+  y `profiles_own_tenant`.
+- Pendiente: push de main (lo hace Iván: el modo auto bloquea el push), deploy motor + Vercel, SQL
+  de activación del tenant 7 (`cargar-2a-config.sql` + `ghl_inbound_mode='classified_or_intent'`)
+  y smoke en producción.
+
+## 9. Pendiente
 
 - Respuesta a Tania por número + guía (`.tmp/ronda-tania-04-nov/respuesta-tania-04-nov.txt`, `guia-tania.md`), la envía Iván.
 - Commit de la Fase 1 (esta rama) y de las ramas 2b y RLS; aplicar 083, 084 y 086; desplegar; activar el modo en el tenant 7.
