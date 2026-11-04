@@ -11,6 +11,7 @@ import { env } from '../config/env.js';
 import { decodeCredentialsRow } from '../lib/integration-credentials.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
+import { getAnthropicForTenant } from '../lib/anthropic.js';
 
 import { verifyMarketplaceWebhook } from '../lib/webhook-verify-marketplace.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
@@ -218,6 +219,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
             ghlClient,
             inbound,
             debounceWindowSeconds: debounceWindow,
+            anthropic: () => getAnthropicForTenant(supabase, tenantId),
           });
           await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
           return reply.code(200).send({
@@ -430,6 +432,7 @@ export async function webhookGhlRoutes(app: FastifyInstance): Promise<void> {
             ghlClient,
             inbound,
             debounceWindowSeconds: debounceWindow,
+            anthropic: () => getAnthropicForTenant(supabase, tenantId),
           });
           await touchIntegrationLastWebhook(supabase, tenantId, 'ghl');
           return reply.code(200).send({

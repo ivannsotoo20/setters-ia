@@ -120,6 +120,9 @@ importers:
       '@fyzon/prompt-composer':
         specifier: workspace:*
         version: link:../../packages/prompt-composer
+      '@fyzon/shared-validator':
+        specifier: workspace:*
+        version: link:../../packages/shared-validator
       '@supabase/ssr':
         specifier: ^0.5.2
         version: 0.5.2(@supabase/supabase-js@2.103.3)

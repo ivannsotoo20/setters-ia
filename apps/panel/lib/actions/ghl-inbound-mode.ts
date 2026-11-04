@@ -7,13 +7,23 @@ import { getEffectiveTenant } from '@/lib/effective-tenant';
 /**
  * Server Actions para `tenant_configs.ghl_inbound_mode` (Sprint B 2026-05-12).
  *
- * 2 modos posibles:
- *   - 'classified_only' (DEFAULT NUEVO):
+ * 3 modos posibles:
+ *   - 'classified_only' (DEFAULT):
  *       IA solo dispara si la conversación tiene `conversation_source` ya
- *       calificado (`bienvenida`, `lm`, `inbound`, `manual`). Si un familiar /
+ *       calificado (`bienvenida`, `lm`, `inbound`, `manual`) o el primer
+ *       mensaje casa una palabra clave de tipo `inbound`. Si un familiar /
  *       amigo / random escribe a la página IG sin matchear ningún workflow
  *       GHL, la conv se crea pero `ai_paused_until='infinity'` → pipeline NO
  *       dispara. Trainer decide a mano si quiere intervenir.
+ *   - 'classified_or_intent' (2026-11-04, Tania):
+ *       Lo anterior y, además, si el primer mensaje es de la persona (4 palabras
+ *       o más) un modelo barato decide: interés real (cuenta su dolor, pregunta
+ *       por el programa, cómo trabaja o el precio) → IA activa; pregunta por la
+ *       titulación o se presenta como fisio/colega → pausa + etiqueta
+ *       «Profesional»; otro → pausa. La palabra clave `inbound` suelta («info»)
+ *       activa la IA como en `classified_only` (Iván 4-nov); el botón de una
+ *       automatización y la palabra suelta sin palabra clave siguen por su
+ *       flujo (ManyChat) y quedan en pausa. Requiere las migraciones 083 y 084.
  *   - 'all' (legacy escape hatch):
  *       Cualquier inbound IG/FB via webhook OAuth o workflow custom activa IA.
  *       Comportamiento previo a la doctrina 2026-05-12. Solo se usa para
@@ -33,11 +43,11 @@ function getServiceRoleClient() {
   });
 }
 
-export type GhlInboundMode = 'classified_only' | 'all';
+export type GhlInboundMode = 'classified_only' | 'classified_or_intent' | 'all';
 
 export type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
-const VALID_MODES: readonly GhlInboundMode[] = ['classified_only', 'all'];
+const VALID_MODES: readonly GhlInboundMode[] = ['classified_only', 'classified_or_intent', 'all'];
 
 interface GetResult {
   mode: GhlInboundMode;

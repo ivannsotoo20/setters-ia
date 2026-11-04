@@ -39,6 +39,15 @@ export {
 } from './lib/normalize-punctuation.js';
 // 2026-11-04 — Clave estable de un enlace (el mismo vídeo de YouTube en todas sus formas).
 export { canonicalLinkKey, extractUrls, urlsAllowed, URL_IN_TEXT_RE } from './lib/link-key.js';
+// 2026-10-21 (Tania) — apertura de conversación: palabra suelta, botón de una
+// automatización o auto-respuesta en <2 min. La usan el panel (tarjeta de
+// inbound) y el motor (gate de intención en la apertura, 2026-11-04).
+export {
+  AUTO_REPLY_WINDOW_MS,
+  isBareKeywordOpening,
+  isKeywordFlowOpening,
+  normalizeOpening,
+} from './lib/inbound-opening.js';
 
 /**
  * Valida un mensaje del setter contra las reglas V0-V16.

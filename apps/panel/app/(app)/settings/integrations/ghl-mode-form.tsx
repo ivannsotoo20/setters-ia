@@ -28,6 +28,14 @@ const MODES: {
       'Es el criterio recomendado. Una amiga, un proveedor o alguien que solo comenta una foto no reciben respuesta automática.',
   },
   {
+    value: 'classified_or_intent',
+    label: 'A quien diga una palabra concreta o escriba con interés',
+    description:
+      'Lo anterior y, además, cuando alguien te escribe un mensaje de verdad (cuenta lo que le pasa, pregunta por tu programa, por cómo trabajas o por el precio), tu asistente lee ese primer mensaje y le contesta. Quien diga solo una de tus palabras («espalda», «info») recibe respuesta como hasta ahora.',
+    tradeoff:
+      'Quien abra preguntando si eres sanitaria, por tu titulación o presentándose como fisio o colega no recibe respuesta automática: se queda guardado con la etiqueta «Profesional» para que lo veas tú. Un saludo solo o un mensaje de dos o tres palabras tampoco se contesta.',
+  },
+  {
     value: 'all',
     label: 'A cualquiera que te escriba',
     description:
@@ -97,15 +105,16 @@ export function GhlModeForm({ currentMode, inboundKeywordCount }: Props) {
         el entrenador lo ve en Conversaciones y puede contestar a mano. Es un
         estado silencioso, no uno de pérdida de datos.
       */}
-      {selected === 'classified_only' && inboundKeywordCount === 0 ? (
+      {(selected === 'classified_only' || selected === 'classified_or_intent') &&
+      inboundKeywordCount === 0 ? (
         <div className="rounded-lg border border-warning/40 bg-warning/8 p-3 text-sm">
           <p className="font-medium text-warning">
             Aún no has definido ninguna palabra
           </p>
           <p className="mt-1 text-xs text-warning/90">
-            Con este criterio y sin palabras definidas, tu asistente no contestará a
-            nadie que te escriba nuevo. Los mensajes se guardan igualmente en
-            Conversaciones para que los respondas tú.
+            {selected === 'classified_only'
+              ? 'Con este criterio y sin palabras definidas, tu asistente no contestará a nadie que te escriba nuevo. Los mensajes se guardan igualmente en Conversaciones para que los respondas tú.'
+              : 'Sin palabras definidas, tu asistente solo contestará a quien te escriba un mensaje con interés. Una palabra suelta («info», «espalda») se guarda en Conversaciones sin respuesta para que la atiendas tú.'}
           </p>
           <Link href="/keywords" className="mt-2 inline-block text-xs text-warning underline">
             Definir mis palabras
