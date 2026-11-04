@@ -243,12 +243,46 @@ de la entrega 2a. Coach v32 listo para cargar: body 49.159 caracteres, md5 `3f44
 - Limpieza pendiente en el SQL editor (cosmética, no abre nada): `DROP POLICY
   tenant_configs_tenant_isolation`, `prompt_blocks_tenant_isolation`, `resources_tenant_isolation`
   y `profiles_own_tenant`.
-- Pendiente: push de main (lo hace Iván: el modo auto bloquea el push), deploy motor + Vercel, SQL
-  de activación del tenant 7 (`cargar-2a-config.sql` + `ghl_inbound_mode='classified_or_intent'`)
-  y smoke en producción.
+- Push de main (`d5f94b0`) hecho por Iván. Motor: workflow «Deploy motor to VPS» (run
+  41794225575) en verde y `/health` ok con el proceso recién levantado.
+- **Vercel falló** el build del panel (`dpl_GbHpJxZQDjch8c6Pz3QxFPVZ6Bu8`): Turbopack no resuelve
+  los imports relativos con extensión `.js` (ESM de Node) del `packages/shared-validator/src/index.ts`
+  («Can't resolve './rules/index.js'»), y 2b hizo que el panel importara la raíz de ese package.
+  Reproducido en local con `pnpm turbo run build --filter=@fyzon/panel`. Arreglo: subruta
+  `./inbound-opening` en el `exports` de `shared-validator` y el wrapper
+  `apps/panel/lib/inbound-opening.ts` importa de `@fyzon/shared-validator/inbound-opening` (el
+  fichero no tiene imports relativos). **Regla:** el panel nunca importa la raíz del validador;
+  cada pieza que necesite entra por su propia subruta. Typecheck y 727 tests del panel en verde.
+  Build local en verde con `NEXT_PUBLIC_SUPABASE_*` exportadas (sin ellas falla el prerender de
+  `/reset-password`, ajeno al cambio). Commit `87270e3`; push de Iván.
+- Activación del tenant 7 aplicada por MCP con el motor nuevo arriba (todo con `RETURNING`):
+  `zone_close_mode='free'` + `zone_close_max_urls=2` (6 variantes del Grupo A), `singlePunctuation=true`
+  (máx. 3 msgs se conserva), bloque 37 `trainer_prefs_v1` con la línea nueva de signos
+  (`sigue_doble=false`, `tiene_single=true`), `ghl_inbound_mode='classified_or_intent'`
+  (`manychat_inbound_mode` sigue en `classified_only`: Tania entra por GHL).
+- Smoke 2a en producción (`.tmp/sim-tests/smoke-2a-prod.mjs`, 4 escenarios con checks automáticos:
+  sin `??`/`¿`, idioma, Grupo B fuera, cierre con Grupo A, sin agenda, sin motivo de país):
+  **4/4 en verde**, coste 1,03 $. Ecuador: V23 pide el país con el literal de Tania, «Ecuador» →
+  `reject_by_declaration`, cierre libre en el mismo turno (la persona ya había contado dolor, duración
+  y cirugía) con `ORPWNlJQ1WE`; el primer intento nombraba el motivo y el reintento
+  (`zone_free_close_retry:reveals_reason`) lo quitó. Colombia suelto («De Colombia» sin pregunta)
+  → `reject_by_declaration`, un turno de exploración y cierre con dos vídeos de mañanas
+  (`U-r8YNObDLU` + `ug3D7LWf5Oo`). Inglés (Londres): `lead_language=en`, contesta en inglés y
+  cualifica, porque **GB está en `zone_allowlist.always`** (en zona; mi check inicial esperaba
+  cierre y estaba mal). Precio dos veces: primer literal exacto y luego la cifra con la línea de la
+  videollamada. Ningún `??` ni `¿` en 13 turnos. Dos falsos positivos del propio smoke corregidos
+  (`zona` casaba con «zona lumbar»; Londres en zona); replay sobre los JSON guardados en
+  `.tmp/sim-tests/2a-prod/`.
 
 ## 9. Pendiente
 
-- Respuesta a Tania por número + guía (`.tmp/ronda-tania-04-nov/respuesta-tania-04-nov.txt`, `guia-tania.md`), la envía Iván.
-- Commit de la Fase 1 (esta rama) y de las ramas 2b y RLS; aplicar 083, 084 y 086; desplegar; activar el modo en el tenant 7.
-- Entrega 2a (esta sesión), 2c (reanudada), Fase 3 y Fase 4 del plan. El arreglo de `profiles` es urgente y va aparte.
+- Respuesta a Tania por número + guía (`.tmp/ronda-tania-04-nov/respuesta-tania-04-nov.txt`,
+  `guia-tania.md`), la envía Iván.
+- Push del arreglo del panel y deploy de Vercel en verde. Hasta entonces el panel en producción es
+  el de `e168df6`: sin la alerta de inbound ni el modo nuevo en la UI de integraciones (el motor ya
+  aplica el modo).
+- Vigilar 48 h los logs del motor: `intent_gate`, `[zone]`, `V21_retry`, `price_gate`,
+  `D2_fallback_lang`, `[lang]`. Números a 7 días para Tania (inbound ≥4 palabras atendidos, `??`,
+  conversaciones en otro idioma contestadas en su idioma, alerta sobre el total real).
+- Limpieza en el SQL editor de las cuatro policies antiguas (§8).
+- Fase 3 («Mis textos / Mis recursos») y Fase 4 (rendimiento completo) del plan.
