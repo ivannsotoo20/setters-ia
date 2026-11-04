@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
+  enrichWithInboundOpenings,
   enrichWithLeadReplies,
   enrichWithTeamReplies,
-  loadLastMessageBySource,
-  loadTestLeadIds,
+  loadDashboardAlerts,
+  loadKeywordPatterns,
   loadWindowAppointments,
   resolveChannelFilter,
 } from '../../lib/dashboard-loader';
@@ -302,168 +303,178 @@ describe('resolveChannelFilter', () => {
   });
 });
 
-interface MsgRow {
-  id: number;
-  conversation_id: number;
-  source: string;
-  sent_at: string;
-}
+describe('loadDashboardAlerts', () => {
+  function makeRpcSupabase(result: { data?: unknown; error?: { code?: string; message: string } | null }) {
+    const calls: Array<{ fn: string; args: Record<string, unknown> }> = [];
+    const client: any = {
+      rpc(fn: string, args: Record<string, unknown>) {
+        calls.push({ fn, args });
+        return Promise.resolve({ data: result.data ?? null, error: result.error ?? null });
+      },
+      from() {
+        throw new Error('las alertas no deben consultar tablas: van por la RPC');
+      },
+    };
+    return { calls, client };
+  }
 
-/**
- * Supabase falso para `conversation_messages`: filtra por ids, ordena y pagina
- * con range() como PostgREST (con su tope de filas por respuesta), y registra
- * cada petición (lote de ids + offset).
- */
-function makeMessagesSupabase(rows: MsgRow[], serverMaxRows = 1000) {
-  const requests: Array<{ ids: number[]; from: number; to: number }> = [];
-  const client: any = {
-    from(table: string) {
-      if (table !== 'conversation_messages') throw new Error(`tabla inesperada ${table}`);
-      let ids: number[] = [];
-      const orders: Array<{ col: keyof MsgRow; asc: boolean }> = [];
-      const b: any = {
-        select: () => b,
-        in: (_col: string, values: number[]) => {
-          ids = values;
-          return b;
-        },
-        order: (col: keyof MsgRow, opts?: { ascending?: boolean }) => {
-          orders.push({ col, asc: opts?.ascending ?? true });
-          return b;
-        },
-        range: (from: number, to: number) => {
-          requests.push({ ids, from, to });
-          const idSet = new Set(ids);
-          const filtered = rows
-            .filter((r) => idSet.has(r.conversation_id))
-            .sort((x, y) => {
-              for (const o of orders) {
-                if (x[o.col] < y[o.col]) return o.asc ? -1 : 1;
-                if (x[o.col] > y[o.col]) return o.asc ? 1 : -1;
-              }
-              return 0;
-            });
-          const page = filtered.slice(from, Math.min(to + 1, from + serverMaxRows));
-          return Promise.resolve({ data: page, error: null });
-        },
-      };
-      return b;
-    },
-  };
-  return { requests, client };
-}
-
-describe('loadLastMessageBySource', () => {
-  it('devuelve quién escribió el último mensaje, cuándo, y el último de la entrenadora', async () => {
-    const rows: MsgRow[] = [
-      // conv 1: la persona escribió la última, la entrenadora nunca
-      { id: 3, conversation_id: 1, source: 'lead', sent_at: '2026-09-01T10:00:00Z' },
-      { id: 1, conversation_id: 1, source: 'ai', sent_at: '2026-09-01T08:00:00Z' },
-      { id: 2, conversation_id: 1, source: 'lead', sent_at: '2026-09-01T09:00:00Z' },
-      // conv 2: la entrenadora escribió y la persona contestó después
-      { id: 4, conversation_id: 2, source: 'ai', sent_at: '2026-09-02T08:00:00Z' },
-      { id: 5, conversation_id: 2, source: 'human', sent_at: '2026-09-02T09:00:00Z' },
-      { id: 6, conversation_id: 2, source: 'lead', sent_at: '2026-09-02T10:00:00Z' },
-      // conv 3: solo la IA
-      { id: 7, conversation_id: 3, source: 'ai', sent_at: '2026-09-02T11:00:00Z' },
-      // conv 9 no se pide: no debe colarse
-      { id: 8, conversation_id: 9, source: 'lead', sent_at: '2026-09-02T12:00:00Z' },
-    ];
-    const sb = makeMessagesSupabase(rows);
-    const r = await loadLastMessageBySource(sb.client, [1, 2, 3, 4]);
+  it('llama a dashboard_alerts con el tenant y los umbrales, y devuelve las filas tipadas', async () => {
+    const sb = makeRpcSupabase({
+      data: {
+        computed_at: '2026-11-04T10:00:00+00:00',
+        awaiting_reply: [{ conversation_id: 1, last_message_at: '2026-11-04T07:00:00+00:00' }],
+        handoff_unattended: [],
+        stalls: [],
+        inbound_unattended: [
+          {
+            conversation_id: 2,
+            last_message_at: '2026-11-03T07:00:00+00:00',
+            first_lead_text: 'Siii😊',
+            first_lead_at: '2026-11-03T07:00:00+00:00',
+            first_auto_reply_at: null,
+          },
+        ],
+      },
+    });
+    const r = await loadDashboardAlerts(sb.client, {
+      tenantId: 7,
+      awaitingHours: 2,
+      handoffHours: 24,
+      stallDays: 3,
+    });
     expect(r.error).toBeNull();
-    expect(r.lastMessages.get(1)).toEqual({
-      source: 'lead',
-      sentAt: '2026-09-01T10:00:00Z',
-      lastHumanAt: null,
-    });
-    expect(r.lastMessages.get(2)).toEqual({
-      source: 'lead',
-      sentAt: '2026-09-02T10:00:00Z',
-      lastHumanAt: '2026-09-02T09:00:00Z',
-    });
-    expect(r.lastMessages.get(3)).toEqual({
-      source: 'ai',
-      sentAt: '2026-09-02T11:00:00Z',
-      lastHumanAt: null,
-    });
-    // Sin mensajes → no aparece
-    expect(r.lastMessages.has(4)).toBe(false);
-    expect(r.lastMessages.has(9)).toBe(false);
-    expect(sb.requests).toHaveLength(1);
+    expect(sb.calls).toEqual([
+      {
+        fn: 'dashboard_alerts',
+        args: { p_tenant_id: 7, p_awaiting_hours: 2, p_handoff_hours: 24, p_stall_days: 3 },
+      },
+    ]);
+    expect(r.alerts.awaitingReply.map((x) => x.conversation_id)).toEqual([1]);
+    expect(r.alerts.inboundUnattended[0]!.first_lead_text).toBe('Siii😊');
+    expect(r.alerts.computedAt).toBe('2026-11-04T10:00:00+00:00');
   });
 
-  it('trocea en lotes de 200 conversaciones (límite de URL de PostgREST)', async () => {
-    const ids = Array.from({ length: 450 }, (_, i) => i + 1);
-    const rows: MsgRow[] = ids.map((id) => ({
-      id,
-      conversation_id: id,
-      source: 'ai',
-      sent_at: '2026-09-01T08:00:00Z',
-    }));
-    const sb = makeMessagesSupabase(rows);
-    const r = await loadLastMessageBySource(sb.client, ids);
-    expect(sb.requests.map((q) => q.ids.length)).toEqual([200, 200, 50]);
-    expect(r.lastMessages.size).toBe(450);
-  });
-
-  it('pagina de 1000 en 1000 dentro de un lote: Supabase corta cada respuesta en 1000 filas', async () => {
-    const total = 2500;
-    const rows: MsgRow[] = Array.from({ length: total }, (_, i) => ({
-      id: i + 1,
-      conversation_id: 1,
-      source: i === total - 1 ? 'human' : i % 2 ? 'ai' : 'lead',
-      sent_at: new Date(Date.UTC(2026, 7, 1) + i * 60000).toISOString(),
-    }));
-    const sb = makeMessagesSupabase(rows);
-    const r = await loadLastMessageBySource(sb.client, [1]);
-    expect(sb.requests.map((q) => q.from)).toEqual([0, 1000, 2000]);
-    const lastSentAt = rows[total - 1]!.sent_at;
-    expect(r.lastMessages.get(1)).toEqual({
-      source: 'human',
-      sentAt: lastSentAt,
-      lastHumanAt: lastSentAt,
+  it('si la función no existe (PGRST202) lo dice con la migración que falta', async () => {
+    const sb = makeRpcSupabase({
+      error: { code: 'PGRST202', message: 'Could not find the function public.dashboard_alerts' },
     });
+    const r = await loadDashboardAlerts(sb.client, {
+      tenantId: 7,
+      awaitingHours: 2,
+      handoffHours: 24,
+      stallDays: 3,
+    });
+    expect(r.error).toContain('085-dashboard-alerts-rpc.sql');
+    expect(r.alerts.awaitingReply).toEqual([]);
   });
 
-  it('sin ids no consulta nada', async () => {
-    const sb = makeMessagesSupabase([]);
-    const r = await loadLastMessageBySource(sb.client, []);
-    expect(sb.requests).toEqual([]);
-    expect(r.lastMessages.size).toBe(0);
+  it('otro error → se devuelve tal cual, con listas vacías', async () => {
+    const sb = makeRpcSupabase({ error: { message: 'timeout' } });
+    const r = await loadDashboardAlerts(sb.client, {
+      tenantId: 7,
+      awaitingHours: 2,
+      handoffHours: 24,
+      stallDays: 3,
+    });
+    expect(r.error).toBe('dashboard_alerts: timeout');
+    expect(r.alerts.inboundUnattended).toEqual([]);
   });
 });
 
-describe('loadTestLeadIds', () => {
-  function makeLeadsSupabase(rows: Array<{ id: number; first_name: string | null }>) {
-    const filters: string[] = [];
+describe('loadKeywordPatterns', () => {
+  it('devuelve los patrones del tenant, activos o no, sin vacíos', async () => {
+    const filters: Array<[string, unknown]> = [];
     const client: any = {
       from(table: string) {
-        if (table !== 'leads') throw new Error(`tabla inesperada ${table}`);
+        if (table !== 'automation_keywords') throw new Error(`tabla inesperada ${table}`);
         const b: any = {
           select: () => b,
-          eq: () => b,
-          or: (expr: string) => {
-            filters.push(expr);
-            return Promise.resolve({ data: rows, error: null });
+          eq: (col: string, val: unknown) => {
+            filters.push([col, val]);
+            return Promise.resolve({
+              data: [{ pattern: 'Espalda' }, { pattern: '' }, { pattern: null }, { pattern: 'Hernia' }],
+              error: null,
+            });
           },
         };
         return b;
       },
     };
-    return { filters, client };
+    const r = await loadKeywordPatterns(client, 7);
+    expect(r.error).toBeNull();
+    expect(r.patterns).toEqual(['Espalda', 'Hernia']);
+    expect(filters).toEqual([['tenant_id', 7]]);
+  });
+});
+
+describe('enrichWithInboundOpenings', () => {
+  interface OpeningRow {
+    id: number;
+    conversation_id: number;
+    source: 'lead' | 'system';
+    content: string | null;
+    sent_at: string;
   }
 
-  it('devuelve los ids de los leads de Iván y repasa el nombre en JS', async () => {
-    const sb = makeLeadsSupabase([
-      { id: 1, first_name: 'Iván' },
-      { id: 2, first_name: 'Ivana' },
-      { id: 3, first_name: 'ivan' },
-      { id: 4, first_name: null },
+  /** Supabase falso: mensajes lead/system por conversación; si pide las palabras clave, lo registra. */
+  function makeOpeningsSupabase(rows: OpeningRow[]) {
+    let keywordQueries = 0;
+    const client: any = {
+      from(table: string) {
+        if (table === 'automation_keywords') {
+          keywordQueries += 1;
+          const k: any = {
+            select: () => k,
+            eq: () => Promise.resolve({ data: [{ pattern: 'espalda' }], error: null }),
+          };
+          return k;
+        }
+        if (table !== 'conversation_messages') throw new Error(`tabla inesperada ${table}`);
+        let ids: number[] = [];
+        const b: any = {
+          select: () => b,
+          in: (col: string, values: unknown[]) => {
+            if (col === 'conversation_id') ids = values as number[];
+            return b;
+          },
+          order: () => b,
+          range: (from: number, to: number) => {
+            const idSet = new Set(ids);
+            const page = rows
+              .filter((r) => idSet.has(r.conversation_id))
+              .sort((x, y) => x.sent_at.localeCompare(y.sent_at) || x.id - y.id)
+              .slice(from, to + 1);
+            return Promise.resolve({ data: page, error: null });
+          },
+        };
+        return b;
+      },
+    };
+    return { client, keywordQueries: () => keywordQueries };
+  }
+
+  it('con las palabras clave ya cargadas no vuelve a pedirlas y marca el flujo de palabra clave', async () => {
+    const convs = [conv(1, 'inbound'), conv(2, 'inbound'), conv(3, 'outbound')];
+    const sb = makeOpeningsSupabase([
+      { id: 1, conversation_id: 1, source: 'lead', content: 'espalda', sent_at: '2026-10-20T10:00:00Z' },
+      { id: 2, conversation_id: 2, source: 'lead', content: 'Tengo una hernia, ¿me puedes ayudar?', sent_at: '2026-10-20T10:00:00Z' },
     ]);
-    const r = await loadTestLeadIds(sb.client, 7);
+    const r = await enrichWithInboundOpenings(sb.client, convs, 7, ['Espalda']);
     expect(r.error).toBeNull();
-    expect(Array.from(r.testLeadIds).sort()).toEqual([1, 3]);
-    expect(sb.filters[0]).toContain('first_name.ilike.ivan');
+    expect(sb.keywordQueries()).toBe(0);
+    expect(convs[0]!.inbound_keyword_flow).toBe(true);
+    expect(convs[1]!.inbound_keyword_flow).toBe(false);
+    // La outbound no se toca.
+    expect(convs[2]!.inbound_keyword_flow).toBeUndefined();
+  });
+
+  it('sin palabras clave pasadas las carga ella (compatibilidad con el drill-down)', async () => {
+    const convs = [conv(1, 'inbound')];
+    const sb = makeOpeningsSupabase([
+      { id: 1, conversation_id: 1, source: 'lead', content: 'espalda', sent_at: '2026-10-20T10:00:00Z' },
+    ]);
+    await enrichWithInboundOpenings(sb.client, convs, 7);
+    expect(sb.keywordQueries()).toBe(1);
+    expect(convs[0]!.inbound_keyword_flow).toBe(true);
   });
 });

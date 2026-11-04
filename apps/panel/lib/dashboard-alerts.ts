@@ -1,7 +1,7 @@
 /**
  * Sprint Lambda — Alertas inteligentes del dashboard.
  *
- * Evalúa 6 reglas:
+ * Evalúa 7 reglas:
  *   1. WoW change ≥15% en KPIs core (con min 10 events por lado)
  *   2. Sin respuesta de la persona, por (canal × fase) — ≥5 conversaciones
  *      cuyo último mensaje es del setter y lleva ≥3 días sin contestación
@@ -9,8 +9,11 @@
  *      que nadie le conteste (critical)
  *   4. Handoffs sin atender — ≥1 conversación en manos de la entrenadora con
  *      >24 h sin mensaje suyo (warning)
- *   5. Tasa cierre baja vs histórico (<50% del promedio 60d)
- *   6. Surge de no-shows (≥3× media diaria, count abs ≥3)
+ *   5. Inbound sin atender — ≥1 persona que escribió ella primero, la IA quedó
+ *      pausada por el gate de palabras clave y nadie le ha contestado (warning;
+ *      2026-11-04, Tania: sus inbound de Instagram no salían en ninguna alerta)
+ *   6. Tasa cierre baja vs histórico (<50% del promedio 60d)
+ *   7. Surge de no-shows (≥3× media diaria, count abs ≥3)
  *
  * Devuelve max 5 alertas ordenadas por severity weight.
  */
@@ -41,6 +44,7 @@ export interface Alert {
     | 'bottleneck'
     | 'awaiting_reply'
     | 'handoff_unattended'
+    | 'inbound_unattended'
     | 'low_close_rate'
     | 'noshow_surge';
   severity: AlertSeverity;
@@ -167,6 +171,29 @@ function handoffUnattendedAlert(r: WaitingResult): Alert | null {
   };
 }
 
+/**
+ * "Te escribieron y la IA no las atiende" (2026-11-04). La persona abrió la
+ * conversación, el gate de palabras clave dejó la IA pausada y su último
+ * mensaje sigue sin respuesta. Warning y no critical: la pausa es por diseño
+ * (el gate), lo que falta es que alguien las atienda a mano.
+ */
+function inboundUnattendedAlert(r: WaitingResult): Alert | null {
+  if (r.count < 1) return null;
+  const message =
+    r.count === 1
+      ? '1 persona te escribió y la IA no la atiende: nadie le ha contestado'
+      : `${r.count} personas te escribieron y la IA no las atiende: nadie les ha contestado`;
+  return {
+    id: 'inbound_unattended',
+    type: 'inbound_unattended',
+    severity: 'warning',
+    message,
+    metric: 'inboundUnattended',
+    weight: SEVERITY_WEIGHT.warning + r.count,
+    convIds: r.convIds,
+  };
+}
+
 function lowCloseRateAlert(input: {
   currentRate: number;
   currentDenom: number;
@@ -230,6 +257,7 @@ export function computeAlerts(input: {
   stalls: StallInput[];
   awaitingReply?: WaitingResult;
   unattendedHandoffs?: WaitingResult;
+  inboundUnattended?: WaitingResult;
   closeRateBaseline: number | null;
   noShowCurrentCount: number;
   noShowWindowDays: number;
@@ -270,7 +298,13 @@ export function computeAlerts(input: {
     if (a) out.push(a);
   }
 
-  // 5. Tasa cierre baja
+  // 5. Inbound sin atender (IA pausada por el gate de palabras clave)
+  if (input.inboundUnattended) {
+    const a = inboundUnattendedAlert(input.inboundUnattended);
+    if (a) out.push(a);
+  }
+
+  // 6. Tasa cierre baja
   const closeAlert = lowCloseRateAlert({
     currentRate: input.kpis.closeRate.current,
     currentDenom: input.kpis.closeRate.denominator,
@@ -278,7 +312,7 @@ export function computeAlerts(input: {
   });
   if (closeAlert) out.push(closeAlert);
 
-  // 6. Surge no-shows
+  // 7. Surge no-shows
   const noShowAlert = noShowSurgeAlert({
     currentCount: input.noShowCurrentCount,
     windowDays: input.noShowWindowDays,

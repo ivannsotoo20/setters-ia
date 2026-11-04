@@ -25,12 +25,17 @@ function emptyKpis(): KpiSnapshot {
 
 const none: WaitingResult = { count: 0, hoursWaitingMax: 0, convIds: [] };
 
-function alerts(awaitingReply: WaitingResult, unattendedHandoffs: WaitingResult) {
+function alerts(
+  awaitingReply: WaitingResult,
+  unattendedHandoffs: WaitingResult,
+  inboundUnattended: WaitingResult = none,
+) {
   return computeAlerts({
     kpis: emptyKpis(),
     stalls: [],
     awaitingReply,
     unattendedHandoffs,
+    inboundUnattended,
     closeRateBaseline: null,
     noShowCurrentCount: 0,
     noShowWindowDays: 7,
@@ -66,6 +71,15 @@ describe('alertas con sus conversaciones', () => {
     expect(out.find((a) => a.type === 'handoff_unattended')!.convIds).toEqual([21]);
   });
 
+  it('la de inbound sin atender también lleva sus conversaciones (2026-11-04)', () => {
+    const out = alerts(none, none, { count: 3, hoursWaitingMax: 200, convIds: [31, 32, 33] });
+    const a = out.find((x) => x.type === 'inbound_unattended')!;
+    expect(a.convIds).toEqual([31, 32, 33]);
+    expect(a.message).toBe(
+      '3 personas te escribieron y la IA no las atiende: nadie les ha contestado',
+    );
+  });
+
   it('sin conversaciones, no hay alerta', () => {
     expect(alerts(none, none)).toHaveLength(0);
   });
@@ -82,6 +96,7 @@ describe('filtro de conversaciones por ids', () => {
   it('solo reconoce las alertas que abren lista', () => {
     expect(parseAlertFilter('awaiting_reply')).toBe('awaiting_reply');
     expect(parseAlertFilter('handoff_unattended')).toBe('handoff_unattended');
+    expect(parseAlertFilter('inbound_unattended')).toBe('inbound_unattended');
     expect(parseAlertFilter('bottleneck')).toBeNull();
     expect(parseAlertFilter(undefined)).toBeNull();
   });

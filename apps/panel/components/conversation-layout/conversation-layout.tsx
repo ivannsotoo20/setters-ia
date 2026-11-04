@@ -36,6 +36,12 @@ interface Props {
 }
 
 const LIST_LIMIT = 100;
+/**
+ * Mensajes que se cargan de la conversación abierta: los 200 MÁS RECIENTES.
+ * Hasta 2026-11-04 se pedían en orden ascendente con `limit`, así que en una
+ * conversación larga se veían los 200 más antiguos y faltaban los últimos.
+ * Se pide uno más para saber si hay anteriores y avisarlo en el hilo.
+ */
 const MESSAGES_LIMIT = 200;
 
 export async function ConversationLayout({ selectedId, filters }: Props) {
@@ -63,10 +69,13 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
     .limit(filterIds.length > 0 ? filterIds.length : LIST_LIMIT);
 
   // ---- Carga miembros tenant (siempre — para dropdown asignar + map) ------
-  const membersPromise = listMembers({ tenantId: effective.tenantId });
+  // Sin `email_confirmed_at`: aquí solo hacen falta nombre, email y rol, y
+  // pedirlo costaba una llamada a auth.admin por miembro (2026-11-04).
+  const membersPromise = listMembers({ tenantId: effective.tenantId, includeConfirmation: false });
 
   // ---- Sprint Eta — carga labels del tenant (selector + filtro) -----------
-  const allLabelsPromise = listLabels();
+  // Sin contadores: el selector y el filtro no los muestran (2026-11-04).
+  const allLabelsPromise = listLabels({ withCounts: false });
 
   // ---- Sprint Iota.1.c — config followups (para chat panel) ---------------
   const followupConfigPromise = getTenantFollowupConfig();
@@ -75,17 +84,24 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
   // Si la conv es elegible (IG/FB con auto-followups enabled), creamos toda
   // la secuencia restante en BD para que el panel derecho la muestre con
   // hora absoluta + preview. Best-effort: si falla, seguir.
-  if (selectedId) {
-    try {
-      await materializeFollowupSequenceForConv(selectedId);
-    } catch {
-      // ignore — el cron 15min lo intentará después
-    }
-  }
-
-  // ---- Sprint Iota.1 — followups programados (solo si hay selectedId) -----
+  //
+  // 2026-11-04: hasta hoy se esperaba AQUÍ, en serie, antes de lanzar el
+  // resto de consultas, también en tenants con los seguimientos apagados
+  // (tenant 7). Ahora va encadenada a la config dentro del Promise.all: solo
+  // se materializa si `enabled` y, si lo está, corre en paralelo con la lista
+  // y los mensajes; la lista de seguimientos se lee después para verla recién
+  // creada.
   const followupsPromise = selectedId
-    ? listScheduledFollowups(selectedId)
+    ? followupConfigPromise.then(async (cfg) => {
+        if (cfg.ok && cfg.data?.enabled) {
+          try {
+            await materializeFollowupSequenceForConv(selectedId);
+          } catch {
+            // ignore — el cron 15min lo intentará después
+          }
+        }
+        return listScheduledFollowups(selectedId);
+      })
     : Promise.resolve({ ok: true as const, data: [] as ScheduledFollowupRow[] });
 
   // ---- Sprint Iota.1 — último mensaje del lead (para detectar 24h WA) -----
@@ -124,8 +140,9 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
         .from('conversation_messages')
         .select('id, source, content_type, content, transcription, media_url, sent_at')
         .eq('conversation_id', selectedId)
-        .order('sent_at', { ascending: true })
-        .limit(MESSAGES_LIMIT)
+        .order('sent_at', { ascending: false })
+        .order('id', { ascending: false })
+        .limit(MESSAGES_LIMIT + 1)
     : Promise.resolve({ data: [] as TimelineMessage[] });
 
   const notesPromise = selectedId
@@ -263,8 +280,12 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
     selectedDetail.labels = labelsByConvId.get(selectedId) ?? [];
   }
 
-  const messages =
+  // Vienen del más reciente al más antiguo (para quedarnos con los últimos);
+  // el hilo se pinta en orden cronológico.
+  const newestFirst =
     (messagesRes && 'data' in messagesRes ? messagesRes.data ?? [] : []) as TimelineMessage[];
+  const olderMessagesHidden = newestFirst.length > MESSAGES_LIMIT;
+  const messages = newestFirst.slice(0, MESSAGES_LIMIT).reverse();
 
   const notes: ConversationNote[] = notesRes.ok ? notesRes.data ?? [] : [];
 
@@ -284,6 +305,8 @@ export async function ConversationLayout({ selectedId, filters }: Props) {
         <ThreadPane
           detail={selectedDetail}
           messages={messages}
+          olderMessagesHidden={olderMessagesHidden}
+          messagesShown={MESSAGES_LIMIT}
           notes={notes}
           viewer={viewer}
           members={members}

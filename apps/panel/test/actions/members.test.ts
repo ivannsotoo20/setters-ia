@@ -40,6 +40,8 @@ const insertedPendingInvites: Array<Record<string, unknown>> = [];
 const updatedProfiles: Array<{ id: string; patch: Record<string, unknown> }> = [];
 const auditLogInserts: Array<Record<string, unknown>> = [];
 const inviteUserCalls: Array<{ email: string; data?: unknown; redirectTo?: string }> = [];
+const listUsersCalls: Array<{ page: number; perPage: number }> = [];
+let mockAuthUsers: Array<{ id: string; email_confirmed_at: string | null }> = [];
 const resetPasswordCalls: Array<{ email: string; redirectTo?: string }> = [];
 const sendEmailCalls: Array<{ to: string; subject: string }> = [];
 
@@ -79,6 +81,20 @@ vi.mock('@/lib/supabase/service-role', () => ({
           return { data: { user: { id: 'new-invited-uuid' } }, error: null };
         },
         getUserById: async (_id: string) => ({ data: { user: { email_confirmed_at: null } }, error: null }),
+        // 2026-11-04: listMembers pagina listUsers en vez de un getUserById por miembro.
+        listUsers: async (params?: { page?: number; perPage?: number }) => {
+          listUsersCalls.push({ page: params?.page ?? 1, perPage: params?.perPage ?? 50 });
+          return {
+            data: {
+              users: mockAuthUsers,
+              aud: 'authenticated',
+              nextPage: null,
+              lastPage: 1,
+              total: mockAuthUsers.length,
+            },
+            error: null,
+          };
+        },
       },
       resetPasswordForEmail: async (email: string, options?: { redirectTo?: string }) => {
         resetPasswordCalls.push({ email, redirectTo: options?.redirectTo });
@@ -225,6 +241,8 @@ describe('members actions', () => {
     updatedProfiles.length = 0;
     auditLogInserts.length = 0;
     inviteUserCalls.length = 0;
+    listUsersCalls.length = 0;
+    mockAuthUsers = [];
     resetPasswordCalls.length = 0;
     sendEmailCalls.length = 0;
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
@@ -535,6 +553,54 @@ describe('members actions', () => {
       const result = await listMembers({ tenantId: 5 });
       expect(result.ok).toBe(true);
       expect((result as { data: unknown[] }).data).toHaveLength(1);
+    });
+
+    it('resuelve email_confirmed_at con UNA página de listUsers, no una llamada por miembro (2026-11-04)', async () => {
+      mockProfilesByTenant = ['a', 'b', 'c'].map((id) => ({
+        id,
+        tenant_id: 5,
+        email: `${id}@test.com`,
+        full_name: null,
+        role: 'viewer' as const,
+        is_active: true,
+        is_agency_admin: false,
+        invited_at: null,
+        created_at: '2026-01-01',
+      }));
+      mockAuthUsers = [
+        { id: 'a', email_confirmed_at: '2026-01-02T00:00:00Z' },
+        { id: 'zzz-otro-tenant', email_confirmed_at: '2026-01-03T00:00:00Z' },
+        { id: 'c', email_confirmed_at: null },
+      ];
+      const result = await listMembers({ tenantId: 5 });
+      expect(result.ok).toBe(true);
+      const rows = (result as { data: Array<{ userId: string; emailConfirmedAt: string | null }> }).data;
+      expect(listUsersCalls).toEqual([{ page: 1, perPage: 1000 }]);
+      expect(rows.map((r) => [r.userId, r.emailConfirmedAt])).toEqual([
+        ['a', '2026-01-02T00:00:00Z'],
+        ['b', null],
+        ['c', null],
+      ]);
+    });
+
+    it('con includeConfirmation=false no toca auth.admin (el selector de /conversations)', async () => {
+      mockProfilesByTenant = [
+        {
+          id: 'a',
+          tenant_id: 5,
+          email: 'a@test.com',
+          full_name: 'Ana',
+          role: 'owner',
+          is_active: true,
+          is_agency_admin: false,
+          invited_at: null,
+          created_at: '2026-01-01',
+        },
+      ];
+      const result = await listMembers({ tenantId: 5, includeConfirmation: false });
+      expect(result.ok).toBe(true);
+      expect(listUsersCalls).toEqual([]);
+      expect((result as { data: Array<{ emailConfirmedAt: string | null }> }).data[0]!.emailConfirmedAt).toBeNull();
     });
 
     it('rechaza si tenant no es del actor (no agency admin)', async () => {

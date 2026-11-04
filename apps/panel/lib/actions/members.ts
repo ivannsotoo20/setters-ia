@@ -56,6 +56,12 @@ function handleAuthOrError(err: unknown): { ok: false; error: string } {
 
 export async function listMembers(args: {
   tenantId: number;
+  /**
+   * Cargar `emailConfirmedAt` desde auth.users (admin API). Por defecto sí; las
+   * páginas que solo necesitan nombre/email/rol (p. ej. el selector de asignar
+   * en /conversations) pasan `false` y se ahorran la llamada (2026-11-04).
+   */
+  includeConfirmation?: boolean;
 }): Promise<ActionResult<MemberRow[]>> {
   try {
     await requireTenantRoleAtLeast({ tenantId: args.tenantId, minRole: 'viewer' });
@@ -87,11 +93,25 @@ export async function listMembers(args: {
 
     // Cargar email_confirmed_at de auth.users (admin API). Mejor esfuerzo —
     // si falla, dejamos pendientes como `null`.
-    if (userIds.length > 0) {
+    //
+    // 2026-11-04: antes era una llamada `getUserById` POR MIEMBRO, en serie,
+    // en cada carga de /conversations, /pipeline y /contacts. Ahora se pagina
+    // `listUsers` (una llamada por cada 1.000 usuarios del proyecto) y los
+    // callers que no muestran el estado de confirmación lo saltan con
+    // `includeConfirmation: false`.
+    if (args.includeConfirmation !== false && userIds.length > 0) {
       try {
-        for (const uid of userIds) {
-          const { data: u } = await supabase.auth.admin.getUserById(uid);
-          confirmedMap.set(uid, u?.user?.email_confirmed_at ?? null);
+        const wanted = new Set(userIds);
+        const perPage = 1000;
+        for (let page = 1; wanted.size > 0 && page <= 50; page++) {
+          const { data, error } = await supabase.auth.admin.listUsers({ page, perPage });
+          if (error || !data) break;
+          for (const u of data.users) {
+            if (!wanted.has(u.id)) continue;
+            confirmedMap.set(u.id, u.email_confirmed_at ?? null);
+            wanted.delete(u.id);
+          }
+          if (data.nextPage == null || data.users.length < perPage) break;
         }
       } catch {
         // best-effort

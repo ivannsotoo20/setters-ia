@@ -20,6 +20,7 @@ interface Props {
 const ALERT_FILTER_LABELS: Record<NonNullable<FilterParams['alert']> | 'none', string> = {
   awaiting_reply: 'Esperando respuesta: nadie les ha contestado',
   handoff_unattended: 'En tus manos sin respuesta desde hace más de 24 h',
+  inbound_unattended: 'Te escribieron y la IA no las atiende: nadie les ha contestado',
   none: 'Conversaciones de una alerta del dashboard',
 };
 

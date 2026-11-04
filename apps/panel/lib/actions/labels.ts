@@ -80,9 +80,17 @@ function isCollaboratorOrAbove(eff: { isAgencyAdmin: boolean; role: string }): b
 // listLabels
 // ===========================================================================
 
-export async function listLabels(): Promise<ActionResult<LabelRow[]>> {
+export async function listLabels(opts?: {
+  /**
+   * Cargar `conversationCount` / `activeRuleCount`. Por defecto sí (la página
+   * /labels los muestra). El selector de etiquetas de /conversations no los
+   * necesita y pasa `false`: se ahorra las consultas de recuento (2026-11-04).
+   */
+  withCounts?: boolean;
+}): Promise<ActionResult<LabelRow[]>> {
   const effective = await getEffectiveTenant();
   if (!effective) return { ok: false, error: 'unauthenticated' };
+  const withCounts = opts?.withCounts !== false;
 
   const supabase = getServiceRoleClient();
   const { data: labels, error } = await supabase
@@ -102,28 +110,33 @@ export async function listLabels(): Promise<ActionResult<LabelRow[]>> {
   const convCounts = new Map<number, number>();
   const ruleCounts = new Map<number, number>();
 
-  if (labelIds.length > 0) {
-    // Conversation count por label.
-    const { data: convRows } = await supabase
-      .from('conversation_labels')
-      .select('label_id')
-      .in('label_id', labelIds)
-      .eq('tenant_id', effective.tenantId);
-    for (const r of convRows ?? []) {
-      const id = Number((r as { label_id: number }).label_id);
-      convCounts.set(id, (convCounts.get(id) ?? 0) + 1);
-    }
-
-    // Active rule count por label.
-    const { data: ruleRows } = await supabase
-      .from('label_automation_rules')
-      .select('label_id')
-      .in('label_id', labelIds)
-      .eq('tenant_id', effective.tenantId)
-      .eq('is_active', true);
-    for (const r of ruleRows ?? []) {
-      const id = Number((r as { label_id: number }).label_id);
-      ruleCounts.set(id, (ruleCounts.get(id) ?? 0) + 1);
+  if (withCounts && labelIds.length > 0) {
+    // Recuentos con `count: 'exact', head: true` (sin traer filas), uno por
+    // etiqueta y en paralelo. Antes se bajaban TODAS las filas de
+    // conversation_labels del tenant para contarlas en JS, y PostgREST corta
+    // cada respuesta en 1.000: con el backfill de etiquetas de sistema (una
+    // por conversación) el recuento salía corto (2026-11-04).
+    const counted = await Promise.all(
+      labelIds.map(async (labelId) => {
+        const [conv, rule] = await Promise.all([
+          supabase
+            .from('conversation_labels')
+            .select('conversation_id', { count: 'exact', head: true })
+            .eq('tenant_id', effective.tenantId)
+            .eq('label_id', labelId),
+          supabase
+            .from('label_automation_rules')
+            .select('id', { count: 'exact', head: true })
+            .eq('tenant_id', effective.tenantId)
+            .eq('label_id', labelId)
+            .eq('is_active', true),
+        ]);
+        return { labelId, convCount: conv.count ?? 0, ruleCount: rule.count ?? 0 };
+      }),
+    );
+    for (const c of counted) {
+      convCounts.set(c.labelId, c.convCount);
+      ruleCounts.set(c.labelId, c.ruleCount);
     }
   }
 

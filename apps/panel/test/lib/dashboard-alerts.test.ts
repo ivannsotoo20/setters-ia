@@ -415,3 +415,39 @@ describe('computeAlerts — handoffs sin atender', () => {
     expect(computeAlerts({ ...baseInput(), unattendedHandoffs: none() })).toEqual([]);
   });
 });
+
+describe('computeAlerts — te escribieron y la IA no las atiende (2026-11-04)', () => {
+  it('1 persona → warning, en singular, con su conversación', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      inboundUnattended: { count: 1, hoursWaitingMax: 100, convIds: [5] },
+    });
+    expect(a).toHaveLength(1);
+    expect(a[0]!.type).toBe('inbound_unattended');
+    expect(a[0]!.severity).toBe('warning');
+    expect(a[0]!.message).toBe('1 persona te escribió y la IA no la atiende: nadie le ha contestado');
+    expect(a[0]!.convIds).toEqual([5]);
+  });
+
+  it('varias → plural', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      inboundUnattended: { count: 12, hoursWaitingMax: 900, convIds: Array.from({ length: 12 }, (_, i) => i + 1) },
+    });
+    expect(a[0]!.message).toBe('12 personas te escribieron y la IA no las atiende: nadie les ha contestado');
+  });
+
+  it('0 → sin alerta', () => {
+    expect(computeAlerts({ ...baseInput(), inboundUnattended: none() })).toEqual([]);
+  });
+
+  it('va detrás de "esperando respuesta" (critical) y por delante de un warning con menos conversaciones', () => {
+    const a = computeAlerts({
+      ...baseInput(),
+      awaitingReply: { count: 1, hoursWaitingMax: 3, convIds: [7] },
+      unattendedHandoffs: { count: 2, hoursWaitingMax: 30, convIds: [8, 9] },
+      inboundUnattended: { count: 6, hoursWaitingMax: 100, convIds: [1, 2, 3, 4, 5, 6] },
+    });
+    expect(a.map((x) => x.type)).toEqual(['awaiting_reply', 'inbound_unattended', 'handoff_unattended']);
+  });
+});

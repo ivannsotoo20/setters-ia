@@ -74,6 +74,26 @@ export async function materializeFollowupSequenceForConv(
 
   const supabase = getServiceRoleClient();
 
+  // 0. Config del tenant PRIMERO (2026-11-04): si los seguimientos automáticos
+  //    están apagados —el caso del tenant 7— no hay nada que materializar y se
+  //    sale sin cargar la conversación. Antes la config se leía después de la
+  //    conversación y cada apertura de chat pagaba esa consulta de más.
+  const { data: cfg } = await supabase
+    .from('tenant_followup_config')
+    .select(
+      `enabled, window_start_hour, window_end_hour, window_timezone,
+       max_followups_per_lead, intervals_hours,
+       auto_personalize, default_followup_text, materialize_lookahead_hours`,
+    )
+    .eq('tenant_id', eff.tenantId)
+    .maybeSingle();
+  if (!cfg || !cfg.enabled) {
+    return {
+      ok: true,
+      data: { materialized: 0, reason: 'auto-followups desactivados' },
+    };
+  }
+
   // 1. Cargar conv + canal
   const { data: conv } = await supabase
     .from('conversations')
@@ -103,22 +123,7 @@ export async function materializeFollowupSequenceForConv(
     return { ok: true, data: { materialized: 0, reason: 'canal no IG/FB' } };
   }
 
-  // 2. Cargar config
-  const { data: cfg } = await supabase
-    .from('tenant_followup_config')
-    .select(
-      `enabled, window_start_hour, window_end_hour, window_timezone,
-       max_followups_per_lead, intervals_hours,
-       auto_personalize, default_followup_text, materialize_lookahead_hours`,
-    )
-    .eq('tenant_id', eff.tenantId)
-    .maybeSingle();
-  if (!cfg || !cfg.enabled) {
-    return {
-      ok: true,
-      data: { materialized: 0, reason: 'auto-followups desactivados' },
-    };
-  }
+  // 2. (La config ya está cargada arriba, en el paso 0.)
 
   // 3. Skip si ya hay pending follow_up para esta conv (idempotente)
   const { count: pendingCount } = await supabase
