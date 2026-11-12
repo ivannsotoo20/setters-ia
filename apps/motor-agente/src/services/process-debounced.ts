@@ -268,6 +268,7 @@ export async function processDebounced(
   const mediaResult = await enrichMediaMessages({
     supabase,
     anthropic,
+    tenantId,
     conversationId,
     audioLanguage,
     groqApiKey: env.GROQ_API_KEY,

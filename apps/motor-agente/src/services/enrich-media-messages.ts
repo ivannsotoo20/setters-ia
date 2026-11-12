@@ -16,12 +16,25 @@
  *
  * Idempotencia: si una row ya tiene content poblado (ej, retry de turno previo),
  * se skipea automáticamente por el WHERE inicial.
+ *
+ * Registro en `llm_calls` (desde 2026-11-12): cada descripción de imagen deja
+ * una fila, también las que fallan después de llamar al modelo. Va con la clave
+ * del tenant y antes no quedaba rastro: el gasto de imágenes no aparecía en
+ * ningún sitio. El enum `llm_role` no tiene un valor propio; se usa
+ * `role='transcriber'` (el de "media → texto") con
+ * `request_payload.kind='image_description'` para distinguirlo. La
+ * transcripción de audio va por Groq, no por Anthropic, y no se registra aquí.
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { logLlmCall } from '@fyzon/agent-pipeline';
 import { logger } from '../lib/logger.js';
-import { describeImage, DescribeImageError } from '../lib/describe-image.js';
+import {
+  describeImage,
+  DescribeImageError,
+  type DescribeImageCallInfo,
+} from '../lib/describe-image.js';
 import {
   transcribeAudio,
   TranscribeAudioError,
@@ -31,6 +44,8 @@ import {
 export interface EnrichMediaInput {
   supabase: SupabaseClient;
   anthropic: Anthropic;
+  /** Tenant dueño de la conversación (para registrar en `llm_calls`). */
+  tenantId: number;
   conversationId: number;
   /** Idioma forzado por config del tenant ('es' / 'en' / 'auto'). */
   audioLanguage?: AudioLanguage;
@@ -141,6 +156,11 @@ export async function enrichMediaMessages(input: EnrichMediaInput): Promise<Enri
           anthropic: input.anthropic,
           fetchImpl: input.fetchImpl,
         });
+        await logImageCall(input, row.id, {
+          status: 'success',
+          call: r,
+          descriptionChars: r.text.length,
+        });
         const display = `[Imagen del lead]: ${r.text}`;
         await persistResult(input.supabase, row.id, display, r.text);
         imageCount += 1;
@@ -166,6 +186,17 @@ export async function enrichMediaMessages(input: EnrichMediaInput): Promise<Enri
         failedCount += 1;
       }
     } catch (err) {
+      // La llamada al modelo se hizo (o se intentó) y falló: queda registrada.
+      // Los fallos de descarga no llevan `call` y no tocan `llm_calls`.
+      if (err instanceof DescribeImageError && err.call) {
+        await logImageCall(input, row.id, {
+          status: 'error',
+          call: err.call,
+          errorMessage: `${err.reason}: ${err.message}`,
+        });
+        // En `empty_response` los tokens se cobraron igual.
+        costUsd += err.call.costUsd;
+      }
       const reason =
         err instanceof TranscribeAudioError
           ? `audio_${err.reason}`
@@ -229,6 +260,51 @@ async function persistFallback(
     .from('conversation_messages')
     .update({ content: placeholder })
     .eq('id', messageId);
+}
+
+/**
+ * Registro best-effort en `llm_calls` de una descripción de imagen. Nunca
+ * lanza: un fallo al registrar no puede dejar la imagen sin procesar.
+ */
+async function logImageCall(
+  input: EnrichMediaInput,
+  messageId: number,
+  p: {
+    status: 'success' | 'error';
+    call: DescribeImageCallInfo;
+    descriptionChars?: number;
+    errorMessage?: string;
+  },
+): Promise<void> {
+  try {
+    await logLlmCall({
+      supabase: input.supabase,
+      tenantId: input.tenantId,
+      conversationId: input.conversationId,
+      role: 'transcriber',
+      model: p.call.model,
+      status: p.status,
+      usage: {
+        tokensInUncached: p.call.inputTokens,
+        tokensOut: p.call.outputTokens,
+        costUsd: p.call.costUsd,
+        latencyMs: p.call.latencyMs,
+      },
+      errorMessage: p.errorMessage?.slice(0, 500),
+      requestPayload: {
+        kind: 'image_description',
+        message_id: messageId,
+        media_type: p.call.mediaType,
+      },
+      responsePayload:
+        p.status === 'success' ? { description_chars: p.descriptionChars ?? 0 } : {},
+    });
+  } catch (err) {
+    logger.warn(
+      { conversationId: input.conversationId, messageId, err: (err as Error).message },
+      'enrichMediaMessages: llm_calls insert failed (non-fatal)',
+    );
+  }
 }
 
 function zeroResult(): EnrichMediaResult {

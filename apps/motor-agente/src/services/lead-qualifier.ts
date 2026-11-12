@@ -1,5 +1,6 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { calculateCostUsd } from '@fyzon/agent-pipeline';
 import { inferCountryFromPhone, type PhoneCountry } from '../lib/phone-country.js';
 import { findWholeWordTerm, normalizeText } from '../lib/text-match.js';
 import { evaluatePrefixAgainstAllowlist, UNKNOWN_COUNTRY_ISO } from '../lib/zone-policy.js';
@@ -696,10 +697,18 @@ async function logQualifierCall(input: QualifyInput, p: LogParams): Promise<void
       status: p.status,
       tokens_in: p.usage?.input_tokens ?? null,
       tokens_out: p.usage?.output_tokens ?? null,
-      // Sonnet 5: $3/M in + $15/M out, sin caché en esta llamada.
+      // Tabla única de precios (packages/agent-pipeline/src/cost.ts); sin caché
+      // en esta llamada. Hasta 2026-11-12 iba escrito a mano a $3/$15 y el
+      // registro salía un 50% por encima de la factura de Sonnet 5.
       cost:
         p.usage != null
-          ? ((p.usage.input_tokens ?? 0) * 3 + (p.usage.output_tokens ?? 0) * 15) / 1_000_000
+          ? calculateCostUsd({
+              model: QUALIFIER_MODEL,
+              tokensInUncached: p.usage.input_tokens ?? 0,
+              tokensInCacheRead: 0,
+              tokensInCacheWrite: 0,
+              tokensOut: p.usage.output_tokens ?? 0,
+            })
           : null,
       latency_ms: p.latencyMs,
       error_message: p.errorMessage ?? null,

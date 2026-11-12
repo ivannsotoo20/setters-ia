@@ -29,8 +29,8 @@ describe('resolvePriceForModel', () => {
   });
 
   it('does not confuse sonnet-5 with sonnet-4-5', () => {
-    expect(resolvePriceForModel('claude-sonnet-5')?.output).toBe(15);
-    expect(resolvePriceForModel('claude-sonnet-5-20260101')?.inputUncached).toBe(3);
+    expect(resolvePriceForModel('claude-sonnet-5')?.output).toBe(10);
+    expect(resolvePriceForModel('claude-sonnet-5-20260101')?.inputUncached).toBe(2);
     // La heurística de sonnet-5 no debe tragarse los ids de sonnet-4-5.
     expect(resolvePriceForModel('claude-sonnet-4-5')).toBe(
       DEFAULT_PRICE_TABLE['claude-sonnet-4-5'],
@@ -96,6 +96,34 @@ describe('calculateCostUsd', () => {
       priceTable: customTable,
     });
     expect(cost).toBe(1);
+  });
+
+  // 2026-11-12: la fila iba a $3/$15 por una subida anunciada para el 1-sep que
+  // Anthropic no aplicó; $2/$10 es la tarifa estándar. Con $3/$15 el coste de
+  // cada llamada a Sonnet 5 en `llm_calls` salía un 50% por encima de la factura.
+  it('Sonnet 5 rates match the public pricing page ($2/$10)', () => {
+    const p = DEFAULT_PRICE_TABLE['claude-sonnet-5'];
+    expect(p?.inputUncached).toBe(2);
+    expect(p?.cacheRead).toBeCloseTo(0.2, 10);
+    expect(p?.cacheWrite).toBeCloseTo(2.5, 10);
+    expect(p?.cacheWrite1h).toBeCloseTo(4, 10);
+    expect(p?.output).toBe(10);
+  });
+
+  it('computes a Sonnet 5 Generator turn with a 1h cache write', () => {
+    // Turno típico tras avanzar de fase: 2k frescos, 14k leídos de caché,
+    // 4k escritos con TTL 1h, 300 de salida.
+    const cost = calculateCostUsd({
+      model: 'claude-sonnet-5',
+      tokensInUncached: 2_000,
+      tokensInCacheRead: 14_000,
+      tokensInCacheWrite: 4_000,
+      tokensOut: 300,
+      cacheTtl: '1h',
+    });
+    // 2000*2 + 14000*0.2 + 4000*4 + 300*10 = 4000 + 2800 + 16000 + 3000
+    // = 25800 micro-USD
+    expect(cost).toBeCloseTo(0.0258, 6);
   });
 
   it('default price table has expected Sonnet 4.5 rates', () => {

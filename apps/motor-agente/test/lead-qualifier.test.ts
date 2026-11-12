@@ -145,7 +145,8 @@ describe('qualifyFormLead — evaluador IA', () => {
     const row = supabase.inserted[0] as Record<string, unknown>;
     expect(row.role).toBe('qualifier');
     expect(row.tenant_id).toBe(7);
-    expect(row.cost).toBeCloseTo((900 * 3 + 80 * 15) / 1_000_000, 8);
+    // Sonnet 5 a $2/$10 (antes $3/$15 a mano, un 50% por encima de la factura).
+    expect(row.cost).toBeCloseTo((900 * 2 + 80 * 10) / 1_000_000, 8);
   });
 
   it('el evaluador caído NO pierde el lead: fail-open con aviso', async () => {

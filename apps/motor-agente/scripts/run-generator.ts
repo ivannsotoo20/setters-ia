@@ -16,7 +16,7 @@
  *   --message <texto>        (requerido) último mensaje del lead
  *   --history "a|user;b|assistant"  histórico previo separado por ';' y rol con '|'
  *   --conversation <id>      conversation_id para registrar en llm_calls (default null)
- *   --model <id>             override modelo (default claude-sonnet-4-5)
+ *   --model <id>             override modelo (default DEFAULT_GENERATOR_MODEL, hoy claude-sonnet-5)
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { runGenerator, DEFAULT_GENERATOR_MODEL } from '@fyzon/agent-pipeline';

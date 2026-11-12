@@ -1,15 +1,22 @@
 /**
  * Claude Sonnet vision — descripción de imágenes inbound (Bloque D, 2026-05-08).
  *
- * Usa el Anthropic SDK ya inicializado (`getAnthropic()`) para reaprovechar
- * la API key + cliente. La imagen se descarga del media_url, se codifica
- * base64 y se envía como content block multimodal a Sonnet 4.5.
+ * Recibe el cliente Anthropic del caller (en el motor, `getAnthropicForTenant`:
+ * la llamada va contra la clave del tenant si tiene una). La imagen se descarga
+ * del media_url, se codifica base64 y se envía como content block multimodal.
  *
- * Modelo: `claude-sonnet-4-5` (alias estable). Sirve para vision sin needing
- * un modelo separado.
+ * Modelo: `claude-sonnet-5`, el mismo del Generator. Hasta 2026-11-12 era
+ * `claude-sonnet-4-5`, que Anthropic retira el 2026-11-30: a partir de ese día
+ * cada imagen habría caído al placeholder "no se pudo procesar".
  *
- * Coste: input ~$3/M tokens (incluye los tokens de imagen, ~1.5K tokens por
- * imagen estándar de DM IG) + output. Total típico ~0.005-0.010 USD/imagen.
+ * Pensamiento APAGADO explícito, igual que el Generator: en Sonnet 5 omitir
+ * `thinking` activa el pensamiento adaptativo (más tokens de salida, más
+ * latencia) y para describir una foto no aporta nada. OJO si se cambia el
+ * modelo: en Sonnet 5.5 y Opus 5.5 `{ type: 'disabled' }` devuelve 400.
+ *
+ * Coste: $2/M input (incluye los tokens de imagen, ~1.5K por imagen estándar de
+ * un DM) + $10/M output. Total típico ~0.003-0.006 USD/imagen. El caller lo
+ * registra en `llm_calls` (ver `enrich-media-messages.ts`).
  */
 
 import type Anthropic from '@anthropic-ai/sdk';
@@ -17,7 +24,7 @@ import { calculateCostUsd } from '@fyzon/agent-pipeline';
 
 const DEFAULT_MAX_BYTES = 5 * 1024 * 1024; // Claude vision limit
 const DEFAULT_DOWNLOAD_TIMEOUT_MS = 30_000;
-const DEFAULT_MODEL = 'claude-sonnet-4-5';
+export const DESCRIBE_IMAGE_MODEL = 'claude-sonnet-5';
 const DEFAULT_MAX_TOKENS_OUT = 500;
 
 const DEFAULT_PROMPT_HINT =
@@ -30,7 +37,7 @@ export interface DescribeImageInput {
   anthropic: Anthropic;
   /** Override del prompt hint. */
   promptHint?: string;
-  /** Override modelo (default `claude-sonnet-4-5`). */
+  /** Override modelo (default `DESCRIBE_IMAGE_MODEL`). */
   model?: string;
   /** Bytes máximos al descargar (default 5MB). */
   maxBytes?: number;
@@ -47,6 +54,8 @@ export interface DescribeImageResult {
   costUsd: number;
   model: string;
   mediaType: string;
+  /** Duración de la llamada a Anthropic (sin contar la descarga). */
+  latencyMs: number;
 }
 
 export type DescribeImageErrorReason =
@@ -57,19 +66,36 @@ export type DescribeImageErrorReason =
   | 'anthropic_error'
   | 'empty_response';
 
+/**
+ * Datos de la llamada a Anthropic cuando el error ocurre DESPUÉS de hacerla
+ * (`anthropic_error`, `empty_response`), para que el caller la registre en
+ * `llm_calls`. En `empty_response` los tokens se cobraron igual. Los errores de
+ * descarga no llegan a llamar al modelo y no lo llevan.
+ */
+export interface DescribeImageCallInfo {
+  model: string;
+  mediaType: string;
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
+}
+
 export class DescribeImageError extends Error {
   readonly reason: DescribeImageErrorReason;
-  constructor(reason: DescribeImageErrorReason, message: string) {
+  readonly call?: DescribeImageCallInfo;
+  constructor(reason: DescribeImageErrorReason, message: string, call?: DescribeImageCallInfo) {
     super(message);
     this.name = 'DescribeImageError';
     this.reason = reason;
+    this.call = call;
   }
 }
 
 export async function describeImage(input: DescribeImageInput): Promise<DescribeImageResult> {
   const fetchImpl = input.fetchImpl ?? fetch;
   const maxBytes = input.maxBytes ?? DEFAULT_MAX_BYTES;
-  const model = input.model ?? DEFAULT_MODEL;
+  const model = input.model ?? DESCRIBE_IMAGE_MODEL;
   const promptHint = input.promptHint ?? DEFAULT_PROMPT_HINT;
 
   // 1. Descargar imagen
@@ -89,11 +115,13 @@ export async function describeImage(input: DescribeImageInput): Promise<Describe
   }
 
   // 2. Llamada Anthropic multimodal
+  const startedAt = Date.now();
   let response;
   try {
     response = await input.anthropic.messages.create({
       model,
       max_tokens: DEFAULT_MAX_TOKENS_OUT,
+      thinking: { type: 'disabled' },
       messages: [
         {
           role: 'user',
@@ -115,15 +143,17 @@ export async function describeImage(input: DescribeImageInput): Promise<Describe
     throw new DescribeImageError(
       'anthropic_error',
       `Anthropic vision call failed: ${(err as Error).message}`,
+      {
+        model,
+        mediaType,
+        latencyMs: Date.now() - startedAt,
+        inputTokens: 0,
+        outputTokens: 0,
+        costUsd: 0,
+      },
     );
   }
-
-  // Extraer texto de la primera content block tipo text
-  const textBlock = response.content.find((b) => b.type === 'text');
-  const text = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : '';
-  if (text.length === 0) {
-    throw new DescribeImageError('empty_response', 'Anthropic returned no text content');
-  }
+  const latencyMs = Date.now() - startedAt;
 
   const inputTokens = response.usage?.input_tokens ?? 0;
   const outputTokens = response.usage?.output_tokens ?? 0;
@@ -135,6 +165,20 @@ export async function describeImage(input: DescribeImageInput): Promise<Describe
     tokensOut: outputTokens,
   });
 
+  // Extraer texto de la primera content block tipo text
+  const textBlock = response.content.find((b) => b.type === 'text');
+  const text = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : '';
+  if (text.length === 0) {
+    throw new DescribeImageError('empty_response', 'Anthropic returned no text content', {
+      model,
+      mediaType,
+      latencyMs,
+      inputTokens,
+      outputTokens,
+      costUsd,
+    });
+  }
+
   return {
     text,
     inputTokens,
@@ -142,6 +186,7 @@ export async function describeImage(input: DescribeImageInput): Promise<Describe
     costUsd,
     model,
     mediaType,
+    latencyMs,
   };
 }
 

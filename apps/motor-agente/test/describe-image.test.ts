@@ -53,9 +53,33 @@ describe('describeImage', () => {
     expect(r.inputTokens).toBe(1200);
     expect(r.outputTokens).toBe(30);
     expect(r.mediaType).toBe('image/jpeg');
-    expect(r.model).toBe('claude-sonnet-4-5');
-    // Sonnet 4.5: input $3/M + output $15/M
-    expect(r.costUsd).toBeCloseTo((1200 * 3 + 30 * 15) / 1_000_000, 8);
+    // Sonnet 4.5 se retira el 2026-11-30; desde 2026-11-12 va con Sonnet 5.
+    expect(r.model).toBe('claude-sonnet-5');
+    // Sonnet 5: input $2/M + output $10/M
+    expect(r.costUsd).toBeCloseTo((1200 * 2 + 30 * 10) / 1_000_000, 8);
+    expect(r.latencyMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('sends the request with Sonnet 5 and thinking explicitly disabled', async () => {
+    // En Sonnet 5 omitir `thinking` activa el pensamiento adaptativo: más
+    // tokens y más latencia para describir una foto. Tiene que ir apagado.
+    const calls: Array<Record<string, unknown>> = [];
+    const anthropic = {
+      messages: {
+        create: async (req: Record<string, unknown>) => {
+          calls.push(req);
+          return { content: [{ type: 'text', text: 'ok' }], usage: { input_tokens: 10, output_tokens: 2 } };
+        },
+      },
+    } as unknown as import('@anthropic-ai/sdk').default;
+    await describeImage({
+      url: 'https://media/photo.jpg',
+      anthropic,
+      fetchImpl: makeDownloadFetch({ contentType: 'image/jpeg' }),
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.model).toBe('claude-sonnet-5');
+    expect(calls[0]!.thinking).toEqual({ type: 'disabled' });
   });
 
   it('falls back to URL extension when content-type missing', async () => {
@@ -121,6 +145,28 @@ describe('describeImage', () => {
     await expect(
       describeImage({ url: 'https://x/y.jpg', anthropic, fetchImpl }),
     ).rejects.toMatchObject({ reason: 'empty_response' });
+  });
+
+  it('empty_response carries the billed tokens so the caller can log them', async () => {
+    const fetchImpl = makeDownloadFetch({ contentType: 'image/jpeg' });
+    const anthropic = mockAnthropic({ content: [], usage: { input_tokens: 1500, output_tokens: 0 } });
+    const err = await describeImage({ url: 'https://x/y.jpg', anthropic, fetchImpl }).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(DescribeImageError);
+    const call = (err as DescribeImageError).call;
+    expect(call?.model).toBe('claude-sonnet-5');
+    expect(call?.inputTokens).toBe(1500);
+    expect(call?.costUsd).toBeCloseTo((1500 * 2) / 1_000_000, 8);
+  });
+
+  it('download errors carry no call info (the model was never called)', async () => {
+    const fetchImpl = makeDownloadFetch({ status: 404 });
+    const anthropic = mockAnthropic({ content: [{ type: 'text', text: 'x' }] });
+    const err = await describeImage({ url: 'https://x/missing.jpg', anthropic, fetchImpl }).catch(
+      (e: unknown) => e,
+    );
+    expect((err as DescribeImageError).call).toBeUndefined();
   });
 });
 

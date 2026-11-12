@@ -106,7 +106,7 @@ describe('enrichMediaMessages — filas con content vacío', () => {
       { id: 1, content_type: 'file', media_url: 'https://lookaside.fbsbx.com/a', content: '' },
       { id: 2, content_type: 'file', media_url: 'https://lookaside.fbsbx.com/b', content: null },
     ]);
-    const r = await enrichMediaMessages({ supabase: sb, anthropic: {} as any, conversationId: 10788 });
+    const r = await enrichMediaMessages({ supabase: sb, anthropic: {} as any, tenantId: 7, conversationId: 10788 });
     expect(sb.filters).toContain('or:content.is.null,content.eq.');
     expect(sb.filters.some((f: string) => f.startsWith('is:content'))).toBe(false);
     // Las dos filas reciben placeholder (tipo file: sin handler todavía).

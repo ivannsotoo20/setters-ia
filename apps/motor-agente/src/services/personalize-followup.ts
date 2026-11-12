@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type Anthropic from '@anthropic-ai/sdk';
+import { calculateCostUsd, logLlmCall } from '@fyzon/agent-pipeline';
 
 /**
  * Sprint Iota.1.d + Iota.2 — Personalización IA del followup justo antes
@@ -14,6 +15,13 @@ import type Anthropic from '@anthropic-ai/sdk';
  *    el setter en tiempo real.
  *
  * Modelo: Haiku 4.5.
+ *
+ * Registro en `llm_calls` (desde 2026-11-12): cada llamada deja una fila, con
+ * éxito o con error. Va con la clave del tenant (`getAnthropicForTenant` en
+ * `outbound-sender.ts`) y antes no quedaba rastro. El enum `llm_role` no tiene
+ * valor propio; se usa `role='generator'` con
+ * `request_payload.kind='followup_personalization'` para distinguirlo del
+ * Generator del turno.
  */
 
 const HAIKU_MODEL = 'claude-haiku-4-5';
@@ -225,8 +233,11 @@ export async function personalizeFollowupMessage(
   const voice = await loadVoiceContext(input.supabase, Number(conv.tenant_id));
 
   // 4. Llamada a Haiku
+  const tenantId = Number(conv.tenant_id);
+  const startedAt = Date.now();
+  let response: Anthropic.Message;
   try {
-    const response = await input.anthropic.messages.create({
+    response = await input.anthropic.messages.create({
       model: HAIKU_MODEL,
       max_tokens: MAX_OUTPUT_TOKENS,
       system: buildSystemPrompt(voice),
@@ -242,31 +253,99 @@ export async function personalizeFollowupMessage(
         },
       ],
     });
-
-    const blocks = response.content;
-    const textBlock = blocks.find((b) => b.type === 'text');
-    if (!textBlock || textBlock.type !== 'text') {
-      return { ok: false, error: 'respuesta IA sin contenido text' };
-    }
-
-    let message = textBlock.text.trim();
-    const startsWithQuote = /^["'“”‘’]/.test(message);
-    const endsWithQuote = /["'“”‘’]$/.test(message);
-    if (startsWithQuote && endsWithQuote) {
-      message = message.slice(1, -1).trim();
-    }
-    message = message.replace(/^(mensaje|texto|message|text)\s*:\s*/i, '').trim();
-    if (!message) return { ok: false, error: 'mensaje generado vacío' };
-    if (message.length > 600) {
-      message = message.slice(0, 597).trim() + '...';
-    }
-
-    const inputTokens = response.usage.input_tokens;
-    const outputTokens = response.usage.output_tokens;
-    const costUsd = (inputTokens / 1_000_000) * 1 + (outputTokens / 1_000_000) * 5;
-
-    return { ok: true, message, costUsd };
   } catch (err) {
-    return { ok: false, error: `Anthropic API: ${(err as Error).message}` };
+    const error = `Anthropic API: ${(err as Error).message}`;
+    await logFollowupCall(input, {
+      tenantId,
+      status: 'error',
+      latencyMs: Date.now() - startedAt,
+      inputTokens: 0,
+      outputTokens: 0,
+      errorMessage: error,
+    });
+    return { ok: false, error };
   }
+  const latencyMs = Date.now() - startedAt;
+  const inputTokens = response.usage?.input_tokens ?? 0;
+  const outputTokens = response.usage?.output_tokens ?? 0;
+
+  const blocks = response.content;
+  const textBlock = blocks.find((b) => b.type === 'text');
+  let message = textBlock && textBlock.type === 'text' ? textBlock.text.trim() : '';
+  const startsWithQuote = /^["'“”‘’]/.test(message);
+  const endsWithQuote = /["'“”‘’]$/.test(message);
+  if (startsWithQuote && endsWithQuote) {
+    message = message.slice(1, -1).trim();
+  }
+  message = message.replace(/^(mensaje|texto|message|text)\s*:\s*/i, '').trim();
+  if (message.length > 600) {
+    message = message.slice(0, 597).trim() + '...';
+  }
+
+  // La llamada se cobró aunque el texto no sirva: se registra en los dos casos.
+  const error = !textBlock
+    ? 'respuesta IA sin contenido text'
+    : !message
+      ? 'mensaje generado vacío'
+      : null;
+  const costUsd = await logFollowupCall(input, {
+    tenantId,
+    status: error ? 'error' : 'success',
+    latencyMs,
+    inputTokens,
+    outputTokens,
+    messageChars: message.length,
+    errorMessage: error ?? undefined,
+  });
+
+  if (error) return { ok: false, error };
+  return { ok: true, message, costUsd };
+}
+
+/**
+ * Registro best-effort en `llm_calls`. Devuelve el coste calculado para que el
+ * caller no lo recalcule. Nunca lanza: un fallo al registrar no puede tumbar el
+ * envío del seguimiento.
+ */
+async function logFollowupCall(
+  input: PersonalizeInput,
+  p: {
+    tenantId: number;
+    status: 'success' | 'error';
+    latencyMs: number;
+    inputTokens: number;
+    outputTokens: number;
+    messageChars?: number;
+    errorMessage?: string;
+  },
+): Promise<number> {
+  const costUsd = calculateCostUsd({
+    model: HAIKU_MODEL,
+    tokensInUncached: p.inputTokens,
+    tokensInCacheRead: 0,
+    tokensInCacheWrite: 0,
+    tokensOut: p.outputTokens,
+  });
+  try {
+    await logLlmCall({
+      supabase: input.supabase,
+      tenantId: p.tenantId,
+      conversationId: input.conversationId,
+      role: 'generator',
+      model: HAIKU_MODEL,
+      status: p.status,
+      usage: {
+        tokensInUncached: p.inputTokens,
+        tokensOut: p.outputTokens,
+        costUsd,
+        latencyMs: p.latencyMs,
+      },
+      errorMessage: p.errorMessage?.slice(0, 500),
+      requestPayload: { kind: 'followup_personalization' },
+      responsePayload: p.status === 'success' ? { message_chars: p.messageChars ?? 0 } : {},
+    });
+  } catch {
+    // El registro nunca tumba el seguimiento.
+  }
+  return costUsd;
 }

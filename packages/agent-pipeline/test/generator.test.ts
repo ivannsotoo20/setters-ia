@@ -140,11 +140,11 @@ describe('runGenerator', () => {
     expect(out.usage.tokensInUncached).toBe(50);
     expect(out.usage.tokensInCacheRead).toBe(14_000);
     expect(out.usage.tokensOut).toBe(80);
-    // Sonnet 5: 50*3 + 14000*0.3 + 80*15 = 150 + 4200 + 1200 = 5550 micro-USD.
-    // El mismo turno costaba 0.00185 con Haiku 4.5: exactamente 3× más caro, y
-    // eso ANTES de contar que el tokenizador de Sonnet 5 mide ~35% más tokens
-    // para el mismo prompt. El coste real por turno ronda 5×.
-    expect(out.usage.costUsd).toBeCloseTo(0.00555, 5);
+    // Sonnet 5 ($2/$10): 50*2 + 14000*0.2 + 80*10 = 100 + 2800 + 800 = 3700
+    // micro-USD. El mismo turno costaba 0.00185 con Haiku 4.5: exactamente 2×
+    // más caro, y eso ANTES de contar que el tokenizador de Sonnet 5 mide ~35%
+    // más tokens para el mismo prompt.
+    expect(out.usage.costUsd).toBeCloseTo(0.0037, 5);
     expect(out.llmCallId).toBe(42);
   });
 

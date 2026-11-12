@@ -1,8 +1,9 @@
 /**
  * Cálculo de coste de llamadas a Anthropic.
  *
- * Tabla de precios (USD por millón de tokens) según el catálogo público de Anthropic
- * en oct-2025. Mantener sincronizado cuando Anthropic ajuste pricing.
+ * Tabla de precios (USD por millón de tokens) según la página pública de precios
+ * de Anthropic (https://platform.claude.com/docs/en/about-claude/pricing),
+ * revisada el 2026-11-12. Mantener sincronizado cuando Anthropic ajuste pricing.
  *
  * El cliente puede sobreescribir `priceTable` para tarifas personalizadas
  * (clientes empresariales o tests).
@@ -28,19 +29,21 @@ export interface ModelPriceUsdPerMTokens {
 }
 
 export const DEFAULT_PRICE_TABLE: Record<string, ModelPriceUsdPerMTokens> = {
-  // Sonnet 5 — modelo del Generator desde 2026-08-09.
+  // Sonnet 5 — modelo del Generator desde 2026-08-09 (y del cualificador de
+  // formularios y de la descripción de imágenes).
   //
-  // Tarifa ESTÁNDAR ($3/$15). Anthropic aplica una tarifa de lanzamiento más
-  // barata ($2/$10) hasta el 2026-08-31; se usa la estándar a propósito para
-  // no subestimar el coste a partir de septiembre. Mientras dure el descuento
-  // el registro va ligeramente por encima del cargo real, que es el lado
-  // correcto por el que equivocarse.
+  // $2/$10. Anthropic la anunció como tarifa de lanzamiento hasta el
+  // 2026-08-31 con subida prevista a $3/$15 el 1-sep, pero la subida NO llegó:
+  // la página de precios dice que $2/$10 «is now the standard price»
+  // (comprobado el 2026-11-12). Hasta esa fecha esta fila iba a $3/$15, así que
+  // todo el histórico de `llm_calls` con Sonnet 5 anterior al cambio lleva el
+  // coste inflado un 50% (input, output y las tres tarifas de caché).
   'claude-sonnet-5': {
-    inputUncached: 3.0,
-    cacheRead: 0.3,
-    cacheWrite: 3.75,
-    cacheWrite1h: 6.0,
-    output: 15.0,
+    inputUncached: 2.0,
+    cacheRead: 0.2,
+    cacheWrite: 2.5,
+    cacheWrite1h: 4.0,
+    output: 10.0,
   },
   // Sonnet 4.5 (claude-sonnet-4-5-20250929 / claude-sonnet-4-5-latest)
   'claude-sonnet-4-5': {
