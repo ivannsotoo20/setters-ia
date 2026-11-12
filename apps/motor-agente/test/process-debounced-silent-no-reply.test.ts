@@ -17,6 +17,11 @@ const runPipelineMock = vi.fn();
 const loadHistoryMock = vi.fn();
 const enqueueNotificationMock = vi.fn();
 const completePipelineRunMock = vi.fn();
+const turnCapMock = vi.fn();
+
+vi.mock('../src/services/spend-guard.js', () => ({
+  enforceConversationTurnCap: (...args: unknown[]) => turnCapMock(...args),
+}));
 
 vi.mock('@fyzon/agent-pipeline', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fyzon/agent-pipeline')>();
@@ -147,6 +152,21 @@ beforeEach(() => {
   ]);
   enqueueNotificationMock.mockReset().mockResolvedValue({ ok: true, id: 1 });
   completePipelineRunMock.mockReset().mockResolvedValue(undefined);
+  turnCapMock.mockReset().mockResolvedValue({ capped: false, turns: 3 });
+});
+
+describe('processDebounced — freno por conversación (spend-guard)', () => {
+  it('con el tope de turnos alcanzado no llama al modelo', async () => {
+    turnCapMock.mockResolvedValue({ capped: true, turns: 40 });
+    const { supabase } = makeFakeSupabase('active');
+
+    const out = await processDebounced({ supabase, anthropic: {} as any }, 15128);
+
+    expect(runPipelineMock).not.toHaveBeenCalled();
+    expect(out.skipped).toBe(true);
+    expect(out.reason).toMatch(/tope de \d+ turnos en 24 h/);
+    expect(turnCapMock.mock.calls[0]![0]).toMatchObject({ tenantId: 7, conversationId: 15128 });
+  });
 });
 
 describe('processDebounced — no contestar en una conversación cerrada', () => {

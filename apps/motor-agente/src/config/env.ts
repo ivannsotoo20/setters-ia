@@ -157,6 +157,25 @@ const envSchema = z.object({
     .transform((v) => v !== 'false' && v !== '0')
     .default('true'),
   SILENT_AI_THRESHOLD_MINUTES: z.coerce.number().int().positive().default(15),
+  /**
+   * 2026-11-12 — Frenos de gasto (services/spend-guard.ts), tras los bucles de
+   * las conversaciones 15128 y 14378 del tenant 7. Medido sobre 30 días de
+   * Tania sin esos bucles: la conversación real más larga tuvo 26 turnos en 24 h
+   * (p99 22) y su hora más cara costó 1,41 $ (p99 0,93 $).
+   *   - CONVERSATION_MAX_AI_TURNS_24H: turnos del setter por conversación en 24 h
+   *     antes de pausar esa conversación y avisar.
+   *   - SPEND_ALERT_USD_PER_HOUR / SPEND_PAUSE_USD_PER_HOUR: gasto de un cliente
+   *     en la última hora (sin simulaciones) para avisar / apagar su IA.
+   *   - SPEND_GUARD_ENABLED: `false` apaga el freno por cliente sin desplegar
+   *     (el de conversación se relaja subiendo su tope).
+   */
+  SPEND_GUARD_ENABLED: z
+    .string()
+    .transform((v) => v !== 'false' && v !== '0')
+    .default('true'),
+  CONVERSATION_MAX_AI_TURNS_24H: z.coerce.number().int().positive().default(40),
+  SPEND_ALERT_USD_PER_HOUR: z.coerce.number().positive().default(3),
+  SPEND_PAUSE_USD_PER_HOUR: z.coerce.number().positive().default(8),
 });
 
 const parsed = envSchema.safeParse(process.env);

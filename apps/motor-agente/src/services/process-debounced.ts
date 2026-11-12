@@ -64,6 +64,7 @@ import { pickResidenceAnswer } from './lead-qualifier.js';
  */
 const RESIDENCE_LABEL = /vives|pa[ií]s|residencia|resides/i;
 import { tenantHasLinkedCalendar } from '../lib/linked-calendar.js';
+import { enforceConversationTurnCap } from './spend-guard.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -172,6 +173,30 @@ export async function processDebounced(
       phase: currentPhase,
       skipped: true,
       reason: 'interruptor global apagado (tenant_configs.ai_enabled=false)',
+    };
+  }
+
+  // 1.7. Freno por conversación (2026-11-12, `services/spend-guard.ts`): pasado
+  // el tope de turnos en 24 h, la IA se pausa en esta conversación y se avisa a
+  // los admins. Cubre los bucles en los que cada turno sale bien (un contestador
+  // automático al otro lado), que el tope de reintentos no ve.
+  const turnCap = await enforceConversationTurnCap({
+    supabase,
+    tenantId,
+    conversationId,
+    maxTurns: env.CONVERSATION_MAX_AI_TURNS_24H,
+  });
+  if (turnCap.capped) {
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: 0,
+      totalLatencyMs: 0,
+      pipelineStatus: 'skipped',
+      phase: currentPhase,
+      skipped: true,
+      reason: `tope de ${env.CONVERSATION_MAX_AI_TURNS_24H} turnos en 24 h (${turnCap.turns}): IA pausada en esta conversación y aviso a los admins`,
     };
   }
 

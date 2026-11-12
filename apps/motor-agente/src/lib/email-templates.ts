@@ -411,6 +411,62 @@ function renderAiSilent(args: RenderArgs): RenderedEmail {
   };
 }
 
+/**
+ * Frenos de gasto y turnos abandonados (2026-11-12): `spend_spike`,
+ * `conversation_turn_cap` (services/spend-guard.ts) y `ai_turn_abandoned`
+ * (services/debounce-failure.ts). El payload trae `what_happened` en claro.
+ */
+const GUARD_TITLES: Record<string, (p: Record<string, unknown>) => { label: string; subject: string }> = {
+  spend_spike: (p) => ({
+    label: p.action === 'paused' ? 'IA apagada por gasto' : 'Gasto alto',
+    subject:
+      p.action === 'paused'
+        ? `IA APAGADA por gasto: ${String(p.spend_last_hour_usd ?? '?')} $ en la última hora`
+        : `Gasto alto del setter: ${String(p.spend_last_hour_usd ?? '?')} $ en la última hora`,
+  }),
+  conversation_turn_cap: (p) => ({
+    label: 'Tope de turnos',
+    subject: `Conversación #${String(p.conversation_id ?? '?')} pausada: ${String(p.turns_24h ?? '?')} turnos en 24 h`,
+  }),
+  ai_turn_abandoned: (p) => ({
+    label: 'Turno abandonado',
+    subject: `La IA no pudo responder en la conversación #${String(p.conversation_id ?? '?')} tras ${String(p.attempts ?? '?')} intentos`,
+  }),
+};
+
+function renderGuardAlert(kind: string, args: RenderArgs): RenderedEmail {
+  const p = args.payload;
+  const { label, subject: core } = GUARD_TITLES[kind]!(p);
+  const subject = `[Fyzon] ${core} · ${args.tenantName}`;
+  const conversationId = Number(p.conversation_id);
+  const hasConversation = Number.isFinite(conversationId) && conversationId > 0;
+  const body = `<p style="margin:0 0 14px 0;color:#374151;font-size:15px;line-height:1.65;">${esc(
+    String(p.what_happened ?? ''),
+  )}</p>
+${field('Gasto última hora (USD)', p.spend_last_hour_usd)}
+${field('Umbral de aviso (USD/h)', p.alert_usd_per_hour)}
+${field('Umbral de apagado (USD/h)', p.pause_usd_per_hour)}
+${field('Turnos en 24 h', p.turns_24h)}
+${field('Tope de turnos', p.max_turns_24h)}
+${field('Intentos', p.attempts)}
+${field('Último error', p.error)}`;
+  return {
+    subject,
+    html: renderEmailShell({
+      audience: 'admin',
+      variant: 'notification',
+      preheader: core,
+      badge: tenantContext(args.tenantName, label),
+      title: core,
+      body,
+      cta: hasConversation
+        ? { url: panelUrl(`/conversations/${conversationId}`), label: 'Abrir la conversación' }
+        : { url: panelUrl('/conversations'), label: 'Abrir conversaciones' },
+      showCopyUrl: false,
+    }),
+  };
+}
+
 /** Cualquier otro `error_motor`: el payload tal cual, para no perderlo. */
 function renderGenericMotorError(args: RenderArgs): RenderedEmail {
   const subject = `[Fyzon] Aviso técnico del motor en ${args.tenantName}`;
@@ -436,6 +492,8 @@ export function renderAgencyEmailTemplate(
   args: RenderArgs,
 ): RenderedEmail {
   if (args.payload.kind === 'ai_silent') return renderAiSilent(args);
+  const kind = String(args.payload.kind ?? '');
+  if (kind in GUARD_TITLES) return renderGuardAlert(kind, args);
   return renderGenericMotorError(args);
 }
 
