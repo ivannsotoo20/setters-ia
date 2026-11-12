@@ -192,3 +192,55 @@ export async function peekNextDebounce(redis: Redis): Promise<DebounceEntry | nu
 }
 
 export const DEBOUNCE_REDIS_KEY = DEBOUNCE_KEY;
+
+// -----------------------------------------------------------------------------
+// Reintentos acotados (2026-11-12)
+// -----------------------------------------------------------------------------
+//
+// Hasta esta fecha, si `processDebounced` lanzaba, el cron reencolaba la
+// conversación a los 30 s SIN LÍMITE. Con un error transitorio (red, Anthropic
+// saturado) eso es lo correcto; con uno que se repite siempre (el modelo da la
+// misma respuesta y el validador la rechaza) es un bucle que paga una llamada
+// cada 30 s. La conversación 15128 (tenant 7) lo hizo unas 5.200 veces en tres
+// días, con más de 100 $ cargados a la cuenta de la entrenadora.
+//
+// Ahora cada fallo se cuenta por conversación y espera más que el anterior
+// (cubre una caída de Anthropic de hasta ~1 h 40 min). Agotados los intentos, la
+// conversación sale de la cola y se avisa a los agency admins.
+
+const ATTEMPTS_KEY_PREFIX = 'fyzon:debounce:attempts:';
+
+/** Espera antes de cada reintento: 30 s, 2 min, 10 min, 30 min y 1 h. */
+export const DEBOUNCE_RETRY_DELAYS_S: readonly number[] = [30, 120, 600, 1_800, 3_600];
+
+/** Vida del contador: holgada sobre la suma de esperas (~1 h 43 min). */
+const ATTEMPTS_TTL_S = 3 * 60 * 60;
+
+export interface DebounceFailureVerdict {
+  /** Número de fallo de esta conversación (1 = el primero). */
+  attempt: number;
+  /** Segundos hasta el reintento, o null si ya no se reintenta. */
+  retryDelayS: number | null;
+}
+
+/**
+ * Apunta un fallo de `processDebounced` y decide si se reintenta. Con el último
+ * intento agotado borra el contador: si la persona vuelve a escribir, su nuevo
+ * mensaje empieza de cero.
+ */
+export async function registerDebounceFailure(
+  redis: Redis,
+  conversationId: number,
+): Promise<DebounceFailureVerdict> {
+  const key = `${ATTEMPTS_KEY_PREFIX}${conversationId}`;
+  const attempt = Number(await redis.incr(key));
+  await redis.expire(key, ATTEMPTS_TTL_S);
+  const retryDelayS = DEBOUNCE_RETRY_DELAYS_S[attempt - 1] ?? null;
+  if (retryDelayS === null) await redis.del(key);
+  return { attempt, retryDelayS };
+}
+
+/** El turno salió bien: los fallos anteriores de esa conversación ya no cuentan. */
+export async function clearDebounceFailures(redis: Redis, conversationId: number): Promise<void> {
+  await redis.del(`${ATTEMPTS_KEY_PREFIX}${conversationId}`);
+}

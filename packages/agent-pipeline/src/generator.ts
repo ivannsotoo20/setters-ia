@@ -158,31 +158,12 @@ export async function runGenerator(
   }
   const latencyMs = Date.now() - startedAt;
 
-  // 4. Extrae el tool_use
-  const toolUseBlock = response.content.find(
-    (c): c is Anthropic.Messages.ToolUseBlock =>
-      c.type === 'tool_use' && c.name === RESPOND_AS_SETTER_TOOL_NAME,
-  );
-  if (!toolUseBlock) {
-    const errMsg = `Generator did not return tool_use for ${RESPOND_AS_SETTER_TOOL_NAME}. stop_reason=${response.stop_reason}`;
-    await logLlmCall({
-      supabase,
-      tenantId: input.tenantId,
-      conversationId: input.conversationId,
-      role: 'generator',
-      model,
-      status: 'error',
-      usage: { latencyMs },
-      errorMessage: errMsg,
-      requestPayload: summarizeRequest(composed.metadata, messages.length, model, maxTokens),
-      responsePayload: { stop_reason: response.stop_reason, content: response.content.map((c) => c.type) },
-    });
-    throw new Error(errMsg);
-  }
-
-  const setterOutput = validateSetterOutput(toolUseBlock.input);
-
-  // 5. Calcula tokens y coste
+  // 4. Tokens y coste. Van ANTES de mirar la respuesta: Anthropic cobra la
+  //    llamada en cuanto contesta, la usemos o no. Hasta el 2026-11-12 el coste
+  //    solo se registraba si la respuesta pasaba la validación, así que una
+  //    respuesta rechazada se pagaba sin dejar rastro en `llm_calls`. Así se
+  //    escondió el bucle de la conversación 15128 (tenant 7): unas 5.200
+  //    llamadas en tres días, más de 100 $, con el registro marcando 3 $ al día.
   const usage = response.usage;
   const tokensInUncached = usage.input_tokens ?? 0;
   const tokensInCacheRead = usage.cache_read_input_tokens ?? 0;
@@ -196,6 +177,51 @@ export async function runGenerator(
     tokensOut,
     cacheTtl: CACHE_TTL,
   });
+  const billedUsage = {
+    tokensInUncached,
+    tokensInCacheRead,
+    tokensInCacheWrite,
+    tokensOut,
+    costUsd,
+    latencyMs,
+    stopReason: response.stop_reason ?? null,
+  };
+
+  // 5. Extrae y valida el tool_use. Si falla, la llamada se registra como
+  //    error CON su coste antes de lanzar.
+  let setterOutput: SetterToolOutput;
+  try {
+    const toolUseBlock = response.content.find(
+      (c): c is Anthropic.Messages.ToolUseBlock =>
+        c.type === 'tool_use' && c.name === RESPOND_AS_SETTER_TOOL_NAME,
+    );
+    if (!toolUseBlock) {
+      throw new Error(
+        `Generator did not return tool_use for ${RESPOND_AS_SETTER_TOOL_NAME}. stop_reason=${response.stop_reason}`,
+      );
+    }
+    setterOutput = validateSetterOutput(toolUseBlock.input, {
+      allowSilentNoReply: input.allowSilentNoReply === true,
+    });
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    await logLlmCall({
+      supabase,
+      tenantId: input.tenantId,
+      conversationId: input.conversationId,
+      role: 'generator',
+      model,
+      status: 'error',
+      usage: billedUsage,
+      errorMessage: errMsg,
+      requestPayload: summarizeRequest(composed.metadata, messages.length, model, maxTokens),
+      responsePayload: {
+        stop_reason: response.stop_reason,
+        content: response.content.map((c) => c.type),
+      },
+    });
+    throw err;
+  }
 
   // 6. Registra llm_calls (best-effort)
   const llmCallId = await logLlmCall({
@@ -205,15 +231,7 @@ export async function runGenerator(
     role: 'generator',
     model,
     status: 'success',
-    usage: {
-      tokensInUncached,
-      tokensInCacheRead,
-      tokensInCacheWrite,
-      tokensOut,
-      costUsd,
-      latencyMs,
-      stopReason: response.stop_reason ?? null,
-    },
+    usage: billedUsage,
     requestPayload: summarizeRequest(composed.metadata, messages.length, model, maxTokens),
     responsePayload: {
       stop_reason: response.stop_reason,
@@ -223,15 +241,7 @@ export async function runGenerator(
 
   return {
     setterOutput,
-    usage: {
-      tokensInUncached,
-      tokensInCacheRead,
-      tokensInCacheWrite,
-      tokensOut,
-      costUsd,
-      latencyMs,
-      stopReason: response.stop_reason ?? null,
-    },
+    usage: billedUsage,
     composedPromptMeta: composed.metadata,
     model,
     llmCallId: llmCallId ?? undefined,
@@ -255,8 +265,19 @@ function summarizeRequest(
   };
 }
 
+export interface ValidateSetterOutputOptions {
+  /**
+   * La conversación ya está cerrada (despedida enviada): un mensaje vacío sin
+   * handoff es «no contestar» y no un error. Ver `GeneratorInput.allowSilentNoReply`.
+   */
+  allowSilentNoReply?: boolean;
+}
+
 /** Valida que el shape devuelto por el modelo cumple `SetterToolOutput`. */
-export function validateSetterOutput(raw: unknown): SetterToolOutput {
+export function validateSetterOutput(
+  raw: unknown,
+  options: ValidateSetterOutputOptions = {},
+): SetterToolOutput {
   if (typeof raw !== 'object' || raw === null) {
     throw new Error(`Generator tool_use input is not an object: ${typeof raw}`);
   }
@@ -274,9 +295,19 @@ export function validateSetterOutput(raw: unknown): SetterToolOutput {
   // intentaba obedecer al coach, el turno reventaba por validación y la
   // conversación quedaba SIN handoff registrado — es decir, sin pausa y sin
   // aviso al entrenador, que es justo lo contrario de lo que la regla busca.
-  if (message_raw.length === 0 && r.conversation_status !== 'handoff') {
+  //
+  // Excepción (2026-11-12): en una conversación YA cerrada, no contestar es la
+  // respuesta correcta. Caso real, conversación 15128: lead fuera de zona,
+  // vídeo enviado y despedida hecha; ella escribe «Gracias 🫂» y el modelo,
+  // con razón, no dice nada. Esto lanzaba, el motor reencolaba a los 30 s y
+  // repitió la llamada unas 5.200 veces en tres días.
+  if (
+    message_raw.length === 0 &&
+    r.conversation_status !== 'handoff' &&
+    options.allowSilentNoReply !== true
+  ) {
     throw new Error(
-      'Generator devolvió `message_raw` vacío sin conversation_status="handoff" (el apagado silencioso exige handoff)',
+      `Generator devolvió \`message_raw\` vacío sin conversation_status="handoff" (el apagado silencioso exige handoff; status=${String(r.conversation_status)})`,
     );
   }
 

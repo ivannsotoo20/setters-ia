@@ -1,13 +1,14 @@
 import type { FastifyInstance } from 'fastify';
 import {
+  clearDebounceFailures,
   dropDebounce,
-  enqueueDebounceOrDefer,
   flushDeferredDebounces,
   getExpiredDebounces,
 } from '../lib/debounce-buffer.js';
 import { createThrottledLog, getRedis } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
 import { processDebounced } from '../services/process-debounced.js';
+import { handleDebounceFailure } from '../services/debounce-failure.js';
 import { sendNextBatch } from '../services/outbound-sender.js';
 import { processNotificationQueue } from '../services/notify-trainer.js';
 import { evaluateInactivityRules } from '../services/labels/index.js';
@@ -35,13 +36,6 @@ const SILENT_AI_TICK_MS = 5 * 60 * 1_000;
  */
 const CALENDAR_SYNC_TICK_MS = 10 * 60 * 1_000;
 const CALENDAR_SYNC_FIRST_DELAY_MS = 45 * 1_000;
-/**
- * Si processDebounced lanza, re-encolamos la conversacion con este delay.
- * Suficientemente corto para reintentar pronto, suficientemente largo para
- * no martillar bajo errores transitorios.
- */
-const DEBOUNCE_RETRY_DELAY_S = 30;
-
 export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
   let debounceTimer: NodeJS.Timeout | null = null;
   let outboundTimer: NodeJS.Timeout | null = null;
@@ -113,14 +107,15 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
             },
             'debounce processed',
           );
+          await clearDebounceFailures(redis, entry.conversationId).catch(() => undefined);
         } catch (err) {
-          app.log.error(
-            { err, conversationId: entry.conversationId, retryDelayS: DEBOUNCE_RETRY_DELAY_S },
-            'processDebounced failed; re-queueing with delay',
+          // Reintento con espera creciente y tope (2026-11-12): ver
+          // `services/debounce-failure.ts`. Antes era cada 30 s sin límite.
+          await handleDebounceFailure(
+            { redis, supabase, log: app.log },
+            entry.conversationId,
+            err,
           );
-          // Ya se reclamó (ZREM): si Redis tampoco acepta el re-encolado, se
-          // aplaza en memoria en vez de perder la conversación.
-          await enqueueDebounceOrDefer(redis, entry.conversationId, DEBOUNCE_RETRY_DELAY_S);
         }
       }
     } catch (err) {

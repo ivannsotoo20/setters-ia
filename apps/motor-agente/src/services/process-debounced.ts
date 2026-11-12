@@ -618,6 +618,10 @@ export async function processDebounced(
           : undefined,
         callGate,
         countryAsk,
+        // 2026-11-12 — Conversación cerrada (despedida hecha, descalificada…): si
+        // el modelo decide no contestar, es la respuesta correcta y no un error
+        // que reintentar. Ver el paso 7.3.
+        allowSilentNoReply: String(conv.state ?? 'active') !== 'active',
         // 2026-11-04 — idioma de la persona: los reintentos de V23 y D2 no exigen castellano.
         leadLanguage,
         // Precio autorizado por la entrenadora: el Judge y V11 no lo quitan.
@@ -697,6 +701,40 @@ export async function processDebounced(
       };
     }
     throw err;
+  }
+
+  // 7.3. 2026-11-12 — No contestar en una conversación ya cerrada. El modelo
+  //      devolvió un mensaje vacío sin handoff y el generador lo aceptó porque
+  //      la conversación no está activa (`allowSilentNoReply`). No se manda
+  //      nada y no se toca la conversación: ni estado, ni fase, ni avisos.
+  //      Caso real: el «Gracias 🫂» de la 15128 tras la despedida por zona.
+  if (
+    pipelineOut.parts.length === 0 &&
+    pipelineOut.generator.setterOutput.message_raw.length === 0 &&
+    pipelineOut.generator.setterOutput.conversation_status !== 'handoff'
+  ) {
+    await completePipelineRun(supabase, {
+      id: run.id,
+      output: pipelineOut,
+      startedAtMs,
+      multimodal: mediaResult,
+    });
+    runResolved = true;
+    console.log(
+      `[silent-no-reply] conv=${conversationId} state=${String(conv.state ?? '')} la IA no contesta en una conversación cerrada`,
+    );
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: pipelineOut.totals.costUsd + mediaResult.costUsd,
+      totalLatencyMs: pipelineOut.totals.latencyMs,
+      pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
+      phase: currentPhase,
+      correlationId: run.correlationId,
+      skipped: true,
+      reason: 'conversación cerrada: la IA decidió no contestar',
+    };
   }
 
   // 7.4. Hito 10.6.1 — Captura email/nombre del lead que el setter haya

@@ -185,6 +185,10 @@ export async function runPipeline(
 ): Promise<PipelineOutput> {
   const startedAt = Date.now();
   const stages: PipelineStageMetric[] = [];
+  // Los reintentos de abajo existen para corregir un texto que ya había: en
+  // ellos un `message_raw` vacío sigue siendo un error (y su catch se queda con
+  // el original). Solo el primer turno puede decidir no contestar.
+  const retryInput: PipelineInput = { ...input, allowSilentNoReply: false };
 
   // === 1. Generator ===
   const generatorOut = await runGenerator(deps, {
@@ -202,6 +206,10 @@ export async function runPipeline(
   // juzgar ni que trocear, así que se cortocircuita aquí. Lo que importa río
   // abajo es el handoff, no el mensaje: el caller pausa la conversación y avisa
   // al entrenador. Pasarlo por el Judge solo podría estropearlo.
+  //
+  // También llega aquí, sin handoff, el «no contestar» de una conversación ya
+  // cerrada (`allowSilentNoReply`, 2026-11-12): el caller no manda nada y no
+  // toca la conversación.
   //
   // Con zona rechazada tampoco aplica V21: no sale ningún mensaje que siga
   // cualificando y el handoff (obligatorio con mensaje vacío) cierra la conversación.
@@ -260,7 +268,7 @@ export async function runPipeline(
         // ver, o cierra, sale el cierre de la entrenadora.
         if (revealsZoneReason(generatorOut.setterOutput.message_raw, input.zone?.term, input.zone?.rejectTerms)) {
           const retryGen = await runGenerator(deps, {
-            ...input,
+            ...retryInput,
             userMessage: ZONE_EXPLORE_RETRY_MESSAGE,
             history: [
               ...input.history,
@@ -304,7 +312,7 @@ export async function runPipeline(
         );
         if (miss) {
           const retryGen = await runGenerator(deps, {
-            ...input,
+            ...retryInput,
             userMessage: buildFreeZoneCloseRetryMessage(miss, freeClose),
             history: [
               ...input.history,
@@ -429,7 +437,7 @@ export async function runPipeline(
 
     try {
       const retryGen = await runGenerator(deps, {
-        ...input,
+        ...retryInput,
         userMessage: retryUserMessage,
         history: retryHistory,
         model: input.models?.generator,
@@ -489,7 +497,7 @@ export async function runPipeline(
       `Nunca escribas corchetes, llaves ni huecos en su lugar. NO menciones esta corrección al lead.`;
     try {
       const retryGen = await runGenerator(deps, {
-        ...input,
+        ...retryInput,
         userMessage: retryUserMessage,
         history: [
           ...input.history,
@@ -524,7 +532,7 @@ export async function runPipeline(
   if (priceFigureLocked(input) && mentionsAllowedPrice(textForSplitter, input.allowedPriceText!)) {
     try {
       const retryGen = await runGenerator(deps, {
-        ...input,
+        ...retryInput,
         userMessage: buildPriceFirstStepRetryMessage(
           input.priceGate!.firstStepText,
           input.allowedPriceText!,
@@ -601,7 +609,7 @@ export async function runPipeline(
             });
       try {
         const retryGen = await runGenerator(deps, {
-          ...input,
+          ...retryInput,
           userMessage: retryUserMessage,
           history: [
             ...input.history,
@@ -656,7 +664,7 @@ export async function runPipeline(
   ) {
     try {
       const retryGen = await runGenerator(deps, {
-        ...input,
+        ...retryInput,
         userMessage: buildCountryAskRetryMessage(input.countryAsk),
         history: [
           ...input.history,
@@ -718,7 +726,7 @@ export async function runPipeline(
       // reencola el turno y lo rehace entero. Tumbarlo aquí pausaría la IA por un
       // fallo pasajero.
       const retryGen = await runGenerator(deps, {
-        ...input,
+        ...retryInput,
         userMessage: buildCallGateRetryMessage(miss, generatorOut.setterOutput, gate),
         history: [
           ...input.history,

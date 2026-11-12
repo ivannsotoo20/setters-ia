@@ -159,6 +159,14 @@ export interface GeneratorInput {
    */
   callGate?: CallGate;
   /**
+   * 2026-11-12 — La conversación ya está cerrada (estado distinto de `active`:
+   * despedida hecha, descalificada, en manos de la entrenadora). Con `true`, un
+   * `message_raw` vacío sin handoff es «no contestar» y no un error de
+   * validación: el pipeline no manda nada y el motor no toca la conversación.
+   * Sin él (conversación abierta), el vacío sin handoff sigue siendo un error.
+   */
+  allowSilentNoReply?: boolean;
+  /**
    * Overrides que el motor inyecta al composer por turno (Cerebro v5).
    *
    * En v5 se eliminaron los flags `isHandoff/includeObjections/includeDescualificacion/includeOutputContract`:
