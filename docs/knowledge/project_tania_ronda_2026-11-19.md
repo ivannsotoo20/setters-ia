@@ -71,6 +71,15 @@ rollback). Sin migraciones.
 Verificación del segundo lote: motor 1.016 tests en verde y typecheck; batería 6/6 (0,38 $) con el
 caso de Ceuta añadido (no vuelve a preguntar ni comenta el país).
 
+### 2.c Despliegue
+
+- Commit `c31ba17` en main, desplegado el **19-nov a las 15:08 UTC (16:08 hora de España)**; `/health`
+  en verde y sin reinicios. Es la hora que se le da a Tania para revisar conversaciones.
+- Smoke en producción (`.tmp/ronda-tania-19-nov/smoke-fase1-prod.mjs`, simulador, tenant 7): 3/3
+  (Cuba + Miami queda en mención y confirma «vives en Miami»; Ceuta sin repreguntar; Madrid), 0,43 $.
+- Idioma y reserva están desplegados pero **apagados** para el tenant 7 hasta aplicar
+  `.tmp/ronda-tania-19-nov/activar-fase1-tenant7.sql`; después, `smoke-fase1-prod.mjs --activado`.
+
 ## 3. Pendiente
 
 - Fase 0: las cinco preguntas a Tania (texto de otro idioma, qué pasa con < 3 meses y si un brote
