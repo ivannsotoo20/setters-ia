@@ -77,8 +77,18 @@ caso de Ceuta añadido (no vuelve a preguntar ni comenta el país).
   en verde y sin reinicios. Es la hora que se le da a Tania para revisar conversaciones.
 - Smoke en producción (`.tmp/ronda-tania-19-nov/smoke-fase1-prod.mjs`, simulador, tenant 7): 3/3
   (Cuba + Miami queda en mención y confirma «vives en Miami»; Ceuta sin repreguntar; Madrid), 0,43 $.
-- Idioma y reserva están desplegados pero **apagados** para el tenant 7 hasta aplicar
-  `.tmp/ronda-tania-19-nov/activar-fase1-tenant7.sql`; después, `smoke-fase1-prod.mjs --activado`.
+- Idioma y reserva **activados** para el tenant 7 el **19-nov a las 18:07 UTC (19:07 hora de España)**,
+  con los textos por defecto (OK de Iván «Sí, actívalos»). Se aplicó con
+  `.tmp/ronda-tania-19-nov/activar-fase1-tenant7.mjs` (PostgREST, mismo merge que el `.sql`: solo
+  añade `languages` y `booking_confirmation`; las otras 20 claves, idénticas; copia del valor anterior
+  en `backup-lead-qualification-t7-*.json`; `--rollback` las quita). El motor lee
+  `lead_qualification` en cada turno, sin caché.
+- Smoke con `--activado`: 6/6 (0,57 $). Italiano → aviso → sigue en italiano → pausa; italiano →
+  aviso → sigue en castellano con normalidad; «Listo» sin cita registrada → `pending_text`.
+- Tráfico real entre el deploy y la activación: 5 mensajes de leads, todos en dos conversaciones
+  pausadas desde antes (10064 y 15378). Ningún turno real de la IA todavía; la comprobación en
+  conversaciones reales queda para el tráfico del 20-nov (turnos cancelados con `last_error`
+  `superseded: …`, envíos dobles, avisos de idioma, confirmaciones de reserva).
 
 ## 3. Pendiente
 
