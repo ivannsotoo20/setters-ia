@@ -466,10 +466,20 @@ export function evaluateZone(input: {
     //     dijo que vive en otro sitio, manda eso.
     if (!declaredOtherPlace) {
       const answers = input.countryAnswers ?? [];
+      // 2026-11-19 — Antes de cerrar por una respuesta corta, se lee todo lo que
+      // ha escrito (Tania, tato_flp: «🇨🇺 Cuba», «Desde Miami», «Soy cubano» en
+      // la misma tanda, y se le cerró por zona viviendo en EEUU). Si en algún
+      // mensaje nombra otro sitio, la respuesta corta deja de bastar: queda en
+      // mención y el modelo, con todo leído, confirma dónde vive.
+      const namesAnotherPlace = [...answers, ...leadMessages].some(
+        (m) => typeof m === 'string' && statesAnotherPlace(m, policy),
+      );
       for (let i = answers.length - 1; i >= 0; i--) {
         const answer = answers[i]!;
         const term = shortCountryAnswerTerm(answer, policy);
-        if (term) return { kind: 'reject_by_declaration', term, excerpt: excerptAround(answer) };
+        if (!term) continue;
+        if (namesAnotherPlace) return { kind: 'mention', term, excerpt: excerptAround(answer) };
+        return { kind: 'reject_by_declaration', term, excerpt: excerptAround(answer) };
       }
       // 1c. 2026-11-04 — un mensaje que es SOLO el país («De Colombia», «Soy de
       //     Cuba», «Colombia»), aunque no lo hayamos preguntado, es su residencia:
@@ -482,7 +492,9 @@ export function evaluateZone(input: {
         const message = leadMessages[i];
         if (typeof message !== 'string') continue;
         const term = bareCountryStatementTerm(message, policy);
-        if (term) return { kind: 'reject_by_declaration', term, excerpt: excerptAround(message) };
+        if (!term) continue;
+        if (namesAnotherPlace) return { kind: 'mention', term, excerpt: excerptAround(message) };
+        return { kind: 'reject_by_declaration', term, excerpt: excerptAround(message) };
       }
     }
     // 2. Si no, la primera mención suelta obliga a preguntar.
@@ -514,10 +526,82 @@ function shortCountryAnswerTerm(message: string, policy: ZonePolicy): string | n
   if (classifyResidenceStatement(message, policy.countryRejectTerms) !== null) return null;
   const term = findWholeWordTerm(text, policy.countryRejectTerms);
   if (!term || HOMONYMS_IN_ZONE.has(normalizeText(term))) return null;
+  // 2026-11-19 — Un gentilicio es nacionalidad, no residencia (Tania: «Soy
+  // cubano» de alguien que vive en Miami). Queda en mención y se confirma.
+  if (DEMONYMS.has(normalizeText(term))) return null;
   if (policy.allowlist && findCountryNames(message).some((iso) => zoneOfIso(iso, policy.allowlist!) !== 'out')) {
     return null;
   }
   return term;
+}
+
+/**
+ * Gentilicios de los países de fuera de zona que suelen ir en la lista de
+ * términos. Son ORIGEN: «soy cubano» no dice dónde vive. Los que coinciden con
+ * el nombre del país («argentina») no van: ahí manda el país.
+ */
+const DEMONYMS = new Set(
+  [
+    'venezolano', 'venezolana', 'cubano', 'cubana', 'dominicano', 'dominicana',
+    'colombiano', 'colombiana', 'boliviano', 'boliviana', 'ecuatoriano', 'ecuatoriana',
+    'guatemalteco', 'guatemalteca', 'salvadoreño', 'salvadoreña', 'argentino', 'peruano',
+    'peruana', 'paraguayo', 'paraguaya', 'uruguayo', 'uruguaya', 'hondureño', 'hondureña',
+    'nicaragüense', 'costarricense', 'panameño', 'panameña', 'brasileño', 'brasileña',
+    'brasilero', 'brasilera', 'puertorriqueño', 'puertorriqueña', 'mexicano', 'mexicana',
+    'chileno', 'chilena',
+  ].flatMap((d) => [normalizeText(d), `${normalizeText(d)}s`]),
+);
+
+/** Lo que va delante del sitio en un mensaje corto de dónde está: «Desde Miami», «en Miami», «vivo en Miami». */
+const SHORT_PLACE_RE =
+  /^(?:(?:yo|ahora|actualmente|pues|bueno)\s+)*(?:(?:vivo|resido|radico|estoy|vivimos|i\s+live|i\s+am|i'm|moro|estou)\s+)?(?:desde|en|from|in|em)\s+(.+)$/;
+/** Lo que, detrás de «desde / en», no es un sitio: «desde hace», «en casa», «en el trabajo», «desde enero». */
+const NOT_A_PLACE = new Set([
+  'hace', 'siempre', 'el', 'la', 'los', 'las', 'lo', 'un', 'una', 'mi', 'mis', 'tu', 'su', 'sus',
+  'casa', 'que', 'cuando', 'donde', 'ese', 'esa', 'eso', 'este', 'esta', 'esto', 'entonces',
+  'ayer', 'hoy', 'manana', 'pequeno', 'pequena', 'nino', 'nina', 'joven', 'general', 'serio',
+  'realidad', 'verdad', 'principio', 'teoria', 'todo', 'toda', 'nada', 'parte', 'cama', 'trabajo',
+  'reposo', 'tratamiento', 'espera', 'pie', 'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'setiembre', 'octubre', 'noviembre', 'diciembre', 'the', 'my',
+  'a', 'bed', 'pain', 'work', 'baja', 'medio', 'fin', 'luego', 'cuanto', 'breve', 'ocasiones',
+  'veces', 'momento', 'persona', 'linea', 'online', 'directo', 'algun', 'alguna', 'ningun',
+  'ninguna', 'varios', 'varias', 'otro', 'otra', 'ello', 'eso',
+]);
+const MAX_SHORT_PLACE_WORDS = 5;
+
+/**
+ * 2026-11-19 — ¿Este mensaje dice que está en un sitio que NO es de fuera? Dos
+ * formas: nombra un país de zona («Estados Unidos», «España»), o es un mensaje
+ * corto de dónde está con un sitio que no es de la lista («Desde Miami», «en
+ * Houston»). Una ciudad no se resuelve aquí (no hay callejero): basta con que no
+ * sea un término de fuera para que la respuesta corta deje de cerrar en seco y
+ * decida el modelo con todo delante.
+ */
+export function statesAnotherPlace(message: string, policy: ZonePolicy): boolean {
+  if (typeof message !== 'string' || message.trim() === '') return false;
+  // Un mensaje con saltos de línea («Cuba» y «Desde Miami» en dos líneas) se lee línea a línea.
+  const lines = message.split(/\r?\n/).filter((l) => l.trim() !== '');
+  if (lines.length > 1) return lines.some((l) => statesAnotherPlace(l, policy));
+  const isos = findCountryNames(message);
+  if (policy.allowlist) {
+    if (isos.some((iso) => zoneOfIso(iso, policy.allowlist!) !== 'out')) return true;
+  } else if (policy.noContactCountries.size > 0) {
+    if (isos.some((iso) => !policy.noContactCountries.has(iso))) return true;
+  }
+  const text = normalizeText(message)
+    .replace(/[^\p{L}\p{N}'\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!text || /\d/.test(text)) return false;
+  if (text.split(' ').length > MAX_SHORT_PLACE_WORDS) return false;
+  const m = SHORT_PLACE_RE.exec(text);
+  if (!m) return false;
+  const place = m[1]!.trim();
+  const first = place.split(' ')[0]!;
+  if (NOT_A_PLACE.has(first)) return false;
+  if (findWholeWordTerm(place, policy.countryRejectTerms)) return false;
+  if (DEMONYMS.has(place)) return false;
+  return true;
 }
 
 /** Lo que puede ir delante de un país en un mensaje que es solo el país. */

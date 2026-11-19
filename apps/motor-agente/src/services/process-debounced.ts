@@ -35,7 +35,33 @@ import { timezoneToLabel } from '../lib/timezone-label.js';
 import { inferTimezoneFromPhone } from '../lib/phone-to-timezone.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
 import { detectAddressing, buildMirrorLeadDirective } from '../lib/detect-addressing.js';
-import { buildLeadLanguageDirective, resolveLeadLanguage } from '../lib/lead-language.js';
+import {
+  buildLeadLanguageDirective,
+  decideLanguageTurn,
+  outputInDisallowedLanguage,
+  parseLanguagePolicy,
+  resolveLeadLanguage,
+  resolveSpokenLeadLanguage,
+  spokenLanguageNameEs,
+  unsupportedLanguageParts,
+  type SpokenLanguage,
+} from '../lib/lead-language.js';
+import { literalPipelineOutput, pauseAndNotifyTrainer, scheduleLiteralTurn } from './literal-turn.js';
+import {
+  buildCountryInZoneDirective,
+  buildRepeatedOpenerDirective,
+  countryAnsweredInZone,
+  detectRepeatedOpener,
+} from '../lib/turn-context.js';
+import {
+  bookingLinkAlreadySent,
+  buildNoAppointmentDirective,
+  claimsBookingConfirmed,
+  findRegisteredAppointment,
+  parseBookingConfirmationConfig,
+  signalsBooked,
+  splitParagraphs,
+} from './booking-confirmation.js';
 import { zoneCloseAllowedUrls } from '../lib/zone-policy.js';
 import { collapseRepeatedPunctuation, normalizePartsPunctuation } from '@fyzon/shared-validator';
 import {
@@ -65,6 +91,7 @@ import { pickResidenceAnswer } from './lead-qualifier.js';
 const RESIDENCE_LABEL = /vives|pa[ií]s|residencia|resides/i;
 import { tenantHasLinkedCalendar } from '../lib/linked-calendar.js';
 import { enforceConversationTurnCap } from './spend-guard.js';
+import { isSupersedableTurn } from './supersede-ai-turn.js';
 import type { NotificationEventType } from '../lib/email-templates.js';
 
 type AudioLanguage = 'es' | 'en' | 'auto';
@@ -76,6 +103,13 @@ export interface ProcessDebouncedDeps {
    * cargada la conversación (clave propia del entrenador si la tiene).
    */
   anthropic?: Anthropic;
+  /**
+   * 2026-11-19 — ¿La conversación volvió a la cola del debounce mientras se
+   * generaba este turno? (la persona escribió otra vez). El cron pasa la
+   * comprobación contra Redis; sin ella (tests, scripts) el turno sale siempre.
+   * Ver `services/supersede-ai-turn.ts`.
+   */
+  isRequeued?: (conversationId: number) => Promise<boolean>;
 }
 
 export interface ProcessDebouncedResult {
@@ -491,6 +525,148 @@ export async function processDebounced(
   // cierre (ver `currentPhaseFocus` más abajo).
   const leadQualification = await loadLeadQualification(supabase, tenantId);
   const zonePolicy = parseZonePolicy(leadQualification);
+
+  // 2026-11-19 — Idiomas que atiende la entrenadora (`lead_qualification.languages`,
+  // ver lib/lead-language.ts). Va antes que la zona: a quien escribe en un idioma
+  // que ella no atiende se le dice primero en cuáles puede seguir. El texto lo
+  // manda el motor tal cual; si sigue en ese idioma después del aviso, la IA se
+  // pausa y se avisa a la entrenadora. Sin la clave, nada cambia.
+  const languagePolicy = parseLanguagePolicy(leadQualification);
+  const spokenLanguage = languagePolicy
+    ? resolveSpokenLeadLanguage(historyForPipeline, userMessage)
+    : leadLanguage;
+  const languageTurn = decideLanguageTurn({
+    policy: languagePolicy,
+    spokenLanguage,
+    history: historyForPipeline,
+  });
+  if (languagePolicy && languageTurn !== 'ok') {
+    const leadRef = {
+      id: Number(lead.id),
+      firstName: (lead.first_name as string | null | undefined) ?? null,
+      phone: (lead.phone as string | null | undefined) ?? null,
+    };
+    if (languageTurn === 'notice') {
+      const parts = unsupportedLanguageParts(languagePolicy);
+      const ids = await scheduleLiteralTurn({
+        supabase,
+        tenantId,
+        conversationId,
+        integrationAccountId: Number(ia.id),
+        parts,
+      });
+      await completePipelineRun(supabase, {
+        id: run.id,
+        output: literalPipelineOutput(parts, 'active', currentPhase),
+        startedAtMs,
+        multimodal: mediaResult,
+      });
+      runResolved = true;
+      console.log(
+        `[lang] conv=${conversationId} lead_language=${spokenLanguage} no atendido: aviso de idiomas (literal del motor)`,
+      );
+      return {
+        conversationId,
+        scheduleIds: ids,
+        parts,
+        totalCostUsd: mediaResult.costUsd,
+        totalLatencyMs: Date.now() - startedAtMs,
+        pipelineStatus: 'active',
+        phase: currentPhase,
+        correlationId: run.correlationId,
+        reason: `idioma no atendido (${spokenLanguage}): aviso de idiomas`,
+      };
+    }
+    await pauseAndNotifyTrainer({
+      supabase,
+      tenantId,
+      conversationId,
+      lead: leadRef,
+      channelType,
+      correlationId: run.correlationId,
+      cause: unsupportedLanguageHandoffCause(spokenLanguage),
+      logTag: '[lang]',
+    });
+    await completePipelineRun(supabase, {
+      id: run.id,
+      output: literalPipelineOutput([], 'handoff', currentPhase),
+      startedAtMs,
+      multimodal: mediaResult,
+    });
+    runResolved = true;
+    console.warn(
+      `[lang] conv=${conversationId} sigue en ${spokenLanguage} tras el aviso de idiomas → IA pausada + aviso a la entrenadora`,
+    );
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: mediaResult.costUsd,
+      totalLatencyMs: Date.now() - startedAtMs,
+      pipelineStatus: 'handoff',
+      phase: currentPhase,
+      correlationId: run.correlationId,
+      skipped: true,
+      reason: `idioma no atendido (${spokenLanguage}) tras el aviso: IA pausada y aviso a la entrenadora`,
+    };
+  }
+  // 2026-11-19 — Reserva solo con la cita REAL (`lead_qualification.booking_confirmation`,
+  // ver services/booking-confirmation.ts). Si dice que ya ha reservado y aún no
+  // consta, se consulta el calendario ahora; si aparece, el applier ya la pasó a
+  // F7, pausó la IA y mandó la confirmación con fecha, hora y zona, y este turno
+  // no contesta aparte. Si no aparece, el modelo lo sabe y no puede darla por hecha.
+  const bookingCfg = parseBookingConfirmationConfig(leadQualification);
+  let bookingDirective: string | null = null;
+  let guardBookingClaim = false;
+  if (bookingCfg) {
+    const linkSent = bookingLinkAlreadySent(historyForPipeline);
+    const saysBooked = signalsBooked(userMessage);
+    const apptArgs = { tenantId, conversationId, leadId: Number(lead.id) };
+    let registered = await findRegisteredAppointment(supabase, apptArgs);
+    if (!registered && linkSent && saysBooked) {
+      try {
+        const { syncCalendarAppointments } = await import('./calendar-sync.js');
+        await syncCalendarAppointments({ supabase, log: BOOKING_SYNC_LOG, tenantId });
+      } catch (err) {
+        console.warn(
+          `[booking] conv=${conversationId} consulta al calendario falló (no fatal): ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+      registered = await findRegisteredAppointment(supabase, apptArgs);
+      if (registered) {
+        await completePipelineRun(supabase, {
+          id: run.id,
+          output: literalPipelineOutput([], 'handoff', currentPhase),
+          startedAtMs,
+          multimodal: mediaResult,
+        });
+        runResolved = true;
+        console.log(
+          `[booking] conv=${conversationId} dice que ha reservado y el calendario la tiene: la confirmación la manda el motor`,
+        );
+        return {
+          conversationId,
+          scheduleIds: [],
+          parts: [],
+          totalCostUsd: mediaResult.costUsd,
+          totalLatencyMs: Date.now() - startedAtMs,
+          pipelineStatus: 'handoff',
+          phase: currentPhase,
+          correlationId: run.correlationId,
+          skipped: true,
+          reason: 'cita registrada en el calendario: confirmación con fecha, hora y zona enviada por el motor',
+        };
+      }
+    }
+    if (!registered && (linkSent || saysBooked)) {
+      bookingDirective = buildNoAppointmentDirective(bookingCfg);
+      guardBookingClaim = true;
+      if (saysBooked) {
+        console.log(`[booking] conv=${conversationId} dice que ha reservado y el calendario aún no la tiene`);
+      }
+    }
+  }
+
   // D1 (2026-09-26): la residencia que declaró en el formulario decide la
   // excepción "prefijo de fuera, vive en zona" sin depender del modelo.
   const declaredResidence = formAnswers
@@ -506,6 +682,18 @@ export async function processDebounced(
       declaredResidence,
     });
   const zoneVerdict = zoneVerdictAt(allHistory);
+  // 2026-11-19 — Contexto por turno (lib/turn-context.ts): la apertura de la
+  // automatización repetida dentro de una conversación ya abierta, y el país ya
+  // contestado con un sitio de la zona (Ceuta), para que no lo vuelva a preguntar.
+  const repeatedOpenerDirective = buildRepeatedOpenerDirective(
+    await detectRepeatedOpener(supabase, conversationId),
+  );
+  const countryInZoneDirective =
+    zoneVerdict.kind === 'clear'
+      ? buildCountryInZoneDirective(
+          countryAnsweredInZone(countryAnswersOf(allHistory, asksForCountry), zonePolicy?.allowlist),
+        )
+      : null;
   // `zoneRejected` enciende V20 (ningún enlace) en los dos modos; el modo dice si
   // el turno cierra o pasa a la entrenadora (V21 y la focal).
   const zoneHandoff = zoneVerdict.kind === 'prefix_out_residence_in';
@@ -570,6 +758,9 @@ export async function processDebounced(
     leadOriginDirective,
     addressingDirective,
     languageDirective,
+    bookingDirective,
+    repeatedOpenerDirective,
+    countryInZoneDirective,
   );
 
   // Cerebro v5 — instrucción focal corta de la fase activa. El composer la emite
@@ -761,6 +952,92 @@ export async function processDebounced(
       skipped: true,
       reason: 'conversación cerrada: la IA decidió no contestar',
     };
+  }
+
+  // 7.35. 2026-11-19 — Turno caducado: la persona escribió mientras el modelo
+  //       generaba y la conversación ya está otra vez en la cola. Si este turno
+  //       saliera, contestaría a una conversación que ya no existe (Tania, conv.
+  //       15317: repreguntó el tiempo de dolor que le acababan de dar). No se
+  //       programa ni se toca la conversación; el turno siguiente lo rehace con
+  //       todo. Solo turnos de conversación normal (ver `isSupersedableTurn`).
+  if (
+    deps.isRequeued &&
+    isSupersedableTurn(pipelineOut.generator.setterOutput) &&
+    (await deps.isRequeued(conversationId).catch(() => false))
+  ) {
+    await completePipelineRun(supabase, {
+      id: run.id,
+      output: pipelineOut,
+      startedAtMs,
+      multimodal: mediaResult,
+    });
+    runResolved = true;
+    console.log(
+      `[superseded] conv=${conversationId} la persona escribió mientras se generaba: el turno no sale, se rehace con su mensaje nuevo`,
+    );
+    return {
+      conversationId,
+      scheduleIds: [],
+      parts: [],
+      totalCostUsd: pipelineOut.totals.costUsd + mediaResult.costUsd,
+      totalLatencyMs: pipelineOut.totals.latencyMs,
+      pipelineStatus: pipelineOut.generator.setterOutput.conversation_status,
+      phase: currentPhase,
+      correlationId: run.correlationId,
+      skipped: true,
+      reason: 'turno caducado: la persona escribió mientras se generaba; se rehace',
+    };
+  }
+
+  // 7.36. 2026-11-19 — Ningún turno del modelo sale en un idioma que la
+  //       entrenadora no atiende (red de seguridad: lo normal es que el aviso de
+  //       idiomas ya haya salido arriba). Si pasa, sale el aviso en su lugar.
+  const disallowedOutput = outputInDisallowedLanguage(
+    pipelineOut.generator.setterOutput.message_raw,
+    languagePolicy,
+  );
+  if (languagePolicy && disallowedOutput) {
+    console.warn(
+      `[lang] conv=${conversationId} el turno salía en ${disallowedOutput} (no atendido): se manda el aviso de idiomas`,
+    );
+    pipelineOut.parts = unsupportedLanguageParts(languagePolicy);
+    pipelineOut.generator.setterOutput.message_raw = pipelineOut.parts.join('\n\n');
+  }
+
+  // 7.37. 2026-11-19 — Sin cita registrada, ningún turno la da por reservada o
+  //       confirmada (Tania, conv. 15147: «Listo» → «Pues ya está reservada 🙌»).
+  if (
+    bookingCfg &&
+    guardBookingClaim &&
+    claimsBookingConfirmed(pipelineOut.generator.setterOutput.message_raw)
+  ) {
+    console.warn(
+      `[booking] conv=${conversationId} el turno daba la cita por hecha sin que conste en el calendario: sale el texto de «en cuanto aparezca»`,
+    );
+    pipelineOut.parts = splitParagraphs(bookingCfg.pendingText);
+    pipelineOut.generator.setterOutput.message_raw = pipelineOut.parts.join('\n\n');
+    if (pipelineOut.generator.setterOutput.phase_decision >= 7) {
+      pipelineOut.generator.setterOutput.phase_decision = 6;
+    }
+  }
+  // Y sin cita registrada tampoco se cierra como "ha reservado" (handoff A_agenda):
+  // esa causa la pone el calendario al registrar la cita (applier). Si el modelo
+  // la marca por un «listo» y al final no reservó, la conversación quedaría
+  // cerrada y nadie le haría seguimiento. Mismo criterio que 7.6 en modo directo.
+  if (
+    bookingCfg &&
+    guardBookingClaim &&
+    pipelineOut.generator.setterOutput.handoff_cause === 'A_agenda'
+  ) {
+    console.warn(
+      `[booking] conv=${conversationId} handoff A_agenda sin cita en el calendario → sigue activa en F6 hasta que la registre`,
+    );
+    pipelineOut.generator.setterOutput.handoff_cause = undefined;
+    pipelineOut.generator.setterOutput.conversation_status = 'active';
+    pipelineOut.generator.setterOutput.phase_decision = Math.min(
+      pipelineOut.generator.setterOutput.phase_decision,
+      6,
+    );
   }
 
   // 7.4. Hito 10.6.1 — Captura email/nombre del lead que el setter haya
@@ -1396,3 +1673,19 @@ export async function loadSchedulingConfig(
     singlePunctuation: prefs.singlePunctuation === true,
   };
 }
+
+/** Causa del aviso a la entrenadora cuando sigue en un idioma que ella no atiende. */
+export function unsupportedLanguageHandoffCause(lang: SpokenLanguage): string {
+  return (
+    `Te escribe en ${spokenLanguageNameEs(lang)}, que no está entre tus idiomas, y después del ` +
+    'aviso de en qué idiomas puedes atenderle ha seguido en ese idioma. La IA está pausada en esta ' +
+    'conversación y no se le ha enviado nada más: decide tú si le contestas.'
+  );
+}
+
+/** Logger del calendar-sync cuando lo dispara un turno (la persona dice que ya ha reservado). */
+const BOOKING_SYNC_LOG = {
+  info: () => undefined,
+  warn: (obj: unknown, msg?: string) => console.warn(`[booking] calendar-sync: ${msg ?? ''}`, obj),
+  error: (obj: unknown, msg?: string) => console.error(`[booking] calendar-sync: ${msg ?? ''}`, obj),
+};

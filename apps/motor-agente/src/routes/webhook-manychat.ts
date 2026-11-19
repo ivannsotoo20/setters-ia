@@ -4,6 +4,7 @@ import { parseManyChatInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
+import { cancelSupersededAiTurn } from '../services/supersede-ai-turn.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import {
   findMessageByProviderId,
@@ -180,6 +181,9 @@ export async function webhookManyChatRoutes(app: FastifyInstance): Promise<void>
       }
 
       // 5. Encolar/extender debounce: el cron levantará el pipeline al expirar.
+      //    Antes, 2026-11-19: lo que la IA tenía programado y aún no ha salido se
+      //    cancela (turno caducado); el turno nuevo lo rehace con todo. Nunca lanza.
+      await cancelSupersededAiTurn(supabase, conversationId);
       try {
         const debounceWindowSeconds = await loadDebounceWindow(supabase, tenantId);
         // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.

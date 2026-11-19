@@ -30,6 +30,15 @@ export {
   LEAD_LANGUAGES,
   type LeadLanguage,
   type LeadLanguageDetection,
+  // 2026-11-19 — detección ampliada (italiano, alemán) para los idiomas que no se atienden.
+  detectSpokenLanguage,
+  resolveSpokenLanguage,
+  scoreSpokenLanguage,
+  OTHER_LANGUAGES,
+  SPOKEN_LANGUAGES,
+  type OtherLanguage,
+  type SpokenLanguage,
+  type SpokenLanguageDetection,
 } from './lib/detect-language.js';
 // 2026-11-04 — Un solo signo de interrogación/exclamación (preferencia del trainer).
 export {

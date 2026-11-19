@@ -4,6 +4,7 @@ import {
   evaluateZone,
   isZoneRejectVerdict,
   parseZonePolicy,
+  statesAnotherPlace,
   UNKNOWN_COUNTRY_ISO,
   UNKNOWN_PREFIX_MIN_DIGITS,
   type ZonePolicy,
@@ -532,5 +533,80 @@ describe('evaluateZone — país suelto sin pregunta y frases de residencia en o
   it("«I'm in pain» no es una declaración de residencia", () => {
     const v = evaluateZone({ phone: null, leadMessages: ["I'm in pain every morning"], countryAnswers: [], policy: TANIA });
     expect(v.kind).toBe('clear');
+  });
+});
+
+describe('evaluateZone — se lee toda la tanda antes de cerrar (2026-11-19, tato_flp)', () => {
+  // Conv. 14845: a «desde dónde me escribes?» contestó «🇨🇺 Cuba», 24 s después «Desde
+  // Miami» y luego «Soy cubano». Vive en Estados Unidos y se le cerró por zona.
+  const WHITELIST: ZonePolicy = {
+    ...TANIA,
+    countryRejectTerms: [...TANIA.countryRejectTerms, 'cubano', 'cubana'],
+    allowlist: { always: new Set(['ES', 'US', 'CA', 'IT']), filtered: new Set(['MX', 'CL']) },
+  };
+
+  it('la respuesta corta con un sitio de fuera no cierra si en la tanda nombra otro sitio', () => {
+    const answers = ['🇨🇺 Cuba', 'Desde Miami', 'Soy cubano,', 'Un médico dice que llevo operación'];
+    const v = evaluateZone({ phone: null, leadMessages: answers, countryAnswers: answers, policy: WHITELIST });
+    expect(v.kind).toBe('mention');
+  });
+
+  it('un país de zona en otro mensaje también basta («Cuba» + «vivo hace años en Estados Unidos»)', () => {
+    const answers = ['Cuba', 'pero hace años que estoy en Estados Unidos'];
+    const v = evaluateZone({ phone: null, leadMessages: answers, countryAnswers: answers, policy: WHITELIST });
+    expect(v.kind).not.toBe('reject_by_declaration');
+  });
+
+  it('un gentilicio como respuesta es nacionalidad, no residencia: mención', () => {
+    for (const answer of ['Soy cubano', 'cubana', 'Soy venezolana']) {
+      const v = evaluateZone({ phone: null, leadMessages: [answer], countryAnswers: [answer], policy: WHITELIST });
+      expect(v.kind, answer).toBe('mention');
+    }
+  });
+
+  it('sin otro sitio, la respuesta corta sigue cerrando', () => {
+    for (const batch of [['🇨🇺 Cuba'], ['Cuba', 'Desde hace dos años me duele'], ['De Cuba', 'en casa casi siempre'], ['Cuba', 'No sé']]) {
+      const v = evaluateZone({ phone: null, leadMessages: batch, countryAnswers: batch, policy: WHITELIST });
+      expect(v.kind, batch.join(' | ')).toBe('reject_by_declaration');
+    }
+  });
+
+  it('también si va en el mismo mensaje, en dos líneas («🇨🇺 Cuba» / «Desde Miami»)', () => {
+    const answer = '🇨🇺 Cuba\nDesde Miami';
+    const v = evaluateZone({ phone: null, leadMessages: [answer], countryAnswers: [answer], policy: WHITELIST });
+    expect(v.kind).toBe('mention');
+  });
+
+  it('el país suelto sin pregunta tampoco cierra si nombra otro sitio', () => {
+    const v = evaluateZone({ phone: null, leadMessages: ['De Colombia', 'en Houston ahora'], countryAnswers: [], policy: WHITELIST });
+    expect(v.kind).toBe('mention');
+  });
+});
+
+describe('statesAnotherPlace', () => {
+  const WHITELIST: ZonePolicy = {
+    ...TANIA,
+    allowlist: { always: new Set(['ES', 'US']), filtered: new Set(['MX']) },
+  };
+  it.each(['Desde Miami', 'en Houston', 'vivo en Miami', 'Estados Unidos', 'Ahora en Toronto 😊', 'from Chicago'])(
+    '«%s» nombra otro sitio',
+    (m) => expect(statesAnotherPlace(m, WHITELIST)).toBe(true),
+  );
+  it.each([
+    'Desde hace dos años',
+    'en casa',
+    'Desde enero',
+    'en el trabajo',
+    'No sé',
+    'Desde Caracas',
+    'en Cuba',
+    'desde Venezuela',
+    'En serio',
+    'desde luego',
+    'Desde pequeña me duele',
+    'En 2019',
+  ])('«%s» no', (m) => {
+    // «Desde Caracas»: Caracas es término de fuera, no es «otro sitio».
+    expect(statesAnotherPlace(m, WHITELIST)).toBe(false);
   });
 });

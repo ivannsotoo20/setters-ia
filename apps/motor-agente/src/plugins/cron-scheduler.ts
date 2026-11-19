@@ -4,6 +4,7 @@ import {
   dropDebounce,
   flushDeferredDebounces,
   getExpiredDebounces,
+  isDebouncePending,
 } from '../lib/debounce-buffer.js';
 import { createThrottledLog, getRedis } from '../lib/redis.js';
 import { getSupabase } from '../lib/supabase.js';
@@ -100,7 +101,15 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
           continue;
         }
         try {
-          const out = await processDebounced({ supabase }, entry.conversationId);
+          const out = await processDebounced(
+            {
+              supabase,
+              // Turno caducado (2026-11-19): si la persona escribió mientras se
+              // generaba, la conversación ya está otra vez en la cola.
+              isRequeued: (id) => isDebouncePending(redis, id),
+            },
+            entry.conversationId,
+          );
           app.log.info(
             {
               conversationId: entry.conversationId,
@@ -131,8 +140,14 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
     }
   };
 
+  // 2026-11-19 — Un tick de salida no empieza mientras el anterior sigue enviando
+  // (setInterval no espera a la promesa). Con el claim atómico de
+  // `sendNextBatch` ya no se puede enviar dos veces lo mismo; esto además evita
+  // que dos ticks se pisen el orden de las burbujas de un mismo turno.
+  let outboundInFlight = false;
   const tickOutbound = async () => {
-    if (stopping) return;
+    if (stopping || outboundInFlight) return;
+    outboundInFlight = true;
     try {
       const supabase = getSupabase();
       const result = await sendNextBatch({ supabase });
@@ -144,6 +159,8 @@ export async function cronSchedulerPlugin(app: FastifyInstance): Promise<void> {
       }
     } catch (err) {
       app.log.error({ err }, 'tickOutbound error');
+    } finally {
+      outboundInFlight = false;
     }
   };
 

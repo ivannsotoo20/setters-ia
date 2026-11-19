@@ -26,6 +26,7 @@ import type {
 } from '@fyzon/channel-adapters';
 import { GhlClient } from '@fyzon/ghl-client';
 import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
+import { cancelSupersededAiTurn } from './supersede-ai-turn.js';
 import { isAiPausedFromDb } from '../lib/ai-pause.js';
 import { logger } from '../lib/logger.js';
 import {
@@ -426,6 +427,9 @@ export async function routeGhlInbound(
       'routeGhlInbound: mensaje viejo (reintento tardío de GHL) — guardado sin encolar debounce',
     );
   } else if (!isAiPaused) {
+    // 2026-11-19 — Turno caducado: lo que la IA tenía programado y aún no ha
+    // salido se cancela; el turno que encola este mensaje lo rehace con todo.
+    await cancelSupersededAiTurn(supabase, conversationId);
     // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.
     await enqueueDebounceOrDefer(redis, conversationId, ctx.debounceWindowSeconds);
   } else {

@@ -37,6 +37,7 @@ import { matchLeadFromAppointment, type MatchResult } from './appointment-matche
 import { applyAppointmentToConversation } from './appointment-applier.js';
 import { buildAppointmentBookedPayload } from './build-appointment-notification-payload.js';
 import { enqueueNotification } from './notify-trainer.js';
+import { sendBookingConfirmation } from './booking-confirmation.js';
 
 export interface CalendarSyncLogger {
   info: (obj: unknown, msg?: string) => void;
@@ -252,6 +253,17 @@ async function syncOneCalendar(args: {
         );
         if (notify && (status === 'new' || status === 'confirmed')) {
           await notifyBooked({ supabase, ghlClient, tenantId, calendarAccountId: calendar.id, appointment, match, log });
+          // 2026-11-19 — La confirmación a la persona sale cuando el calendario
+          // registra la cita, con fecha, hora y zona (opt-in por tenant).
+          if (applied.conversationMoved && match.conversationId != null) {
+            await sendBookingConfirmation({
+              supabase,
+              tenantId,
+              conversationId: match.conversationId,
+              startIso: appointment.startTime,
+              bookedAtIso: appointment.dateAdded ?? null,
+            });
+          }
         }
         continue;
       }

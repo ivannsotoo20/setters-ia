@@ -96,6 +96,24 @@ export async function flushDeferredDebounces(
   return { flushed, pending: deferred.size };
 }
 
+/**
+ * 2026-11-19 — ¿La conversación está otra vez en la cola? El tick la saca de la
+ * cola (`dropDebounce`, el CLAIM) ANTES de procesarla, así que si al terminar de
+ * generar vuelve a estar es que la persona escribió mientras tanto y ya hay un
+ * turno nuevo en camino (ver `services/supersede-ai-turn.ts`). Cuenta también lo
+ * aplazado en memoria con Redis caído. Nunca lanza: en la duda, false (el turno
+ * sale como antes).
+ */
+export async function isDebouncePending(redis: Redis, conversationId: number): Promise<boolean> {
+  if (deferred.has(conversationId)) return true;
+  try {
+    const score = await redis.zscore(DEBOUNCE_KEY, String(conversationId));
+    return score !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function deferredDebouncesCount(): number {
   return deferred.size;
 }

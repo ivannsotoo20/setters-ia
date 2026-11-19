@@ -4,6 +4,7 @@ import { parseYCloudInbound } from '@fyzon/channel-adapters';
 import { getSupabase } from '../lib/supabase.js';
 import { getRedis, tryClaimDedupKey } from '../lib/redis.js';
 import { enqueueDebounceOrDefer } from '../lib/debounce-buffer.js';
+import { cancelSupersededAiTurn } from '../services/supersede-ai-turn.js';
 import { verifyYCloudSignature } from '../lib/webhook-verify.js';
 import { touchIntegrationLastWebhook } from '../lib/touch-integration.js';
 import { env } from '../config/env.js';
@@ -274,7 +275,10 @@ export async function webhookYCloudRoutes(app: FastifyInstance): Promise<void> {
         });
       }
 
-      // 6. Encolar/extender debounce
+      // 6. Encolar/extender debounce. Antes, 2026-11-19: lo que la IA tenía
+      //    programado y aún no ha salido se cancela (turno caducado); el turno
+      //    que encola este mensaje lo rehace con todo. Nunca lanza.
+      await cancelSupersededAiTurn(supabase, conversationId);
       try {
         const debounceWindowSeconds = await loadDebounceWindow(supabase, tenantId);
         // Nunca lanza: si Redis no responde, se aplaza en memoria hasta que vuelva.

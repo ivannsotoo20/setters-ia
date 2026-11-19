@@ -33,6 +33,7 @@ import {
 } from '../services/appointment-applier.js';
 import { buildAppointmentBookedPayload } from '../services/build-appointment-notification-payload.js';
 import { enqueueNotification } from '../services/notify-trainer.js';
+import { sendBookingConfirmation } from '../services/booking-confirmation.js';
 
 export const CALENDAR_EVENT_TYPES = new Set<AppointmentEventType>([
   'AppointmentCreate',
@@ -210,6 +211,17 @@ export async function handleCalendarEvent(
         { err, tenantId, appointmentId: appointment.id },
         'webhook-ghl-calendar: build/enqueue notification threw (non-fatal)',
       );
+    }
+    // 2026-11-19 — Confirmación a la persona con fecha, hora y zona cuando el
+    // calendario registra la cita (opt-in por tenant). Nunca lanza.
+    if (result.conversationMoved && match.conversationId != null) {
+      await sendBookingConfirmation({
+        supabase,
+        tenantId,
+        conversationId: match.conversationId,
+        startIso: appointment.startTime,
+        bookedAtIso: appointment.dateAdded ?? null,
+      });
     }
   }
 

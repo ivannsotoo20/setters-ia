@@ -99,7 +99,9 @@ export function zoneOfIso(iso: string | null | undefined, allow: ZoneAllowlist):
  */
 const COUNTRY_NAMES: Record<string, readonly string[]> = {
   // Europa
-  ES: ['espana', 'spain', 'espanya', 'islas canarias', 'canarias', 'islas baleares'],
+  // Ceuta y Melilla (2026-11-19): la IA le preguntó a una lead de Ceuta si «Ceuta
+  // es parte de España o te mueves entre dos países» (Tania, gmma.1971).
+  ES: ['espana', 'spain', 'espanya', 'islas canarias', 'canarias', 'islas baleares', 'ceuta', 'melilla'],
   PT: ['portugal'],
   FR: ['francia', 'france'],
   IT: ['italia', 'italy'],

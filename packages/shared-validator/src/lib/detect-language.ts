@@ -139,3 +139,108 @@ export function resolveConversationLanguage(leadMessages: ReadonlyArray<string>)
   }
   return 'es';
 }
+
+// -----------------------------------------------------------------------------
+// 2026-11-19 — Idiomas que NO atiende la entrenadora (Tania: "no quiero que
+// converse en italiano"). La heurística de arriba solo conoce los cuatro idiomas
+// en los que Tania hace la videollamada, así que un mensaje en italiano salía
+// como castellano, portugués o ambiguo, no disparaba nada y el modelo contestaba
+// en italiano (conv. 13067 el 7-nov, 13552, 15166). Esto amplía la detección a
+// italiano y alemán SIN cambiar lo de arriba: `detectLeadLanguage` y
+// `resolveConversationLanguage` siguen devolviendo exactamente lo mismo.
+// -----------------------------------------------------------------------------
+
+export type OtherLanguage = 'it' | 'de';
+export type SpokenLanguage = LeadLanguage | OtherLanguage;
+export type SpokenLanguageDetection = SpokenLanguage | 'ambiguous';
+
+export const OTHER_LANGUAGES: readonly OtherLanguage[] = ['it', 'de'];
+export const SPOKEN_LANGUAGES: readonly SpokenLanguage[] = [...LEAD_LANGUAGES, ...OTHER_LANGUAGES];
+
+/**
+ * Palabras funcionales de italiano y alemán. Fuera a propósito las que el
+ * castellano usa a diario con otro sentido ("cosa", "come", "ha", "pero",
+ * "vivo", "medico") para no restarle puntos a una lead que escribe en castellano.
+ */
+const OTHER_WORDS: Record<OtherLanguage, readonly string[]> = {
+  it: [
+    'il', 'gli', 'della', 'dello', 'degli', 'delle', 'che', 'non', 'sono', 'ho', 'hai', 'abbiamo',
+    'di', 'da', 'per', 'anche', 'molto', 'molta', 'dolore', 'dolori', 'schiena', 'grazie', 'buongiorno',
+    'buonasera', 'ciao', 'salve', 'sei', 'stato', 'stata', 'fatto', 'fare', 'anni', 'mesi', 'quando',
+    'perché', 'perche', 'cosa', 'questo', 'questa', 'quello', 'quella', 'sempre', 'ancora', 'ernia',
+    'posso', 'vorrei', 'voglio', 'però', 'gamba', 'gambe', 'camminare', 'dormire', 'lavoro', 'mio',
+    'mia', 'miei', 'sto', 'sta', 'stai', 'dove', 'abito', 'scrivo', 'quanto', 'costa', 'prezzo',
+    'aiutare', 'aiuto', 'più', 'piu', 'niente', 'qualcosa', 'così', 'cosi', 'già', 'gia', 'tutto',
+    'tutti', 'bene', 'troppo', 'poi', 'dopo', 'senza', 'ogni', 'giorno', 'notte', 'mattina', 'sera',
+    'faccio', 'fa', 'nel', 'nella', 'alla', 'alle', 'sul', 'sulla', 'ci', 'fisioterapista',
+    'anca', 'fastidio', 'sì',
+  ],
+  de: [
+    'ich', 'und', 'nicht', 'ist', 'das', 'der', 'die', 'mit', 'mein', 'meine', 'habe', 'hast',
+    'rücken', 'rucken', 'schmerzen', 'schmerz', 'danke', 'hallo', 'seit', 'jahren', 'sehr', 'auch',
+    'wie', 'was', 'ein', 'eine', 'bin', 'ja', 'nein', 'aber', 'für', 'fur', 'zu', 'von', 'auf',
+    'sie', 'wir', 'ihr', 'guten', 'tag', 'morgen', 'bitte', 'kann', 'möchte', 'mochte', 'wo',
+    'wohne', 'schreibe', 'kostet', 'preis', 'helfen', 'noch', 'schon', 'immer', 'jetzt', 'gut',
+  ],
+};
+
+const OTHER_DIACRITICS: Record<OtherLanguage, RegExp> = {
+  // ì y ò solo los usa el italiano entre los seis; à/è/ù las comparte con el francés.
+  it: /[ìò]/g,
+  de: /[äöüß]/g,
+};
+
+const OTHER_WORD_SETS: Record<OtherLanguage, Set<string>> = {
+  it: new Set(OTHER_WORDS.it),
+  de: new Set(OTHER_WORDS.de),
+};
+
+/**
+ * Palabras con tilde que solo existen en italiano. Valen 3: la tilde de «più» o
+ * de «è» suma 2 al francés en `scoreLeadLanguage` (que no se toca), y sin esto
+ * una frase italiana corta salía como francés o ambigua.
+ */
+const ITALIAN_ACCENTED_RE =
+  /(?<![\p{L}])(?:più|può|giù|già|così|perché|poiché|benché|affinché|però|è|cioè|città|metà|realtà|attività|difficoltà|età|qualità|novità|lunedì|martedì|mercoledì|giovedì|venerdì)(?![\p{L}])/gu;
+
+/** Puntos por idioma con los seis idiomas; expuesto para los tests. */
+export function scoreSpokenLanguage(text: string): Record<SpokenLanguage, number> {
+  const base = scoreLeadLanguage(text);
+  const score: Record<SpokenLanguage, number> = { ...base, it: 0, de: 0 };
+  const lower = text.toLowerCase().normalize('NFC');
+  score.it += (lower.match(ITALIAN_ACCENTED_RE) ?? []).length * 3;
+  for (const lang of OTHER_LANGUAGES) {
+    const hits = lower.match(OTHER_DIACRITICS[lang]);
+    if (hits) score[lang] += hits.length * 2;
+  }
+  for (const w of tokenize(text)) {
+    for (const lang of OTHER_LANGUAGES) {
+      if (OTHER_WORD_SETS[lang].has(w)) score[lang] += 1;
+    }
+  }
+  return score;
+}
+
+/**
+ * Idioma de UN mensaje entre los seis, o `ambiguous`. Mismo umbral y margen que
+ * `detectLeadLanguage`: con poca señal, ambiguo.
+ */
+export function detectSpokenLanguage(text: string): SpokenLanguageDetection {
+  if (typeof text !== 'string' || text.trim().length === 0) return 'ambiguous';
+  const score = scoreSpokenLanguage(text);
+  const ranked = [...SPOKEN_LANGUAGES].sort((a, b) => score[b] - score[a]);
+  const best = ranked[0]!;
+  const second = ranked[1]!;
+  if (score[best] < MIN_SCORE) return 'ambiguous';
+  if (score[best] - score[second] < MIN_MARGIN) return 'ambiguous';
+  return best;
+}
+
+/** Como `resolveConversationLanguage`, con los seis idiomas. Sin ninguno claro, castellano. */
+export function resolveSpokenLanguage(leadMessages: ReadonlyArray<string>): SpokenLanguage {
+  for (let i = leadMessages.length - 1; i >= 0; i--) {
+    const detected = detectSpokenLanguage(leadMessages[i] ?? '');
+    if (detected !== 'ambiguous') return detected;
+  }
+  return 'es';
+}

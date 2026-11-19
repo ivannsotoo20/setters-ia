@@ -156,9 +156,37 @@ export async function sendNextBatch(
     if (pending.length === 0) return result;
   }
 
-  // 2. Marcar como processing
+  // 2. Marcar como processing, y SOLO enviar lo que este tick ha reclamado.
+  //
+  // 2026-11-19 — Antes era leer pendientes y marcarlos en dos pasos: si otro
+  // proceso leía los mismos pendientes entre medias, los dos los enviaban (conv.
+  // 14236 de Tania, 16-nov: una parte programada una vez, dos filas en
+  // conversation_messages con 0,2 s entre ellas y el mensaje dos veces en su
+  // Instagram; 4 casos desde octubre). Ahora el UPDATE exige status='pending' y
+  // devuelve las filas que cambió: solo un proceso gana cada parte.
   const ids = pending.map((c) => Number(c.id));
-  await supabase.from('message_schedules').update({ status: 'processing' }).in('id', ids);
+  const { data: claimedRows, error: claimErr } = await supabase
+    .from('message_schedules')
+    .update({ status: 'processing' })
+    .in('id', ids)
+    .eq('status', 'pending')
+    .select('id');
+  if (claimErr) {
+    throw new Error(`sendNextBatch claim: ${claimErr.message}`);
+  }
+  if (Array.isArray(claimedRows)) {
+    const claimedIds = new Set(claimedRows.map((r) => Number(r.id)));
+    const lost = pending.length - claimedIds.size;
+    if (lost > 0) {
+      logger.warn(
+        { lost, ids: ids.filter((id) => !claimedIds.has(id)) },
+        'sendNextBatch: partes ya reclamadas por otro proceso, no se reenvían',
+      );
+    }
+    pending = pending.filter((c) => claimedIds.has(Number(c.id)));
+    result.picked = pending.length;
+    if (pending.length === 0) return result;
+  }
 
   // 2.5 Sprint Iota.3 hotfix CRÍTICO (2026-05-12) — gate IA pausada en outbound.
   //

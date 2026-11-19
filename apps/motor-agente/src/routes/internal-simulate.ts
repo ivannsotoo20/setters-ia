@@ -58,7 +58,24 @@ import { getSupabase } from '../lib/supabase.js';
 import { extractBearer, isValidBearer } from '../lib/timing-safe-bearer.js';
 import { buildPhaseFocusInstruction } from '../lib/phase-focus.js';
 import { detectAddressing, buildMirrorLeadDirective } from '../lib/detect-addressing.js';
-import { buildLeadLanguageDirective, resolveLeadLanguage } from '../lib/lead-language.js';
+import {
+  buildLeadLanguageDirective,
+  decideLanguageTurn,
+  outputInDisallowedLanguage,
+  parseLanguagePolicy,
+  resolveLeadLanguage,
+  resolveSpokenLeadLanguage,
+  unsupportedLanguageParts,
+} from '../lib/lead-language.js';
+import { buildCountryInZoneDirective, countryAnsweredInZone } from '../lib/turn-context.js';
+import {
+  bookingLinkAlreadySent,
+  buildNoAppointmentDirective,
+  claimsBookingConfirmed,
+  parseBookingConfirmationConfig,
+  signalsBooked,
+  splitParagraphs,
+} from '../services/booking-confirmation.js';
 import { zoneCloseAllowedUrls } from '../lib/zone-policy.js';
 import { normalizePartsPunctuation } from '@fyzon/shared-validator';
 import {
@@ -292,13 +309,74 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
             .filter((b): b is string => Boolean(b))
             .join('\n\n') || null,
       });
+      // 2026-11-19 — Reserva solo con la cita real, como en producción. En el
+      // simulador no hay lead ni calendario: nunca hay cita registrada.
+      const bookingCfg = parseBookingConfirmationConfig(leadQualification);
+      const guardBookingClaim =
+        bookingCfg != null && (bookingLinkAlreadySent(body.history) || signalsBooked(body.message));
       const systemDirectives = combineSystemDirectives(
         leadOriginDirective,
         addressingDirective,
         languageDirective,
+        guardBookingClaim && bookingCfg ? buildNoAppointmentDirective(bookingCfg) : null,
+        // 2026-11-19 — País ya contestado con un sitio de la zona, como en producción.
+        zoneVerdict.kind === 'clear'
+          ? buildCountryInZoneDirective(
+              countryAnsweredInZone(countryAnswersOf(fullHistory, asksForCountry), zonePolicy?.allowlist),
+            )
+          : null,
       );
 
       const startedAt = Date.now();
+
+      // 2026-11-19 — Idiomas que atiende la entrenadora, como en producción: a
+      // quien escribe en otro idioma le sale el aviso de idiomas tal cual (sin
+      // modelo); si ya se le mandó, en producción la IA se pausaría y avisaría.
+      const languagePolicy = parseLanguagePolicy(leadQualification);
+      if (languagePolicy) {
+        const spokenLanguage = resolveSpokenLeadLanguage(body.history, body.message);
+        const languageTurn = decideLanguageTurn({
+          policy: languagePolicy,
+          spokenLanguage,
+          history: body.history,
+        });
+        if (languageTurn !== 'ok') {
+          return reply.code(200).send({
+            ok: true,
+            parts: languageTurn === 'notice' ? unsupportedLanguageParts(languagePolicy) : [],
+            lead_language: spokenLanguage,
+            language_turn: languageTurn,
+            decision: {
+              phase: body.phase,
+              status: languageTurn === 'notice' ? 'active' : 'handoff',
+              handoff_cause: null,
+            },
+            reasoning: {
+              user_summary: null,
+              emotion: null,
+              problem: null,
+              goal: null,
+              urgency: null,
+              next_action:
+                languageTurn === 'notice'
+                  ? 'Aviso de idiomas (texto de la entrenadora, lo manda el motor)'
+                  : 'Sigue en un idioma no atendido tras el aviso: IA pausada y aviso a la entrenadora',
+            },
+            call_gate: null,
+            country_ask: null,
+            price_gate: null,
+            zone_explore_turns_left: null,
+            injected_directive: null,
+            zone: describeZone(zoneVerdict),
+            calendar: { url: null, reason: 'no_calendar', name: null, simulated_slug: SIMULATION_TRACKING_SLUG },
+            cost_usd: 0,
+            retries: [],
+            latency_ms: Date.now() - startedAt,
+            simulated: true,
+          });
+        }
+      }
+
       try {
         const out = await runPipeline(
           { supabase, anthropic },
@@ -356,6 +434,19 @@ export async function internalSimulateRoutes(app: FastifyInstance): Promise<void
         );
 
         const setterOut = out.generator.setterOutput;
+        // 2026-11-19 — Ningún turno sale en un idioma no atendido, como en producción.
+        if (languagePolicy && outputInDisallowedLanguage(setterOut.message_raw, languagePolicy)) {
+          out.parts = unsupportedLanguageParts(languagePolicy);
+        }
+        if (guardBookingClaim && bookingCfg && claimsBookingConfirmed(setterOut.message_raw)) {
+          out.parts = splitParagraphs(bookingCfg.pendingText);
+        }
+        // Sin cita registrada no se cierra como "ha reservado", como en producción.
+        if (guardBookingClaim && bookingCfg && setterOut.handoff_cause === 'A_agenda') {
+          setterOut.handoff_cause = undefined;
+          setterOut.conversation_status = 'active';
+          setterOut.phase_decision = Math.min(setterOut.phase_decision, 6);
+        }
         // 2026-11-04 — Un solo signo, como en producción (preferencia estricta del trainer).
         const finalParts = schedulingConfig.singlePunctuation ? normalizePartsPunctuation(out.parts) : out.parts;
         return reply.code(200).send({
